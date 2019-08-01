@@ -103,5 +103,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# local runner
+# local run batch
 a.bat
+
+# avoid updating the config
+config.yaml
