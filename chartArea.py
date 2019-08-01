@@ -1347,10 +1347,14 @@ class chartArea(QFrame):
 
                         if  t > t_to: #end of window no need to scan further
                             break
-                except:
+                except Exception as e:
                     log('error: i = %i, array_size = %i' % (i, array_size))
                     log('timeKey = %s, kpi: = %s' % (timeKey, kpi))
                     log('scales[kpi][max] = %i' % (scales[kpi]['max']))
+                    
+                    log('scales[kpi] = %s' % str(scales[kpi]))
+
+                    log('exception text: %s' % (str(e))
                     
                     for j in range(10):
                         log('data[%i] = %s' % (j, str(data[kpi][j])))
