@@ -1,0 +1,10 @@
+
+server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
+
+#internal settings
+logmode: screen
+
+experimental: True
+
+#db keep-alive time
+keepalive: 1200
