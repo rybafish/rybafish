@@ -202,6 +202,7 @@ class kpiTable(QTableWidget):
                 self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
                 
                 self.setItem(i, 9, QTableWidgetItem(style['desc'])) # descr
+                self.setItem(i, 10, QTableWidgetItem(style['group'])) # group
             else:
                 # kpi groups
                 
@@ -267,7 +268,7 @@ class kpiTable(QTableWidget):
         self.silentMode = False
         
     def initTable(self):
-        self.setColumnCount(10)
+        self.setColumnCount(11)
         self.SelectionMode(QAbstractItemView.NoSelection) #doesn't work for some reason
 
         self.horizontalHeader().setFont(QFont('SansSerif', 8))
@@ -276,7 +277,7 @@ class kpiTable(QTableWidget):
         self.setWordWrap(False)
         self.verticalHeader().setVisible(False)
 
-        self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', 'Sum', 'Last', 'Description'])
+        self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', 'Sum', 'Last', 'Description', 'Group'])
         # self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', 'Sum', 'Last', 'Description', 'mntr'])
         #self.updateScales()
         
@@ -289,7 +290,8 @@ class kpiTable(QTableWidget):
         self.setColumnWidth(6, 50) # AVG
         self.setColumnWidth(7, 20) # Sum
         self.setColumnWidth(8, 80) # Last
-        self.setColumnWidth(9, 200) # desc
+        self.setColumnWidth(9, 220) # desc
+        self.setColumnWidth(10, 40) # group
         #self.setColumnWidth(10, 30) # threshold
         
         self.itemChanged.connect(self.itemChange)

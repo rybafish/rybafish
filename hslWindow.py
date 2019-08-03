@@ -271,7 +271,7 @@ class hslWindow(QMainWindow):
         fileMenu.addAction(exitAct)
 
         # finalization
-        self.setGeometry(300, 300, 1200, 600)
+        self.setGeometry(200, 200, 1400, 800)
         #self.setWindowTitle('SAP HANA Studio Light')
         # self.setWindowTitle('HANA Army Knife')
         self.setWindowTitle('Ryba Fish Charts')
