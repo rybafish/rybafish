@@ -1354,12 +1354,12 @@ class chartArea(QFrame):
                     
                     log('scales[kpi] = %s' % str(scales[kpi]))
 
-                    log('exception text: %s' % (str(e))
+                    log('exception text: %s' % (str(e)))
                     
                     for j in range(10):
                         log('data[%i] = %s' % (j, str(data[kpi][j])))
-                    raise
-                    
+                        
+                    raise e
                         
                 scales[kpi]['last_value'] = data[kpi][i]
         
