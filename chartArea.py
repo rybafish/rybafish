@@ -130,15 +130,6 @@ class myWidget(QWidget):
         self.font_width3 = fm.width('2019-06-17') / 2
         
         self.initPens()
-        print('self.initCustomPens() <-- disabled')
-
-    '''
-    def initCustomPens(self):
-        for cskpi in kpiDescriptions.kpiStylesN:
-        
-            if cskpi[:10] != 'cs----#---':
-                self.kpiPen[cskpi] = kpiDescriptions.kpiStylesN[cskpi]['pen']
-    '''
                 
     def initPens(self):
         for t in kpiStylesNN:
