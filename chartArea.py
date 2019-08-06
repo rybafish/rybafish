@@ -811,7 +811,7 @@ class myWidget(QWidget):
                         
                     qp.setPen(QColor('#DDD'))
                     
-            if t_scale == 60*10:
+            if t_scale == 60*10 or t_scale == 60*15:
                 # step = 10 minutes, major every hour
                 #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale)
                 label = c_time.strftime("%H:%M")
@@ -1278,8 +1278,10 @@ class chartArea(QFrame):
         elif i == 2:
             self.widget.t_scale = 60*10
         elif i == 3:
-            self.widget.t_scale = 3600
+            self.widget.t_scale = 60*15
         elif i == 4:
+            self.widget.t_scale = 3600
+        elif i == 5:
             self.widget.t_scale = 3600*4
             
         #recalculate x-size and adjust
@@ -1507,6 +1509,7 @@ class chartArea(QFrame):
         scaleCB.addItem('10 seconds')
         scaleCB.addItem('1 minute')
         scaleCB.addItem('10 minutes')
+        scaleCB.addItem('15 minutes')
         scaleCB.addItem('1 hour')
         scaleCB.addItem('4 hours')
         
