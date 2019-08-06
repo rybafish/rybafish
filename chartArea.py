@@ -959,6 +959,20 @@ class chartArea(QFrame):
             to be called right after self.chartArea.dp = new dp
         '''
         
+        for host in range(len(self.widget.hosts)):
+            for kpi in self.widget.nkpis[host]:
+                log('clear %i/%s...' % (host, kpi))
+                
+                print('same code in checkbocks callback - make a function')
+                self.widget.nkpis[host].remove(kpi) # kpis is a list
+                if kpi in self.widget.ndata[host]:
+                    #might be empty for alt-added
+                    del(self.widget.ndata[host][kpi]) # ndata is a dict
+            
+            self.widget.ndata[host].clear()
+            
+        self.widget.ndata.clear()
+        
         self.widget.hosts.clear()
         self.widget.nkpis.clear()
         
@@ -1328,6 +1342,10 @@ class chartArea(QFrame):
                 array_size = len(self.widget.ndata[h][timeKey])
                 scales[timeKey] = {'min': data[timeKey][0], 'max': data[timeKey][array_size-1]}
 
+                log('  scan %i -> %s' % (h, kpi))
+                log('  timekey: ' + timeKey)
+                log('  array size: %i' % (array_size))
+
                 try:
                     for i in range(0, array_size):
                         t = data[timeKey][i]
@@ -1349,6 +1367,11 @@ class chartArea(QFrame):
                     
                     for j in range(10):
                         log('data[%i] = %s' % (j, str(data[kpi][j])))
+                        
+                    for j in range(1, 10):
+                        k = array_size - (10 - j)
+                        log('data[%s][%i] = %s' % (kpi, k, str(data[kpi][k])))
+                        log('data[%s][%i] = %s' % (timeKey, k, str(data[timeKey][k])))
                         
                     raise e
                         

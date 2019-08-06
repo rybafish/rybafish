@@ -124,6 +124,10 @@ class dataProvider:
             log('no db connection...')
             return
 
+        log('init hosts: %s' % str(hosts))
+        log('init hosts, hostKPIs: %s' % str(hostKPIs))
+        log('init hosts, srvcKPIs: %s' % str(srvcKPIs))
+
         sql_string = sql.hosts_info
 
         t0 = time.time()
@@ -353,6 +357,12 @@ class dataProvider:
                             data[timeKey] = [0] * (trace_lines)  #array('d', [0]*data_size) ??
                             log('allocate data[%s]: %i' %(timeKey, trace_lines))
                         else:
+                            '''
+                            if kpis_[j] in data:
+                                log('clean data[%s]' % (kpis_[j]))
+                                del(data[kpis_[j]]) # ndata is a dict
+                            '''
+                                
                             #log('allocate %i for %s' % (trace_lines, kpis_[j]))
                             data[kpis_[j]] = [0]* (trace_lines)  #array('l', [0]*data_size) ??
                             log('allocate data[%s]: %i' %(kpis_[j], trace_lines))

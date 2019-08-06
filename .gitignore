@@ -108,3 +108,9 @@ a.bat
 
 # avoid updating the config
 config.yaml
+
+# log file 
+.log
+
+# custom sql folder
+sql/
