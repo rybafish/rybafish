@@ -769,108 +769,73 @@ class myWidget(QWidget):
             
             c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
             
+            major_line = False
+            date_mark = False
+            
+            if t_scale <= 60*60:
+                label = c_time.strftime("%H:%M:%S")
+            else:
+                label = c_time.strftime("%H:%M")
+                
+                
+            sec_scale = None
+            min_scale = None
+            hrs_scale = None
+            
             if t_scale == 10:
-                # step = 10 seconds, major every minute
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
-                label = c_time.strftime("%H:%M:%S")
+                sec_scale = 60
+                hrs_scale = 60*5
+            elif t_scale == 60:
+                min_scale = 5
+                hrs_scale = 5*4
+            elif t_scale == 60*5:
+                min_scale = 30
+                hrs_scale = 30*4
+            elif t_scale == 60*10:
+                min_scale = 60
+                hrs_scale = 60*4
+            elif t_scale == 60*15:
+                min_scale = 60*2
+                hrs_scale = 60*2*4
+            elif t_scale == 3600:
+                min_scale = 60*4
+                hrs_scale = 60*4*3 # god damit, 3, really?
+            elif t_scale == 4*3600:
+                min_scale = 60*24
+                hrs_scale = 60*24*4
                 
-                if label[-2:] == '00':
-                    #major lines
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
+            min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
+            
+            if sec_scale is not None:
+                if c_time.timestamp() % sec_scale == 0:
+                    major_line = True
 
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width2, wsize.height() - bottom_margin + self.font_height, label);
-                    
-                    #date marks
-                    if int(c_time.strftime("%M")) % 5 == 0:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
-                        
-                    qp.setPen(QColor('#DDD'))
-                    
-            if t_scale == 60:
-                # step = 1 minute, major every 10 minutes
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
-                label = c_time.strftime("%H:%M:%S")
+                if c_time.timestamp() % hrs_scale == 0:
+                    date_mark = True
+            elif min % min_scale == 0:
+                major_line = True
                 
-                #log(label)
-                
-                if label[-4:] == '0:00' or label[-4:] == '5:00':
-                    #major lines
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
+                if min % hrs_scale == 0:
+                    date_mark = True
+                    
+            if major_line:
+            
+                qp.setPen(QColor('#AAA'))
+                qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
 
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width2, wsize.height() - bottom_margin + self.font_height, label);
-                    
-                    #date marks
-                    if int(c_time.strftime("%M")) % 30 == 0:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
-                        
-                    qp.setPen(QColor('#DDD'))
-                    
-            if t_scale == 60*10 or t_scale == 60*15:
-                # step = 10 minutes, major every hour
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale)
-                label = c_time.strftime("%H:%M")
+                qp.setPen(QColor('#000'))
                 
-                if label[-3:] == ':00':
+                if len(label) == 5: # 00:00
+                    label_width = self.font_width1
+                else:
+                    label_width = self.font_width2
+                qp.drawText(x-label_width, wsize.height() - bottom_margin + self.font_height, label);
                 
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
-
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width1, wsize.height() - bottom_margin + self.font_height, label);
+                if date_mark:
+                    label = c_time.strftime('%Y-%m-%d')
+                    qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
                     
-                    if int(c_time.strftime("%H")) % 4 == 0:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2 , label);
-                        
-                    qp.setPen(QColor('#DDD'))
-
-            if t_scale == 60*60:
-                # step = 1 hour, mark every 12 hours
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale)
-                label = c_time.strftime("%H:%M")
-                
-                #if label == '00:00' or label == '06:00' or label == '12:00':
-                if int(c_time.strftime("%H")) % 4 == 0:
-                
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
-
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width1, wsize.height() - bottom_margin + self.font_height, label);
-                    
-                    #if int(c_time.strftime("%H")) % 12 == 0:
-                    if int(c_time.strftime("%H")) == 0:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
-                        
-                    qp.setPen(QColor('#DDD'))
-                    
-            if t_scale == 60*60*4:
-                # step = 4 hours, major...?
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale)
-                label = c_time.strftime("%H:%M")
-                
-                if label == '00:00': #or label == '12':
-                
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
-
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width1, wsize.height() - bottom_margin + self.font_height, label);
-                    
-                    if True:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
-                        
-                    qp.setPen(QColor('#DDD'))
-                    
-        
+                qp.setPen(QColor('#DDD'))
         
             x += self.step_size
         #log(seconds / t_scale * 10)
@@ -1271,19 +1236,27 @@ class chartArea(QFrame):
         
     def scaleChanged(self, i):
 
-        if i == 0:
-            self.widget.t_scale = 10
-        if i == 1:
-            self.widget.t_scale = 60
-        elif i == 2:
-            self.widget.t_scale = 60*10
-        elif i == 3:
-            self.widget.t_scale = 60*15
-        elif i == 4:
-            self.widget.t_scale = 3600
-        elif i == 5:
-            self.widget.t_scale = 3600*4
+        txtValue = self.scaleCB.currentText()
+        
+        try:
+            (n, unit) = txtValue.split()
             
+            n = int(n)
+            
+            scale = 0
+            
+            if unit[:6] == 'second':
+                scale = 1
+            elif unit[:6] == 'minute':
+                scale = 60
+            elif unit[:4] == 'hour':
+                scale = 3600
+                
+        except Exception as ex:
+            log('[e] timer scale exception: %s, %s' % (str(ex), txtValue))
+            
+        self.widget.t_scale = n * scale
+        
         #recalculate x-size and adjust
         self.widget.resizeWidget()
         
@@ -1504,20 +1477,21 @@ class chartArea(QFrame):
         grp = QGroupBox()
         hbar = QHBoxLayout();
         
-        scaleCB = QComboBox()
+        self.scaleCB = QComboBox()
         
-        scaleCB.addItem('10 seconds')
-        scaleCB.addItem('1 minute')
-        scaleCB.addItem('10 minutes')
-        scaleCB.addItem('15 minutes')
-        scaleCB.addItem('1 hour')
-        scaleCB.addItem('4 hours')
+        self.scaleCB.addItem('10 seconds')
+        self.scaleCB.addItem('1 minute')
+        self.scaleCB.addItem('5 minutes')
+        self.scaleCB.addItem('10 minutes')
+        self.scaleCB.addItem('15 minutes')
+        self.scaleCB.addItem('1 hour')
+        self.scaleCB.addItem('4 hours')
         
-        scaleCB.setFocusPolicy(Qt.ClickFocus)
+        self.scaleCB.setFocusPolicy(Qt.ClickFocus)
         
-        scaleCB.setCurrentIndex(2)
+        self.scaleCB.setCurrentIndex(3)
         
-        scaleCB.currentIndexChanged.connect(self.scaleChanged)
+        self.scaleCB.currentIndexChanged.connect(self.scaleChanged)
         
         if cfg('experimental'):
             self.refreshCB = QComboBox()
@@ -1566,7 +1540,7 @@ class chartArea(QFrame):
         self.fromEdit.returnPressed.connect(self.reloadChart)
         self.toEdit.returnPressed.connect(self.reloadChart)
         
-        hbar.addWidget(scaleCB)
+        hbar.addWidget(self.scaleCB)
         hbar.addStretch(10)
         
         if cfg('experimental'):
