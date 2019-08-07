@@ -188,6 +188,12 @@ class dataProvider:
         
         kpiDescriptions.clarifyGroups()
         
+        for type in kpiDescriptions.kpiStylesNN:
+            for kpi in kpiDescriptions.kpiStylesNN[type]:
+                print(kpiDescriptions.kpiStylesNN[type][kpi]['name'], kpiDescriptions.kpiStylesNN[type][kpi]['group'])
+                
+        print(kpiDescriptions.kpiStylesNN.keys())
+        
         log('hostsInit time: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
         
     def splitKpis(self, type, kpis):

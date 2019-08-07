@@ -265,6 +265,9 @@ def clarifyGroups():
             
         if thread_kpis[0] in kpiStylesNN[h]:
             update_hardcoded(kpiStylesNN[h], thread_kpis, 33)
+
+        if 'active_thread_count' in kpiStylesNN[h]:
+            update(kpiStylesNN[h]['active_thread_count']['group'], 'thr')
         
 
 def groups():

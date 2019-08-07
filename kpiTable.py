@@ -202,7 +202,15 @@ class kpiTable(QTableWidget):
                 self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
                 
                 self.setItem(i, 9, QTableWidgetItem(style['desc'])) # descr
-                self.setItem(i, 10, QTableWidgetItem(style['group'])) # group
+                
+                grp = str(style['group'])
+                
+                if grp == '0':
+                    grp = ''
+                
+                self.setItem(i, 10, QTableWidgetItem(grp)) # group
+                
+                print(style['name'], style['group'])
             else:
                 # kpi groups
                 
@@ -211,7 +219,8 @@ class kpiTable(QTableWidget):
                 self.setItem(i, 1, QTableWidgetItem(kpiName[1:])) # text name
                 self.item(i, 1).setFont(QFont('SansSerif', 8, QFont.Bold))
                 
-                self.setItem(i, 9, QTableWidgetItem()) # clean up
+                self.setItem(i, 9, QTableWidgetItem()) # no desc
+                self.setItem(i, 10, QTableWidgetItem()) # no group
 
             if kpiName in self.kpiScales[self.host].keys():
                 
