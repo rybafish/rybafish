@@ -88,6 +88,8 @@ class myWidget(QWidget):
     bottom_margin = 20
     step_size = 16
     
+    y_delta = 0 # to make drawing space even to 10 parts (calculated in drawGrid)
+    
     delta = 0 # offset for uneven time_from values
 
     #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
@@ -259,13 +261,14 @@ class myWidget(QWidget):
                         mem_max = self.manual_scales['mem']
 
                     scaleKpi['y_max'] = utils.antiGB(mem_max)
-                    scaleKpi['label'] = str(mem_max)
+                    #scaleKpi['label'] = str(mem_max)
+                    scaleKpi['label'] = ('%i / %i' % (mem_max, mem_max / 10))
                 
                 elif groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = scaleKpi['max']
                     scaleKpi['last_label'] = scaleKpi['last_value']
-                    scaleKpi['label'] = '100'
+                    scaleKpi['label'] = '100 / 10'
                     scaleKpi['unit'] = '%'
                         
                 else:
@@ -292,7 +295,8 @@ class myWidget(QWidget):
                     
                     #calculated here
                     scaleKpi['y_max'] = max_value
-                    scaleKpi['label'] = str(max_value)
+                    #scaleKpi['label'] = str(max_value)
+                    scaleKpi['label'] = ('%i / %i' % (max_value, max_value / 10))
                     
                     scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
                     
@@ -547,6 +551,9 @@ class myWidget(QWidget):
             return
 
         t0 = time.time()
+        
+        
+        top_margin = self.top_margin + self.y_delta
                 
         for h in range(0, len(self.hosts)):
             if len(self.ndata[h]) == 0:
@@ -591,7 +598,7 @@ class myWidget(QWidget):
                 if self.nscales[h][kpi]['y_max'] == 0:
                     y_scale = 0
                 else:
-                    y_scale = (wsize.height() - self.top_margin - self.bottom_margin - 2 - 1)/(self.nscales[h][kpi]['y_max'] - self.nscales[h][kpi]['y_min'])
+                    y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(self.nscales[h][kpi]['y_max'] - self.nscales[h][kpi]['y_min'])
                 
                 x_scale = self.step_size / self.t_scale
 
@@ -721,9 +728,20 @@ class myWidget(QWidget):
         t0 = time.time()
         
         wsize = self.size()
+        
+        # calculate vertical size and force align it to 10
+        # in order to have equal y-cells
+        
+        draw_height = wsize.height()-self.top_margin-self.bottom_margin-1
+        y_step = int(draw_height / 10)
+        self.y_delta = draw_height - y_step*10
+
+        #adjust the margin
+        top_margin = self.top_margin + self.y_delta
+            
 
         qp.setPen(QColor('#888'))
-        qp.drawRect(self.side_margin, self.top_margin, wsize.width()-self.side_margin*2, wsize.height()-self.top_margin-self.bottom_margin-1)
+        qp.drawRect(self.side_margin, top_margin, wsize.width()-self.side_margin*2, wsize.height()-top_margin-self.bottom_margin-1)
 
         qp.setPen(QColor('#000'))
         qp.setFont(QFont('SansSerif', self.conf_fontSize))
@@ -734,6 +752,19 @@ class myWidget(QWidget):
         
         qp.setPen(QColor('#DDD'))
         
+
+        # vertical scale
+        
+        for j in range(1,10):
+            y = top_margin + j * y_step
+            
+            if j == 5:
+                qp.setPen(QColor('#AAA'))
+            
+            qp.drawLine(self.side_margin, y, wsize.width()-self.side_margin, y)
+            
+            if j == 5:
+                qp.setPen(QColor('#DDD'))
         
         #x is in pixels
         x = self.side_margin+self.step_size
@@ -745,7 +776,6 @@ class myWidget(QWidget):
         if t_scale == 60*60*4:
             self.delta -= 3600 # not sure, could be a bug (what if negative?)
         
-        top_margin = self.top_margin
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
         delta = self.delta
@@ -755,6 +785,10 @@ class myWidget(QWidget):
         
         x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
         x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
+
+        #print('left=%i, right=%i, width=%i, ' % (x_left_border, x_right_border, wsize.width()))
+        
+        #qp.drawLine(x_left_border + self.side_margin , 100, x_right_border - self.step_size - self.side_margin, 100)
         
         while x < ((seconds / t_scale + 1) * self.step_size):
         
@@ -763,7 +797,7 @@ class myWidget(QWidget):
                 
                 continue
                 
-            qp.drawLine(x, self.top_margin + 1, x, wsize.height() - bottom_margin - 2)
+            qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
             
             #log('%i <-' % ((x - side_margin)/step_size))
             
@@ -1317,9 +1351,9 @@ class chartArea(QFrame):
                 array_size = len(self.widget.ndata[h][timeKey])
                 scales[timeKey] = {'min': data[timeKey][0], 'max': data[timeKey][array_size-1]}
 
-                log('  scan %i -> %s' % (h, kpi))
-                log('  timekey: ' + timeKey)
-                log('  array size: %i' % (array_size))
+                #log('  scan %i -> %s' % (h, kpi))
+                #log('  timekey: ' + timeKey)
+                #log('  array size: %i' % (array_size))
 
                 try:
                     for i in range(0, array_size):

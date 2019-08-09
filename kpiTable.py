@@ -210,7 +210,7 @@ class kpiTable(QTableWidget):
                 
                 self.setItem(i, 10, QTableWidgetItem(grp)) # group
                 
-                print(style['name'], style['group'])
+                #print(style['name'], style['group'])
             else:
                 # kpi groups
                 
