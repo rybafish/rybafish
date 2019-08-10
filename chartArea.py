@@ -781,15 +781,10 @@ class myWidget(QWidget):
         delta = self.delta
         
         t1 = time.time()
-        #log(t_scale)
         
         x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
         x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
 
-        #print('left=%i, right=%i, width=%i, ' % (x_left_border, x_right_border, wsize.width()))
-        
-        #qp.drawLine(x_left_border + self.side_margin , 100, x_right_border - self.step_size - self.side_margin, 100)
-        
         while x < ((seconds / t_scale + 1) * self.step_size):
         
             if x < x_left_border or x > x_right_border:
@@ -962,7 +957,7 @@ class chartArea(QFrame):
             for kpi in self.widget.nkpis[host]:
                 log('clear %i/%s...' % (host, kpi))
                 
-                print('same code in checkbocks callback - make a function')
+                #print('the same code in checkbocks callback - make a function')
                 self.widget.nkpis[host].remove(kpi) # kpis is a list
                 if kpi in self.widget.ndata[host]:
                     #might be empty for alt-added
@@ -986,7 +981,7 @@ class chartArea(QFrame):
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
         self.widget.allocate(len(self.widget.hosts))
         self.widget.initPens()
-        print('self.widget.initCustomPens() <-- depricated')
+
         self.hostsUpdated.emit()
         
         self.statusMessage('ready')
@@ -1221,7 +1216,8 @@ class chartArea(QFrame):
 
     def refreshTimer(self):
         self.timer.stop()
-        print('also stop keep alive timer here')
+        #print('also stop keep alive timer here')
+        #print('it will be kinda refreshed in get_data renewKeepAlive')
         
         log('trigger auto refresh...')
         self.reloadChart()

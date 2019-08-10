@@ -307,33 +307,8 @@ class hslWindow(QMainWindow):
         self.chartArea.widget.statusMessage_.connect(self.statusMessage)
 
         self.chartArea.connected.connect(self.setTabName)
-        print('================================ <-- connected')
-        
-        '''
-            all stuff below should be replaced or moved
-            to GUI part
-            
-            It happens here just to test stuff faster.
-            
-            So ALL should be ready at this point.
-            It should be possible to return with no harm at this point
-            
-        '''
-        
-        log('>>> >> > fake user interactions ')
+        log('init finish()')
         
         if self.chartArea.dp:
             self.chartArea.initDP()
-        
-        log('end of fake user interactions < << <<< here')
-
-        '''
-            not sure stuff...
-        '''
-        #self.chartArea.reloadChart() # to adjust the timezone at least. but why we do see this step? shouldn't the chart be invisible on this step?
-        
-        #scroll right, can be done only after show()
-        #self.chartArea.scrollarea.horizontalScrollBar().setValue(100000)
-        
-        # self.chartArea.scrollarea.widget().resize(self.chartArea.scrollarea.height(), self.chartArea.scrollarea.height())
         
