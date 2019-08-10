@@ -262,13 +262,13 @@ class myWidget(QWidget):
 
                     scaleKpi['y_max'] = utils.antiGB(mem_max)
                     #scaleKpi['label'] = str(mem_max)
-                    scaleKpi['label'] = ('%i / %i' % (mem_max, mem_max / 10))
+                    scaleKpi['label'] = ('%i / %i' % (mem_max / 10, mem_max))
                 
                 elif groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = scaleKpi['max']
                     scaleKpi['last_label'] = scaleKpi['last_value']
-                    scaleKpi['label'] = '100 / 10'
+                    scaleKpi['label'] = '10 / 100'
                     scaleKpi['unit'] = '%'
                         
                 else:
@@ -296,7 +296,7 @@ class myWidget(QWidget):
                     #calculated here
                     scaleKpi['y_max'] = max_value
                     #scaleKpi['label'] = str(max_value)
-                    scaleKpi['label'] = ('%i / %i' % (max_value, max_value / 10))
+                    scaleKpi['label'] = ('%i / %i' % (max_value / 10, max_value))
                     
                     scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
                     

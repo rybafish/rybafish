@@ -23,7 +23,7 @@ class About(QDialog):
         
         
     def checkUpdates(self):
-        self.updatesLabel.setText('not implemented <a href="http://google.com">yet</a>')
+        self.updatesLabel.setText('Not implemented yet, please check <a href="http://rybafish.net">http://rybafish.net</a> for updates')
         
     def initUI(self):
 
