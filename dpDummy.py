@@ -136,7 +136,6 @@ class dataProvider:
                         else:
                             dataset1[i] = 0
                         
-                    #dataset2[i] = round(200.0*1024*1024*1024+ i /12 + 10*1024*1024*1024*math.sin(7+i/800))
                     dataset2[i] = round(200.0*1024*1024*1024+ i /12 + 60*1024*1024*1024*math.sin(7+i/8000)) 
                 else:
                     dataset1[i] = round(30.0 + 30.0*math.sin(i/122+1))
