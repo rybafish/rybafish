@@ -103,5 +103,14 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# local runner
+# local run batch
 a.bat
+
+# avoid updating the config
+config.yaml
+
+# log file 
+.log
+
+# custom sql folder
+sql/

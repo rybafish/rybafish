@@ -124,6 +124,10 @@ class dataProvider:
             log('no db connection...')
             return
 
+        log('init hosts: %s' % str(hosts))
+        log('init hosts, hostKPIs: %s' % str(hostKPIs))
+        log('init hosts, srvcKPIs: %s' % str(srvcKPIs))
+
         sql_string = sql.hosts_info
 
         t0 = time.time()
@@ -183,6 +187,12 @@ class dataProvider:
         t2 = time.time()
         
         kpiDescriptions.clarifyGroups()
+        
+        for type in kpiDescriptions.kpiStylesNN:
+            for kpi in kpiDescriptions.kpiStylesNN[type]:
+                print(kpiDescriptions.kpiStylesNN[type][kpi]['name'], kpiDescriptions.kpiStylesNN[type][kpi]['group'])
+                
+        print(kpiDescriptions.kpiStylesNN.keys())
         
         log('hostsInit time: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
         
@@ -317,6 +327,7 @@ class dataProvider:
             performs query to a data source for specific host.port
             also for custom metrics
         '''
+        log('getHostKpis kpis: %s' % str(kpis))
         log('execute sql:\n' + sql)
         log('params:' + ','.join(map(str,params)))
 
@@ -350,9 +361,17 @@ class dataProvider:
                     
                         if j == 0: #time
                             data[timeKey] = [0] * (trace_lines)  #array('d', [0]*data_size) ??
+                            log('allocate data[%s]: %i' %(timeKey, trace_lines))
                         else:
+                            '''
+                            if kpis_[j] in data:
+                                log('clean data[%s]' % (kpis_[j]))
+                                del(data[kpis_[j]]) # ndata is a dict
+                            '''
+                                
                             #log('allocate %i for %s' % (trace_lines, kpis_[j]))
                             data[kpis_[j]] = [0]* (trace_lines)  #array('l', [0]*data_size) ??
+                            log('allocate data[%s]: %i' %(kpis_[j], trace_lines))
                 
                 for j in range(0, len(kpis_)):
                     if j == 0: #time column always 1st

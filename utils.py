@@ -1,4 +1,5 @@
 import sys, os
+import locale
 from datetime import datetime
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
@@ -8,6 +9,30 @@ config = {}
 
 class dbException(Exception):
     pass
+    
+def numberToStr(num):
+    '''
+    num = str(num)
+    l = len(num)
+    
+    s = ''
+    
+    while len(num) > 0:
+        s = num[-3:] + chr(160) + s
+        
+        num = num[:-3]
+        
+    return(s[:-1])
+    '''
+    if cfg('locale'):
+        locale.setlocale(locale.LC_ALL, cfg('locale'))
+    else:
+        locale.setlocale(locale.LC_ALL, '')
+    
+    s = locale.format("%d", num, grouping=True)
+    
+    return s
+    
     
 def GB(bytes, scale = 'GB'):
     '''

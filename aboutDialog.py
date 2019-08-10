@@ -23,14 +23,14 @@ class About(QDialog):
         
         
     def checkUpdates(self):
-        self.updatesLabel.setText('not implemented <a href="http://google.com">yet</a>')
+        self.updatesLabel.setText('Not implemented yet, please check <a href="http://rybafish.net">http://rybafish.net</a> for updates')
         
     def initUI(self):
 
         iconPath = resourcePath('ico\\favicon.ico')
         imgPath  = resourcePath('ico\\logo.png')
         
-        checkButton = QPushButton("Check for updates")
+        #checkButton = QPushButton("Check for updates")
         
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Ok,
@@ -43,10 +43,13 @@ class About(QDialog):
         img.setPixmap(QPixmap(imgPath))
         
         self.updatesLabel = QLabel()
+        self.updatesLabel.setText('To report bugs or check for updates please visit <a href="http://rybafish.net">http://rybafish.net</a>.')
         
         txt = QLabel('''Ryba Fish Charts.
 
-Version %s, Build %s.''' % (version, build_date))
+Version %s, Build %s.
+
+''' % (version, build_date))
 
         vbox = QVBoxLayout()
         hbox = QHBoxLayout()
@@ -54,7 +57,7 @@ Version %s, Build %s.''' % (version, build_date))
         
         vbox2.addStretch(1)
         vbox2.addWidget(txt)
-        vbox2.addWidget(checkButton)
+        #vbox2.addWidget(checkButton)
         vbox2.addWidget(self.updatesLabel)
         vbox2.addStretch(1)
         
@@ -63,7 +66,7 @@ Version %s, Build %s.''' % (version, build_date))
         vbox.addLayout(hbox)
 
         vbox.addWidget(self.buttons)
-        checkButton.clicked.connect(self.checkUpdates)
+        #checkButton.clicked.connect(self.checkUpdates)
         #checkButton.resize(150, 150)
         
         self.setLayout(vbox)

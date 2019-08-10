@@ -88,6 +88,8 @@ class myWidget(QWidget):
     bottom_margin = 20
     step_size = 16
     
+    y_delta = 0 # to make drawing space even to 10 parts (calculated in drawGrid)
+    
     delta = 0 # offset for uneven time_from values
 
     #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
@@ -130,15 +132,6 @@ class myWidget(QWidget):
         self.font_width3 = fm.width('2019-06-17') / 2
         
         self.initPens()
-        print('self.initCustomPens() <-- disabled')
-
-    '''
-    def initCustomPens(self):
-        for cskpi in kpiDescriptions.kpiStylesN:
-        
-            if cskpi[:10] != 'cs----#---':
-                self.kpiPen[cskpi] = kpiDescriptions.kpiStylesN[cskpi]['pen']
-    '''
                 
     def initPens(self):
         for t in kpiStylesNN:
@@ -268,13 +261,15 @@ class myWidget(QWidget):
                         mem_max = self.manual_scales['mem']
 
                     scaleKpi['y_max'] = utils.antiGB(mem_max)
-                    scaleKpi['label'] = str(mem_max)
+                    #scaleKpi['label'] = str(mem_max)
+                    #scaleKpi['label'] = ('%i / %i' % (mem_max / 10, mem_max))
+                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(mem_max / 10), utils.numberToStr(mem_max)))
                 
                 elif groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = scaleKpi['max']
                     scaleKpi['last_label'] = scaleKpi['last_value']
-                    scaleKpi['label'] = '100'
+                    scaleKpi['label'] = '10 / 100'
                     scaleKpi['unit'] = '%'
                         
                 else:
@@ -301,7 +296,8 @@ class myWidget(QWidget):
                     
                     #calculated here
                     scaleKpi['y_max'] = max_value
-                    scaleKpi['label'] = str(max_value)
+                    #scaleKpi['label'] = str(max_value)
+                    scaleKpi['label'] = ('%i / %i' % (utils.numberToStr(max_value) / 10, utils.numberToStr(max_value)))
                     
                     scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
                     
@@ -556,6 +552,9 @@ class myWidget(QWidget):
             return
 
         t0 = time.time()
+        
+        
+        top_margin = self.top_margin + self.y_delta
                 
         for h in range(0, len(self.hosts)):
             if len(self.ndata[h]) == 0:
@@ -600,7 +599,7 @@ class myWidget(QWidget):
                 if self.nscales[h][kpi]['y_max'] == 0:
                     y_scale = 0
                 else:
-                    y_scale = (wsize.height() - self.top_margin - self.bottom_margin - 2 - 1)/(self.nscales[h][kpi]['y_max'] - self.nscales[h][kpi]['y_min'])
+                    y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(self.nscales[h][kpi]['y_max'] - self.nscales[h][kpi]['y_min'])
                 
                 x_scale = self.step_size / self.t_scale
 
@@ -730,9 +729,20 @@ class myWidget(QWidget):
         t0 = time.time()
         
         wsize = self.size()
+        
+        # calculate vertical size and force align it to 10
+        # in order to have equal y-cells
+        
+        draw_height = wsize.height()-self.top_margin-self.bottom_margin-1
+        y_step = int(draw_height / 10)
+        self.y_delta = draw_height - y_step*10
+
+        #adjust the margin
+        top_margin = self.top_margin + self.y_delta
+            
 
         qp.setPen(QColor('#888'))
-        qp.drawRect(self.side_margin, self.top_margin, wsize.width()-self.side_margin*2, wsize.height()-self.top_margin-self.bottom_margin-1)
+        qp.drawRect(self.side_margin, top_margin, wsize.width()-self.side_margin*2, wsize.height()-top_margin-self.bottom_margin-1)
 
         qp.setPen(QColor('#000'))
         qp.setFont(QFont('SansSerif', self.conf_fontSize))
@@ -743,6 +753,19 @@ class myWidget(QWidget):
         
         qp.setPen(QColor('#DDD'))
         
+
+        # vertical scale
+        
+        for j in range(1,10):
+            y = top_margin + j * y_step
+            
+            if j == 5:
+                qp.setPen(QColor('#AAA'))
+            
+            qp.drawLine(self.side_margin, y, wsize.width()-self.side_margin, y)
+            
+            if j == 5:
+                qp.setPen(QColor('#DDD'))
         
         #x is in pixels
         x = self.side_margin+self.step_size
@@ -754,17 +777,15 @@ class myWidget(QWidget):
         if t_scale == 60*60*4:
             self.delta -= 3600 # not sure, could be a bug (what if negative?)
         
-        top_margin = self.top_margin
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
         delta = self.delta
         
         t1 = time.time()
-        #log(t_scale)
         
         x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
         x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
-        
+
         while x < ((seconds / t_scale + 1) * self.step_size):
         
             if x < x_left_border or x > x_right_border:
@@ -772,114 +793,79 @@ class myWidget(QWidget):
                 
                 continue
                 
-            qp.drawLine(x, self.top_margin + 1, x, wsize.height() - bottom_margin - 2)
+            qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
             
             #log('%i <-' % ((x - side_margin)/step_size))
             
             c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
             
+            major_line = False
+            date_mark = False
+            
+            if t_scale <= 60*60:
+                label = c_time.strftime("%H:%M:%S")
+            else:
+                label = c_time.strftime("%H:%M")
+                
+                
+            sec_scale = None
+            min_scale = None
+            hrs_scale = None
+            
             if t_scale == 10:
-                # step = 10 seconds, major every minute
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
-                label = c_time.strftime("%H:%M:%S")
+                sec_scale = 60
+                hrs_scale = 60*5
+            elif t_scale == 60:
+                min_scale = 5
+                hrs_scale = 5*4
+            elif t_scale == 60*5:
+                min_scale = 30
+                hrs_scale = 30*4
+            elif t_scale == 60*10:
+                min_scale = 60
+                hrs_scale = 60*4
+            elif t_scale == 60*15:
+                min_scale = 60*2
+                hrs_scale = 60*2*4
+            elif t_scale == 3600:
+                min_scale = 60*4
+                hrs_scale = 60*4*3 # god damit, 3, really?
+            elif t_scale == 4*3600:
+                min_scale = 60*24
+                hrs_scale = 60*24*4
                 
-                if label[-2:] == '00':
-                    #major lines
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
+            min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
+            
+            if sec_scale is not None:
+                if c_time.timestamp() % sec_scale == 0:
+                    major_line = True
 
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width2, wsize.height() - bottom_margin + self.font_height, label);
-                    
-                    #date marks
-                    if int(c_time.strftime("%M")) % 5 == 0:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
-                        
-                    qp.setPen(QColor('#DDD'))
-                    
-            if t_scale == 60:
-                # step = 1 minute, major every 10 minutes
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
-                label = c_time.strftime("%H:%M:%S")
+                if c_time.timestamp() % hrs_scale == 0:
+                    date_mark = True
+            elif min % min_scale == 0:
+                major_line = True
                 
-                #log(label)
-                
-                if label[-4:] == '0:00' or label[-4:] == '5:00':
-                    #major lines
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
+                if min % hrs_scale == 0:
+                    date_mark = True
+                    
+            if major_line:
+            
+                qp.setPen(QColor('#AAA'))
+                qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
 
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width2, wsize.height() - bottom_margin + self.font_height, label);
-                    
-                    #date marks
-                    if int(c_time.strftime("%M")) % 30 == 0:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
-                        
-                    qp.setPen(QColor('#DDD'))
-                    
-            if t_scale == 60*10:
-                # step = 10 minutes, major every hour
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale)
-                label = c_time.strftime("%H:%M")
+                qp.setPen(QColor('#000'))
                 
-                if label[-3:] == ':00':
+                if len(label) == 5: # 00:00
+                    label_width = self.font_width1
+                else:
+                    label_width = self.font_width2
+                qp.drawText(x-label_width, wsize.height() - bottom_margin + self.font_height, label);
                 
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
-
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width1, wsize.height() - bottom_margin + self.font_height, label);
+                if date_mark:
+                    label = c_time.strftime('%Y-%m-%d')
+                    qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
                     
-                    if int(c_time.strftime("%H")) % 4 == 0:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2 , label);
-                        
-                    qp.setPen(QColor('#DDD'))
-
-            if t_scale == 60*60:
-                # step = 1 hour, mark every 12 hours
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale)
-                label = c_time.strftime("%H:%M")
-                
-                #if label == '00:00' or label == '06:00' or label == '12:00':
-                if int(c_time.strftime("%H")) % 4 == 0:
-                
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
-
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width1, wsize.height() - bottom_margin + self.font_height, label);
-                    
-                    #if int(c_time.strftime("%H")) % 12 == 0:
-                    if int(c_time.strftime("%H")) == 0:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
-                        
-                    qp.setPen(QColor('#DDD'))
-                    
-            if t_scale == 60*60*4:
-                # step = 4 hours, major...?
-                #c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale)
-                label = c_time.strftime("%H:%M")
-                
-                if label == '00:00': #or label == '12':
-                
-                    qp.setPen(QColor('#AAA'))
-                    qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
-
-                    qp.setPen(QColor('#000'))
-                    qp.drawText(x-self.font_width1, wsize.height() - bottom_margin + self.font_height, label);
-                    
-                    if True:
-                        label = c_time.strftime('%Y-%m-%d')
-                        qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
-                        
-                    qp.setPen(QColor('#DDD'))
-                    
-        
+                qp.setPen(QColor('#DDD'))
         
             x += self.step_size
         #log(seconds / t_scale * 10)
@@ -968,6 +954,20 @@ class chartArea(QFrame):
             to be called right after self.chartArea.dp = new dp
         '''
         
+        for host in range(len(self.widget.hosts)):
+            for kpi in self.widget.nkpis[host]:
+                log('clear %i/%s...' % (host, kpi))
+                
+                #print('the same code in checkbocks callback - make a function')
+                self.widget.nkpis[host].remove(kpi) # kpis is a list
+                if kpi in self.widget.ndata[host]:
+                    #might be empty for alt-added
+                    del(self.widget.ndata[host][kpi]) # ndata is a dict
+            
+            self.widget.ndata[host].clear()
+            
+        self.widget.ndata.clear()
+        
         self.widget.hosts.clear()
         self.widget.nkpis.clear()
         
@@ -982,7 +982,7 @@ class chartArea(QFrame):
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
         self.widget.allocate(len(self.widget.hosts))
         self.widget.initPens()
-        print('self.widget.initCustomPens() <-- depricated')
+
         self.hostsUpdated.emit()
         
         self.statusMessage('ready')
@@ -1217,7 +1217,8 @@ class chartArea(QFrame):
 
     def refreshTimer(self):
         self.timer.stop()
-        print('also stop keep alive timer here')
+        #print('also stop keep alive timer here')
+        #print('it will be kinda refreshed in get_data renewKeepAlive')
         
         log('trigger auto refresh...')
         self.reloadChart()
@@ -1266,17 +1267,27 @@ class chartArea(QFrame):
         
     def scaleChanged(self, i):
 
-        if i == 0:
-            self.widget.t_scale = 10
-        if i == 1:
-            self.widget.t_scale = 60
-        elif i == 2:
-            self.widget.t_scale = 60*10
-        elif i == 3:
-            self.widget.t_scale = 3600
-        elif i == 4:
-            self.widget.t_scale = 3600*4
+        txtValue = self.scaleCB.currentText()
+        
+        try:
+            (n, unit) = txtValue.split()
             
+            n = int(n)
+            
+            scale = 0
+            
+            if unit[:6] == 'second':
+                scale = 1
+            elif unit[:6] == 'minute':
+                scale = 60
+            elif unit[:4] == 'hour':
+                scale = 3600
+                
+        except Exception as ex:
+            log('[e] timer scale exception: %s, %s' % (str(ex), txtValue))
+            
+        self.widget.t_scale = n * scale
+        
         #recalculate x-size and adjust
         self.widget.resizeWidget()
         
@@ -1337,6 +1348,10 @@ class chartArea(QFrame):
                 array_size = len(self.widget.ndata[h][timeKey])
                 scales[timeKey] = {'min': data[timeKey][0], 'max': data[timeKey][array_size-1]}
 
+                #log('  scan %i -> %s' % (h, kpi))
+                #log('  timekey: ' + timeKey)
+                #log('  array size: %i' % (array_size))
+
                 try:
                     for i in range(0, array_size):
                         t = data[timeKey][i]
@@ -1347,15 +1362,24 @@ class chartArea(QFrame):
 
                         if  t > t_to: #end of window no need to scan further
                             break
-                except:
+                except Exception as e:
                     log('error: i = %i, array_size = %i' % (i, array_size))
                     log('timeKey = %s, kpi: = %s' % (timeKey, kpi))
                     log('scales[kpi][max] = %i' % (scales[kpi]['max']))
                     
+                    log('scales[kpi] = %s' % str(scales[kpi]))
+
+                    log('exception text: %s' % (str(e)))
+                    
                     for j in range(10):
                         log('data[%i] = %s' % (j, str(data[kpi][j])))
-                    raise
-                    
+                        
+                    for j in range(1, 10):
+                        k = array_size - (10 - j)
+                        log('data[%s][%i] = %s' % (kpi, k, str(data[kpi][k])))
+                        log('data[%s][%i] = %s' % (timeKey, k, str(data[timeKey][k])))
+                        
+                    raise e
                         
                 scales[kpi]['last_value'] = data[kpi][i]
         
@@ -1484,19 +1508,21 @@ class chartArea(QFrame):
         grp = QGroupBox()
         hbar = QHBoxLayout();
         
-        scaleCB = QComboBox()
+        self.scaleCB = QComboBox()
         
-        scaleCB.addItem('10 seconds')
-        scaleCB.addItem('1 minute')
-        scaleCB.addItem('10 minutes')
-        scaleCB.addItem('1 hour')
-        scaleCB.addItem('4 hours')
+        self.scaleCB.addItem('10 seconds')
+        self.scaleCB.addItem('1 minute')
+        self.scaleCB.addItem('5 minutes')
+        self.scaleCB.addItem('10 minutes')
+        self.scaleCB.addItem('15 minutes')
+        self.scaleCB.addItem('1 hour')
+        self.scaleCB.addItem('4 hours')
         
-        scaleCB.setFocusPolicy(Qt.ClickFocus)
+        self.scaleCB.setFocusPolicy(Qt.ClickFocus)
         
-        scaleCB.setCurrentIndex(2)
+        self.scaleCB.setCurrentIndex(3)
         
-        scaleCB.currentIndexChanged.connect(self.scaleChanged)
+        self.scaleCB.currentIndexChanged.connect(self.scaleChanged)
         
         if cfg('experimental'):
             self.refreshCB = QComboBox()
@@ -1545,7 +1571,7 @@ class chartArea(QFrame):
         self.fromEdit.returnPressed.connect(self.reloadChart)
         self.toEdit.returnPressed.connect(self.reloadChart)
         
-        hbar.addWidget(scaleCB)
+        hbar.addWidget(self.scaleCB)
         hbar.addStretch(10)
         
         if cfg('experimental'):
