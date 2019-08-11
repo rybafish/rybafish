@@ -297,7 +297,7 @@ class myWidget(QWidget):
                     #calculated here
                     scaleKpi['y_max'] = max_value
                     #scaleKpi['label'] = str(max_value)
-                    scaleKpi['label'] = ('%i / %i' % (utils.numberToStr(max_value) / 10, utils.numberToStr(max_value)))
+                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value) / 10, utils.numberToStr(max_value)))
                     
                     scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
                     
@@ -1524,23 +1524,22 @@ class chartArea(QFrame):
         
         self.scaleCB.currentIndexChanged.connect(self.scaleChanged)
         
+        self.refreshCB = QComboBox()
+        
+        self.refreshCB.addItem('none')
+        
         if cfg('experimental'):
-            self.refreshCB = QComboBox()
+            self.refreshCB.addItem('10 seconds')
+            self.refreshCB.addItem('30 seconds')
             
-            self.refreshCB.addItem('none')
-            
-            if cfg('experimental'):
-                self.refreshCB.addItem('10 seconds')
-                self.refreshCB.addItem('30 seconds')
-                
-            self.refreshCB.addItem('1 minute')
-            self.refreshCB.addItem('5 minutes')
-            self.refreshCB.addItem('15 minutes')
-            self.refreshCB.addItem('30 minutes')
-            
-            self.refreshCB.setFocusPolicy(Qt.ClickFocus)
-            
-            self.refreshCB.currentIndexChanged.connect(self.refreshChanged)
+        self.refreshCB.addItem('1 minute')
+        self.refreshCB.addItem('5 minutes')
+        self.refreshCB.addItem('15 minutes')
+        self.refreshCB.addItem('30 minutes')
+        
+        self.refreshCB.setFocusPolicy(Qt.ClickFocus)
+        
+        self.refreshCB.currentIndexChanged.connect(self.refreshChanged)
 
         fromLabel = QLabel('from:')
         toLabel = QLabel('to:')
@@ -1574,10 +1573,9 @@ class chartArea(QFrame):
         hbar.addWidget(self.scaleCB)
         hbar.addStretch(10)
         
-        if cfg('experimental'):
-            hbar.addWidget(QLabel('autorefresh: '))
-            hbar.addWidget(self.refreshCB)
-            hbar.addStretch(1)
+        hbar.addWidget(QLabel('autorefresh: '))
+        hbar.addWidget(self.refreshCB)
+        hbar.addStretch(1)
         
         hbar.addWidget(fromLabel)
         hbar.addWidget(self.fromEdit)
