@@ -291,8 +291,8 @@ class myWidget(QWidget):
                             max_value = groupMax[groupName]
                     
                     #calculated in renewMaxValues
-                    scaleKpi['max_label'] = scaleKpi['max']
-                    scaleKpi['last_label'] = scaleKpi['last_value']
+                    scaleKpi['max_label'] = utils.numberToStr(scaleKpi['max'])
+                    scaleKpi['last_label'] = utils.numberToStr(scaleKpi['last_value'])
                     
                     #calculated here
                     scaleKpi['y_max'] = max_value
@@ -463,11 +463,11 @@ class myWidget(QWidget):
 
                 #if kpiDescriptions.kpiGroup[kpi] == 'mem':
                 if kpiStylesNN[type][kpi]['group'] == 'mem':
-                    scaled_value = round(utils.GB(data[kpi][j], scales[kpi]['unit']), 1)
+                    scaled_value = str(round(utils.GB(data[kpi][j], scales[kpi]['unit']), 1))
                 else:
-                    scaled_value = data[kpi][j]
+                    scaled_value = utils.numberToStr(data[kpi][j])
                 
-                log('click on %i.%s = %i, %f' % (host, kpi, data[kpi][j], scaled_value))
+                log('click on %i.%s = %i, %s' % (host, kpi, data[kpi][j], scaled_value))
                 self.kpiPen[type][kpi].setWidth(2)
                     
                 self.highlightedKpi = kpi
@@ -480,9 +480,9 @@ class myWidget(QWidget):
                     
                 tm = datetime.datetime.fromtimestamp(data[timeKey][j]).strftime('%Y-%m-%d %H:%M:%S')
                 
-                self.statusMessage('%s, %s.%s = %0.1f %s at %s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm))
+                self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm))
                 
-                self.setToolTip('%s, %s.%s = %0.1f %s at %s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm))
+                self.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm))
                 # if want instant need to re-define mouseMoveEvent()
                 # https://stackoverflow.com/questions/13720465/how-to-remove-the-time-delay-before-a-qtooltip-is-displayed
                 
