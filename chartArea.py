@@ -297,7 +297,7 @@ class myWidget(QWidget):
                     #calculated here
                     scaleKpi['y_max'] = max_value
                     #scaleKpi['label'] = str(max_value)
-                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value) / 10, utils.numberToStr(max_value)))
+                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value / 10), utils.numberToStr(max_value)))
                     
                     scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
                     
