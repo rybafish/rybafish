@@ -388,6 +388,8 @@ class myWidget(QWidget):
         
         type = hType(host, self.hosts)
         
+        top_margin = self.top_margin + self.y_delta
+        
         for kpi in kpis:
         
             if kpi[:4] == 'time':
@@ -441,7 +443,7 @@ class myWidget(QWidget):
                 log('delta = %i, skip %s' % (scales[kpi]['y_max'] - scales[kpi]['y_min'], str(kpi)))
                 break
                 
-            y_scale = (wsize.height() - self.top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
+            y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
 
             ymin = y_min
             ymin = scales[kpi]['y_min'] + ymin*y_scale
