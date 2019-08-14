@@ -98,6 +98,9 @@ class myWidget(QWidget):
     #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
     #t_to = datetime.datetime.now()
     
+    #def keyPressEvent(self, event):
+    #    print('widget key: ', event.key())
+            
     def wheelEvent (self, event):
         if self.zoomLock:
             return
@@ -113,7 +116,9 @@ class myWidget(QWidget):
         else:
             mode = -1
             
-        self.zoomSignal.emit(mode, pos.x())
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            self.zoomSignal.emit(mode, pos.x())
         
         self.zoomLock = False
         
@@ -975,21 +980,24 @@ class chartArea(QFrame):
         else:
             self.statusMessage_.emit(str, False)
             
-    def keyPressEvent(self, event):
-    
-        super().keyPressEvent(event)
-    
-        if event.key() == Qt.Key_Left:
-            #x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
-            #self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
+    def keyPressEventZ(self, event):
 
-            self.scrollarea.horizontalScrollBar().setValue(self.widget.width()/2 - self.width()/2)
+        if event.key() == Qt.Key_Left:
+            x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
+            self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
+
+        elif event.key() == Qt.Key_Right:
+            x = 0 - self.widget.pos().x() 
+            self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
             
-        if event.key() == Qt.Key_Home:
+        elif event.key() == Qt.Key_Home:
             self.scrollarea.horizontalScrollBar().setValue(0)
             
-        if event.key() == Qt.Key_End:
+        elif event.key() == Qt.Key_End:
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
+            
+        else: 
+            super().keyPressEvent(event)
 
     def initDP(self):
         '''
@@ -1645,12 +1653,14 @@ class chartArea(QFrame):
         '''
         self.scrollarea = QScrollArea()
         self.scrollarea.setWidgetResizable(False)
-
+        
+        self.scrollarea.keyPressEvent = self.keyPressEventZ # -- is it legal?!
+        
         lo.addLayout(hbar)
         lo.addWidget(self.scrollarea)
         
         self.widget = myWidget()
-        
+
         #log(type(self.dp))
         #log(type(self.dp).__name__)
         
