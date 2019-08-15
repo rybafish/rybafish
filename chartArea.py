@@ -44,7 +44,8 @@ class myWidget(QWidget):
 
     updateFromTime = pyqtSignal(['QString'])
     updateToTime = pyqtSignal(['QString'])
-    updateToTime = pyqtSignal(['QString'])
+    
+    zoomSignal = pyqtSignal(int, int)
     
     statusMessage_ = pyqtSignal(['QString', bool])
     
@@ -91,10 +92,36 @@ class myWidget(QWidget):
     y_delta = 0 # to make drawing space even to 10 parts (calculated in drawGrid)
     
     delta = 0 # offset for uneven time_from values
+    
+    zoomLock = False
 
     #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
     #t_to = datetime.datetime.now()
     
+    #def keyPressEvent(self, event):
+    #    print('widget key: ', event.key())
+            
+    def wheelEvent (self, event):
+        if self.zoomLock:
+            return
+         
+        pos = event.pos()
+
+        p = event.angleDelta()
+        
+        self.zoomLock = True
+        
+        if p.y() < 0:
+            mode = 1
+        else:
+            mode = -1
+            
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            self.zoomSignal.emit(mode, pos.x())
+        
+        self.zoomLock = False
+        
     def statusMessage(self, str, repaint = False):
         if repaint: 
             self.statusMessage_.emit(str, True)
@@ -301,6 +328,23 @@ class myWidget(QWidget):
                     
                     scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
                     
+      
+    def posToTime(self, x):
+        time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin)/self.step_size*self.t_scale - self.delta) 
+        
+        return time
+
+    def timeToPos(self, time):
+    
+        pos = 10
+        
+        offset = (time - self.t_from).total_seconds()
+
+        pos = offset/self.t_scale*self.step_size + self.delta + self.side_margin
+        
+        #time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin)/self.step_size*self.t_scale - self.delta) 
+        
+        return pos
         
     def contextMenuEvent(self, event):
        
@@ -315,7 +359,8 @@ class myWidget(QWidget):
 
         # from / to menu items
         pos = event.pos()
-        time = self.t_from + datetime.timedelta(seconds= (pos.x() - self.side_margin)/self.step_size*self.t_scale - self.delta) 
+
+        time = self.posToTime(pos.x())
         
         if action == startHere:
             even_offset = time.timestamp() % self.t_scale
@@ -331,10 +376,11 @@ class myWidget(QWidget):
 
         if action == copyTS:
             even_offset = 0 # time.timestamp() % self.t_scale
-            time = time - datetime.timedelta(seconds= even_offset - self.t_scale)
+            #time = time - datetime.timedelta(seconds= even_offset - self.t_scale - self.delta)
+            time = time - datetime.timedelta(seconds= even_offset)
             
             ts = time.strftime('%Y-%m-%d %H:%M:%S')
-
+            
             clipboard = QApplication.clipboard()
             clipboard.setText(ts)
     
@@ -387,6 +433,8 @@ class myWidget(QWidget):
         x_scale = self.step_size / self.t_scale
         
         type = hType(host, self.hosts)
+        
+        top_margin = self.top_margin + self.y_delta
         
         for kpi in kpis:
         
@@ -441,7 +489,7 @@ class myWidget(QWidget):
                 log('delta = %i, skip %s' % (scales[kpi]['y_max'] - scales[kpi]['y_min'], str(kpi)))
                 break
                 
-            y_scale = (wsize.height() - self.top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
+            y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
 
             ymin = y_min
             ymin = scales[kpi]['y_min'] + ymin*y_scale
@@ -932,21 +980,24 @@ class chartArea(QFrame):
         else:
             self.statusMessage_.emit(str, False)
             
-    def keyPressEvent(self, event):
-    
-        super().keyPressEvent(event)
-    
-        if event.key() == Qt.Key_Left:
-            #x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
-            #self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
+    def keyPressEventZ(self, event):
 
-            self.scrollarea.horizontalScrollBar().setValue(self.widget.width()/2 - self.width()/2)
+        if event.key() == Qt.Key_Left:
+            x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
+            self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
+
+        elif event.key() == Qt.Key_Right:
+            x = 0 - self.widget.pos().x() 
+            self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
             
-        if event.key() == Qt.Key_Home:
+        elif event.key() == Qt.Key_Home:
             self.scrollarea.horizontalScrollBar().setValue(0)
             
-        if event.key() == Qt.Key_End:
+        elif event.key() == Qt.Key_End:
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
+            
+        else: 
+            super().keyPressEvent(event)
 
     def initDP(self):
         '''
@@ -987,6 +1038,30 @@ class chartArea(QFrame):
         
         self.statusMessage('ready')
         
+
+    def zoomSignal(self, mode, pos):
+    
+        time = self.widget.posToTime(pos)
+        
+        xfix = None
+    
+        idx = self.scaleCB.currentIndex()
+        
+        if mode == 1 and idx < self.scaleCB.count() - 1:
+            xfix = self.widget.mapToParent(QPoint(pos, 0)).x() - self.geometry().x()
+            self.scaleCB.setCurrentIndex(idx + 1)
+
+        if mode == -1 and idx > 0:
+            self.scaleCB.setCurrentIndex(idx - 1)
+            xfix = self.widget.mapToParent(QPoint(pos, 0)).x() - self.geometry().x()
+            
+        if xfix is not None:
+            newPos = self.widget.timeToPos(time)
+            #newPos -= self.size().width()/2 #--> to the window center
+            
+            newPos -= xfix # --> move to the mouse pos
+            
+            self.scrollarea.horizontalScrollBar().setValue(newPos)
         
     def updateFromTime(self, fromTime):
         self.fromEdit.setText(fromTime)
@@ -1447,24 +1522,6 @@ class chartArea(QFrame):
 
         self.renewMaxValues()
         
-        # I wander what this logic used to do...
-        '''
-        #if self.connection:
-        #if len(self.widget.data): # because we also trigger reload before the data come (somewhere)...
-        if len(self.widget.ndata): # because we also trigger reload before the data come (somewhere)...
-            #mintime = utils.strftime(datetime.datetime.fromtimestamp(self.widget.scales['time']['min']))
-            #maxtime = utils.strftime(datetime.datetime.fromtimestamp(self.widget.scales['time']['max']))
-            
-            #log('data time min/max: %s %s' % (mintime, maxtime))
-            log('not really sure why we check ndata emptiness...')
-            pass
-        else:
-            log('why oh why...')
-            return
-        '''
-        
-        # self.scalesUpdated.emit() <-- there's a call now inside the renewMaxValues()
-        
         self.widget.resizeWidget()
         
         if toTime == '': # probably we want to see the most recent data...
@@ -1596,12 +1653,14 @@ class chartArea(QFrame):
         '''
         self.scrollarea = QScrollArea()
         self.scrollarea.setWidgetResizable(False)
-
+        
+        self.scrollarea.keyPressEvent = self.keyPressEventZ # -- is it legal?!
+        
         lo.addLayout(hbar)
         lo.addWidget(self.scrollarea)
         
         self.widget = myWidget()
-        
+
         #log(type(self.dp))
         #log(type(self.dp).__name__)
         
@@ -1611,6 +1670,7 @@ class chartArea(QFrame):
         # register widget --> chartArea signals
         self.widget.updateFromTime.connect(self.updateFromTime)
         self.widget.updateToTime.connect(self.updateToTime)
+        self.widget.zoomSignal.connect(self.zoomSignal)
         
         # trigger upddate of scales in table?
         
