@@ -36,7 +36,7 @@ def numberToStr(num):
     
 def GB(bytes, scale = 'GB'):
     '''
-        returns same number but in GB
+        returns same number but in GB (/=1023^3)
     '''
     
     if scale == 'MB':
@@ -50,7 +50,7 @@ def GB(bytes, scale = 'GB'):
     
 def antiGB(gb, scale = 'GB'):
     '''
-        returns same number but in GB
+        returns same number but in bytes (*=1023^3)
     '''
     
     if scale == 'MB':

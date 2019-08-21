@@ -190,6 +190,9 @@ class myWidget(QWidget):
     def scanMetrics(self, grp):
         max_value = 0
         
+        if len(self.hosts) == 0:
+            return
+        
         log('  scanMetrics(%s)' % grp)
         
         for h in range(0, len(self.hosts)):
@@ -209,10 +212,10 @@ class myWidget(QWidget):
             return self.ceiling(round(utils.GB(max_value)))
         else:
             return self.ceiling(max_value)
-        
+            # return self.ceiling(kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value))
         
     def getGroupMax(self, grp):
-    
+        
         max_value = 0
     
         for h in range(0, len(self.hosts)):
@@ -228,6 +231,7 @@ class myWidget(QWidget):
                         max_value = self.nscales[h][kpi]['max']
         
         return self.ceiling(max_value)
+        #return self.ceiling(kpiDescriptions(kpiStylesNN[type][kpi], max_value))
     
     def alignScales(self):
         '''
@@ -315,18 +319,32 @@ class myWidget(QWidget):
                         if groupName in self.manual_scales:
                             max_value = self.manual_scales[groupName]
                         else:
+                            print ('here')
                             max_value = groupMax[groupName]
                     
-                    #calculated in renewMaxValues
-                    scaleKpi['max_label'] = utils.numberToStr(scaleKpi['max'])
-                    scaleKpi['last_label'] = utils.numberToStr(scaleKpi['last_value'])
+                    scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max']))
+                    scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value']))
                     
-                    #calculated here
+                    print('max --> %i' % max_value)
                     scaleKpi['y_max'] = max_value
                     #scaleKpi['label'] = str(max_value)
-                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value / 10), utils.numberToStr(max_value)))
                     
-                    scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
+                    max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
+                    
+                    if max_value_n == max_value:
+                        dUnit = kpiStylesNN[type][kpi]['sUnit'] # not converted
+                    else:
+                        max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
+                        dUnit = kpiStylesNN[type][kpi]['dUnit'] # converted
+                    
+                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value_n / 10), utils.numberToStr(max_value_n)))
+                    
+                    # scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
+                    
+                    if 'perSample' in kpiStylesNN[type][kpi]:
+                        scaleKpi['unit'] = dUnit + '/sec'
+                    else:
+                        scaleKpi['unit'] = dUnit
                     
       
     def posToTime(self, x):
@@ -513,7 +531,8 @@ class myWidget(QWidget):
                 if kpiStylesNN[type][kpi]['group'] == 'mem':
                     scaled_value = str(round(utils.GB(data[kpi][j], scales[kpi]['unit']), 1))
                 else:
-                    scaled_value = utils.numberToStr(data[kpi][j])
+                    # scaled_value = utils.numberToStr(data[kpi][j])
+                    scaled_value = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], data[kpi][j]))
                 
                 log('click on %i.%s = %i, %s' % (host, kpi, data[kpi][j], scaled_value))
                 self.kpiPen[type][kpi].setWidth(2)

@@ -4,6 +4,7 @@ from PyQt5.QtGui import QPen, QColor
 kpiKeys = []
 kpiGroup = {}
 
+import utils
 from utils import log
 
 '''
@@ -145,16 +146,19 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         else:
             style['label'] = ''
 
-        if 'sUnit' in kpi:
-            style['sUnit'] = kpi['sUnit']
+        if 'sUnit' in kpi and 'dUnit' in kpi:
+            sUnit = kpi['sUnit'].split('/')
+            dUnit = kpi['dUnit'].split('/')
+            
+            if len(sUnit) > 1 and len(dUnit) > 1 and sUnit[1] == 'sample' and dUnit[1] == 'sec':
+                style['sUnit'] = sUnit[0]
+                style['dUnit'] = dUnit[0]
+                style['perSample'] = True
+                print ('%s per sample = true' % kpi['name'])
+            else:
+                style['sUnit'] = kpi['sUnit']
         else:
             style['sUnit'] = '-'
-            
-        if 'dUnit' in kpi:
-            style['dUnit'] = kpi['dUnit']
-        else:
-            style['dUnit'] = '-'
-
 
         #create pen
         if 'color' in kpi:
@@ -281,3 +285,22 @@ def groups():
                 groups.append(kpiStylesNN[h][kpi]['group'])
                 
     return groups
+    
+def normalize (kpi, value):
+
+    sUnit = kpi['sUnit']
+    dUnit = kpi['dUnit']
+
+    nValue = None
+    
+    if sUnit == 'Byte' and dUnit == 'GB':
+        nValue = utils.GB(value, 'GB')
+    elif sUnit == 'Byte' and dUnit == 'MB':
+        nValue = utils.GB(value, 'MB')
+
+    print('%s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    
+    if nValue is not None:
+        return nValue
+    else:
+        return value

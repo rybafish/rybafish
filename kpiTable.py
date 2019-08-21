@@ -293,8 +293,8 @@ class kpiTable(QTableWidget):
         self.setColumnWidth(0, 1)
         self.setColumnWidth(1, 140) #kpi
         self.setColumnWidth(2, 30) # Style (Pen)
-        self.setColumnWidth(3, 50) # y-scale
-        self.setColumnWidth(4, 20) # Unit
+        self.setColumnWidth(3, 70) # y-scale
+        self.setColumnWidth(4, 50) # Unit
         self.setColumnWidth(5, 80) # Max 
         self.setColumnWidth(6, 50) # AVG
         self.setColumnWidth(7, 20) # Sum
