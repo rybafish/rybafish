@@ -392,6 +392,7 @@ class dataProvider:
                             if 'perSample' in kpiStylesNN[type][kpis_[j]]:
                             
                                 # /sample --> /sec
+                                # do NOT normalize here, only devide by delta seconds
 
                                 if i == 0:
                                     normValue = rawValue / (data[timeKey][1] - data[timeKey][0])

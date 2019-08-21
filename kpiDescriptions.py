@@ -157,6 +157,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 print ('%s per sample = true' % kpi['name'])
             else:
                 style['sUnit'] = kpi['sUnit']
+                style['dUnit'] = kpi['dUnit']
         else:
             style['sUnit'] = '-'
 
@@ -285,20 +286,36 @@ def groups():
                 groups.append(kpiStylesNN[h][kpi]['group'])
                 
     return groups
-    
-def normalize (kpi, value):
 
-    sUnit = kpi['sUnit']
-    dUnit = kpi['dUnit']
+def denormalize (kpi, value):
+    sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
 
     nValue = None
     
     if sUnit == 'Byte' and dUnit == 'GB':
-        nValue = utils.GB(value, 'GB')
+        nValue = utils.antiGB(value, 'GB')
     elif sUnit == 'Byte' and dUnit == 'MB':
-        nValue = utils.GB(value, 'MB')
+        nValue = utils.antiGB(value, 'MB')
 
-    print('%s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    print('[dN] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    
+    if nValue is not None:
+        return nValue
+    else:
+        return value
+    
+def normalize (kpi, value, d = 0):
+
+    sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
+
+    nValue = None
+    
+    if sUnit == 'Byte' and dUnit == 'GB':
+        nValue = round(utils.GB(value, 'GB'), d)
+    elif sUnit == 'Byte' and dUnit == 'MB':
+        nValue = round(utils.GB(value, 'MB'), d)
+
+    print('[N] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
     
     if nValue is not None:
         return nValue
