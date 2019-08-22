@@ -29,9 +29,17 @@ class About(QDialog):
         
         
     def gotResponse(self, QNetworkReply):
-        print('check for http 200 here')
-        #print(QNetworkReply.rawHeaderList())
-        #print(QNetworkReply.rawHeader(b'Location'))
+
+        try:
+            status = QNetworkReply.attribute(QNetworkRequest.HttpStatusCodeAttribute);
+        except Exception as e:
+            log('[e] http/yaml error: %s' % str(e))
+            self.updatesLabel.setText('Error')
+            return
+
+        if status != 200:
+            self.updatesLabel.setText('Network error: ' + str(status))
+            return
         
         try: 
             response = QNetworkReply.readAll()
@@ -42,6 +50,10 @@ class About(QDialog):
             self.updatesLabel.setText('error')
             return
         
+        if ver is None:
+            self.updatesLabel.setText('<network error>')
+            return
+            
         if 'version' in ver and 'date' in ver:
             verStr = 'Last published version is %s, from %s.' % (ver['version'], ver['date'])
             self.updatesLabel.setText(verStr)
