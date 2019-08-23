@@ -919,6 +919,9 @@ class myWidget(QWidget):
             elif t_scale == 60*15:
                 min_scale = 60*2
                 hrs_scale = 60*2*4
+            elif t_scale == 60*30:
+                min_scale = 60*2
+                hrs_scale = 60*2*4
             elif t_scale == 3600:
                 min_scale = 60*4
                 hrs_scale = 60*4*3 # god damit, 3, really?
@@ -1616,6 +1619,7 @@ class chartArea(QFrame):
         self.scaleCB.addItem('5 minutes')
         self.scaleCB.addItem('10 minutes')
         self.scaleCB.addItem('15 minutes')
+        self.scaleCB.addItem('30 minutes')
         self.scaleCB.addItem('1 hour')
         self.scaleCB.addItem('4 hours')
         
