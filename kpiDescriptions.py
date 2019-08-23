@@ -287,26 +287,12 @@ def groups():
                 
     return groups
 
-def denormalize (kpi, value):
-    sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
-
-    nValue = None
-    
-    if sUnit == 'Byte' and dUnit == 'GB':
-        nValue = utils.antiGB(value, 'GB')
-    elif sUnit == 'Byte' and dUnit == 'MB':
-        nValue = utils.antiGB(value, 'MB')
-
-    print('[dN] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
-    
-    if nValue is not None:
-        return nValue
-    else:
-        return value
-    
 def normalize (kpi, value, d = 0):
 
-    sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
+    if 'sUnit' in kpi and 'dUnit' in kpi:
+        sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
+    else:
+        return value
 
     nValue = None
     
@@ -315,7 +301,34 @@ def normalize (kpi, value, d = 0):
     elif sUnit == 'Byte' and dUnit == 'MB':
         nValue = round(utils.GB(value, 'MB'), d)
 
+    elif sUnit == 'usec' and dUnit == 'sec':
+        nValue = round(value/1000000, d)
+
     print('[N] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    
+    if nValue is not None:
+        return nValue
+    else:
+        return value
+
+def denormalize (kpi, value):
+
+    if 'sUnit' in kpi and 'dUnit' in kpi:
+        sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
+    else:
+        return value
+
+    nValue = None
+    
+    if sUnit == 'Byte' and dUnit == 'GB':
+        nValue = utils.antiGB(value, 'GB')
+    elif sUnit == 'Byte' and dUnit == 'MB':
+        nValue = utils.antiGB(value, 'MB')
+
+    elif sUnit == 'usec' and dUnit == 'sec':
+        nValue = value*1000000
+
+    print('[dN] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
     
     if nValue is not None:
         return nValue

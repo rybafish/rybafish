@@ -101,6 +101,11 @@ class myWidget(QWidget):
     #def keyPressEvent(self, event):
     #    print('widget key: ', event.key())
             
+    def resizeEvent(self, event):
+        # check the documentation: https://doc.qt.io/qt-5/qwidget.html#resizeEvent
+        # надо сравнить старый layout и новый и если они одинаковые - то это наш вот тот нужный resize
+        print('Resize here')
+        
     def wheelEvent (self, event):
         if self.zoomLock:
             return
@@ -255,7 +260,7 @@ class myWidget(QWidget):
         
         log('  alignScales()')
         #mem_max = self.scanMetrics('mem')
-        thr_max = self.scanMetrics('thr')
+        #thr_max = self.scanMetrics('thr')
         
         groups = kpiDescriptions.groups()
         
