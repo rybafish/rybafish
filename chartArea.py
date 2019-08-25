@@ -104,7 +104,8 @@ class myWidget(QWidget):
     def resizeEvent(self, event):
         # check the documentation: https://doc.qt.io/qt-5/qwidget.html#resizeEvent
         # надо сравнить старый layout и новый и если они одинаковые - то это наш вот тот нужный resize
-        print('Resize here')
+        if (event.oldSize().height() == event.size().height() and event.oldSize().width() == event.size().width()):
+            print('resize: nash client')
         
     def wheelEvent (self, event):
         if self.zoomLock:
