@@ -1,8 +1,12 @@
 import sys, os
-import locale
 from datetime import datetime
 
+import locale
+from decimal import Decimal
+
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
+
+
 
 logmode = 'file'
 config = {}
@@ -29,7 +33,8 @@ def numberToStr(num):
     else:
         locale.setlocale(locale.LC_ALL, '')
     
-    s = locale.format("%d", num, grouping=True)
+    #s = locale.format("%f", num, grouping=True)
+    s = '{0:n}'.format(num)
     
     return s
     

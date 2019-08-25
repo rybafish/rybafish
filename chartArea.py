@@ -230,7 +230,6 @@ class myWidget(QWidget):
             should not be called for group 0
         '''
         
-        print ('getGroupMax(%s)' % (grp))
         max_value = 0
     
         for h in range(0, len(self.hosts)):
@@ -268,9 +267,6 @@ class myWidget(QWidget):
             if g != '0':
                 groupMax[g] = self.getGroupMax(g)
 
-        for g in groups:
-            print('groupMax[%s] = %i' % (g, groupMax[g]))
-            
         for h in range(0, len(self.hosts)):
         
             # for kpi in self.nkpis[h]:
@@ -297,25 +293,7 @@ class myWidget(QWidget):
                 
                 groupName = kpiStylesNN[type][kpi]['group']
                 
-                if groupName == 'mem - depr':
-                #elif kpi in ('indexserverMemUsed', 'indexserverMemLimit'):
-                    #log(kpi)
-                    max = scaleKpi['max']
-                
-                    scaleKpi['unit'] = 'GB'
-                    
-                    scaleKpi['max_label'] = str(round(utils.GB(scaleKpi['max']), 1))
-                    scaleKpi['last_label'] = str(round(utils.GB(scaleKpi['last_value']), 1))
-                    
-                    if 'mem' in self.manual_scales:
-                        mem_max = self.manual_scales['mem']
-
-                    scaleKpi['y_max'] = utils.antiGB(mem_max)
-                    #scaleKpi['label'] = str(mem_max)
-                    #scaleKpi['label'] = ('%i / %i' % (mem_max / 10, mem_max))
-                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(mem_max / 10), utils.numberToStr(mem_max)))
-                
-                elif groupName == 'cpu':
+                if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = scaleKpi['max']
                     scaleKpi['last_label'] = scaleKpi['last_value']
@@ -343,6 +321,10 @@ class myWidget(QWidget):
                         else:
                             max_value = groupMax[groupName]
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
+
+                            if max_value_n <= 10 and max_value != max_value_n:
+                                kpiStylesNN[type][kpi]['decimal'] = 2
+
                             yScale = self.ceiling(int(max_value_n))
                     
                     '''
@@ -350,13 +332,13 @@ class myWidget(QWidget):
                         even when no any difference with max_value
                     '''
                     
-                    scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max']))
-                    scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value']))
+                    d = kpiStylesNN[type][kpi].get('decimal', 0) # defined couple lines above
+                    
+                    scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d))
+                    scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d))
                     
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
-                    
-                    print('max --> %i, yScale = %i' % (max_value, yScale))                    
                     
                     dUnit = kpiStylesNN[type][kpi]['sUnit'] # not converted
 
@@ -555,8 +537,9 @@ class myWidget(QWidget):
                         
                     self.highlightedKpi = None
 
-                # scaled_value = utils.numberToStr(data[kpi][j])
-                normVal = round(kpiDescriptions.normalize(kpiStylesNN[type][kpi], data[kpi][j]))
+                d = kpiStylesNN[type][kpi].get('decimal', 0)
+                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], data[kpi][j], d)
+
                 scaled_value = utils.numberToStr(normVal)
                 
                 log('click on %i.%s = %i, %s' % (host, kpi, data[kpi][j], scaled_value))
