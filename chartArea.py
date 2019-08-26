@@ -324,6 +324,8 @@ class myWidget(QWidget):
 
                             if max_value_n <= 10 and max_value != max_value_n:
                                 kpiStylesNN[type][kpi]['decimal'] = 2
+                            elif max_value_n <= 100 and max_value != max_value_n:
+                                kpiStylesNN[type][kpi]['decimal'] = 1
 
                             yScale = self.ceiling(int(max_value_n))
                     
@@ -334,8 +336,8 @@ class myWidget(QWidget):
                     
                     d = kpiStylesNN[type][kpi].get('decimal', 0) # defined couple lines above
                     
-                    scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d))
-                    scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d))
+                    scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d), d)
+                    scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
                     
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
@@ -540,7 +542,7 @@ class myWidget(QWidget):
                 d = kpiStylesNN[type][kpi].get('decimal', 0)
                 normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], data[kpi][j], d)
 
-                scaled_value = utils.numberToStr(normVal)
+                scaled_value = utils.numberToStr(normVal, d)
                 
                 log('click on %i.%s = %i, %s' % (host, kpi, data[kpi][j], scaled_value))
                 self.kpiPen[type][kpi].setWidth(2)

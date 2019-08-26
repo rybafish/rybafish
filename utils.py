@@ -14,27 +14,14 @@ config = {}
 class dbException(Exception):
     pass
     
-def numberToStr(num):
-    '''
-    num = str(num)
-    l = len(num)
-    
-    s = ''
-    
-    while len(num) > 0:
-        s = num[-3:] + chr(160) + s
-        
-        num = num[:-3]
-        
-    return(s[:-1])
-    '''
+def numberToStr(num, d = 0):
     if cfg('locale'):
         locale.setlocale(locale.LC_ALL, cfg('locale'))
     else:
         locale.setlocale(locale.LC_ALL, '')
     
-    #s = locale.format("%f", num, grouping=True)
-    s = '{0:n}'.format(num)
+    fmt = '%.{0}f'.format(d)
+    s = locale.format(fmt, num, grouping=True)
     
     return s
     
