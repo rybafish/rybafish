@@ -5,7 +5,8 @@ kpiKeys = []
 kpiGroup = {}
 
 import utils
-from utils import log
+
+from utils import log, cfg
 
 '''
     0 - index?
@@ -260,6 +261,13 @@ def clarifyGroups():
             for kpi in kpiStylesNN[h]:
                 if kpiStylesNN[h][kpi]['group'] == grpIdx:
                     kpiStylesNN[h][kpi]['group'] = grpName
+                    
+    def updateDunit(grpIdx, dUnit):
+        for h in kpiStylesNN:
+            for kpi in kpiStylesNN[h]:
+                if kpiStylesNN[h][kpi]['group'] == grpIdx:
+                    kpiStylesNN[h][kpi]['dUnit'] = dUnit
+        
 
     for h in kpiStylesNN:
         if 'cpu' in kpiStylesNN[h]:
@@ -267,6 +275,9 @@ def clarifyGroups():
             
         if 'memory_used' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['memory_used']['group'], 'mem')
+            
+            if cfg('experimental') and cfg('memoryGB'):
+                updateDunit('mem', 'GB')
             
         if thread_kpis[0] in kpiStylesNN[h]:
             update_hardcoded(kpiStylesNN[h], thread_kpis, 33)
