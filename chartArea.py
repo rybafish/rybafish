@@ -150,6 +150,14 @@ class myWidget(QWidget):
     def __init__(self):
         super().__init__()
         
+        if cfg('fontSize') is not None:
+            self.conf_fontSize = cfg('fontSize')
+            
+        self.calculateMargins()
+        
+        self.initPens()
+        
+    def calculateMargins(self):
         myFont = QFont ('SansSerif', self.conf_fontSize)
         fm = QFontMetrics(myFont)
         
@@ -164,7 +172,6 @@ class myWidget(QWidget):
         self.font_width2 = fm.width('12:00:00') / 2
         self.font_width3 = fm.width('2019-06-17') / 2
         
-        self.initPens()
                 
     def initPens(self):
         for t in kpiStylesNN:

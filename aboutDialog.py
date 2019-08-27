@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
 
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
 
 from PyQt5.QtCore import Qt, QUrl
 
@@ -69,6 +69,9 @@ class About(QDialog):
         
         self.updatesLabel.setText('requesting...')
         
+    def rybafishDotNet(self, link):
+        QDesktopServices.openUrl(QUrl(link))
+        
     def initUI(self):
 
         iconPath = resourcePath('ico\\favicon.ico')
@@ -90,7 +93,8 @@ class About(QDialog):
         #self.updatesLabel.setText('To report bugs or check for updates please visit <a href="http://rybafish.net">http://rybafish.net</a>.')
 
         self.infoLabel = QLabel()
-        self.infoLabel.setText('''To report bugs or check for updates please visit <a href="http://rybafish.net">http://rybafish.net</a>.''')
+        self.infoLabel.linkActivated.connect(self.rybafishDotNet)
+        self.infoLabel.setText('''To report bugs or check for updates please visit <a href="http://www.rybafish.net">http://rybafish.net</a>.''')
         
         txt = QLabel('''Ryba Fish Charts.
 

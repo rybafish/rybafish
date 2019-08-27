@@ -33,7 +33,6 @@ import sys
 import time
 
 class hslWindow(QMainWindow):
-#class hslWindow(QWidget):
 
     statusbar = None
     connectionConf = None
@@ -64,6 +63,9 @@ class hslWindow(QMainWindow):
     def menuQuit(self):
         sys.exit(0)
 
+    def menuFont(self):
+        self.chartArea.widget.calculateMargins()
+        
     def menuAbout(self):
         abt = aboutDialog.About()
         abt.exec_()
@@ -79,12 +81,7 @@ class hslWindow(QMainWindow):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
         self.chartArea.initDP()
         
-        #self.chartArea.dp.initHosts(self.hostTable.hosts, self.chartArea.hostKPIs, self.chartArea.srvcKPIs)
-        #self.chartArea.widget.allocate(len(self.hostTable.hosts))
-        #self.hostTable.hostsUpdated()
-        
     def menuConfig(self):
-        #cfg = configDialog.Config(self.parent())
         
         if self.connectionConf is None:
             connConf = cfg('server')
@@ -263,12 +260,22 @@ class hslWindow(QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(aboutAct)
         fileMenu.addAction(configAct)
-        
+
         if cfg('experimental'):
             fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
 
         fileMenu.addAction(exitAct)
+        
+        if cfg('experimental'):
+            actionsMenu = menubar.addMenu('&Actions')
+            fileMenu.addAction(aboutAct)
+
+            fontAct = QAction('&Adjust Fonts', self)
+            fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
+            fontAct.triggered.connect(self.menuFont)
+            
+            actionsMenu.addAction(fontAct)
 
         # finalization
         self.setGeometry(200, 200, 1400, 800)
