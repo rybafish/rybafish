@@ -2,8 +2,11 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QSplitter, QStyleFactory, QTableWidget,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
-    QMessageBox, QTabWidget, QPlainTextEdit
+    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog
     )
+    
+from PyQt5.QtCore import QT_VERSION_STR
+print(QT_VERSION_STR)
 
 from PyQt5.QtGui import QPainter, QIcon
 
@@ -64,7 +67,11 @@ class hslWindow(QMainWindow):
         sys.exit(0)
 
     def menuFont(self):
-        self.chartArea.widget.calculateMargins()
+        id = QInputDialog
+        sf, ok = id.getDouble(self, 'Input the scaling factor', 'Scaling Factor', 1)
+
+        if ok:
+            self.chartArea.widget.calculateMargins(sf)
         
     def menuAbout(self):
         abt = aboutDialog.About()
@@ -128,7 +135,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -143,7 +150,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -160,7 +167,7 @@ class hslWindow(QMainWindow):
             msgBox = QMessageBox()
             msgBox.setWindowTitle('Import')
             msgBox.setText('Not implemented yet')
-            iconPath = resourcePath('ico\\favicon.ico')
+            iconPath = resourcePath('ico\\favicon.png')
             msgBox.setWindowIcon(QIcon(iconPath))
             msgBox.setIcon(QMessageBox.Warning)
             msgBox.exec_()
@@ -229,7 +236,7 @@ class hslWindow(QMainWindow):
         self.statusbar = self.statusBar()
 
         #menu
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
 
         exitAct = QAction('&Exit', self)        
         exitAct.setShortcut('Alt+Q')

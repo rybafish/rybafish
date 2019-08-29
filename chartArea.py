@@ -157,20 +157,21 @@ class myWidget(QWidget):
         
         self.initPens()
         
-    def calculateMargins(self):
+    def calculateMargins(self, scale = 1):
+    
         myFont = QFont ('SansSerif', self.conf_fontSize)
         fm = QFontMetrics(myFont)
         
-        self.font_height = fm.height() - 2 # too much space otherwise
+        self.font_height = scale * fm.height() - 2 # too much space otherwise
         
         self.bottom_margin = self.font_height*2 + 2 + 2
         
         log('font_height: %i' %(self.font_height))
         log('bottom_margin: %i' %(self.bottom_margin))
         
-        self.font_width1 = fm.width('12:00') / 2
-        self.font_width2 = fm.width('12:00:00') / 2
-        self.font_width3 = fm.width('2019-06-17') / 2
+        self.font_width1 = scale * fm.width('12:00') / 2
+        self.font_width2 = scale * fm.width('12:00:00') / 2
+        self.font_width3 = scale * fm.width('2019-06-17') / 2
         
                 
     def initPens(self):
@@ -1162,7 +1163,7 @@ class chartArea(QFrame):
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 

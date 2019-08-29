@@ -55,7 +55,7 @@ class About(QDialog):
             return
             
         if 'version' in ver and 'date' in ver:
-            verStr = 'Last published version is %s, from %s.' % (ver['version'], ver['date'])
+            verStr = 'Last published version is %s, build %s.' % (ver['version'], ver['date'])
             self.updatesLabel.setText(verStr)
         
         
@@ -74,7 +74,7 @@ class About(QDialog):
         
     def initUI(self):
 
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
         imgPath  = resourcePath('ico\\logo.png')
         
         checkButton = QPushButton("Check for updates")
@@ -88,6 +88,7 @@ class About(QDialog):
 
         img = QLabel()
         img.setPixmap(QPixmap(imgPath))
+        img.setToolTip('You are more than the sum of what you consume.')
         
         self.updatesLabel = QLabel()
         #self.updatesLabel.setText('To report bugs or check for updates please visit <a href="http://rybafish.net">http://rybafish.net</a>.')
@@ -98,7 +99,7 @@ class About(QDialog):
         
         txt = QLabel('''Ryba Fish Charts.
 
-Version %s, Build %s.
+Current version: %s, build %s.
 ''' % (version, build_date))
 
         vbox = QVBoxLayout()
