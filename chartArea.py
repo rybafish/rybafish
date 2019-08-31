@@ -244,6 +244,9 @@ class myWidget(QWidget):
         for h in range(0, len(self.hosts)):
             type = hType(h, self.hosts)
             
+            # for the issue https://github.com/rybafish/rybafish/issues/30
+            # log('self.nscales[h].keys(): ' + str(self.nscales[h].keys()))
+            
             for kpi in self.nscales[h].keys():
 
                 if kpi[:4] == 'time':
@@ -1040,23 +1043,32 @@ class chartArea(QFrame):
         else: 
             super().keyPressEvent(event)
 
+    def cleanup(self):
+        for host in range(len(self.widget.hosts)):
+            for kpi in self.widget.nkpis[host]:
+                #print('the same code in checkbocks callback - make a function')
+                self.widget.nkpis[host].remove(kpi) # kpis is a list
+                
+                if kpi in self.widget.ndata[host]:
+                    #might be empty for alt-added
+                    del(self.widget.ndata[host][kpi]) # ndata is a dict
+
+            #print('this one is missing in in checkbocks callback ')
+            self.widget.nscales[host].clear() # this one is missing in in checkbocks callback 
+                                              # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
+            self.widget.ndata[host].clear()
+            
+        self.widget.nscales.clear()
+        self.widget.ndata.clear()
+        self.widget.nkpis.clear()
+        
     def initDP(self):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
         '''
-        
-        for host in range(len(self.widget.hosts)):
-            for kpi in self.widget.nkpis[host]:
-                log('clear %i/%s...' % (host, kpi))
-                
-                #print('the same code in checkbocks callback - make a function')
-                self.widget.nkpis[host].remove(kpi) # kpis is a list
-                if kpi in self.widget.ndata[host]:
-                    #might be empty for alt-added
-                    del(self.widget.ndata[host][kpi]) # ndata is a dict
-            
-            self.widget.ndata[host].clear()
+
+        self.cleanup()
             
         self.widget.ndata.clear()
         
@@ -1081,6 +1093,13 @@ class chartArea(QFrame):
         
 
     def zoomSignal(self, mode, pos):
+        '''
+            this is ctrl+scroll function
+            it implicitly calls the scaleChanged for scaleCB
+            which adjusts the tscale and refreshes the chart
+            
+            and that is why we can not move horizontalScrollBar in scaleChanged 
+        '''
     
         time = self.widget.posToTime(pos)
         
@@ -1103,6 +1122,7 @@ class chartArea(QFrame):
             newPos -= xfix # --> move to the mouse pos
             
             self.scrollarea.horizontalScrollBar().setValue(newPos)
+            
         
     def updateFromTime(self, fromTime):
         self.fromEdit.setText(fromTime)
@@ -1228,11 +1248,12 @@ class chartArea(QFrame):
                         
                         if kpi in self.widget.nkpis[hst]:
                             self.widget.nkpis[hst].remove(kpi)
-                            del(self.widget.ndata[hst][kpi])
+                            
+                            if kpi in self.widget.ndata[host]: #might be empty for alt-added (2019-08-30)
+                                del(self.widget.ndata[hst][kpi])
             else:
                 self.widget.nkpis[host].remove(kpi) # kpis is a list
-                if kpi in self.widget.ndata[host]:
-                    #might be empty for alt-added
+                if kpi in self.widget.ndata[host]: #might be empty for alt-added
                     del(self.widget.ndata[host][kpi]) # ndata is a dict
             
             self.widget.update()
@@ -1382,6 +1403,13 @@ class chartArea(QFrame):
         
         
     def scaleChanged(self, i):
+        '''
+            processes the change of scaleCB
+            both manually and by zoomSignal (ctrl+scroll)
+            
+            that's why we can not change horizontalScrollBar position here
+            as it's changed in zoomSignal
+        '''
 
         txtValue = self.scaleCB.currentText()
         
@@ -1406,6 +1434,9 @@ class chartArea(QFrame):
         
         #recalculate x-size and adjust
         self.widget.resizeWidget()
+        
+        # force move it to the end
+        # self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22)
         
         self.widget.update()
         

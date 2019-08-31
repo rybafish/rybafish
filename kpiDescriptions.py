@@ -315,7 +315,7 @@ def normalize (kpi, value, d = 0):
     elif sUnit == 'usec' and dUnit == 'sec':
         nValue = round(value/1000000, d)
 
-    print('[N] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    # ('[N] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
     
     if nValue is not None:
         return nValue
@@ -339,7 +339,7 @@ def denormalize (kpi, value):
     elif sUnit == 'usec' and dUnit == 'sec':
         nValue = value*1000000
 
-    print('[dN] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    # ('[dN] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
     
     if nValue is not None:
         return nValue
