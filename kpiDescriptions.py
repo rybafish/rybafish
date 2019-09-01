@@ -4,7 +4,9 @@ from PyQt5.QtGui import QPen, QColor
 kpiKeys = []
 kpiGroup = {}
 
-from utils import log
+import utils
+
+from utils import log, cfg
 
 '''
     0 - index?
@@ -145,16 +147,19 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         else:
             style['label'] = ''
 
-        if 'sUnit' in kpi:
-            style['sUnit'] = kpi['sUnit']
+        if 'sUnit' in kpi and 'dUnit' in kpi:
+            sUnit = kpi['sUnit'].split('/')
+            dUnit = kpi['dUnit'].split('/')
+            
+            if len(sUnit) > 1 and len(dUnit) > 1 and sUnit[1] == 'sample' and dUnit[1] == 'sec':
+                style['sUnit'] = sUnit[0]
+                style['dUnit'] = dUnit[0]
+                style['perSample'] = True
+            else:
+                style['sUnit'] = kpi['sUnit']
+                style['dUnit'] = kpi['dUnit']
         else:
             style['sUnit'] = '-'
-            
-        if 'dUnit' in kpi:
-            style['dUnit'] = kpi['dUnit']
-        else:
-            style['dUnit'] = '-'
-
 
         #create pen
         if 'color' in kpi:
@@ -255,6 +260,13 @@ def clarifyGroups():
             for kpi in kpiStylesNN[h]:
                 if kpiStylesNN[h][kpi]['group'] == grpIdx:
                     kpiStylesNN[h][kpi]['group'] = grpName
+                    
+    def updateDunit(grpIdx, dUnit):
+        for h in kpiStylesNN:
+            for kpi in kpiStylesNN[h]:
+                if kpiStylesNN[h][kpi]['group'] == grpIdx:
+                    kpiStylesNN[h][kpi]['dUnit'] = dUnit
+        
 
     for h in kpiStylesNN:
         if 'cpu' in kpiStylesNN[h]:
@@ -262,6 +274,9 @@ def clarifyGroups():
             
         if 'memory_used' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['memory_used']['group'], 'mem')
+            
+            if cfg('experimental') and cfg('memoryGB'):
+                updateDunit('mem', 'GB')
             
         if thread_kpis[0] in kpiStylesNN[h]:
             update_hardcoded(kpiStylesNN[h], thread_kpis, 33)
@@ -281,3 +296,51 @@ def groups():
                 groups.append(kpiStylesNN[h][kpi]['group'])
                 
     return groups
+
+def normalize (kpi, value, d = 0):
+
+    if 'sUnit' in kpi and 'dUnit' in kpi:
+        sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
+    else:
+        return value
+
+    nValue = None
+    
+    if sUnit == 'Byte' and dUnit == 'GB':
+        nValue = round(utils.GB(value, 'GB'), d)
+    elif sUnit == 'Byte' and dUnit == 'MB':
+        nValue = round(utils.GB(value, 'MB'), d)
+
+    elif sUnit == 'usec' and dUnit == 'sec':
+        nValue = round(value/1000000, d)
+
+    # ('[N] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    
+    if nValue is not None:
+        return nValue
+    else:
+        return value
+
+def denormalize (kpi, value):
+
+    if 'sUnit' in kpi and 'dUnit' in kpi:
+        sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
+    else:
+        return value
+
+    nValue = None
+    
+    if sUnit == 'Byte' and dUnit == 'GB':
+        nValue = utils.antiGB(value, 'GB')
+    elif sUnit == 'Byte' and dUnit == 'MB':
+        nValue = utils.antiGB(value, 'MB')
+
+    elif sUnit == 'usec' and dUnit == 'sec':
+        nValue = value*1000000
+
+    # ('[dN] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    
+    if nValue is not None:
+        return nValue
+    else:
+        return value

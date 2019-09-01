@@ -1,8 +1,12 @@
 import sys, os
-import locale
 from datetime import datetime
 
+import locale
+from decimal import Decimal
+
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
+
+
 
 logmode = 'file'
 config = {}
@@ -10,33 +14,21 @@ config = {}
 class dbException(Exception):
     pass
     
-def numberToStr(num):
-    '''
-    num = str(num)
-    l = len(num)
-    
-    s = ''
-    
-    while len(num) > 0:
-        s = num[-3:] + chr(160) + s
-        
-        num = num[:-3]
-        
-    return(s[:-1])
-    '''
+def numberToStr(num, d = 0):
     if cfg('locale'):
         locale.setlocale(locale.LC_ALL, cfg('locale'))
     else:
         locale.setlocale(locale.LC_ALL, '')
     
-    s = locale.format("%d", num, grouping=True)
+    fmt = '%.{0}f'.format(d)
+    s = locale.format(fmt, num, grouping=True)
     
     return s
     
     
 def GB(bytes, scale = 'GB'):
     '''
-        returns same number but in GB
+        returns same number but in GB (/=1023^3)
     '''
     
     if scale == 'MB':
@@ -50,7 +42,7 @@ def GB(bytes, scale = 'GB'):
     
 def antiGB(gb, scale = 'GB'):
     '''
-        returns same number but in GB
+        returns same number but in bytes (*=1023^3)
     '''
     
     if scale == 'MB':

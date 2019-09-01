@@ -2,14 +2,12 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QSplitter, QStyleFactory, QTableWidget,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
-    QMessageBox, QTabWidget, QPlainTextEdit
+    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog
     )
-
+    
 from PyQt5.QtGui import QPainter, QIcon
 
 from PyQt5.QtCore import Qt
-
-from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -33,7 +31,6 @@ import sys
 import time
 
 class hslWindow(QMainWindow):
-#class hslWindow(QWidget):
 
     statusbar = None
     connectionConf = None
@@ -64,27 +61,28 @@ class hslWindow(QMainWindow):
     def menuQuit(self):
         sys.exit(0)
 
+    def menuFont(self):
+        id = QInputDialog
+        
+        if cfg('fontScale') is not None:
+            sf = cfg('fontScale')
+        else: 
+            sf = 1
+        
+        sf, ok = id.getDouble(self, 'Input the scaling factor', 'Scaling Factor', sf, 0, 5, 2)
+        
+        if ok:
+            self.chartArea.widget.calculateMargins(sf)
+        
     def menuAbout(self):
         abt = aboutDialog.About()
         abt.exec_()
         
     def menuDummy(self):
-        '''
-            Эту лабуду бы вынести в chartArea?
-            Или наоборот здесь ей самое место?
-            
-            Просто data provider это атрибут chartArea, почему я их тут создавать должен
-            пусть CA и создаёт, а отсюда параметры только передать?
-        '''
         self.chartArea.dp = dpDummy.dataProvider() # generated data
         self.chartArea.initDP()
         
-        #self.chartArea.dp.initHosts(self.hostTable.hosts, self.chartArea.hostKPIs, self.chartArea.srvcKPIs)
-        #self.chartArea.widget.allocate(len(self.hostTable.hosts))
-        #self.hostTable.hostsUpdated()
-        
     def menuConfig(self):
-        #cfg = configDialog.Config(self.parent())
         
         if self.connectionConf is None:
             connConf = cfg('server')
@@ -103,14 +101,14 @@ class hslWindow(QMainWindow):
                 self.repaint()
 
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+
+                self.chartArea.initDP()
                 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
                     self.chartArea.reloadChart()
 
                 self.tabs.setTabText(0, conf['user'] + '@' + self.chartArea.dp.dbProperties['sid'])
-                
-                self.chartArea.initDP()
                 
                 #setup keep alives
                 
@@ -131,7 +129,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -146,7 +144,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -163,7 +161,7 @@ class hslWindow(QMainWindow):
             msgBox = QMessageBox()
             msgBox.setWindowTitle('Import')
             msgBox.setText('Not implemented yet')
-            iconPath = resourcePath('ico\\favicon.ico')
+            iconPath = resourcePath('ico\\favicon.png')
             msgBox.setWindowIcon(QIcon(iconPath))
             msgBox.setIcon(QMessageBox.Warning)
             msgBox.exec_()
@@ -223,7 +221,7 @@ class hslWindow(QMainWindow):
         
         self.tabs.addTab(mainSplitter, 'Chart')
         
-        if cfg('experimental'):
+        if cfg('experimental-notnow'):
             self.tabs.addTab(console, 'Sql')
         
         self.setCentralWidget(self.tabs)
@@ -232,7 +230,7 @@ class hslWindow(QMainWindow):
         self.statusbar = self.statusBar()
 
         #menu
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
 
         exitAct = QAction('&Exit', self)        
         exitAct.setShortcut('Alt+Q')
@@ -263,12 +261,22 @@ class hslWindow(QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(aboutAct)
         fileMenu.addAction(configAct)
-        
+
         if cfg('experimental'):
             fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
 
         fileMenu.addAction(exitAct)
+        
+        if cfg('experimental'):
+            actionsMenu = menubar.addMenu('&Actions')
+            fileMenu.addAction(aboutAct)
+
+            fontAct = QAction('&Adjust Fonts', self)
+            fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
+            fontAct.triggered.connect(self.menuFont)
+            
+            actionsMenu.addAction(fontAct)
 
         # finalization
         self.setGeometry(200, 200, 1400, 800)

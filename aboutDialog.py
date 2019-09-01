@@ -2,11 +2,17 @@ import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
     QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel)
 
-from PyQt5.QtGui import QPixmap, QIcon
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+
+from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
+
+from PyQt5.QtCore import Qt, QUrl
 
 from utils import resourcePath
+from yaml import safe_load, YAMLError
+
+from utils import log
 
 from _constants import build_date, version
 
@@ -22,15 +28,56 @@ class About(QDialog):
         self.initUI()
         
         
+    def gotResponse(self, QNetworkReply):
+
+        try:
+            status = QNetworkReply.attribute(QNetworkRequest.HttpStatusCodeAttribute);
+        except Exception as e:
+            log('[e] http/yaml error: %s' % str(e))
+            self.updatesLabel.setText('Error')
+            return
+
+        if status != 200:
+            self.updatesLabel.setText('Network error: ' + str(status))
+            return
+        
+        try: 
+            response = QNetworkReply.readAll()
+            response = str(response, 'utf-8')
+            ver = safe_load(response)
+        except Exception as e:
+            log('[e] http/yaml error: %s' % str(e))
+            self.updatesLabel.setText('error')
+            return
+        
+        if ver is None:
+            self.updatesLabel.setText('<network error>')
+            return
+            
+        if 'version' in ver and 'date' in ver:
+            verStr = 'Last published version is %s, build %s.' % (ver['version'], ver['date'])
+            self.updatesLabel.setText(verStr)
+        
+        
     def checkUpdates(self):
-        self.updatesLabel.setText('Not implemented yet, please check <a href="http://rybafish.net">http://rybafish.net</a> for updates')
+        #self.updatesLabel.setText('Not implemented yet, please check <a href="http://rybafish.net">http://rybafish.net</a> for updates')
+        
+        manager = QNetworkAccessManager(self)
+        
+        manager.finished[QNetworkReply].connect(self.gotResponse)
+        manager.get(QNetworkRequest(QUrl('http://www.rybafish.net/version')))
+        
+        self.updatesLabel.setText('requesting...')
+        
+    def rybafishDotNet(self, link):
+        QDesktopServices.openUrl(QUrl(link))
         
     def initUI(self):
 
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
         imgPath  = resourcePath('ico\\logo.png')
         
-        #checkButton = QPushButton("Check for updates")
+        checkButton = QPushButton("Check for updates")
         
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Ok,
@@ -41,14 +88,18 @@ class About(QDialog):
 
         img = QLabel()
         img.setPixmap(QPixmap(imgPath))
+        img.setToolTip('You are more than the sum of what you consume.')
         
         self.updatesLabel = QLabel()
-        self.updatesLabel.setText('To report bugs or check for updates please visit <a href="http://rybafish.net">http://rybafish.net</a>.')
+        #self.updatesLabel.setText('To report bugs or check for updates please visit <a href="http://rybafish.net">http://rybafish.net</a>.')
+
+        self.infoLabel = QLabel()
+        self.infoLabel.linkActivated.connect(self.rybafishDotNet)
+        self.infoLabel.setText('''To report bugs or check for updates please visit <a href="http://www.rybafish.net">http://rybafish.net</a>.''')
         
         txt = QLabel('''Ryba Fish Charts.
 
-Version %s, Build %s.
-
+Current version: %s, build %s.
 ''' % (version, build_date))
 
         vbox = QVBoxLayout()
@@ -57,8 +108,10 @@ Version %s, Build %s.
         
         vbox2.addStretch(1)
         vbox2.addWidget(txt)
-        #vbox2.addWidget(checkButton)
+        vbox2.addWidget(checkButton)
         vbox2.addWidget(self.updatesLabel)
+        vbox2.addWidget(QLabel())
+        vbox2.addWidget(self.infoLabel)
         vbox2.addStretch(1)
         
         hbox.addWidget(img)
@@ -66,8 +119,8 @@ Version %s, Build %s.
         vbox.addLayout(hbox)
 
         vbox.addWidget(self.buttons)
-        #checkButton.clicked.connect(self.checkUpdates)
-        #checkButton.resize(150, 150)
+        checkButton.clicked.connect(self.checkUpdates)
+        checkButton.resize(150, 150)
         
         self.setLayout(vbox)
         

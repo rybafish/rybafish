@@ -111,7 +111,7 @@ class dataProvider:
                     self.connection = None
             except:
                 log('Connection lost, give up')
-                print('disable the timer?')
+                # print disable the timer?
                 self.connection = None
             
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
@@ -187,12 +187,6 @@ class dataProvider:
         t2 = time.time()
         
         kpiDescriptions.clarifyGroups()
-        
-        for type in kpiDescriptions.kpiStylesNN:
-            for kpi in kpiDescriptions.kpiStylesNN[type]:
-                print(kpiDescriptions.kpiStylesNN[type][kpi]['name'], kpiDescriptions.kpiStylesNN[type][kpi]['group'])
-                
-        print(kpiDescriptions.kpiStylesNN.keys())
         
         log('hostsInit time: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
         
@@ -310,7 +304,7 @@ class dataProvider:
             sql = '%s %s %s %s%s %s' % (sql_pref, cols, fromTable, hfilter, tfilter, orderby)
 
             try:
-                self.getHostKpis(kpis, data, sql, params, kpiSrc)
+                self.getHostKpis(type, kpis, data, sql, params, kpiSrc)
             except Exception as e:
                 self.connection = None
                 log('[!] getHostKpis (%s) failed: %s' % (str(kpis), str(e)))
@@ -322,7 +316,7 @@ class dataProvider:
         
         return
 
-    def getHostKpis(self, kpis, data, sql, params, kpiSrc):
+    def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
@@ -354,6 +348,13 @@ class dataProvider:
         kpis_ = [timeKey] + kpis # need a copy of kpis list (+time entry)
         
         try:
+            '''
+            for j in range(len(kpis)):
+                if 'perSample' in kpiStylesNN[type][kpis[j]]:
+                    p rint('%s --> adjust!!!' % (kpis[j]))
+                    p rint('%s --> %s' % (kpiStylesNN[type][kpis[j]]['sUnit'], kpiStylesNN[type][kpis[j]]['dUnit']))
+            '''
+        
             for row in rows:
                 if i == 0: # allocate memory
                     
@@ -372,15 +373,29 @@ class dataProvider:
                             #log('allocate %i for %s' % (trace_lines, kpis_[j]))
                             data[kpis_[j]] = [0]* (trace_lines)  #array('l', [0]*data_size) ??
                             log('allocate data[%s]: %i' %(kpis_[j], trace_lines))
-                
+
                 for j in range(0, len(kpis_)):
                     if j == 0: #time column always 1st
                         data[timeKey][i] = row[j].timestamp()
                     else:
-                        if row[j] is None:
+                        rawValue = row[j]
+                        if rawValue is None:
                             data[kpis_[j]][i] = -1
                         else:
-                            data[kpis_[j]][i] = int(row[j]) # integer only zone
+                            if 'perSample' in kpiStylesNN[type][kpis_[j]]:
+                            
+                                # /sample --> /sec
+                                # do NOT normalize here, only devide by delta seconds
+
+                                if i == 0:
+                                    normValue = rawValue / (data[timeKey][1] - data[timeKey][0])
+                                else:
+                                    normValue = rawValue / (data[timeKey][i] - data[timeKey][i-1])
+                                
+                                data[kpis_[j]][i] = int(normValue)
+                            else:
+                                #normal values
+                                data[kpis_[j]][i] = int(rawValue) # integer only zone
                 
                 i+=1
         except ValueError:

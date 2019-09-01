@@ -44,7 +44,8 @@ class myWidget(QWidget):
 
     updateFromTime = pyqtSignal(['QString'])
     updateToTime = pyqtSignal(['QString'])
-    updateToTime = pyqtSignal(['QString'])
+    
+    zoomSignal = pyqtSignal(int, int)
     
     statusMessage_ = pyqtSignal(['QString', bool])
     
@@ -91,10 +92,43 @@ class myWidget(QWidget):
     y_delta = 0 # to make drawing space even to 10 parts (calculated in drawGrid)
     
     delta = 0 # offset for uneven time_from values
+    
+    zoomLock = False
 
     #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
     #t_to = datetime.datetime.now()
+
+    '''
+    this approach does not detect screen change
     
+    def resizeEvent(self, event):
+        # check the documentation: https://doc.qt.io/qt-5/qwidget.html#resizeEvent
+        # надо сравнить старый layout и новый и если они одинаковые - то это наш вот тот нужный resize
+        if (event.oldSize().height() == event.size().height() and event.oldSize().width() == event.size().width()):
+            pass #('resize: nash client')
+    '''
+        
+    def wheelEvent (self, event):
+        if self.zoomLock:
+            return
+         
+        pos = event.pos()
+
+        p = event.angleDelta()
+        
+        self.zoomLock = True
+        
+        if p.y() < 0:
+            mode = 1
+        else:
+            mode = -1
+            
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            self.zoomSignal.emit(mode, pos.x())
+        
+        self.zoomLock = False
+        
     def statusMessage(self, str, repaint = False):
         if repaint: 
             self.statusMessage_.emit(str, True)
@@ -117,21 +151,29 @@ class myWidget(QWidget):
     def __init__(self):
         super().__init__()
         
+        if cfg('fontSize') is not None:
+            self.conf_fontSize = cfg('fontSize')
+            
+        self.calculateMargins()
+        
+        self.initPens()
+        
+    def calculateMargins(self, scale = 1):
+    
         myFont = QFont ('SansSerif', self.conf_fontSize)
         fm = QFontMetrics(myFont)
         
-        self.font_height = fm.height() - 2 # too much space otherwise
+        self.font_height = scale * fm.height() - 2 # too much space otherwise
         
         self.bottom_margin = self.font_height*2 + 2 + 2
         
         log('font_height: %i' %(self.font_height))
         log('bottom_margin: %i' %(self.bottom_margin))
         
-        self.font_width1 = fm.width('12:00') / 2
-        self.font_width2 = fm.width('12:00:00') / 2
-        self.font_width3 = fm.width('2019-06-17') / 2
+        self.font_width1 = scale * fm.width('12:00') / 2
+        self.font_width2 = scale * fm.width('12:00:00') / 2
+        self.font_width3 = scale * fm.width('2019-06-17') / 2
         
-        self.initPens()
                 
     def initPens(self):
         for t in kpiStylesNN:
@@ -160,36 +202,24 @@ class myWidget(QWidget):
         
         return int(l2*math.pow(10, len(num_str)-1))
             
+    '''
     def scanMetrics(self, grp):
-        max_value = 0
-        
-        log('  scanMetrics(%s)' % grp)
-        
-        for h in range(0, len(self.hosts)):
-            
-            type = hType(h, self.hosts)
-            
-            for kpi in self.nscales[h].keys():   #check ns name (which is unique)
-                    
-                if kpi[:4] == 'time':
-                    continue
-                    
-                if kpiStylesNN[type][kpi]['group'] == grp:
-                    if max_value < self.nscales[h][kpi]['max']:
-                        max_value = self.nscales[h][kpi]['max']
-        
-        if grp == 'mem':
-            return self.ceiling(round(utils.GB(max_value)))
-        else:
-            return self.ceiling(max_value)
-        
+        # scanMetrics depricated and must be replaced by getGroupMax
+    '''
         
     def getGroupMax(self, grp):
-    
+        '''
+            returns raw max for a group
+            should not be called for group 0
+        '''
+        
         max_value = 0
     
         for h in range(0, len(self.hosts)):
             type = hType(h, self.hosts)
+            
+            # for the issue https://github.com/rybafish/rybafish/issues/30
+            # log('self.nscales[h].keys(): ' + str(self.nscales[h].keys()))
             
             for kpi in self.nscales[h].keys():
 
@@ -200,7 +230,9 @@ class myWidget(QWidget):
                     if max_value < self.nscales[h][kpi]['max']:
                         max_value = self.nscales[h][kpi]['max']
         
-        return self.ceiling(max_value)
+        #return self.ceiling(max_value)
+        #return self.ceiling(kpiDescriptions(kpiStylesNN[type][kpi], max_value))
+        return max_value
     
     def alignScales(self):
         '''
@@ -212,15 +244,15 @@ class myWidget(QWidget):
         groupMax = {}
         
         log('  alignScales()')
-        mem_max = self.scanMetrics('mem')
-        thr_max = self.scanMetrics('thr')
+        #mem_max = self.scanMetrics('mem')
+        #thr_max = self.scanMetrics('thr')
         
         groups = kpiDescriptions.groups()
         
         for g in groups:
             if g != '0':
                 groupMax[g] = self.getGroupMax(g)
-            
+
         for h in range(0, len(self.hosts)):
         
             # for kpi in self.nkpis[h]:
@@ -247,25 +279,7 @@ class myWidget(QWidget):
                 
                 groupName = kpiStylesNN[type][kpi]['group']
                 
-                if groupName == 'mem':
-                #elif kpi in ('indexserverMemUsed', 'indexserverMemLimit'):
-                    #log(kpi)
-                    max = scaleKpi['max']
-                
-                    scaleKpi['unit'] = 'GB'
-                    
-                    scaleKpi['max_label'] = str(round(utils.GB(scaleKpi['max']), 1))
-                    scaleKpi['last_label'] = str(round(utils.GB(scaleKpi['last_value']), 1))
-                    
-                    if 'mem' in self.manual_scales:
-                        mem_max = self.manual_scales['mem']
-
-                    scaleKpi['y_max'] = utils.antiGB(mem_max)
-                    #scaleKpi['label'] = str(mem_max)
-                    #scaleKpi['label'] = ('%i / %i' % (mem_max / 10, mem_max))
-                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(mem_max / 10), utils.numberToStr(mem_max)))
-                
-                elif groupName == 'cpu':
+                if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = scaleKpi['max']
                     scaleKpi['last_label'] = scaleKpi['last_value']
@@ -280,27 +294,73 @@ class myWidget(QWidget):
                     if groupName == 0:
                         if 'manual_scale' in kpiStylesNN[type][kpi]:
                             max_value = kpiStylesNN[type][kpi]['manual_scale']
+                            yScale = max_value_n = max_value
                         else:
                             max_value = self.nscales[h][kpi]['max']
-                            max_value = self.ceiling(max_value)
-                        
+                            #max_value = self.ceiling(max_value)
+                            max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
+                            yScale = self.ceiling(int(round(max_value_n)))
                     else: 
                         if groupName in self.manual_scales:
                             max_value = self.manual_scales[groupName]
+                            yScale = max_value_n = max_value
                         else:
                             max_value = groupMax[groupName]
+                            max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
+
+                            if max_value_n <= 10 and max_value != max_value_n:
+                                kpiStylesNN[type][kpi]['decimal'] = 2
+                            elif max_value_n <= 100 and max_value != max_value_n:
+                                kpiStylesNN[type][kpi]['decimal'] = 1
+
+                            yScale = self.ceiling(int(max_value_n))
                     
-                    #calculated in renewMaxValues
-                    scaleKpi['max_label'] = utils.numberToStr(scaleKpi['max'])
-                    scaleKpi['last_label'] = utils.numberToStr(scaleKpi['last_value'])
+                    '''
+                        max_value_n, yScale must be defined by this line
+                        even when no any difference with max_value
+                    '''
                     
-                    #calculated here
-                    scaleKpi['y_max'] = max_value
-                    #scaleKpi['label'] = str(max_value)
-                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value / 10), utils.numberToStr(max_value)))
+                    d = kpiStylesNN[type][kpi].get('decimal', 0) # defined couple lines above
                     
-                    scaleKpi['unit'] = kpiStylesNN[type][kpi]['sUnit']
+                    scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d), d)
+                    scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
                     
+                    # scaleKpi['y_max'] = max_value
+                    scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
+                    
+                    dUnit = kpiStylesNN[type][kpi]['sUnit'] # not converted
+
+                    if max_value_n == max_value:
+                        dUnit = kpiStylesNN[type][kpi]['sUnit'] # not converted
+                    else:
+                        max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
+                        dUnit = kpiStylesNN[type][kpi]['dUnit'] # converted
+                    
+                    #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value_n / 10), utils.numberToStr(max_value_n)))
+                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
+                    
+                    if 'perSample' in kpiStylesNN[type][kpi]:
+                        scaleKpi['unit'] = dUnit + '/sec'
+                    else:
+                        scaleKpi['unit'] = dUnit
+                    
+      
+    def posToTime(self, x):
+        time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin)/self.step_size*self.t_scale - self.delta) 
+        
+        return time
+
+    def timeToPos(self, time):
+    
+        pos = 10
+        
+        offset = (time - self.t_from).total_seconds()
+
+        pos = offset/self.t_scale*self.step_size + self.delta + self.side_margin
+        
+        #time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin)/self.step_size*self.t_scale - self.delta) 
+        
+        return pos
         
     def contextMenuEvent(self, event):
        
@@ -315,7 +375,8 @@ class myWidget(QWidget):
 
         # from / to menu items
         pos = event.pos()
-        time = self.t_from + datetime.timedelta(seconds= (pos.x() - self.side_margin)/self.step_size*self.t_scale - self.delta) 
+
+        time = self.posToTime(pos.x())
         
         if action == startHere:
             even_offset = time.timestamp() % self.t_scale
@@ -331,10 +392,11 @@ class myWidget(QWidget):
 
         if action == copyTS:
             even_offset = 0 # time.timestamp() % self.t_scale
-            time = time - datetime.timedelta(seconds= even_offset - self.t_scale)
+            #time = time - datetime.timedelta(seconds= even_offset - self.t_scale - self.delta)
+            time = time - datetime.timedelta(seconds= even_offset)
             
             ts = time.strftime('%Y-%m-%d %H:%M:%S')
-
+            
             clipboard = QApplication.clipboard()
             clipboard.setText(ts)
     
@@ -387,6 +449,8 @@ class myWidget(QWidget):
         x_scale = self.step_size / self.t_scale
         
         type = hType(host, self.hosts)
+        
+        top_margin = self.top_margin + self.y_delta
         
         for kpi in kpis:
         
@@ -441,7 +505,7 @@ class myWidget(QWidget):
                 log('delta = %i, skip %s' % (scales[kpi]['y_max'] - scales[kpi]['y_min'], str(kpi)))
                 break
                 
-            y_scale = (wsize.height() - self.top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
+            y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
 
             ymin = y_min
             ymin = scales[kpi]['y_min'] + ymin*y_scale
@@ -461,11 +525,10 @@ class myWidget(QWidget):
                         
                     self.highlightedKpi = None
 
-                #if kpiDescriptions.kpiGroup[kpi] == 'mem':
-                if kpiStylesNN[type][kpi]['group'] == 'mem':
-                    scaled_value = str(round(utils.GB(data[kpi][j], scales[kpi]['unit']), 1))
-                else:
-                    scaled_value = utils.numberToStr(data[kpi][j])
+                d = kpiStylesNN[type][kpi].get('decimal', 0)
+                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], data[kpi][j], d)
+
+                scaled_value = utils.numberToStr(normVal, d)
                 
                 log('click on %i.%s = %i, %s' % (host, kpi, data[kpi][j], scaled_value))
                 self.kpiPen[type][kpi].setWidth(2)
@@ -827,6 +890,9 @@ class myWidget(QWidget):
             elif t_scale == 60*15:
                 min_scale = 60*2
                 hrs_scale = 60*2*4
+            elif t_scale == 60*30:
+                min_scale = 60*2
+                hrs_scale = 60*2*4
             elif t_scale == 3600:
                 min_scale = 60*4
                 hrs_scale = 60*4*3 # god damit, 3, really?
@@ -932,39 +998,51 @@ class chartArea(QFrame):
         else:
             self.statusMessage_.emit(str, False)
             
-    def keyPressEvent(self, event):
-    
-        super().keyPressEvent(event)
-    
-        if event.key() == Qt.Key_Left:
-            #x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
-            #self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
+    def keyPressEventZ(self, event):
 
-            self.scrollarea.horizontalScrollBar().setValue(self.widget.width()/2 - self.width()/2)
+        if event.key() == Qt.Key_Left:
+            x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
+            self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
+
+        elif event.key() == Qt.Key_Right:
+            x = 0 - self.widget.pos().x() 
+            self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
             
-        if event.key() == Qt.Key_Home:
+        elif event.key() == Qt.Key_Home:
             self.scrollarea.horizontalScrollBar().setValue(0)
             
-        if event.key() == Qt.Key_End:
+        elif event.key() == Qt.Key_End:
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
+            
+        else: 
+            super().keyPressEvent(event)
 
+    def cleanup(self):
+        for host in range(len(self.widget.hosts)):
+            for kpi in self.widget.nkpis[host]:
+                #print('the same code in checkbocks callback - make a function')
+                self.widget.nkpis[host].remove(kpi) # kpis is a list
+                
+                if kpi in self.widget.ndata[host]:
+                    #might be empty for alt-added
+                    del(self.widget.ndata[host][kpi]) # ndata is a dict
+
+            # this part not required in checkbocks callback ')
+            self.widget.nscales[host].clear() # this one is missing in in checkbocks callback 
+                                              # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
+            self.widget.ndata[host].clear()
+            
+        self.widget.nscales.clear()
+        self.widget.ndata.clear()
+        self.widget.nkpis.clear()
+        
     def initDP(self):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
         '''
-        
-        for host in range(len(self.widget.hosts)):
-            for kpi in self.widget.nkpis[host]:
-                log('clear %i/%s...' % (host, kpi))
-                
-                #print('the same code in checkbocks callback - make a function')
-                self.widget.nkpis[host].remove(kpi) # kpis is a list
-                if kpi in self.widget.ndata[host]:
-                    #might be empty for alt-added
-                    del(self.widget.ndata[host][kpi]) # ndata is a dict
-            
-            self.widget.ndata[host].clear()
+
+        self.cleanup()
             
         self.widget.ndata.clear()
         
@@ -987,6 +1065,38 @@ class chartArea(QFrame):
         
         self.statusMessage('ready')
         
+
+    def zoomSignal(self, mode, pos):
+        '''
+            this is ctrl+scroll function
+            it implicitly calls the scaleChanged for scaleCB
+            which adjusts the tscale and refreshes the chart
+            
+            and that is why we can not move horizontalScrollBar in scaleChanged 
+        '''
+    
+        time = self.widget.posToTime(pos)
+        
+        xfix = None
+    
+        idx = self.scaleCB.currentIndex()
+        
+        if mode == 1 and idx < self.scaleCB.count() - 1:
+            xfix = self.widget.mapToParent(QPoint(pos, 0)).x() - self.geometry().x()
+            self.scaleCB.setCurrentIndex(idx + 1)
+
+        if mode == -1 and idx > 0:
+            self.scaleCB.setCurrentIndex(idx - 1)
+            xfix = self.widget.mapToParent(QPoint(pos, 0)).x() - self.geometry().x()
+            
+        if xfix is not None:
+            newPos = self.widget.timeToPos(time)
+            #newPos -= self.size().width()/2 #--> to the window center
+            
+            newPos -= xfix # --> move to the mouse pos
+            
+            self.scrollarea.horizontalScrollBar().setValue(newPos)
+            
         
     def updateFromTime(self, fromTime):
         self.fromEdit.setText(fromTime)
@@ -1047,7 +1157,7 @@ class chartArea(QFrame):
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
@@ -1112,11 +1222,12 @@ class chartArea(QFrame):
                         
                         if kpi in self.widget.nkpis[hst]:
                             self.widget.nkpis[hst].remove(kpi)
-                            del(self.widget.ndata[hst][kpi])
+                            
+                            if kpi in self.widget.ndata[host]: #might be empty for alt-added (2019-08-30)
+                                del(self.widget.ndata[hst][kpi])
             else:
                 self.widget.nkpis[host].remove(kpi) # kpis is a list
-                if kpi in self.widget.ndata[host]:
-                    #might be empty for alt-added
+                if kpi in self.widget.ndata[host]: #might be empty for alt-added
                     del(self.widget.ndata[host][kpi]) # ndata is a dict
             
             self.widget.update()
@@ -1217,8 +1328,7 @@ class chartArea(QFrame):
 
     def refreshTimer(self):
         self.timer.stop()
-        #print('also stop keep alive timer here')
-        #print('it will be kinda refreshed in get_data renewKeepAlive')
+        #print('also stop keep alive timer here ((it will be kinda refreshed in get_data renewKeepAlive))')
         
         log('trigger auto refresh...')
         self.reloadChart()
@@ -1266,6 +1376,13 @@ class chartArea(QFrame):
         
         
     def scaleChanged(self, i):
+        '''
+            processes the change of scaleCB
+            both manually and by zoomSignal (ctrl+scroll)
+            
+            that's why we can not change horizontalScrollBar position here
+            as it's changed in zoomSignal
+        '''
 
         txtValue = self.scaleCB.currentText()
         
@@ -1290,6 +1407,9 @@ class chartArea(QFrame):
         
         #recalculate x-size and adjust
         self.widget.resizeWidget()
+        
+        # force move it to the end
+        # self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22)
         
         self.widget.update()
         
@@ -1447,24 +1567,6 @@ class chartArea(QFrame):
 
         self.renewMaxValues()
         
-        # I wander what this logic used to do...
-        '''
-        #if self.connection:
-        #if len(self.widget.data): # because we also trigger reload before the data come (somewhere)...
-        if len(self.widget.ndata): # because we also trigger reload before the data come (somewhere)...
-            #mintime = utils.strftime(datetime.datetime.fromtimestamp(self.widget.scales['time']['min']))
-            #maxtime = utils.strftime(datetime.datetime.fromtimestamp(self.widget.scales['time']['max']))
-            
-            #log('data time min/max: %s %s' % (mintime, maxtime))
-            log('not really sure why we check ndata emptiness...')
-            pass
-        else:
-            log('why oh why...')
-            return
-        '''
-        
-        # self.scalesUpdated.emit() <-- there's a call now inside the renewMaxValues()
-        
         self.widget.resizeWidget()
         
         if toTime == '': # probably we want to see the most recent data...
@@ -1515,6 +1617,7 @@ class chartArea(QFrame):
         self.scaleCB.addItem('5 minutes')
         self.scaleCB.addItem('10 minutes')
         self.scaleCB.addItem('15 minutes')
+        self.scaleCB.addItem('30 minutes')
         self.scaleCB.addItem('1 hour')
         self.scaleCB.addItem('4 hours')
         
@@ -1553,8 +1656,6 @@ class chartArea(QFrame):
         fm = QFontMetrics(font)
         fromtoWidth = fm.width(' 2019-06-17 22:59:00 ') #have no idea why spaces required...
         # fromtoWidth = fm.width(starttime.strftime('%Y-%m-%d %H:%M:%S'))
-        
-        log('fromtoWidth: %i' % (fromtoWidth))
         
         self.fromEdit.setFixedWidth(fromtoWidth);
         
@@ -1596,12 +1697,14 @@ class chartArea(QFrame):
         '''
         self.scrollarea = QScrollArea()
         self.scrollarea.setWidgetResizable(False)
-
+        
+        self.scrollarea.keyPressEvent = self.keyPressEventZ # -- is it legal?!
+        
         lo.addLayout(hbar)
         lo.addWidget(self.scrollarea)
         
         self.widget = myWidget()
-        
+
         #log(type(self.dp))
         #log(type(self.dp).__name__)
         
@@ -1611,6 +1714,7 @@ class chartArea(QFrame):
         # register widget --> chartArea signals
         self.widget.updateFromTime.connect(self.updateFromTime)
         self.widget.updateToTime.connect(self.updateToTime)
+        self.widget.zoomSignal.connect(self.zoomSignal)
         
         # trigger upddate of scales in table?
         

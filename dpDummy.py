@@ -34,10 +34,10 @@ class dataProvider:
             'type':         'service',
             'name':         'indexserverMemUsed',
             'group':        'mem',
+            'sUnit':        'Byte/sample',
+            'dUnit':        'MB/sec',
             'label':        'Memory used',
             'description':  'Service Memory Usage',
-            'sUnit':        'GB',
-            'dUnit':        'GB',
             'color':        '#0D0',
             'style':        'solid'
         }
@@ -135,8 +135,8 @@ class dataProvider:
                             dataset1[i] = random.randint(0, 2)
                         else:
                             dataset1[i] = 0
-                        
-                    dataset2[i] = round(200.0*1024*1024*1024+ i /12 + 60*1024*1024*1024*math.sin(7+i/8000)) 
+                    #index mem
+                    dataset2[i] = round(200.0*1024*1024*1024+ i /12 + 100.0*1024*1024*1024*math.sin(7+i/600)) 
                 else:
                     dataset1[i] = round(30.0 + 30.0*math.sin(i/122+1))
                     dataset2[i] = round(120.0*1024*1024*1024+ i /12 + 10*1024*1024*1024*math.sin(7+i/800))
