@@ -73,7 +73,7 @@ class kpiTable(QTableWidget):
        
         cmenu = QMenu(self)
 
-        if cfg('experimental'):
+        if cfg('experimental-disabled'):
             increaseScale = cmenu.addAction('Increase')
             decreaseScale = cmenu.addAction('Decrease')
             resetScale = cmenu.addAction('Reset')
@@ -210,7 +210,6 @@ class kpiTable(QTableWidget):
                 
                 self.setItem(i, 10, QTableWidgetItem(grp)) # group
                 
-                #print(style['name'], style['group'])
             else:
                 # kpi groups
                 

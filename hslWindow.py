@@ -5,14 +5,9 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog
     )
     
-from PyQt5.QtCore import QT_VERSION_STR
-print(QT_VERSION_STR)
-
 from PyQt5.QtGui import QPainter, QIcon
 
 from PyQt5.QtCore import Qt
-
-from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -68,8 +63,14 @@ class hslWindow(QMainWindow):
 
     def menuFont(self):
         id = QInputDialog
-        sf, ok = id.getDouble(self, 'Input the scaling factor', 'Scaling Factor', 1)
-
+        
+        if cfg('fontScale') is not None:
+            sf = cfg('fontScale')
+        else: 
+            sf = 1
+        
+        sf, ok = id.getDouble(self, 'Input the scaling factor', 'Scaling Factor', sf, 0, 5, 2)
+        
         if ok:
             self.chartArea.widget.calculateMargins(sf)
         
@@ -78,13 +79,6 @@ class hslWindow(QMainWindow):
         abt.exec_()
         
     def menuDummy(self):
-        '''
-            Эту лабуду бы вынести в chartArea?
-            Или наоборот здесь ей самое место?
-            
-            Просто data provider это атрибут chartArea, почему я их тут создавать должен
-            пусть CA и создаёт, а отсюда параметры только передать?
-        '''
         self.chartArea.dp = dpDummy.dataProvider() # generated data
         self.chartArea.initDP()
         
@@ -227,7 +221,7 @@ class hslWindow(QMainWindow):
         
         self.tabs.addTab(mainSplitter, 'Chart')
         
-        if cfg('experimental'):
+        if cfg('experimental-notnow'):
             self.tabs.addTab(console, 'Sql')
         
         self.setCentralWidget(self.tabs)

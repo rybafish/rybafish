@@ -155,7 +155,6 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['sUnit'] = sUnit[0]
                 style['dUnit'] = dUnit[0]
                 style['perSample'] = True
-                print ('%s per sample = true' % kpi['name'])
             else:
                 style['sUnit'] = kpi['sUnit']
                 style['dUnit'] = kpi['dUnit']

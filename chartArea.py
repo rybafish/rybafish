@@ -97,15 +97,16 @@ class myWidget(QWidget):
 
     #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
     #t_to = datetime.datetime.now()
+
+    '''
+    this approach does not detect screen change
     
-    #def keyPressEvent(self, event):
-    #    print('widget key: ', event.key())
-            
     def resizeEvent(self, event):
         # check the documentation: https://doc.qt.io/qt-5/qwidget.html#resizeEvent
         # надо сравнить старый layout и новый и если они одинаковые - то это наш вот тот нужный resize
         if (event.oldSize().height() == event.size().height() and event.oldSize().width() == event.size().width()):
-            print('resize: nash client')
+            pass #('resize: nash client')
+    '''
         
     def wheelEvent (self, event):
         if self.zoomLock:
@@ -201,37 +202,10 @@ class myWidget(QWidget):
         
         return int(l2*math.pow(10, len(num_str)-1))
             
+    '''
     def scanMetrics(self, grp):
-        print('scanMetrics depricated and must be replaced by getGroupMax')
-        max_value = 0
-        
-        if len(self.hosts) == 0:
-            return
-        
-        log('  scanMetrics(%s)' % grp)
-        
-        for h in range(0, len(self.hosts)):
-            
-            type = hType(h, self.hosts)
-            
-            for kpi in self.nscales[h].keys():
-                    
-                if kpi[:4] == 'time':
-                    continue
-                    
-                if kpiStylesNN[type][kpi]['group'] == grp:
-                    if max_value < self.nscales[h][kpi]['max']:
-                        max_value = self.nscales[h][kpi]['max']
-
-        log('  scanMetrics(%s), max_value = %i ' % (grp, max_value))
-        
-        if grp == 'mem':
-            return self.ceiling(round(utils.GB(max_value)))
-        else:
-            print('normScale %i:' % max_value)
-            normScale = self.ceiling(kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value))
-            return normScale
-            # return self.ceiling(kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value))
+        # scanMetrics depricated and must be replaced by getGroupMax
+    '''
         
     def getGroupMax(self, grp):
         '''
@@ -1053,7 +1027,7 @@ class chartArea(QFrame):
                     #might be empty for alt-added
                     del(self.widget.ndata[host][kpi]) # ndata is a dict
 
-            #print('this one is missing in in checkbocks callback ')
+            # this part not required in checkbocks callback ')
             self.widget.nscales[host].clear() # this one is missing in in checkbocks callback 
                                               # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
             self.widget.ndata[host].clear()
@@ -1354,8 +1328,7 @@ class chartArea(QFrame):
 
     def refreshTimer(self):
         self.timer.stop()
-        #print('also stop keep alive timer here')
-        #print('it will be kinda refreshed in get_data renewKeepAlive')
+        #print('also stop keep alive timer here ((it will be kinda refreshed in get_data renewKeepAlive))')
         
         log('trigger auto refresh...')
         self.reloadChart()
@@ -1683,8 +1656,6 @@ class chartArea(QFrame):
         fm = QFontMetrics(font)
         fromtoWidth = fm.width(' 2019-06-17 22:59:00 ') #have no idea why spaces required...
         # fromtoWidth = fm.width(starttime.strftime('%Y-%m-%d %H:%M:%S'))
-        
-        log('fromtoWidth: %i' % (fromtoWidth))
         
         self.fromEdit.setFixedWidth(fromtoWidth);
         

@@ -1,2 +1,2 @@
-build_date = "2019-08-27 23:08:14"
-version = "0.3 beta 2"
+build_date = "2019-09-01 11:50:42"
+version = "0.3 beta"

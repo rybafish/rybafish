@@ -111,7 +111,7 @@ class dataProvider:
                     self.connection = None
             except:
                 log('Connection lost, give up')
-                print('disable the timer?')
+                # print disable the timer?
                 self.connection = None
             
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
@@ -187,14 +187,6 @@ class dataProvider:
         t2 = time.time()
         
         kpiDescriptions.clarifyGroups()
-        
-        '''
-        for type in kpiDescriptions.kpiStylesNN:
-            for kpi in kpiDescriptions.kpiStylesNN[type]:
-                print(kpiDescriptions.kpiStylesNN[type][kpi]['name'], kpiDescriptions.kpiStylesNN[type][kpi]['group'])
-                
-        print(kpiDescriptions.kpiStylesNN.keys())
-        '''
         
         log('hostsInit time: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
         
@@ -356,11 +348,12 @@ class dataProvider:
         kpis_ = [timeKey] + kpis # need a copy of kpis list (+time entry)
         
         try:
-            
+            '''
             for j in range(len(kpis)):
                 if 'perSample' in kpiStylesNN[type][kpis[j]]:
-                    print('%s --> adjust!!!' % (kpis[j]))
-                    print ('%s --> %s' % (kpiStylesNN[type][kpis[j]]['sUnit'], kpiStylesNN[type][kpis[j]]['dUnit']))
+                    p rint('%s --> adjust!!!' % (kpis[j]))
+                    p rint('%s --> %s' % (kpiStylesNN[type][kpis[j]]['sUnit'], kpiStylesNN[type][kpis[j]]['dUnit']))
+            '''
         
             for row in rows:
                 if i == 0: # allocate memory
