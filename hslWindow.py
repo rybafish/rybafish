@@ -129,7 +129,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.png')
+                iconPath = resourcePath('ico\\favicon.ico')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -144,7 +144,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
-                iconPath = resourcePath('ico\\favicon.png')
+                iconPath = resourcePath('ico\\favicon.ico')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -161,7 +161,7 @@ class hslWindow(QMainWindow):
             msgBox = QMessageBox()
             msgBox.setWindowTitle('Import')
             msgBox.setText('Not implemented yet')
-            iconPath = resourcePath('ico\\favicon.png')
+            iconPath = resourcePath('ico\\favicon.ico')
             msgBox.setWindowIcon(QIcon(iconPath))
             msgBox.setIcon(QMessageBox.Warning)
             msgBox.exec_()
@@ -230,7 +230,7 @@ class hslWindow(QMainWindow):
         self.statusbar = self.statusBar()
 
         #menu
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico\\favicon.ico')
 
         exitAct = QAction('&Exit', self)        
         exitAct.setShortcut('Alt+Q')
