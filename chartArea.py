@@ -1581,6 +1581,14 @@ class chartArea(QFrame):
         if timer:
             self.timer.start(1000 * self.refreshTime)
 
+    def adjustScale(self, scale = 1):
+        font = self.fromEdit.font()
+        fm = QFontMetrics(font)
+        fromtoWidth = scale * fm.width(' 2019-06-17 22:59:00 ') #have no idea why spaces required...
+
+        self.fromEdit.setFixedWidth(fromtoWidth);
+        self.toEdit.setFixedWidth(fromtoWidth);
+
     def __init__(self):
         
         '''
@@ -1651,19 +1659,12 @@ class chartArea(QFrame):
         starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                 
         self.fromEdit = QLineEdit(starttime.strftime('%Y-%m-%d %H:%M:%S'))
-
-        font = self.fromEdit.font()
-        fm = QFontMetrics(font)
-        fromtoWidth = fm.width(' 2019-06-17 22:59:00 ') #have no idea why spaces required...
-        # fromtoWidth = fm.width(starttime.strftime('%Y-%m-%d %H:%M:%S'))
-        
-        self.fromEdit.setFixedWidth(fromtoWidth);
         
         self.toEdit = QLineEdit()
-        self.toEdit.setFixedWidth(fromtoWidth);
-        
-        #fromEdit.setFont(QFont('SansSerif', 8))
-        
+
+        # set from/to editboxes width
+        self.adjustScale()
+
         reloadBtn = QPushButton("rld")
         reloadBtn.setFixedWidth(32);
         reloadBtn.clicked.connect(self.reloadChart)

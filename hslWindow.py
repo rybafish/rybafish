@@ -73,6 +73,7 @@ class hslWindow(QMainWindow):
         
         if ok:
             self.chartArea.widget.calculateMargins(sf)
+            self.chartArea.adjustScale(sf)
         
     def menuAbout(self):
         abt = aboutDialog.About()
