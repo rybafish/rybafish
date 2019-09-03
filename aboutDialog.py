@@ -74,7 +74,7 @@ class About(QDialog):
         
     def initUI(self):
 
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico\\favicon.ico')
         imgPath  = resourcePath('ico\\logo.png')
         
         checkButton = QPushButton("Check for updates")

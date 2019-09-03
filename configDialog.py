@@ -62,7 +62,7 @@ class Config(QDialog):
         #form = QFormLayout()
         form = QGridLayout()
         
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico\\favicon.ico')
         
         self.hostportEdit = QLineEdit()
         self.userEdit = QLineEdit()
