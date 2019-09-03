@@ -1,10 +1,11 @@
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip
 
-from PyQt5.QtGui import QPainter, QColor, QPen, QPolygon, QIcon, QFont, QFontMetrics, QClipboard
+from PyQt5.QtGui import QPainter, QColor, QPen, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap 
 
 from PyQt5.QtCore import QTimer
 
+import os
 import time
 import datetime
 import math
@@ -370,6 +371,10 @@ class myWidget(QWidget):
         stopHere = cmenu.addAction("Make this a TO time")
         
         copyTS = cmenu.addAction("Copy current timestamp")
+
+        if cfg('experimental'):
+            savePNG = cmenu.addAction("Save a screenshot")
+            copyPNG = cmenu.addAction("Copy to clipboard")
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -377,6 +382,31 @@ class myWidget(QWidget):
         pos = event.pos()
 
         time = self.posToTime(pos.x())
+        
+        if action == savePNG:
+            if not os.path.isdir('screens'):
+                os.mkdir('screens')
+                
+            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
+            fn = os.path.join('screens', fn)
+            
+            log('Saving PNG image (%s)' % fn)
+            
+            pixmap = QPixmap(self.size())
+            self.render(pixmap)
+            pixmap.save(fn)
+            
+            self.statusMessage('Screenshot saved as %s' % (fn))
+            
+        if action == copyPNG:
+            log('Creating a screen')
+            
+            pixmap = QPixmap(self.size())
+            self.render(pixmap)
+            
+            QApplication.clipboard().setPixmap(pixmap)
+            
+            self.statusMessage('Clipboard updated')
         
         if action == startHere:
             even_offset = time.timestamp() % self.t_scale

@@ -114,3 +114,6 @@ config.yaml
 
 # custom sql folder
 sql/
+
+#screenshots dir
+screen/
