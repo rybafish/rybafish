@@ -623,7 +623,7 @@ class myWidget(QWidget):
         number_of_cells = int(seconds / self.t_scale) + 1
         self.resize(number_of_cells * self.step_size + self.side_margin*2, self.size().height()) #dummy size
         
-    def drawChart(self, qp):
+    def drawChart(self, qp, startX, stopX):
     
         '''
             draws enabled charts
@@ -726,8 +726,13 @@ class myWidget(QWidget):
                     #if x < x_left_border - self.side_margin or x > wsize.width() - self.side_margin: 
                     #if x < x_left_border + self.side_margin or x > x_right_border: 
 
-                    if x < x_left_border - 30 or x > x_right_border: 
-
+                    
+                    #if False or (x < x_left_border - 30 or x > x_right_border): 
+                    
+                    # print 80 is a work around to cover spaces
+                    # print it should be 10 seconds scaled to current screen scale * 2
+                    if x < startX - 80 or x > stopX: 
+                        
                         if False and x < x_left_border and i+1000 < array_size: #turbo rewind!!!
                             x = (time_array[i+1000] - from_ts) # number of seconds
                             x = self.side_margin +  x * x_scale
@@ -813,7 +818,7 @@ class myWidget(QWidget):
         qp.setPen(QColor('#888'))
         qp.drawLine(self.side_margin, wsize.height() - self.bottom_margin - 1, wsize.width() - self.side_margin, wsize.height() - self.bottom_margin - 1)
         
-    def drawGrid(self, qp):
+    def drawGrid(self, qp, startX, stopX):
         '''
             draws grid and labels
             based on scale and timespan        
@@ -881,7 +886,8 @@ class myWidget(QWidget):
 
         while x < ((seconds / t_scale + 1) * self.step_size):
         
-            if x < x_left_border or x > x_right_border:
+            #if x < x_left_border or x > x_right_border:
+            if x < startX or x > stopX:
                 x += self.step_size
                 
                 continue
@@ -974,19 +980,25 @@ class myWidget(QWidget):
     def paintEvent(self, QPaintEvent):
 
         #log(' --- paint event ---')
-    
+        
+        # print(self.pos())
+        # print(self.size())
+        # print(QPaintEvent.rect().x(), QPaintEvent.rect().width())
+        
+        startX = QPaintEvent.rect().x()
+        stopX = startX + QPaintEvent.rect().width()
+        
         t0 = time.time()
         qp = QPainter()
         
-        size = self.size()
         super().paintEvent(QPaintEvent)
         
         qp.begin(self)
         
         t1 = time.time()
-        self.drawGrid(qp)
+        self.drawGrid(qp, startX, stopX)
         t2 = time.time()
-        self.drawChart(qp)
+        self.drawChart(qp, startX, stopX)
         t3 = time.time()
         
         qp.end()
