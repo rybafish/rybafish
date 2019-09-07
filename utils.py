@@ -88,11 +88,11 @@ def loadConfig():
         log('no config file? <-')
         config = {}
     
-def cfg(param):
+def cfg(param, default = None):
     if param in config:
         return config[param]
     else:
-        return None
+        return default
         
 def log(s, nots = False, nonl = False):
     '''

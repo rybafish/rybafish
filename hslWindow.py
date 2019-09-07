@@ -63,11 +63,8 @@ class hslWindow(QMainWindow):
 
     def menuFont(self):
         id = QInputDialog
-        
-        if cfg('fontScale') is not None:
-            sf = cfg('fontScale')
-        else: 
-            sf = 1
+
+        sf = cfg('fontScale', 1)
         
         sf, ok = id.getDouble(self, 'Input the scaling factor', 'Scaling Factor', sf, 0, 5, 2)
         
