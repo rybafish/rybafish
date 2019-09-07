@@ -95,6 +95,9 @@ class myWidget(QWidget):
     delta = 0 # offset for uneven time_from values
     
     zoomLock = False
+    
+    #screenStartX = None # nasty work around for visible area screenshot
+    #screenStopX = None # nasty work around for visible area screenshot
 
     #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
     #t_to = datetime.datetime.now()
@@ -373,8 +376,11 @@ class myWidget(QWidget):
         copyTS = cmenu.addAction("Copy current timestamp")
 
         if cfg('experimental'):
-            savePNG = cmenu.addAction("Save a screenshot")
-            copyPNG = cmenu.addAction("Copy to clipboard")
+            cmenu.addSeparator()
+            copyVAPNG = cmenu.addAction("Copy screen")
+            saveVAPNG = cmenu.addAction("Save screen")
+            copyPNG = cmenu.addAction("Copy full area")
+            savePNG = cmenu.addAction("Save full area")
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -397,12 +403,44 @@ class myWidget(QWidget):
             pixmap.save(fn)
             
             self.statusMessage('Screenshot saved as %s' % (fn))
+
+        if action == saveVAPNG:
+            if not os.path.isdir('screens'):
+                os.mkdir('screens')
+                
+            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
+            fn = os.path.join('screens', fn)
+            
+            log('Saving PNG image (%s)' % fn)
+            
+            pixmap = QPixmap(self.parentWidget().size())
+            self.parentWidget().render(pixmap)
+            pixmap.save(fn)
+            
+            self.statusMessage('Screenshot saved as %s' % (fn))
             
         if action == copyPNG:
             log('Creating a screen')
             
             pixmap = QPixmap(self.size())
             self.render(pixmap)
+            
+            QApplication.clipboard().setPixmap(pixmap)
+            
+            self.statusMessage('Clipboard updated')
+
+        if action == copyVAPNG:
+            #self.screenStartX = -self.pos().x()
+            #self.screenStopX = -self.pos().x() + self.parentWidget().parentWidget().width()
+            log('Creating a screen of visible area')
+            
+            #print('ss from to: ', self.screenStartX, self.screenStopX)
+            #print('ss size: ', self.parentWidget().parentWidget().width())
+            
+            #pixmap = QPixmap(size)
+            #pixmap = QPixmap(self.parentWidget().parentWidget().width(), self.size().height())
+            pixmap = QPixmap(self.parentWidget().size())
+            self.parentWidget().render(pixmap)
             
             QApplication.clipboard().setPixmap(pixmap)
             
@@ -732,6 +770,7 @@ class myWidget(QWidget):
                     # print 80 is a work around to cover spaces
                     # print it should be 10 seconds scaled to current screen scale * 2
                     if x < startX - 80 or x > stopX: 
+                        #print('skip:', x, startX - 80, stopX)
                         
                         if False and x < x_left_border and i+1000 < array_size: #turbo rewind!!!
                             x = (time_array[i+1000] - from_ts) # number of seconds
@@ -824,6 +863,8 @@ class myWidget(QWidget):
             based on scale and timespan        
         '''
         
+        #print('grid %i:%i' % (startX, stopX))
+        
         t0 = time.time()
         
         wsize = self.size()
@@ -890,9 +931,16 @@ class myWidget(QWidget):
             if x < startX or x > stopX:
                 x += self.step_size
                 
+                #print('grid skip: %i' % (x))
                 continue
                 
+            #print('grid draw: %i' % (x))
+                
+            #if self.screenStartX is None:
             qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
+            #else:
+            #    print('---')
+            #    qp.drawLine(x - self.screenStartX, top_margin + 1, x - self.screenStartX, wsize.height() - bottom_margin - 2)
             
             #log('%i <-' % ((x - side_margin)/step_size))
             
@@ -994,12 +1042,23 @@ class myWidget(QWidget):
         super().paintEvent(QPaintEvent)
         
         qp.begin(self)
+
+        #print('paint:', startX, stopX)        
+        # if self.screenStartX is not None:
+            # startX = self.screenStartX
+            # stopX = self.screenStopX
+            # print('ss:', startX, stopX)
+            
         
         t1 = time.time()
         self.drawGrid(qp, startX, stopX)
         t2 = time.time()
         self.drawChart(qp, startX, stopX)
         t3 = time.time()
+
+        # print это ну не каждый раз то надо делать
+        # self.screenStartX = None
+        # self.screenStopX = None
         
         qp.end()
 

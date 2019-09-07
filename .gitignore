@@ -116,4 +116,4 @@ config.yaml
 sql/
 
 #screenshots dir
-screen/
+screens/
