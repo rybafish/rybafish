@@ -21,6 +21,7 @@ import sqlConsole
 
 from utils import resourcePath
 
+from utils import loadConfig
 from utils import log
 from utils import cfg
 from utils import dbException
@@ -61,6 +62,10 @@ class hslWindow(QMainWindow):
     def menuQuit(self):
         sys.exit(0)
 
+    def menuReloadConfig(self):
+        loadConfig()
+        self.statusMessage('Configuration file reloaded.', False)
+    
     def menuFont(self):
         id = QInputDialog
 
@@ -273,8 +278,14 @@ class hslWindow(QMainWindow):
             fontAct = QAction('&Adjust Fonts', self)
             fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
             fontAct.triggered.connect(self.menuFont)
+
+            reloadConfigAct = QAction('Reload &Config', self)
+            reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions')
+            reloadConfigAct.triggered.connect(self.menuReloadConfig)
             
             actionsMenu.addAction(fontAct)
+            
+            actionsMenu.addAction(reloadConfigAct)
 
         # finalization
         self.setGeometry(200, 200, 1400, 800)

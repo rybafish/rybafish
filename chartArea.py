@@ -709,7 +709,7 @@ class myWidget(QWidget):
                 points = [0]*array_size
             
                 t0 = time.time()
-
+                
                 kpiPen = self.kpiPen[type][kpi]
                 
                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
@@ -734,6 +734,9 @@ class myWidget(QWidget):
                 
                 x_scale = self.step_size / self.t_scale
 
+                #10 should (?) be replaced by real metrics step
+                drawStep = 10*x_scale + 2
+                
                 # log(h)
                 # log(kpi)
                 # log(self.nscales[h][kpi]['y_max'])
@@ -746,6 +749,15 @@ class myWidget(QWidget):
                 #for i in range(0, array_size):
                 
                 i = -1
+                
+                #to trace drawing area uncomment:
+                '''
+                qp.drawLine(startX, 10, startX, 50)
+                qp.drawLine(startX, 50, stopX-1, 50)
+                qp.drawLine(stopX, 50, stopX-1, 90)
+                qp.drawLine(startX, 10, stopX-1, 90)
+                '''
+                
                 while i < array_size-1:
                     i+=1
                     #log(self.data['time'][i])
@@ -769,7 +781,10 @@ class myWidget(QWidget):
                     
                     # print 80 is a work around to cover spaces
                     # print it should be 10 seconds scaled to current screen scale * 2
-                    if x < startX - 80 or x > stopX: 
+                    
+                    #if x < startX - (10*x_scale + 2) or x > stopX: 
+                    if x < startX - drawStep or x > stopX + drawStep:
+                        #skip this
                         #print('skip:', x, startX - 80, stopX)
                         
                         if False and x < x_left_border and i+1000 < array_size: #turbo rewind!!!
