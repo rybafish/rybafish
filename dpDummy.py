@@ -91,7 +91,7 @@ class dataProvider:
         
         #time.sleep(1.7)
         
-        ctime = datetime.datetime.now() - datetime.timedelta(seconds= 18 * 3600)
+        ctime = datetime.datetime.now() - datetime.timedelta(seconds= 180 * 3600)
         ctime -= datetime.timedelta(seconds= ctime.timestamp() % 3600)
 
         if False:

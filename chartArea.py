@@ -430,15 +430,8 @@ class myWidget(QWidget):
             self.statusMessage('Clipboard updated')
 
         if action == copyVAPNG:
-            #self.screenStartX = -self.pos().x()
-            #self.screenStopX = -self.pos().x() + self.parentWidget().parentWidget().width()
             log('Creating a screen of visible area')
             
-            #print('ss from to: ', self.screenStartX, self.screenStopX)
-            #print('ss size: ', self.parentWidget().parentWidget().width())
-            
-            #pixmap = QPixmap(size)
-            #pixmap = QPixmap(self.parentWidget().parentWidget().width(), self.size().height())
             pixmap = QPixmap(self.parentWidget().size())
             self.parentWidget().render(pixmap)
             
@@ -742,8 +735,9 @@ class myWidget(QWidget):
                 # log(self.nscales[h][kpi]['y_max'])
                 # log('y_scale = %s' % str(y_scale))
                 
-                x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
-                x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
+                # seems no longer required for drawing duet to starX/stopX
+                #x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
+                #x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
 
                 iii = 0
                 #for i in range(0, array_size):
@@ -770,40 +764,20 @@ class myWidget(QWidget):
                     x = (time_array[i] - from_ts) # number of seconds
                     x = self.side_margin +  x * x_scale
 
-                    #log('x = %i' % (x))
-
-                    #if x < self.side_margin:
-                    #if x < x_left_border - self.side_margin or x > wsize.width() - self.side_margin: 
-                    #if x < x_left_border + self.side_margin or x > x_right_border: 
-
-                    
-                    #if False or (x < x_left_border - 30 or x > x_right_border): 
-                    
-                    # print 80 is a work around to cover spaces
-                    # print it should be 10 seconds scaled to current screen scale * 2
-                    
-                    #if x < startX - (10*x_scale + 2) or x > stopX: 
                     if x < startX - drawStep or x > stopX + drawStep:
-                        #skip this
-                        #print('skip:', x, startX - 80, stopX)
                         
-                        if False and x < x_left_border and i+1000 < array_size: #turbo rewind!!!
-                            x = (time_array[i+1000] - from_ts) # number of seconds
-                            x = self.side_margin +  x * x_scale
+                        if i + 1000 < array_size:
+                            x1000 = (time_array[i+1000] - from_ts) # number of seconds
+                            x1000 = self.side_margin +  x1000 * x_scale
                             
-                            if x < x_left_border:
-                                i+=1000
+                            if x1000 < startX - drawStep:
+                                #fast forward
+                                i += 1000
                                 
-                                iii += 1
-                                continue
-                            
-                        if x > x_right_border:
+                        if x > stopX + drawStep:
                             break
                     
-                        #if  x + self.pos().x() < 0
-                        # skip the stuff before the widget starts...
-                        # not before the scroll visible area 
-                        # as we have no any idea what is the visible area...
+                        #so skip this point as it's out of the drawing area
                         continue
                     else:
                         if start_point == 0:
@@ -862,6 +836,7 @@ class myWidget(QWidget):
                 t3 = time.time()
                 
                 #log('%s: skip/calc/draw: %s/%s/%s, (skip: %i)' % (kpi, str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), points_to_skip))
+                print('%s: skip/calc/draw: %s/%s/%s, (skip: %i)' % (kpi, str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), points_to_skip))
                 #log('iii = %i' % (iii))
         
         # this supposed to restore the border for negative values (downtime)...
