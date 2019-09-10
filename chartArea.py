@@ -836,7 +836,6 @@ class myWidget(QWidget):
                 t3 = time.time()
                 
                 #log('%s: skip/calc/draw: %s/%s/%s, (skip: %i)' % (kpi, str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), points_to_skip))
-                print('%s: skip/calc/draw: %s/%s/%s, (skip: %i)' % (kpi, str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), points_to_skip))
                 #log('iii = %i' % (iii))
         
         # this supposed to restore the border for negative values (downtime)...
