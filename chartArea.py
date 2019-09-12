@@ -917,7 +917,7 @@ class myWidget(QWidget):
         while x < ((seconds / t_scale + 1) * self.step_size):
         
             #if x < x_left_border or x > x_right_border:
-            if x < startX or x > stopX:
+            if x < startX - self.font_width3 or x > stopX + self.font_width3: 
                 x += self.step_size
                 
                 #print('grid skip: %i' % (x))
