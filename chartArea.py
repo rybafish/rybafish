@@ -1435,6 +1435,7 @@ class chartArea(QFrame):
             self.timer = None
 
         if txtValue == 'none':
+            self.statusMessage('Autorefresh disabled.')
             log('Autorefresh disabled.')
             return
         
@@ -1460,6 +1461,7 @@ class chartArea(QFrame):
         
         if self.timer is None:
             log('Fire up autorefresh: %i' % (self.refreshTime))
+            self.statusMessage('Autorefresh triggered: %i seconds' % (self.refreshTime))
             self.timer = QTimer(self.window())
             self.timer.timeout.connect(self.refreshTimer)
             self.timer.start(1000 * self.refreshTime)
