@@ -727,8 +727,9 @@ class myWidget(QWidget):
                 
                 x_scale = self.step_size / self.t_scale
 
-                #10 should (?) be replaced by real metrics step
-                drawStep = 10*x_scale + 2
+
+                timeStep = time_array[1]-time_array[0]
+                drawStep = timeStep*x_scale + 2
                 
                 # log(h)
                 # log(kpi)

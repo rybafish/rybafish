@@ -97,6 +97,11 @@ def execute_query(connection, sql_string, params = []):
 
     #log('columns: ' + str(cursor.description))
     
+    #ps.close()
+    cursor.close()
+    
+    cursor = None
+    
     return rows
     
 def get_data(connection, kpis, times, data):
