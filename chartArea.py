@@ -341,6 +341,7 @@ class myWidget(QWidget):
                         dUnit = kpiStylesNN[type][kpi]['dUnit'] # converted
                     
                     #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value_n / 10), utils.numberToStr(max_value_n)))
+                    scaleKpi['yScale'] = yScale
                     scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
                     
                     if 'perSample' in kpiStylesNN[type][kpi]:
@@ -1201,7 +1202,7 @@ class chartArea(QFrame):
         
     def setScale(self, host, kpi, newScale):
         '''
-            it's memoty only so far
+            scale changed to manual value
         '''
         log('setScale signal: %s -> %i' % (kpi, newScale))
         

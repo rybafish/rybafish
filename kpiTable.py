@@ -87,14 +87,35 @@ class kpiTable(QTableWidget):
                 
             if action == decreaseScale:
                 self.adjustScale.emit('decrease', kpi)
+           
+    def edit(self, index, trigger, event):
+    
+        if index.column() != 3:
+            # Not Y-Scale
+            return False
             
+        result = super(kpiTable, self).edit(index, trigger, event)
+        
+        if result and index.column() == 3:
+            self.silentMode = True
+            
+            kpi = self.kpiNames[index.row()]
+            scale = self.kpiScales[self.host][kpi]
+            
+            scaleValue = scale['yScale']
+            self.item(index.row(), 3).setText(str(scaleValue))
+            
+            self.silentMode = False
+            
+        return result
+        
     def itemChange(self, item):
         '''
             manual scale enter
             
             need to check if correct column changed, btw
         '''
-    
+
         if self.silentMode:
             return
         
