@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QWidget, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView)
     
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QFont, QPen, QPainter
+from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -220,7 +220,13 @@ class kpiTable(QTableWidget):
                 cb.stateChanged.connect(self.checkBoxChanged)
                 self.setCellWidget(i, 0, cb)
                 self.setCellWidget(i, 2, kpiCell(style['pen'])) # kpi pen style
-                self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
+                
+                if 'disabled' in style.keys():
+                    item = QTableWidgetItem(style['label'])
+                    item.setForeground(QBrush(QColor(255, 0, 0)))
+                    self.setItem(i, 1, item) # text name
+                else:
+                    self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
                 
                 self.setItem(i, 9, QTableWidgetItem(style['desc'])) # descr
                 

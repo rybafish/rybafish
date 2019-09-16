@@ -1,4 +1,7 @@
 import sys, os
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtGui import QIcon
+
 from datetime import datetime
 
 import locale
@@ -25,7 +28,29 @@ def numberToStr(num, d = 0):
     
     return s
     
+
+def yesNoDialog(title, message):
+    msgBox = QMessageBox()
+    msgBox.setWindowTitle(title)
+    msgBox.setText(message)
+    msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
+    msgBox.setDefaultButton(QMessageBox.Yes)
+    iconPath = resourcePath('ico\\favicon.ico')
+    msgBox.setWindowIcon(QIcon(iconPath))
+    msgBox.setIcon(QMessageBox.Warning)
     
+    print('before exec_')
+    reply = msgBox.exec_()
+    print('after exec_')
+    
+    #for some reason sometimes code CONTINUES to run after this
+
+    if reply == QMessageBox.Yes:
+        return True
+        
+    return False
+        
+
 def GB(bytes, scale = 'GB'):
     '''
         returns same number but in GB (/=1023^3)

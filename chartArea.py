@@ -95,6 +95,7 @@ class myWidget(QWidget):
     delta = 0 # offset for uneven time_from values
     
     zoomLock = False
+    paintLock = False
     
     #screenStartX = None # nasty work around for visible area screenshot
     #screenStopX = None # nasty work around for visible area screenshot
@@ -692,6 +693,13 @@ class myWidget(QWidget):
                 if kpi not in self.ndata[h]:
                     # alt-added kpis here, already in kpis but no data requested
                     return
+
+                if kpi not in self.nscales[h]:
+                    # Sometimes (!) like in request_kpis -> exception -> yesNoDialog it is not modal
+                    #               and unmotivated (?) paintEvent called with half-filled data structures
+                    #               nkpis already filled but scales not calculated, sooo....
+                    
+                    return
             
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
 
@@ -854,7 +862,7 @@ class myWidget(QWidget):
             based on scale and timespan        
         '''
         
-        #print('grid %i:%i' % (startX, stopX))
+        #prnt('grid %i:%i' % (startX, stopX))
         
         t0 = time.time()
         
@@ -922,10 +930,7 @@ class myWidget(QWidget):
             if x < startX - self.font_width3 or x > stopX + self.font_width3: 
                 x += self.step_size
                 
-                #print('grid skip: %i' % (x))
                 continue
-                
-            #print('grid draw: %i' % (x))
                 
             #if self.screenStartX is None:
             qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
@@ -1018,14 +1023,14 @@ class myWidget(QWidget):
         
     def paintEvent(self, QPaintEvent):
 
-        #log(' --- paint event ---')
-        
-        # print(self.pos())
-        # print(self.size())
-        # print(QPaintEvent.rect().x(), QPaintEvent.rect().width())
-        
+        if self.paintLock:
+            # paint locked  for some reason
+            return
+            
         startX = QPaintEvent.rect().x()
         stopX = startX + QPaintEvent.rect().width()
+
+        # prnt(' --- paint event ---  from: %i, to: %i, %s' % (startX, stopX, str(self.paintLock)))
         
         t0 = time.time()
         qp = QPainter()
@@ -1034,28 +1039,15 @@ class myWidget(QWidget):
         
         qp.begin(self)
 
-        #print('paint:', startX, stopX)        
-        # if self.screenStartX is not None:
-            # startX = self.screenStartX
-            # stopX = self.screenStopX
-            # print('ss:', startX, stopX)
-            
-        
         t1 = time.time()
         self.drawGrid(qp, startX, stopX)
         t2 = time.time()
         self.drawChart(qp, startX, stopX)
         t3 = time.time()
-
-        # print это ну не каждый раз то надо делать
-        # self.screenStartX = None
-        # self.screenStopX = None
         
         qp.end()
 
         t4 = time.time()
-        
-        #QToolTip.showText(self.mapToGlobal(QPoint(10, 10)), '123\n456', self)
         
         #log('paintEvent: prep/grid/chart/end: %s/%s/%s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), str(round(t4-t3, 3))))
 
@@ -1281,6 +1273,10 @@ class chartArea(QFrame):
                 
             '''
             allOk = None
+            
+            # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
+            # self.widget.paintLock = True
+            
             self.statusMessage('Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi), True)
 
             while allOk is None:
@@ -1288,6 +1284,7 @@ class chartArea(QFrame):
                     t0 = time.time()
                     self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host])  
                     self.widget.nkpis[host] = kpis
+                    
                     allOk = True
                     
                     t1 = time.time()
@@ -1297,6 +1294,8 @@ class chartArea(QFrame):
                     
                     if reconnected == False:
                         allOk = False
+                        
+            # self.widget.paintLock = False
                         
             return allOk
         
@@ -1365,6 +1364,7 @@ class chartArea(QFrame):
                                 if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
                                     # self.dp.getData(self.widget.hosts[hst], fromto, self.widget.nkpis[hst], self.widget.ndata[hst])
                                     self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst])
+                                    
                                     self.widget.nkpis[hst] = kpis[hst]
                                     
                                     t2 = time.time()
@@ -1382,6 +1382,7 @@ class chartArea(QFrame):
                 else:
                     for hst in range(0, len(self.widget.hosts)):
                         if hst == host:
+                            # normal click after alt-click (somewhere before)
                             allOk = request_kpis(self, host_d, host, kpi, kpis)
                         else: 
                             #check for kpis existing in host list but not existing in data:
