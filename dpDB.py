@@ -1,3 +1,5 @@
+from PyQt5.QtCore import QObject
+
 from array import array
 
 import pyhdb
@@ -11,15 +13,16 @@ import dpDBCustom, kpiDescriptions
 from kpiDescriptions import customKpi
 from kpiDescriptions import kpiStylesNN
 
+from PyQt5.QtCore import pyqtSignal
+
 import sql
 
 import db
 
-from utils import cfg
-from utils import log
+from utils import cfg, log, yesNoDialog
 from utils import dbException
 
-class dataProvider:
+class dataProvider():
     
     connection = None
     server = None
@@ -30,6 +33,9 @@ class dataProvider:
     # lock = False
     
     def __init__(self, server):
+    
+        super().__init__()
+    
         log('connecting to %s:%i...' % (server['host'], server['port']))
         
         try: 
@@ -209,7 +215,11 @@ class dataProvider:
                 kpisList['-'].append(kpi)
                         
         return kpisList
-    def getData(self, host, fromto, kpis, data):
+    def getData(self, host, fromto, kpiIn, data):
+        '''
+            returns boolean
+            False = some kpis were disabled due to sql errors
+        '''
                 
         sql_pref = 'select time,'
         tfilter = ''
@@ -217,12 +227,13 @@ class dataProvider:
         orderby = 'order by time asc'
         
         log('getData host: %s' % (str(host)))
-        log('getData kpis: %s' % (str(kpis)))
+        log('getData kpis: %s' % (str(kpiIn)))
         
         if host['port'] == '':
             type = 'host'
         else:
             type = 'service'
+            
 
         '''
         if self.lock:
@@ -237,7 +248,7 @@ class dataProvider:
         
         params = []
     
-        kpiList = self.splitKpis(type, kpis)
+        kpiList = self.splitKpis(type, kpiIn)
 
         if host['port'] == '':
             t = 'h'
@@ -274,7 +285,9 @@ class dataProvider:
             # ????
             tfilter = " and time > add_seconds(now(), -3600*12)"
         
-        #loop through kpi sources
+        # allOk = True
+        
+        # loop through kpi sources
         for kpiSrc in kpiList.keys():
             kpisSql = []
             kpis = kpiList[kpiSrc]
@@ -306,22 +319,57 @@ class dataProvider:
             try:
                 self.getHostKpis(type, kpis, data, sql, params, kpiSrc)
             except Exception as e:
-                self.connection = None
-                log('[!] getHostKpis (%s) failed: %s' % (str(kpis), str(e)))
-                raise e
+            
+                reply = False
+                
+                if customKpi(kpis[0]):
+                    if True or str(e)[:22] == '[db]: sql syntax error':
+                        print('yesNoDialog ----->')
+                        reply = yesNoDialog('Custom SQL problem', 'SQL for custom KPIs %s terminated with error:\n\n%s\n\n Disable this KPI source (%s)?' % (', '.join(kpis), str(e), kpiSrc))
+                        print('sql exception <----- after the message')
+                    else:
+                        log('Custom KPI exception: ' + str(e))
+                        # ?
+                        pass
+
+                if reply == True:
+                    # need to mark failed kpis as disabled
+                    
+                    badSrc = kpiDescriptions.kpiStylesNN[type][kpis[0]]['sql']
+                    
+                    for kpi in kpiDescriptions.kpiStylesNN[type]:
+                        if kpiDescriptions.kpiStylesNN[type][kpi]['sql'] == badSrc:
+                            kpiDescriptions.kpiStylesNN[type][kpi]['disabled'] = True
+                            # allOk = False
+                            
+                else:
+                    self.connection = None
+                    
+                    log('[!] getHostKpis (%s) failed: %s' % (str(kpis), str(e)))
+                    raise e
                 
         self.renewKeepAlive()
         
         # self.lock = False
+
+        #print('before clnp', kpiIn)
+        #remove disabled stuff
         
-        return
+        for kpi in kpiIn:
+            if 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
+                # this will affect the actual list of enabled kpis by the way...
+                kpiIn.remove(kpi)
+                
+        #print('after clnp', kpiIn)
+        
+        return 
 
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
         '''
-        log('getHostKpis kpis: %s' % str(kpis))
+        log('getHostKpis kpis (%s): %s' % (kpiSrc, str(kpis)))
         log('execute sql:\n' + sql)
         log('params:' + ','.join(map(str,params)))
 

@@ -14,6 +14,7 @@ from yaml import safe_load, dump, YAMLError #pip install pyyaml
 import kpiTable, hostsTable
 import chartArea
 import configDialog, aboutDialog
+import dpDBCustom
 
 import dpDummy
 import dpDB
@@ -26,6 +27,8 @@ from utils import log
 from utils import cfg
 from utils import dbException
 
+import kpiDescriptions
+
 import sys
 
 
@@ -35,6 +38,8 @@ class hslWindow(QMainWindow):
 
     statusbar = None
     connectionConf = None
+    
+    kpisTable = None
 
     def __init__(self):
         super().__init__()
@@ -62,6 +67,47 @@ class hslWindow(QMainWindow):
     def menuQuit(self):
         sys.exit(0)
 
+    def menuReloadCustomKPIs(self):
+    
+        kpiStylesNN = kpiDescriptions.kpiStylesNN
+        
+        print('0 host kpis:', self.chartArea.hostKPIs)
+        
+        for type in ('host', 'service'):
+            for kpiName in list(kpiStylesNN[type]):
+
+                kpi = kpiStylesNN[type][kpiName]
+                
+                if kpi['sql'] is not None:
+                    del(kpiStylesNN[type][kpiName])
+                    
+                    if type == 'host':
+                        self.chartArea.hostKPIs.remove(kpiName)
+                    else:
+                        self.chartArea.srvcKPIs.remove(kpiName)
+        
+        print('1 host kpis:', self.chartArea.hostKPIs)
+
+        for i in range(len(self.chartArea.hostKPIs)):
+            if self.chartArea.hostKPIs[i][:1] == '.' and (i == len(self.chartArea.hostKPIs) - 1 or self.chartArea.hostKPIs[i+1][:1] == '.'):
+                print('remove --> ', self.chartArea.hostKPIs[i])
+                del(self.chartArea.hostKPIs[i])
+                
+
+        dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+        
+        print('2 host kpis:', self.chartArea.hostKPIs)
+
+        #really unsure if this one can be called twice...
+        kpiDescriptions.clarifyGroups()
+
+        print('3 host kpis:', self.chartArea.hostKPIs)
+        
+        #trigger refill        
+        self.kpisTable.refill(self.hostTable.currentRow())
+        
+        self.statusMessage('Custom KPIs reload finish', False)
+    
     def menuReloadConfig(self):
         loadConfig()
         self.statusMessage('Configuration file reloaded.', False)
@@ -104,7 +150,7 @@ class hslWindow(QMainWindow):
                 self.repaint()
 
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
-
+                
                 self.chartArea.initDP()
                 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
@@ -178,7 +224,8 @@ class hslWindow(QMainWindow):
         self.hostTable = hostsTable.hostsTable()
  
         # bottom right frame (KPIs)
-        kpisTable = kpiTable.kpiTable()
+        self.kpisTable = kpiTable.kpiTable()
+        kpisTable = self.kpisTable
 
 
         # top (main chart area)
@@ -286,6 +333,12 @@ class hslWindow(QMainWindow):
             actionsMenu.addAction(fontAct)
             
             actionsMenu.addAction(reloadConfigAct)
+
+            reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
+            reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
+            reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
+
+            actionsMenu.addAction(reloadCustomKPIsAct)
 
         # finalization
         self.setGeometry(200, 200, 1400, 800)
