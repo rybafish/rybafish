@@ -288,6 +288,7 @@ class myWidget(QWidget):
                     scaleKpi['max_label'] = scaleKpi['max']
                     scaleKpi['last_label'] = scaleKpi['last_value']
                     scaleKpi['label'] = '10 / 100'
+                    scaleKpi['yScale'] = 100
                     scaleKpi['unit'] = '%'
                         
                 else:
