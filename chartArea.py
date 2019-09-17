@@ -181,6 +181,7 @@ class myWidget(QWidget):
         
                 
     def initPens(self):
+    
         for t in kpiStylesNN:
             self.kpiPen[t] = {}
             for kpi in kpiStylesNN[t]:

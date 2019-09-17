@@ -71,8 +71,6 @@ class hslWindow(QMainWindow):
     
         kpiStylesNN = kpiDescriptions.kpiStylesNN
         
-        print('0 host kpis:', self.chartArea.hostKPIs)
-        
         for type in ('host', 'service'):
             for kpiName in list(kpiStylesNN[type]):
 
@@ -86,8 +84,6 @@ class hslWindow(QMainWindow):
                     else:
                         self.chartArea.srvcKPIs.remove(kpiName)
         
-        print('1 host kpis:', self.chartArea.hostKPIs)
-
         for i in range(len(self.chartArea.hostKPIs)):
             if self.chartArea.hostKPIs[i][:1] == '.' and (i == len(self.chartArea.hostKPIs) - 1 or self.chartArea.hostKPIs[i+1][:1] == '.'):
                 print('remove --> ', self.chartArea.hostKPIs[i])
@@ -95,13 +91,10 @@ class hslWindow(QMainWindow):
                 
 
         dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+        self.chartArea.widget.initPens()
         
-        print('2 host kpis:', self.chartArea.hostKPIs)
-
         #really unsure if this one can be called twice...
         kpiDescriptions.clarifyGroups()
-
-        print('3 host kpis:', self.chartArea.hostKPIs)
         
         #trigger refill        
         self.kpisTable.refill(self.hostTable.currentRow())
