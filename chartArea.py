@@ -739,7 +739,12 @@ class myWidget(QWidget):
                 x_scale = self.step_size / self.t_scale
 
 
-                timeStep = time_array[1]-time_array[0]
+                if array_size >= 2:
+                    timeStep = time_array[1]-time_array[0]
+                else:
+                    #actually no stuff will be drawn as just one data value available
+                    timeStep = 3600
+                    
                 drawStep = timeStep*x_scale + 2
                 
                 # log(h)
