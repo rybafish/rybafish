@@ -84,11 +84,17 @@ class hslWindow(QMainWindow):
                     else:
                         self.chartArea.srvcKPIs.remove(kpiName)
         
+        # del host custom groups
         for i in range(len(self.chartArea.hostKPIs)):
             if self.chartArea.hostKPIs[i][:1] == '.' and (i == len(self.chartArea.hostKPIs) - 1 or self.chartArea.hostKPIs[i+1][:1] == '.'):
                 print('remove --> ', self.chartArea.hostKPIs[i])
                 del(self.chartArea.hostKPIs[i])
-                
+
+        # del service custom groups
+        for i in range(len(self.chartArea.srvcKPIs)):
+            if self.chartArea.srvcKPIs[i][:1] == '.' and (i == len(self.chartArea.srvcKPIs) - 1 or self.chartArea.srvcKPIs[i+1][:1] == '.'):
+                print('remove --> ', self.chartArea.srvcKPIs[i])
+                del(self.chartArea.srvcKPIs[i])
 
         dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
         self.chartArea.widget.initPens()
