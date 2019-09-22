@@ -92,6 +92,7 @@ class hslWindow(QMainWindow):
 
         dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
         self.chartArea.widget.initPens()
+        self.chartArea.widget.update()
         
         #really unsure if this one can be called twice...
         kpiDescriptions.clarifyGroups()

@@ -9,8 +9,6 @@ from decimal import Decimal
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
-
-
 logmode = 'file'
 config = {}
 
@@ -39,9 +37,7 @@ def yesNoDialog(title, message):
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)
     
-    print('before exec_')
     reply = msgBox.exec_()
-    print('after exec_')
     
     #for some reason sometimes code CONTINUES to run after this
 

@@ -324,9 +324,8 @@ class dataProvider():
                 
                 if customKpi(kpis[0]):
                     if True or str(e)[:22] == '[db]: sql syntax error':
-                        print('yesNoDialog ----->')
-                        reply = yesNoDialog('Custom SQL problem', 'SQL for custom KPIs %s terminated with error:\n\n%s\n\n Disable this KPI source (%s)?' % (', '.join(kpis), str(e), kpiSrc))
-                        print('sql exception <----- after the message')
+                        log('yesNoDialog ---> disable %s?' % (kpiSrc))
+                        reply = yesNoDialog('Error: custom SQL exception', 'SQL for custom KPIs %s terminated with the following error:\n\n%s\n\n Disable this KPI source (%s)?' % (', '.join(kpis), str(e), kpiSrc))
                     else:
                         log('Custom KPI exception: ' + str(e))
                         # ?
@@ -335,11 +334,19 @@ class dataProvider():
                 if reply == True:
                     # need to mark failed kpis as disabled
                     
-                    badSrc = kpiDescriptions.kpiStylesNN[type][kpis[0]]['sql']
+                    #badSrc = kpiDescriptions.kpiStylesNN[type][kpis[0]]['sql']
+                    badSrc = kpiSrc                    
                     
                     for kpi in kpiDescriptions.kpiStylesNN[type]:
                         if kpiDescriptions.kpiStylesNN[type][kpi]['sql'] == badSrc:
                             kpiDescriptions.kpiStylesNN[type][kpi]['disabled'] = True
+                            
+                            log('disable custom kpi due to exception: %s%s' % (badSrc, kpi))
+
+                            #also destroy the if already exist (from previous runs)
+                            if kpi in data:
+                                del(data[kpi])
+
                             # allOk = False
                             
                 else:
@@ -352,15 +359,16 @@ class dataProvider():
         
         # self.lock = False
 
-        #print('before clnp', kpiIn)
+        print('before clnp', kpiIn)
         #remove disabled stuff
         
-        for kpi in kpiIn:
+        for kpi in kpiIn.copy():
+            print('kpi: ', kpi)
             if 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
-                # this will affect the actual list of enabled kpis by the way...
+                # this will affect the actual list of enabled kpis, which is good!
                 kpiIn.remove(kpi)
                 
-        #print('after clnp', kpiIn)
+        print('after clnp', kpiIn)
         
         return 
 

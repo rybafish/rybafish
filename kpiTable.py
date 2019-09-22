@@ -162,13 +162,14 @@ class kpiTable(QTableWidget):
         
         self.host = host
         
+        print('replace by hType?')
+
         if self.hosts[host]['port'] == '':
             t = 'h'
             usedKPIs = self.hostKPIs
         else:
             t = 's'
             usedKPIs = self.srvcKPIs
-            
             
         if t == 'h':
             kpiStyles = kpiStylesNN['host']
@@ -282,12 +283,16 @@ class kpiTable(QTableWidget):
             log('update scales? why oh why...')
             return
             
-        #log('kpiTable: updateScales() host: %i' % (self.host))
+        log('kpiTable: updateScales() host: %i' % (self.host))
         
         self.silentMode = True
         
         #log(self.kpiScales[self.host])
         kpis = len(self.kpiScales[self.host])
+        
+        print('check if stuff to be disabled here...')
+        
+        type = kpiDescriptions.hType(self.host, self.hosts)
         
         for i in range(0, len(self.kpiNames)):
             
@@ -295,6 +300,16 @@ class kpiTable(QTableWidget):
                 
                 kpiScale = self.kpiScales[self.host][self.kpiNames[i]]
                 
+                style = kpiStylesNN[type][self.kpiNames[i]]
+                
+                if 'disabled' in style.keys():
+                    print('style is disabled', str(style['name']))
+                    item = QTableWidgetItem(style['label'])
+                    item.setForeground(QBrush(QColor(255, 0, 0)))
+                    self.setItem(i, 1, item) # text name
+                else:
+                    self.setItem(i, 1, QTableWidgetItem(style['label']))
+
                 self.setItem(i, 3, QTableWidgetItem(str(kpiScale['label']))) # Y-Scale
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
                 self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))

@@ -106,6 +106,9 @@ venv.bak/
 # local run batch
 *.bat
 
+# npp backups
+*.bak
+
 # avoid updating the config
 config.yaml
 

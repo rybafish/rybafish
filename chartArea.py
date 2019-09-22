@@ -939,13 +939,7 @@ class myWidget(QWidget):
                 
                 continue
                 
-            #if self.screenStartX is None:
             qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
-            #else:
-            #    print('---')
-            #    qp.drawLine(x - self.screenStartX, top_margin + 1, x - self.screenStartX, wsize.height() - bottom_margin - 2)
-            
-            #log('%i <-' % ((x - side_margin)/step_size))
             
             c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
             
@@ -1659,6 +1653,7 @@ class chartArea(QFrame):
             try:
                 for host in range(0, len(self.widget.hosts)):
                     if len(self.widget.nkpis[host]) > 0:
+                        #('normal reload -->')
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
                 allOk = True
             except utils.dbException as e:
