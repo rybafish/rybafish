@@ -14,6 +14,7 @@ from yaml import safe_load, dump, YAMLError #pip install pyyaml
 import kpiTable, hostsTable
 import chartArea
 import configDialog, aboutDialog
+import dpDBCustom
 
 import dpDummy
 import dpDB
@@ -21,9 +22,12 @@ import sqlConsole
 
 from utils import resourcePath
 
+from utils import loadConfig
 from utils import log
 from utils import cfg
 from utils import dbException
+
+import kpiDescriptions
 
 import sys
 
@@ -34,6 +38,8 @@ class hslWindow(QMainWindow):
 
     statusbar = None
     connectionConf = None
+    
+    kpisTable = None
 
     def __init__(self):
         super().__init__()
@@ -61,18 +67,59 @@ class hslWindow(QMainWindow):
     def menuQuit(self):
         sys.exit(0)
 
+    def menuReloadCustomKPIs(self):
+    
+        kpiStylesNN = kpiDescriptions.kpiStylesNN
+        
+        for type in ('host', 'service'):
+            for kpiName in list(kpiStylesNN[type]):
+
+                kpi = kpiStylesNN[type][kpiName]
+                
+                if kpi['sql'] is not None:
+                    del(kpiStylesNN[type][kpiName])
+                    
+                    if type == 'host':
+                        self.chartArea.hostKPIs.remove(kpiName)
+                    else:
+                        self.chartArea.srvcKPIs.remove(kpiName)
+        
+        # del host custom groups
+        for i in range(len(self.chartArea.hostKPIs)):
+            if self.chartArea.hostKPIs[i][:1] == '.' and (i == len(self.chartArea.hostKPIs) - 1 or self.chartArea.hostKPIs[i+1][:1] == '.'):
+                del(self.chartArea.hostKPIs[i])
+
+        # del service custom groups
+        for i in range(len(self.chartArea.srvcKPIs)):
+            if self.chartArea.srvcKPIs[i][:1] == '.' and (i == len(self.chartArea.srvcKPIs) - 1 or self.chartArea.srvcKPIs[i+1][:1] == '.'):
+                del(self.chartArea.srvcKPIs[i])
+
+        dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+        self.chartArea.widget.initPens()
+        self.chartArea.widget.update()
+        
+        #really unsure if this one can be called twice...
+        kpiDescriptions.clarifyGroups()
+        
+        #trigger refill        
+        self.kpisTable.refill(self.hostTable.currentRow())
+        
+        self.statusMessage('Custom KPIs reload finish', False)
+    
+    def menuReloadConfig(self):
+        loadConfig()
+        self.statusMessage('Configuration file reloaded.', False)
+    
     def menuFont(self):
         id = QInputDialog
-        
-        if cfg('fontScale') is not None:
-            sf = cfg('fontScale')
-        else: 
-            sf = 1
+
+        sf = cfg('fontScale', 1)
         
         sf, ok = id.getDouble(self, 'Input the scaling factor', 'Scaling Factor', sf, 0, 5, 2)
         
         if ok:
             self.chartArea.widget.calculateMargins(sf)
+            self.chartArea.adjustScale(sf)
         
     def menuAbout(self):
         abt = aboutDialog.About()
@@ -101,7 +148,7 @@ class hslWindow(QMainWindow):
                 self.repaint()
 
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
-
+                
                 self.chartArea.initDP()
                 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
@@ -175,7 +222,8 @@ class hslWindow(QMainWindow):
         self.hostTable = hostsTable.hostsTable()
  
         # bottom right frame (KPIs)
-        kpisTable = kpiTable.kpiTable()
+        self.kpisTable = kpiTable.kpiTable()
+        kpisTable = self.kpisTable
 
 
         # top (main chart area)
@@ -275,8 +323,20 @@ class hslWindow(QMainWindow):
             fontAct = QAction('&Adjust Fonts', self)
             fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
             fontAct.triggered.connect(self.menuFont)
+
+            reloadConfigAct = QAction('Reload &Config', self)
+            reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions')
+            reloadConfigAct.triggered.connect(self.menuReloadConfig)
             
             actionsMenu.addAction(fontAct)
+            
+            actionsMenu.addAction(reloadConfigAct)
+
+            reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
+            reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
+            reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
+
+            actionsMenu.addAction(reloadCustomKPIsAct)
 
         # finalization
         self.setGeometry(200, 200, 1400, 800)

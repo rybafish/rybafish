@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QWidget, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView)
     
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QFont, QPen, QPainter
+from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -87,14 +87,35 @@ class kpiTable(QTableWidget):
                 
             if action == decreaseScale:
                 self.adjustScale.emit('decrease', kpi)
+           
+    def edit(self, index, trigger, event):
+    
+        if index.column() != 3:
+            # Not Y-Scale
+            return False
             
+        result = super(kpiTable, self).edit(index, trigger, event)
+        
+        if result and index.column() == 3:
+            self.silentMode = True
+            
+            kpi = self.kpiNames[index.row()]
+            scale = self.kpiScales[self.host][kpi]
+            
+            scaleValue = scale['yScale']
+            self.item(index.row(), 3).setText(str(scaleValue))
+            
+            self.silentMode = False
+            
+        return result
+        
     def itemChange(self, item):
         '''
             manual scale enter
             
             need to check if correct column changed, btw
         '''
-    
+
         if self.silentMode:
             return
         
@@ -141,13 +162,14 @@ class kpiTable(QTableWidget):
         
         self.host = host
         
+        #print('replace this by hType?')
+
         if self.hosts[host]['port'] == '':
             t = 'h'
             usedKPIs = self.hostKPIs
         else:
             t = 's'
             usedKPIs = self.srvcKPIs
-            
             
         if t == 'h':
             kpiStyles = kpiStylesNN['host']
@@ -199,7 +221,13 @@ class kpiTable(QTableWidget):
                 cb.stateChanged.connect(self.checkBoxChanged)
                 self.setCellWidget(i, 0, cb)
                 self.setCellWidget(i, 2, kpiCell(style['pen'])) # kpi pen style
-                self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
+                
+                if 'disabled' in style.keys():
+                    item = QTableWidgetItem(style['label'])
+                    item.setForeground(QBrush(QColor(255, 0, 0)))
+                    self.setItem(i, 1, item) # text name
+                else:
+                    self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
                 
                 self.setItem(i, 9, QTableWidgetItem(style['desc'])) # descr
                 
@@ -255,12 +283,16 @@ class kpiTable(QTableWidget):
             log('update scales? why oh why...')
             return
             
-        #log('kpiTable: updateScales() host: %i' % (self.host))
+        log('kpiTable: updateScales() host: %i' % (self.host))
         
         self.silentMode = True
         
         #log(self.kpiScales[self.host])
         kpis = len(self.kpiScales[self.host])
+        
+        #check if stuff to be disabled here...
+        
+        type = kpiDescriptions.hType(self.host, self.hosts)
         
         for i in range(0, len(self.kpiNames)):
             
@@ -268,6 +300,16 @@ class kpiTable(QTableWidget):
                 
                 kpiScale = self.kpiScales[self.host][self.kpiNames[i]]
                 
+                style = kpiStylesNN[type][self.kpiNames[i]]
+                
+                if 'disabled' in style.keys():
+                    log('style is disabled: %s' % str(style['name']))
+                    item = QTableWidgetItem(style['label'])
+                    item.setForeground(QBrush(QColor(255, 0, 0)))
+                    self.setItem(i, 1, item) # text name
+                else:
+                    self.setItem(i, 1, QTableWidgetItem(style['label']))
+
                 self.setItem(i, 3, QTableWidgetItem(str(kpiScale['label']))) # Y-Scale
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
                 self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))

@@ -1,12 +1,13 @@
 import sys, os
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtGui import QIcon
+
 from datetime import datetime
 
 import locale
 from decimal import Decimal
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
-
-
 
 logmode = 'file'
 config = {}
@@ -25,7 +26,27 @@ def numberToStr(num, d = 0):
     
     return s
     
+
+def yesNoDialog(title, message):
+    msgBox = QMessageBox()
+    msgBox.setWindowTitle(title)
+    msgBox.setText(message)
+    msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
+    msgBox.setDefaultButton(QMessageBox.Yes)
+    iconPath = resourcePath('ico\\favicon.ico')
+    msgBox.setWindowIcon(QIcon(iconPath))
+    msgBox.setIcon(QMessageBox.Warning)
     
+    reply = msgBox.exec_()
+    
+    #for some reason sometimes code CONTINUES to run after this
+
+    if reply == QMessageBox.Yes:
+        return True
+        
+    return False
+        
+
 def GB(bytes, scale = 'GB'):
     '''
         returns same number but in GB (/=1023^3)
@@ -88,11 +109,11 @@ def loadConfig():
         log('no config file? <-')
         config = {}
     
-def cfg(param):
+def cfg(param, default = None):
     if param in config:
         return config[param]
     else:
-        return None
+        return default
         
 def log(s, nots = False, nonl = False):
     '''

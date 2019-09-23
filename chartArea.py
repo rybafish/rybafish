@@ -1,10 +1,11 @@
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip
 
-from PyQt5.QtGui import QPainter, QColor, QPen, QPolygon, QIcon, QFont, QFontMetrics, QClipboard
+from PyQt5.QtGui import QPainter, QColor, QPen, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap 
 
 from PyQt5.QtCore import QTimer
 
+import os
 import time
 import datetime
 import math
@@ -94,6 +95,10 @@ class myWidget(QWidget):
     delta = 0 # offset for uneven time_from values
     
     zoomLock = False
+    paintLock = False
+    
+    #screenStartX = None # nasty work around for visible area screenshot
+    #screenStopX = None # nasty work around for visible area screenshot
 
     #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
     #t_to = datetime.datetime.now()
@@ -176,6 +181,7 @@ class myWidget(QWidget):
         
                 
     def initPens(self):
+    
         for t in kpiStylesNN:
             self.kpiPen[t] = {}
             for kpi in kpiStylesNN[t]:
@@ -284,6 +290,7 @@ class myWidget(QWidget):
                     scaleKpi['max_label'] = scaleKpi['max']
                     scaleKpi['last_label'] = scaleKpi['last_value']
                     scaleKpi['label'] = '10 / 100'
+                    scaleKpi['yScale'] = 100
                     scaleKpi['unit'] = '%'
                         
                 else:
@@ -337,6 +344,7 @@ class myWidget(QWidget):
                         dUnit = kpiStylesNN[type][kpi]['dUnit'] # converted
                     
                     #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value_n / 10), utils.numberToStr(max_value_n)))
+                    scaleKpi['yScale'] = yScale
                     scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
                     
                     if 'perSample' in kpiStylesNN[type][kpi]:
@@ -370,6 +378,13 @@ class myWidget(QWidget):
         stopHere = cmenu.addAction("Make this a TO time")
         
         copyTS = cmenu.addAction("Copy current timestamp")
+
+        if cfg('experimental'):
+            cmenu.addSeparator()
+            copyVAPNG = cmenu.addAction("Copy screen")
+            saveVAPNG = cmenu.addAction("Save screen")
+            copyPNG = cmenu.addAction("Copy full area")
+            savePNG = cmenu.addAction("Save full area")
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -377,6 +392,56 @@ class myWidget(QWidget):
         pos = event.pos()
 
         time = self.posToTime(pos.x())
+        
+        if action == savePNG:
+            if not os.path.isdir('screens'):
+                os.mkdir('screens')
+                
+            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
+            fn = os.path.join('screens', fn)
+            
+            log('Saving PNG image (%s)' % fn)
+            
+            pixmap = QPixmap(self.size())
+            self.render(pixmap)
+            pixmap.save(fn)
+            
+            self.statusMessage('Screenshot saved as %s' % (fn))
+
+        if action == saveVAPNG:
+            if not os.path.isdir('screens'):
+                os.mkdir('screens')
+                
+            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
+            fn = os.path.join('screens', fn)
+            
+            log('Saving PNG image (%s)' % fn)
+            
+            pixmap = QPixmap(self.parentWidget().size())
+            self.parentWidget().render(pixmap)
+            pixmap.save(fn)
+            
+            self.statusMessage('Screenshot saved as %s' % (fn))
+            
+        if action == copyPNG:
+            log('Creating a screen')
+            
+            pixmap = QPixmap(self.size())
+            self.render(pixmap)
+            
+            QApplication.clipboard().setPixmap(pixmap)
+            
+            self.statusMessage('Clipboard updated')
+
+        if action == copyVAPNG:
+            log('Creating a screen of visible area')
+            
+            pixmap = QPixmap(self.parentWidget().size())
+            self.parentWidget().render(pixmap)
+            
+            QApplication.clipboard().setPixmap(pixmap)
+            
+            self.statusMessage('Clipboard updated')
         
         if action == startHere:
             even_offset = time.timestamp() % self.t_scale
@@ -593,7 +658,7 @@ class myWidget(QWidget):
         number_of_cells = int(seconds / self.t_scale) + 1
         self.resize(number_of_cells * self.step_size + self.side_margin*2, self.size().height()) #dummy size
         
-    def drawChart(self, qp):
+    def drawChart(self, qp, startX, stopX):
     
         '''
             draws enabled charts
@@ -630,6 +695,13 @@ class myWidget(QWidget):
                 if kpi not in self.ndata[h]:
                     # alt-added kpis here, already in kpis but no data requested
                     return
+
+                if kpi not in self.nscales[h]:
+                    # Sometimes (!) like in request_kpis -> exception -> yesNoDialog it is not modal
+                    #               and unmotivated (?) paintEvent called with half-filled data structures
+                    #               nkpis already filled but scales not calculated, sooo....
+                    
+                    return
             
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
 
@@ -641,7 +713,7 @@ class myWidget(QWidget):
                 points = [0]*array_size
             
                 t0 = time.time()
-
+                
                 kpiPen = self.kpiPen[type][kpi]
                 
                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
@@ -666,18 +738,37 @@ class myWidget(QWidget):
                 
                 x_scale = self.step_size / self.t_scale
 
+
+                if array_size >= 2:
+                    timeStep = time_array[1]-time_array[0]
+                else:
+                    #actually no stuff will be drawn as just one data value available
+                    timeStep = 3600
+                    
+                drawStep = timeStep*x_scale + 2
+                
                 # log(h)
                 # log(kpi)
                 # log(self.nscales[h][kpi]['y_max'])
                 # log('y_scale = %s' % str(y_scale))
                 
-                x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
-                x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
+                # seems no longer required for drawing duet to starX/stopX
+                #x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
+                #x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
 
                 iii = 0
                 #for i in range(0, array_size):
                 
                 i = -1
+                
+                #to trace drawing area uncomment:
+                '''
+                qp.drawLine(startX, 10, startX, 50)
+                qp.drawLine(startX, 50, stopX-1, 50)
+                qp.drawLine(stopX, 50, stopX-1, 90)
+                qp.drawLine(startX, 10, stopX-1, 90)
+                '''
+                
                 while i < array_size-1:
                     i+=1
                     #log(self.data['time'][i])
@@ -690,31 +781,20 @@ class myWidget(QWidget):
                     x = (time_array[i] - from_ts) # number of seconds
                     x = self.side_margin +  x * x_scale
 
-                    #log('x = %i' % (x))
-
-                    #if x < self.side_margin:
-                    #if x < x_left_border - self.side_margin or x > wsize.width() - self.side_margin: 
-                    #if x < x_left_border + self.side_margin or x > x_right_border: 
-
-                    if x < x_left_border - 30 or x > x_right_border: 
-
-                        if False and x < x_left_border and i+1000 < array_size: #turbo rewind!!!
-                            x = (time_array[i+1000] - from_ts) # number of seconds
-                            x = self.side_margin +  x * x_scale
+                    if x < startX - drawStep or x > stopX + drawStep:
+                        
+                        if i + 1000 < array_size:
+                            x1000 = (time_array[i+1000] - from_ts) # number of seconds
+                            x1000 = self.side_margin +  x1000 * x_scale
                             
-                            if x < x_left_border:
-                                i+=1000
+                            if x1000 < startX - drawStep:
+                                #fast forward
+                                i += 1000
                                 
-                                iii += 1
-                                continue
-                            
-                        if x > x_right_border:
+                        if x > stopX + drawStep:
                             break
                     
-                        #if  x + self.pos().x() < 0
-                        # skip the stuff before the widget starts...
-                        # not before the scroll visible area 
-                        # as we have no any idea what is the visible area...
+                        #so skip this point as it's out of the drawing area
                         continue
                     else:
                         if start_point == 0:
@@ -783,11 +863,13 @@ class myWidget(QWidget):
         qp.setPen(QColor('#888'))
         qp.drawLine(self.side_margin, wsize.height() - self.bottom_margin - 1, wsize.width() - self.side_margin, wsize.height() - self.bottom_margin - 1)
         
-    def drawGrid(self, qp):
+    def drawGrid(self, qp, startX, stopX):
         '''
             draws grid and labels
             based on scale and timespan        
         '''
+        
+        #prnt('grid %i:%i' % (startX, stopX))
         
         t0 = time.time()
         
@@ -851,14 +933,13 @@ class myWidget(QWidget):
 
         while x < ((seconds / t_scale + 1) * self.step_size):
         
-            if x < x_left_border or x > x_right_border:
+            #if x < x_left_border or x > x_right_border:
+            if x < startX - self.font_width3 or x > stopX + self.font_width3: 
                 x += self.step_size
                 
                 continue
                 
             qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
-            
-            #log('%i <-' % ((x - side_margin)/step_size))
             
             c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
             
@@ -943,27 +1024,31 @@ class myWidget(QWidget):
         
     def paintEvent(self, QPaintEvent):
 
-        #log(' --- paint event ---')
-    
+        if self.paintLock:
+            # paint locked  for some reason
+            return
+            
+        startX = QPaintEvent.rect().x()
+        stopX = startX + QPaintEvent.rect().width()
+
+        # prnt(' --- paint event ---  from: %i, to: %i, %s' % (startX, stopX, str(self.paintLock)))
+        
         t0 = time.time()
         qp = QPainter()
         
-        size = self.size()
         super().paintEvent(QPaintEvent)
         
         qp.begin(self)
-        
+
         t1 = time.time()
-        self.drawGrid(qp)
+        self.drawGrid(qp, startX, stopX)
         t2 = time.time()
-        self.drawChart(qp)
+        self.drawChart(qp, startX, stopX)
         t3 = time.time()
         
         qp.end()
 
         t4 = time.time()
-        
-        #QToolTip.showText(self.mapToGlobal(QPoint(10, 10)), '123\n456', self)
         
         #log('paintEvent: prep/grid/chart/end: %s/%s/%s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), str(round(t4-t3, 3))))
 
@@ -1110,7 +1195,7 @@ class chartArea(QFrame):
         
     def setScale(self, host, kpi, newScale):
         '''
-            it's memoty only so far
+            scale changed to manual value
         '''
         log('setScale signal: %s -> %i' % (kpi, newScale))
         
@@ -1189,6 +1274,10 @@ class chartArea(QFrame):
                 
             '''
             allOk = None
+            
+            # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
+            # self.widget.paintLock = True
+            
             self.statusMessage('Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi), True)
 
             while allOk is None:
@@ -1196,6 +1285,7 @@ class chartArea(QFrame):
                     t0 = time.time()
                     self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host])  
                     self.widget.nkpis[host] = kpis
+                    
                     allOk = True
                     
                     t1 = time.time()
@@ -1205,6 +1295,8 @@ class chartArea(QFrame):
                     
                     if reconnected == False:
                         allOk = False
+                        
+            # self.widget.paintLock = False
                         
             return allOk
         
@@ -1273,6 +1365,7 @@ class chartArea(QFrame):
                                 if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
                                     # self.dp.getData(self.widget.hosts[hst], fromto, self.widget.nkpis[hst], self.widget.ndata[hst])
                                     self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst])
+                                    
                                     self.widget.nkpis[hst] = kpis[hst]
                                     
                                     t2 = time.time()
@@ -1290,6 +1383,7 @@ class chartArea(QFrame):
                 else:
                     for hst in range(0, len(self.widget.hosts)):
                         if hst == host:
+                            # normal click after alt-click (somewhere before)
                             allOk = request_kpis(self, host_d, host, kpi, kpis)
                         else: 
                             #check for kpis existing in host list but not existing in data:
@@ -1345,6 +1439,7 @@ class chartArea(QFrame):
             self.timer = None
 
         if txtValue == 'none':
+            self.statusMessage('Autorefresh disabled.')
             log('Autorefresh disabled.')
             return
         
@@ -1370,6 +1465,7 @@ class chartArea(QFrame):
         
         if self.timer is None:
             log('Fire up autorefresh: %i' % (self.refreshTime))
+            self.statusMessage('Autorefresh triggered: %i seconds' % (self.refreshTime))
             self.timer = QTimer(self.window())
             self.timer.timeout.connect(self.refreshTimer)
             self.timer.start(1000 * self.refreshTime)
@@ -1557,6 +1653,7 @@ class chartArea(QFrame):
             try:
                 for host in range(0, len(self.widget.hosts)):
                     if len(self.widget.nkpis[host]) > 0:
+                        #('normal reload -->')
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
                 allOk = True
             except utils.dbException as e:
@@ -1580,6 +1677,14 @@ class chartArea(QFrame):
         
         if timer:
             self.timer.start(1000 * self.refreshTime)
+
+    def adjustScale(self, scale = 1):
+        font = self.fromEdit.font()
+        fm = QFontMetrics(font)
+        fromtoWidth = scale * fm.width(' 2019-06-17 22:59:00 ') #have no idea why spaces required...
+
+        self.fromEdit.setFixedWidth(fromtoWidth);
+        self.toEdit.setFixedWidth(fromtoWidth);
 
     def __init__(self):
         
@@ -1651,19 +1756,12 @@ class chartArea(QFrame):
         starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                 
         self.fromEdit = QLineEdit(starttime.strftime('%Y-%m-%d %H:%M:%S'))
-
-        font = self.fromEdit.font()
-        fm = QFontMetrics(font)
-        fromtoWidth = fm.width(' 2019-06-17 22:59:00 ') #have no idea why spaces required...
-        # fromtoWidth = fm.width(starttime.strftime('%Y-%m-%d %H:%M:%S'))
-        
-        self.fromEdit.setFixedWidth(fromtoWidth);
         
         self.toEdit = QLineEdit()
-        self.toEdit.setFixedWidth(fromtoWidth);
-        
-        #fromEdit.setFont(QFont('SansSerif', 8))
-        
+
+        # set from/to editboxes width
+        self.adjustScale()
+
         reloadBtn = QPushButton("rld")
         reloadBtn.setFixedWidth(32);
         reloadBtn.clicked.connect(self.reloadChart)
