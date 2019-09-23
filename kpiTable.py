@@ -162,7 +162,7 @@ class kpiTable(QTableWidget):
         
         self.host = host
         
-        print('replace by hType?')
+        #print('replace this by hType?')
 
         if self.hosts[host]['port'] == '':
             t = 'h'
@@ -290,7 +290,7 @@ class kpiTable(QTableWidget):
         #log(self.kpiScales[self.host])
         kpis = len(self.kpiScales[self.host])
         
-        print('check if stuff to be disabled here...')
+        #check if stuff to be disabled here...
         
         type = kpiDescriptions.hType(self.host, self.hosts)
         
@@ -303,7 +303,7 @@ class kpiTable(QTableWidget):
                 style = kpiStylesNN[type][self.kpiNames[i]]
                 
                 if 'disabled' in style.keys():
-                    print('style is disabled', str(style['name']))
+                    log('style is disabled: %s' % str(style['name']))
                     item = QTableWidgetItem(style['label'])
                     item.setForeground(QBrush(QColor(255, 0, 0)))
                     self.setItem(i, 1, item) # text name

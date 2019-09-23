@@ -36,7 +36,7 @@ def scanKPIsN(hostKPIs, srvcKPIs, kpiStylesN):
             # no subfolders
             yamlFile = fl
 
-            srvcKPIs.append('.Custom')
+            #srvcKPIs.append('.Custom')
                         
             if yamlFile[-5:].lower() == '.yaml':
                 makeKPIsN(os.path.join('sql'), yamlFile, hostKPIs, srvcKPIs, kpiStylesN)
@@ -44,7 +44,7 @@ def scanKPIsN(hostKPIs, srvcKPIs, kpiStylesN):
 
 def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
     
-    log('load custom kpis file: %s' % (os.path.join(path, file)))
+    log('loading custom kpis file: %s' % (os.path.join(path, file)))
     
     try: 
         f = open(os.path.join(path, file), 'r')
