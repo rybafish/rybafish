@@ -379,12 +379,11 @@ class myWidget(QWidget):
         
         copyTS = cmenu.addAction("Copy current timestamp")
 
-        if cfg('experimental'):
-            cmenu.addSeparator()
-            copyVAPNG = cmenu.addAction("Copy screen")
-            saveVAPNG = cmenu.addAction("Save screen")
-            copyPNG = cmenu.addAction("Copy full area")
-            savePNG = cmenu.addAction("Save full area")
+        cmenu.addSeparator()
+        copyVAPNG = cmenu.addAction("Copy screen")
+        saveVAPNG = cmenu.addAction("Save screen")
+        copyPNG = cmenu.addAction("Copy full area")
+        savePNG = cmenu.addAction("Save full area")
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
