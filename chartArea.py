@@ -1793,6 +1793,12 @@ class chartArea(QFrame):
             Create main chart area
         '''
         self.scrollarea = QScrollArea()
+
+        if cfg('color-bg'):
+            p = self.scrollarea.palette()
+            p.setColor(self.scrollarea.backgroundRole(), QColor(cfg('color-bg')))
+            self.scrollarea.setPalette(p)        
+        
         self.scrollarea.setWidgetResizable(False)
         
         self.scrollarea.keyPressEvent = self.keyPressEventZ # -- is it legal?!
