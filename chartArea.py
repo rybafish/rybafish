@@ -1794,10 +1794,13 @@ class chartArea(QFrame):
         '''
         self.scrollarea = QScrollArea()
 
-        if cfg('color-bg'):
-            p = self.scrollarea.palette()
-            p.setColor(self.scrollarea.backgroundRole(), QColor(cfg('color-bg')))
-            self.scrollarea.setPalette(p)        
+        try:
+            if cfg('color-bg'):
+                p = self.scrollarea.palette()
+                p.setColor(self.scrollarea.backgroundRole(), QColor(cfg('color-bg')))
+                self.scrollarea.setPalette(p)        
+        except:
+            log('[E] wrong color-bg value')
         
         self.scrollarea.setWidgetResizable(False)
         
