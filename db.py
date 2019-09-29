@@ -58,7 +58,7 @@ def close_connection (c):
         
     return
     
-def execute_query(connection, sql_string, params = []):
+def execute_query(connection, sql_string, params):
 
     if not connection:
         log('no db connection...')
@@ -67,7 +67,7 @@ def execute_query(connection, sql_string, params = []):
     cursor = connection.cursor()
 
     # prepare the statement...
-    
+
     try:
         psid = cursor.prepare(sql_string)
     except pyhdb.exceptions.DatabaseError as e:
@@ -95,14 +95,58 @@ def execute_query(connection, sql_string, params = []):
         log('[E] unexpected error: %s' % str(e))
         raise dbException(str(e))
 
-    #log('columns: ' + str(cursor.description))
-    
     #ps.close()
     cursor.close()
     
     cursor = None
     
     return rows
+
+def execute_query_desc(connection, sql_string, params):
+
+    if not connection:
+        log('no db connection...')
+        return
+
+    cursor = connection.cursor()
+
+    # prepare the statement...
+
+    try:
+        psid = cursor.prepare(sql_string)
+    except pyhdb.exceptions.DatabaseError as e:
+        log('[!] SQL Error: %s' % sql_string)
+        log('[!] SQL Error: %s' % (e))
+        
+        raise dbException(str(e))
+    except Exception as e:
+        log("[!] unexpected DB exception, sql: %s" % sql_string)
+        log("[!] unexpected DB exception:", str(e))
+        log("[!] unexpected DB exception:", sys.exc_info()[0])
+        raise dbException(str(e))
+        
+    try:
+        ps = cursor.get_prepared_statement(psid)
+
+        cursor.execute_prepared(ps, [params])
+
+        rows = cursor.fetchall()
+
+    except pyhdb.exceptions.DatabaseError as e:
+        log('[!]: sql execution issue %s\n' % e)
+        raise dbException(str(e))
+    except Exception as e:
+        log('[E] unexpected error: %s' % str(e))
+        raise dbException(str(e))
+
+    columns = cursor.description
+    
+    #ps.close()
+    cursor.close()
+    
+    cursor = None
+    
+    return rows, columns
     
 def get_data(connection, kpis, times, data):
     '''

@@ -138,7 +138,7 @@ class dataProvider():
 
         t0 = time.time()
         
-        rows = db.execute_query(self.connection, sql_string)
+        rows = db.execute_query(self.connection, sql_string, [])
         
         for i in range(0, len(rows)):
             hosts.append({
@@ -148,7 +148,7 @@ class dataProvider():
                         'to':rows[i][3]
                         })
 
-        rows = db.execute_query(self.connection, kpis_sql)
+        rows = db.execute_query(self.connection, kpis_sql, [])
         
         for kpi in rows:
         

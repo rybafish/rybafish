@@ -199,6 +199,22 @@ class hslWindow(QMainWindow):
                 self.statusMessage('', False)
                 
             
+    def menuSQLConsole(self):
+    
+        conf = self.connectionConf
+        
+        if conf is None:
+            self.statusMessage('No configuration...', False)
+            return
+            
+        self.statusMessage('Connecting...', False)
+
+        console = sqlConsole.sqlConsole(conf)
+
+        self.tabs.addTab(console, 'Sql')
+        self.statusMessage('', False)
+            
+    
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import...',  None, 'Nameserver trace files (*.trc)')
         log(fname[0])
@@ -247,8 +263,6 @@ class hslWindow(QMainWindow):
         
         self.tabs = QTabWidget()
         
-        console = sqlConsole.sqlConsole()
-        
         # main window splitter
         mainSplitter = QSplitter(Qt.Vertical)
         
@@ -268,9 +282,6 @@ class hslWindow(QMainWindow):
         kpisWidget.autoFillBackground = True
         
         self.tabs.addTab(mainSplitter, 'Chart')
-        
-        if cfg('experimental-notnow'):
-            self.tabs.addTab(console, 'Sql')
         
         self.setCentralWidget(self.tabs)
         
@@ -305,6 +316,11 @@ class hslWindow(QMainWindow):
         importAct.setStatusTip('Import nameserver.trc')
         importAct.triggered.connect(self.menuImport)
 
+        sqlConsAct = QAction('New &SQL Console', self)
+        sqlConsAct.setShortcut('Alt+S')
+        sqlConsAct.setStatusTip('Create SQL Console')
+        sqlConsAct.triggered.connect(self.menuSQLConsole)
+
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(aboutAct)
@@ -313,6 +329,7 @@ class hslWindow(QMainWindow):
         if cfg('experimental'):
             fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
+            fileMenu.addAction(sqlConsAct)
 
         fileMenu.addAction(exitAct)
         
