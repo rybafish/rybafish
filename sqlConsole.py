@@ -40,7 +40,28 @@ class sqlConsole(QWidget):
             row0 = []
             for c in cols:
                 row0.append(c[0])
-                
+               
+               
+            self.result.setColumnCount(len(row0))
+            self.result.setRowCount(len(rows))
+            
+            self.result.setHorizontalHeaderLabels(row0)
+            
+            for r in range(len(rows)):
+                for c in range(len(row0)):
+                    val = rows[r][c]
+                    
+                    if val is None:
+                        val = '?'
+                    else:
+                        val = str(val)
+                        
+                    item = QTableWidgetItem(val)
+                    self.result.setItem(r, c, item) # Y-Scale
+            
+            '''
+            # csv approach
+            
             res = ';'.join(row0) + '\n'
             
             for row in rows:
@@ -51,6 +72,7 @@ class sqlConsole(QWidget):
                 res += ';'.join(rowI) + '\n'
                 
             self.result.setPlainText(res)
+            '''
             
         else:
             QPlainTextEdit.keyPressEvent(self.cons, event)
@@ -60,8 +82,9 @@ class sqlConsole(QWidget):
         hbar = QHBoxLayout()
         
         self.cons = QPlainTextEdit()
-        #self.result = QTableWidget()
-        self.result = QPlainTextEdit()
+        self.result = QTableWidget()
+        self.result.setWordWrap(False)
+        #self.result = QPlainTextEdit()
         #splitOne = QSplitter(Qt.Horizontal)
         spliter = QSplitter(Qt.Vertical)
         self.log = QPlainTextEdit()
