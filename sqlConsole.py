@@ -5,6 +5,9 @@ from PyQt5.QtCore import Qt
 import time
 
 import db
+
+import utils
+
 from utils import dbException
 
 class sqlConsole(QWidget):
@@ -40,6 +43,7 @@ class sqlConsole(QWidget):
             row0 = []
             for c in cols:
                 row0.append(c[0])
+                print(c)
                
                
             self.result.setColumnCount(len(row0))
@@ -49,14 +53,24 @@ class sqlConsole(QWidget):
             
             for r in range(len(rows)):
                 for c in range(len(row0)):
+                    
                     val = rows[r][c]
                     
-                    if val is None:
-                        val = '?'
-                    else:
-                        val = str(val)
+                    if cols[c][1] == 4 or cols[c][1] == 3 or cols[c][1] == 1:
+                        val = utils.numberToStr(val)
                         
-                    item = QTableWidgetItem(val)
+                        item = QTableWidgetItem(val)
+                        item.setTextAlignment(Qt.AlignRight);
+                    else:
+                        if val is None:
+                            val = '?'
+                        else:
+                            val = str(val)
+                            
+                        item = QTableWidgetItem(val)
+                        item.setTextAlignment(Qt.AlignLeft);
+                        
+                    
                     self.result.setItem(r, c, item) # Y-Scale
             
             '''
