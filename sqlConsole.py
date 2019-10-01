@@ -47,9 +47,11 @@ class sqlConsole(QWidget):
                
                
             self.result.setColumnCount(len(row0))
-            self.result.setRowCount(len(rows))
-            
+            self.result.setRowCount(0)
             self.result.setHorizontalHeaderLabels(row0)
+            self.result.resizeColumnsToContents();
+            
+            self.result.setRowCount(len(rows))
             
             for r in range(len(rows)):
                 for c in range(len(row0)):
@@ -60,7 +62,7 @@ class sqlConsole(QWidget):
                         val = utils.numberToStr(val)
                         
                         item = QTableWidgetItem(val)
-                        item.setTextAlignment(Qt.AlignRight);
+                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter);
                     else:
                         if val is None:
                             val = '?'
@@ -68,7 +70,7 @@ class sqlConsole(QWidget):
                             val = str(val)
                             
                         item = QTableWidgetItem(val)
-                        item.setTextAlignment(Qt.AlignLeft);
+                        item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
                     
                     self.result.setItem(r, c, item) # Y-Scale
