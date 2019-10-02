@@ -1,6 +1,13 @@
 import pyhdb
 import time
 
+print('MAX_MESSAGE_SIZE: ', pyhdb.protocol.constants.MAX_MESSAGE_SIZE)
+print('MAX_SEGMENT_SIZE: ', pyhdb.protocol.constants.MAX_SEGMENT_SIZE)
+
+print('[DEFAULT_CONNECTION_OPTIONS]')
+for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
+    print(k, pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])
+
 from datetime import datetime
 
 import kpiDescriptions
