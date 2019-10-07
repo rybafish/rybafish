@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem
+from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem, QApplication
 
 from PyQt5.QtCore import Qt
 
@@ -13,6 +13,8 @@ from utils import dbException
 class sqlConsole(QWidget):
     conn = None
     
+    headers = [] # column names
+    
     def __init__(self, config):
         super().__init__()
         self.initUI()
@@ -22,7 +24,52 @@ class sqlConsole(QWidget):
         except dbException as e:
             raise e
             
-    def keyPressHandler(self, event):
+    def csvRow(self, table, r):
+        
+        values = []
+        
+        for i in range(table.columnCount()):
+            values.append(table.item(r, i).text())
+            
+        return ';'.join(values)
+
+
+    def resultKeyPressHandler(self, event):
+    
+        modifiers = QApplication.keyboardModifiers()
+        
+        if modifiers == Qt.ControlModifier:
+            if event.key() == Qt.Key_A:
+                print('select all rows!')
+            
+            if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
+                sm = self.result.selectionModel()
+                
+                #process rows
+                rowIndex = []
+                for r in sm.selectedRows():
+                    rowIndex.append(r.row())
+                    
+                if rowIndex:
+                    rowIndex.sort()
+                    
+                    print('rows selected: '+str(rowIndex))
+                    
+                    csv = ';'.join(self.headers) + '\n'
+                    for r in rowIndex:
+                        csv += self.csvRow(self.result, r) + '\n'
+                        
+                    QApplication.clipboard().setText(csv)
+                    
+                else:
+                    for c in sm.selectedIndexes():
+                        csv = self.result.item(c.row(), c.column()).text()
+                        QApplication.clipboard().setText(csv)
+                        # we only copy first value, makes no sence otherwise
+                        break;
+                
+    
+    def consKeyPressHandler(self, event):
         
         if event.key() == Qt.Key_F8:
             txt = self.cons.toPlainText()
@@ -46,10 +93,13 @@ class sqlConsole(QWidget):
                 return
 
             row0 = []
+            
+            
             for c in cols:
                 row0.append(c[0])
                 print(c)
                
+            self.headers = row0.copy()
                
             self.result.setColumnCount(len(row0))
             self.result.setRowCount(0)
@@ -111,7 +161,9 @@ class sqlConsole(QWidget):
         spliter = QSplitter(Qt.Vertical)
         self.log = QPlainTextEdit()
         
-        self.cons.keyPressEvent = self.keyPressHandler
+        self.cons.keyPressEvent = self.consKeyPressHandler
+        
+        self.result.keyPressEvent = self.resultKeyPressHandler
         
         self.cons.setPlainText('select * from m_load_history_info')
         
