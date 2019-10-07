@@ -30,10 +30,15 @@ class sqlConsole(QWidget):
             try:
                 t0 = time.time()
                 rows, cols = db.execute_query_desc(self.conn, txt, [])
+                
+                resultSize = len(rows)
+                
                 t1 = time.time()
                 
                 logText = 'Query execution time: %s s\n' % (str(round(t1-t0, 3)))
                 logText += str(len(rows)) + ' rows fetched'
+                if resultSize == utils.cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
+                
                 self.log.setPlainText(logText)
             except dbException as e:
                 err = str(e)
@@ -100,6 +105,7 @@ class sqlConsole(QWidget):
         self.cons = QPlainTextEdit()
         self.result = QTableWidget()
         self.result.setWordWrap(False)
+        self.result.horizontalHeader().setStyleSheet("QHeaderView::section { background-color: lightgray }")
         #self.result = QPlainTextEdit()
         #splitOne = QSplitter(Qt.Horizontal)
         spliter = QSplitter(Qt.Vertical)

@@ -1,6 +1,9 @@
 import pyhdb
 import time
 
+pyhdb.protocol.constants.MAX_MESSAGE_SIZE = 2**19
+pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
+
 print('MAX_MESSAGE_SIZE: ', pyhdb.protocol.constants.MAX_MESSAGE_SIZE)
 print('MAX_SEGMENT_SIZE: ', pyhdb.protocol.constants.MAX_SEGMENT_SIZE)
 
@@ -15,7 +18,7 @@ import sql
 
 import sys
 
-from utils import log
+from utils import log, cfg
 from utils import dbException
 
 def create_connection (server, dbProperties = None):
@@ -29,6 +32,14 @@ def create_connection (server, dbProperties = None):
         connection = None
         raise dbException(str(e))
     
+    print('MAX_MESSAGE_SIZE: ', pyhdb.protocol.constants.MAX_MESSAGE_SIZE)
+    print('MAX_SEGMENT_SIZE: ', pyhdb.protocol.constants.MAX_SEGMENT_SIZE)
+
+    print('[DEFAULT_CONNECTION_OPTIONS]')
+    for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
+        print(k, pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])
+
+
     t1 = time.time()
 
     if dbProperties is not None:
@@ -132,12 +143,15 @@ def execute_query_desc(connection, sql_string, params):
         log("[!] unexpected DB exception:", sys.exc_info()[0])
         raise dbException(str(e))
         
+        
+    resultSize = cfg('resultSize', 1000)
+    
     try:
         ps = cursor.get_prepared_statement(psid)
 
         cursor.execute_prepared(ps, [params])
 
-        rows = cursor.fetchall()
+        rows = cursor.fetchmany(resultSize)
 
     except pyhdb.exceptions.DatabaseError as e:
         log('[!]: sql execution issue %s\n' % e)
@@ -147,6 +161,8 @@ def execute_query_desc(connection, sql_string, params):
         raise dbException(str(e))
 
     columns = cursor.description
+
+    print(rows)
     
     #ps.close()
     cursor.close()
