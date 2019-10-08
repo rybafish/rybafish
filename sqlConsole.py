@@ -10,6 +10,23 @@ import utils
 
 from utils import dbException
 
+'''
+    types
+    1 - integer?
+    2 - smallint
+    3 - integer
+    5 - decimal
+
+    7 - double
+    
+    9 - varchar
+    11 - nvarchar
+
+    14 - date
+    15 - time
+    16 - timestamp
+'''
+
 class sqlConsole(QWidget):
     conn = None
     
@@ -40,7 +57,7 @@ class sqlConsole(QWidget):
         
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_A:
-                print('select all rows!')
+                self.result.selectAll()
             
             if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
                 sm = self.result.selectionModel()
@@ -52,8 +69,6 @@ class sqlConsole(QWidget):
                     
                 if rowIndex:
                     rowIndex.sort()
-                    
-                    print('rows selected: '+str(rowIndex))
                     
                     csv = ';'.join(self.headers) + '\n'
                     for r in rowIndex:
@@ -94,7 +109,8 @@ class sqlConsole(QWidget):
 
             row0 = []
             
-            
+
+            print('[headers]')
             for c in cols:
                 row0.append(c[0])
                 print(c)
@@ -109,6 +125,10 @@ class sqlConsole(QWidget):
             self.result.setRowCount(len(rows))
             
             for r in range(len(rows)):
+            
+                if r == 1:
+                    self.result.resizeColumnsToContents();
+                    
                 for c in range(len(row0)):
                     
                     val = rows[r][c]

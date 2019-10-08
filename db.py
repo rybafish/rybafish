@@ -162,8 +162,6 @@ def execute_query_desc(connection, sql_string, params):
 
     columns = cursor.description
 
-    print(rows)
-    
     #ps.close()
     cursor.close()
     
