@@ -36,6 +36,9 @@ class sqlConsole(QWidget):
         super().__init__()
         self.initUI()
         
+        if config is None:
+            return
+        
         try: 
             self.conn = db.create_connection(config)
         except dbException as e:
@@ -172,6 +175,7 @@ class sqlConsole(QWidget):
         vbar = QVBoxLayout()
         hbar = QHBoxLayout()
         
+        #self.cons = QPlainTextEdit()
         self.cons = QPlainTextEdit()
         self.result = QTableWidget()
         self.result.setWordWrap(False)
