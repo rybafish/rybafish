@@ -395,17 +395,16 @@ class hslWindow(QMainWindow):
         log('init finish()')
         
 
+        '''
+        # offline console tests
+        
         console = sqlConsole.sqlConsole(None)
-        
         from SQLSyntaxHighlighter import SQLSyntaxHighlighter
-        
         self.tabs.addTab(console, 'Sql')
-        
         self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
-
+        '''
         
         self.statusMessage('', False)
-        
         
         if self.chartArea.dp:
             self.chartArea.initDP()

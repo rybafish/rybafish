@@ -1,4 +1,6 @@
-from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem, QApplication
+from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem, QApplication, QAbstractItemView
+
+from PyQt5.QtGui import QTextCursor, QColor
 
 from PyQt5.QtCore import Qt
 
@@ -8,7 +10,7 @@ import db
 
 import utils
 
-from utils import dbException
+from utils import dbException, log
 
 '''
     types
@@ -32,6 +34,8 @@ class sqlConsole(QWidget):
     
     headers = [] # column names
     
+    config = None
+    
     def __init__(self, config):
         super().__init__()
         self.initUI()
@@ -41,6 +45,7 @@ class sqlConsole(QWidget):
         
         try: 
             self.conn = db.create_connection(config)
+            self.config = config
         except dbException as e:
             raise e
             
@@ -54,6 +59,29 @@ class sqlConsole(QWidget):
         return ';'.join(values)
 
 
+    def consSelection(self):
+        return
+        cursor = self.cons.textCursor()
+        
+        selected = cursor.selectedText()
+        
+        if len(selected) >0 :
+            print('processSelection: [%s]' % selected)
+        
+        # https://stackoverflow.com/questions/27716625/qtextedit-change-font-of-individual-paragraph-block
+        # https://stackoverflow.com/questions/1849558/how-do-i-use-qtextblock
+        # cursor.setPosition(0)
+                
+        cursor = QTextCursor(self.cons.document())
+
+        cursor.setPosition(0,QTextCursor.MoveAnchor);
+        cursor.setPosition(6,QTextCursor.KeepAnchor);
+        
+        format = cursor.charFormat()
+        
+        format.setBackground(QColor('#0E0'));
+        cursor.setCharFormat(format);
+                
     def resultKeyPressHandler(self, event):
     
         modifiers = QApplication.keyboardModifiers()
@@ -85,12 +113,24 @@ class sqlConsole(QWidget):
                         QApplication.clipboard().setText(csv)
                         # we only copy first value, makes no sence otherwise
                         break;
-                
-    
+                        
     def consKeyPressHandler(self, event):
         
         if event.key() == Qt.Key_F8:
             txt = self.cons.toPlainText()
+            
+            if len(txt) >= 2**17 and self.conn.large_sql != True:
+                log('reconnecting to hangle large SQL')
+                
+                db.largeSql = True
+                
+                try: 
+                    self.conn = db.create_connection(self.config)
+                except dbException as e:
+                    err = str(e)
+                    self.log.setPlainText('DB Exception:' + err)
+                    self.connect = None
+                    return
             
             try:
                 t0 = time.time()
@@ -112,7 +152,6 @@ class sqlConsole(QWidget):
 
             row0 = []
             
-
             print('[headers]')
             for c in cols:
                 row0.append(c[0])
@@ -127,10 +166,11 @@ class sqlConsole(QWidget):
             
             self.result.setRowCount(len(rows))
             
-            for r in range(len(rows)):
+            adjRow = 5 if len(rows) >=5 else len(rows)
             
-                if r == 1:
-                    self.result.resizeColumnsToContents();
+            print (adjRow)
+            
+            for r in range(len(rows)):
                     
                 for c in range(len(row0)):
                     
@@ -152,6 +192,13 @@ class sqlConsole(QWidget):
                         
                     
                     self.result.setItem(r, c, item) # Y-Scale
+
+                if r == adjRow - 1:
+                    self.result.resizeColumnsToContents();
+                    
+                    for i in range(len(row0)):
+                        if self.result.columnWidth(i) >= 512:
+                            self.result.setColumnWidth(i, 512)
             
             '''
             # csv approach
@@ -170,6 +217,7 @@ class sqlConsole(QWidget):
             
         else:
             QPlainTextEdit.keyPressEvent(self.cons, event)
+            self.consSelection()
         
     def initUI(self):
         vbar = QVBoxLayout()
@@ -186,9 +234,10 @@ class sqlConsole(QWidget):
         self.log = QPlainTextEdit()
         
         self.cons.keyPressEvent = self.consKeyPressHandler
+        self.cons.selectionChanged = self.consSelection #does not work
         
-        self.result.keyPressEvent = self.resultKeyPressHandler
-        
+        self.result.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+                
         self.cons.setPlainText('select * from m_load_history_info')
         
         spliter.addWidget(self.cons)

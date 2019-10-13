@@ -1,13 +1,6 @@
 import pyhdb
 import time
 
-pyhdb.protocol.constants.MAX_MESSAGE_SIZE = 2**19
-pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
-
-print('MAX_MESSAGE_SIZE: ', pyhdb.protocol.constants.MAX_MESSAGE_SIZE)
-print('MAX_SEGMENT_SIZE: ', pyhdb.protocol.constants.MAX_SEGMENT_SIZE)
-
-print('[DEFAULT_CONNECTION_OPTIONS]')
 for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
     print(k, pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])
 
@@ -21,11 +14,33 @@ import sys
 from utils import log, cfg
 from utils import dbException
 
+largeSql = False
+
 def create_connection (server, dbProperties = None):
+
+    global largeSql
 
     t0 = time.time()
     try: 
-        connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+        if largeSql:
+            old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
+            old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
+            pyhdb.protocol.constants.MAX_MESSAGE_SIZE = 2**19
+            pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
+            
+            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+            connection.large_sql = True
+            largeSql = False
+            
+            old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
+            old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
+        else:
+            # normal connection
+            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+            connection.large_sql = False
+            largeSql = False
+            
+        
     except Exception as e:
 #    except pyhdb.exceptions.DatabaseError as e:
         log('[!]: connection failed: %s\n' % e)
