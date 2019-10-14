@@ -13,7 +13,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         fmComment.setForeground(QColor('#080'))
 
         fmLiteral = QTextCharFormat()
-        fmLiteral.setForeground(QColor('#00C'))
+        fmLiteral.setForeground(QColor('#00F'))
         
         keywords = ['select', 'from', 'order', 'by', 'group', 'inner', 'left', 'right', 'join', 'as']
 

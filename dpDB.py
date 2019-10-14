@@ -99,7 +99,7 @@ class dataProvider():
             return
 
         try:
-            log('sending keep alive... ', False, True)
+            log('chart keep alive... ', False, True)
             
             t0 = time.time()
             db.execute_query(self.connection, 'select * from dummy', [])
