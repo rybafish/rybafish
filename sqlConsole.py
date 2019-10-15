@@ -15,6 +15,9 @@ import re
 
 from utils import dbException, log
 
+from SQLSyntaxHighlighter import SQLSyntaxHighlighter
+
+
 '''
     types
     1 - integer?
@@ -57,7 +60,7 @@ class sqlConsole(QWidget):
             self.config = config
         except dbException as e:
             raise e
-            
+                        
     def enableKeepAlive(self, window, keepalive):
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
@@ -144,7 +147,9 @@ class sqlConsole(QWidget):
             st = line.find(str, st)
             
             if st >= 0:
-                self.highlight(self.cons.document(), st, st+len(str))
+                # really this should be a \b regexp here instead of isalnum
+                if (st>0 and not (line[st-1]).isalnum()) and (st < len (line) and not (line[st+1]).isalnum()):
+                    self.highlight(self.cons.document(), st, st+len(str))
                 st += len(str)
                     
         self.lock = False
@@ -366,5 +371,6 @@ class sqlConsole(QWidget):
         vbar.addWidget(spliter)
         
         self.setLayout(vbar)
-        pass
+        
+        self.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
         #console = QPlainTextEdit()

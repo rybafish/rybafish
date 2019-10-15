@@ -177,7 +177,6 @@ def execute_query_desc(connection, sql_string, params):
 
     columns = cursor.description
 
-    #ps.close()
     cursor.close()
     
     cursor = None

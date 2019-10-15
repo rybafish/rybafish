@@ -402,10 +402,10 @@ class hslWindow(QMainWindow):
         # offline console tests
         
         console = sqlConsole.sqlConsole(None)
-        from SQLSyntaxHighlighter import SQLSyntaxHighlighter
+        #from SQLSyntaxHighlighter import SQLSyntaxHighlighter
         self.tabs.addTab(console, 'Sql')
         
-        self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
+        #self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
         '''
         '''
         

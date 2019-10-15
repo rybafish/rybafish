@@ -21,6 +21,9 @@ def numberToStr(num, d = 0):
     else:
         locale.setlocale(locale.LC_ALL, '')
     
+    if num is None:
+        return '?'
+        
     fmt = '%.{0}f'.format(d)
     s = locale.format(fmt, num, grouping=True)
     
