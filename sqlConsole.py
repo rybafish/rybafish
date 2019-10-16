@@ -47,7 +47,8 @@ class sqlConsole(QWidget):
     rows = []
     
     haveHighlighrs = False
-        
+    
+    
     def __init__(self, config):
         super().__init__()
         self.initUI()
@@ -232,6 +233,10 @@ class sqlConsole(QWidget):
                         # we only copy first value, makes no sence otherwise
                         break;
                         
+    def log(self, text):
+        #self.logArea.setPlainText(self.logArea.toPlainText() + '\n' + text)
+        self.logArea.appendPlainText(text)
+        
     def consKeyPressHandler(self, event):
         
         if event.key() == Qt.Key_F8:
@@ -246,19 +251,21 @@ class sqlConsole(QWidget):
                     self.conn = db.create_connection(self.config)
                 except dbException as e:
                     err = str(e)
-                    self.log.setPlainText('DB Exception:' + err)
+                    #
+                    self.log('DB Exception:' + err)
+                    
                     self.connect = None
                     return
                     
             if self.conn is None:
-                self.log.setPlainText('Error: No connection')
+                self.log('Error: No connection')
                 return
             
             try:
                 t0 = time.time()
                 
-                self.log.setPlainText('Execute the query...')
-                self.log.repaint()
+                self.log('\nExecute the query...')
+                self.logArea.repaint()
                 
                 self.rows, cols = db.execute_query_desc(self.conn, txt, [])
                 
@@ -272,10 +279,10 @@ class sqlConsole(QWidget):
                 logText += str(len(rows)) + ' rows fetched'
                 if resultSize == utils.cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
                 
-                self.log.setPlainText(logText)
+                self.log(logText)
             except dbException as e:
                 err = str(e)
-                self.log.setPlainText('DB Exception:' + err)
+                self.log('DB Exception:' + err)
                 return
 
             row0 = []
@@ -353,7 +360,7 @@ class sqlConsole(QWidget):
         #self.result = QPlainTextEdit()
         #splitOne = QSplitter(Qt.Horizontal)
         spliter = QSplitter(Qt.Vertical)
-        self.log = QPlainTextEdit()
+        self.logArea = QPlainTextEdit()
         
         self.cons.keyPressEvent = self.consKeyPressHandler
         self.cons.selectionChanged.connect(self.consSelection) #does not work
@@ -367,7 +374,7 @@ class sqlConsole(QWidget):
         
         spliter.addWidget(self.cons)
         spliter.addWidget(self.result)
-        spliter.addWidget(self.log)
+        spliter.addWidget(self.logArea)
         
         spliter.setSizes([300, 200, 10])
         
