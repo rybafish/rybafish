@@ -47,7 +47,7 @@ class sqlConsole(QWidget):
     rows = []
     
     haveHighlighrs = False
-    
+        
     def __init__(self, config):
         super().__init__()
         self.initUI()
@@ -256,6 +256,9 @@ class sqlConsole(QWidget):
             
             try:
                 t0 = time.time()
+                
+                self.log.setPlainText('Execute the query...')
+                self.log.repaint()
                 
                 self.rows, cols = db.execute_query_desc(self.conn, txt, [])
                 
