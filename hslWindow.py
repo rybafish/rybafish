@@ -403,7 +403,7 @@ class hslWindow(QMainWindow):
         
         console = sqlConsole.sqlConsole(None)
         #from SQLSyntaxHighlighter import SQLSyntaxHighlighter
-        self.tabs.addTab(console, 'Sql')
+        #self.tabs.addTab(console, 'Sql')
         
         #self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
         '''

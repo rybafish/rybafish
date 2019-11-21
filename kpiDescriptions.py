@@ -252,6 +252,8 @@ def clarifyGroups():
                 kpis[kpi]['group'] = grp
             
     def update(grpIdx, grpName):
+        if grpIdx == 0:
+            return;
     
         if grpIdx == grpName:
             return

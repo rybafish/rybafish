@@ -23,13 +23,13 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
             rules.append([QRegularExpression('\\b'+kw+'\\b'), fmKeyword])
             
             
-        # one line comment
-        rules.append([QRegularExpression('--.+'), fmComment])
-
         # literals
         rules.append([QRegularExpression('\'.+\''), fmLiteral])
-        
+
         rules.append([QRegularExpression('".+"'), fmLiteral])
+
+        # one line comment
+        rules.append([QRegularExpression('--.+'), fmComment])
         
         for r in rules:
             (rule, format) = (r[0], r[1])
