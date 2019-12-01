@@ -1621,10 +1621,16 @@ class chartArea(QFrame):
         toTime = self.toEdit.text()
         
         if fromTime[:1] == '-' and toTime == '':
-            hours = int(fromTime[1:])
-            starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600)
-            starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
-            self.widget.t_from = starttime
+            try:
+                hours = int(fromTime[1:])
+                starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600)
+                starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
+                self.widget.t_from = starttime
+                self.fromEdit.setStyleSheet("color: black;")
+            except:
+                self.fromEdit.setStyleSheet("color: red;")
+                self.statusMessage('datetime syntax error')
+                return
         else:
             try:
                 self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')

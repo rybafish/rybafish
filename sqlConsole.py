@@ -33,6 +33,8 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
     14 - date
     15 - time
     16 - timestamp
+    
+    26 - LOB
 '''
 
 class sqlConsole(QWidget):
@@ -264,6 +266,8 @@ class sqlConsole(QWidget):
             try:
                 t0 = time.time()
                 
+                print('clear rows array here?')
+                
                 self.log('\nExecute the query...')
                 self.logArea.repaint()
                 
@@ -290,7 +294,9 @@ class sqlConsole(QWidget):
             #print('[headers]')
             for c in cols:
                 row0.append(c[0])
-                #print(c)
+                
+                
+            print('cols', cols)
                
             self.headers = row0.copy()
                
@@ -313,7 +319,12 @@ class sqlConsole(QWidget):
                         val = utils.numberToStr(val)
                         
                         item = QTableWidgetItem(val)
-                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter);
+                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    elif cols[c][1] == 26: #LOB
+                        val = val.read()
+                        item = QTableWidgetItem(val)
+                        item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
+                        print(val)
                     else:
                         if val is None:
                             val = '?'
@@ -370,7 +381,8 @@ class sqlConsole(QWidget):
         
         self.result.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
                 
-        self.cons.setPlainText('select * from (select * from m_load_history_info)')
+        #self.cons.setPlainText('select * from (select * from m_load_history_info)')
+        self.cons.setPlainText('select connection_id, statement_string from m_active_statements')
         
         spliter.addWidget(self.cons)
         spliter.addWidget(self.result)
