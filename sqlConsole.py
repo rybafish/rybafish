@@ -239,6 +239,74 @@ class sqlConsole(QWidget):
         #self.logArea.setPlainText(self.logArea.toPlainText() + '\n' + text)
         self.logArea.appendPlainText(text)
         
+        
+    def dummyResultTable(self):
+    
+        row0 = []
+    
+        cols = [
+            ['Name',11],
+            ['String',11],
+            ['Txt',11],
+        ]
+        
+        rows = [
+                ['name','select * from dummy', 'no idea'],
+                ['name','select * from dummy', 'no idea'],
+                ['name','select * from dummy', 'no idea']
+            ]
+            
+        #create headers
+        for c in cols:
+            row0.append(c[0])
+            
+        self.headers = row0.copy()
+           
+        self.result.setColumnCount(len(row0))
+        self.result.setRowCount(0)
+        self.result.setHorizontalHeaderLabels(row0)
+        self.result.resizeColumnsToContents();
+        
+        self.result.setRowCount(len(rows))
+        
+        adjRow = 5 if len(rows) >=5 else len(rows)
+        
+        #fill the result table
+        for r in range(len(rows)):
+                
+            for c in range(len(row0)):
+                
+                val = rows[r][c]
+                
+                if cols[c][1] == 4 or cols[c][1] == 3 or cols[c][1] == 1:
+                    val = utils.numberToStr(val)
+                    
+                    item = QTableWidgetItem(val)
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                elif cols[c][1] == 26: #LOB
+                    val = val.read()
+                    item = QTableWidgetItem(val)
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
+                    print(val)
+                else:
+                    if val is None:
+                        val = '?'
+                    else:
+                        val = str(val)
+                        
+                    item = QTableWidgetItem(val)
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
+                    
+                
+                self.result.setItem(r, c, item) # Y-Scale
+
+            if r == adjRow - 1:
+                self.result.resizeColumnsToContents();
+                
+                for i in range(len(row0)):
+                    if self.result.columnWidth(i) >= 512:
+                        self.result.setColumnWidth(i, 512)
+                            
     def consKeyPressHandler(self, event):
         
         if event.key() == Qt.Key_F8:
@@ -246,6 +314,7 @@ class sqlConsole(QWidget):
             
             if len(txt) >= 2**17 and self.conn.large_sql != True:
                 log('reconnecting to hangle large SQL')
+                print('replace by a pyhdb.constant?')
                 
                 db.largeSql = True
                 
@@ -291,13 +360,10 @@ class sqlConsole(QWidget):
 
             row0 = []
             
-            #print('[headers]')
+            #create headers
             for c in cols:
                 row0.append(c[0])
                 
-                
-            print('cols', cols)
-               
             self.headers = row0.copy()
                
             self.result.setColumnCount(len(row0))
@@ -309,6 +375,7 @@ class sqlConsole(QWidget):
             
             adjRow = 5 if len(rows) >=5 else len(rows)
             
+            #fill the result table
             for r in range(len(rows)):
                     
                 for c in range(len(row0)):

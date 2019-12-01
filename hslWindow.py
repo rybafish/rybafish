@@ -401,13 +401,14 @@ class hslWindow(QMainWindow):
 
         # offline console tests
         
-        console = sqlConsole.sqlConsole(None)
-        #from SQLSyntaxHighlighter import SQLSyntaxHighlighter
-        #self.tabs.addTab(console, 'Sql')
-        
-        #self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
-        '''
-        '''
+        if (cfg('developmentMode')):
+            console = sqlConsole.sqlConsole(None)
+            from SQLSyntaxHighlighter import SQLSyntaxHighlighter
+            self.tabs.addTab(console, 'Sql')
+            
+            self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
+            
+            console.dummyResultTable()
         
         self.statusMessage('', False)
         

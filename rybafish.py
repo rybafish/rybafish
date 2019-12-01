@@ -69,7 +69,6 @@ if __name__ == '__main__':
 
     utils.loadConfig()
     
-    
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))
     
