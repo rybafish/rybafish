@@ -13,6 +13,8 @@ import utils
 
 import re
 
+import lobDialog
+
 from utils import dbException, log
 
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
@@ -240,13 +242,20 @@ class sqlConsole(QWidget):
         self.logArea.appendPlainText(text)
         
         
+    def dblClick(self, i, j):
+        lob = lobDialog.lobDialog('string to display')
+        lob.exec_()
+
+        print (i, j)
+        return False
+        
     def dummyResultTable(self):
     
         row0 = []
     
         cols = [
             ['Name',11],
-            ['String',11],
+            ['LOB String',26],
             ['Txt',11],
         ]
         
@@ -272,6 +281,9 @@ class sqlConsole(QWidget):
         adjRow = 5 if len(rows) >=5 else len(rows)
         
         #fill the result table
+        
+        self.result.cellDoubleClicked.connect(self.dblClick)
+        
         for r in range(len(rows)):
                 
             for c in range(len(row0)):
@@ -284,8 +296,10 @@ class sqlConsole(QWidget):
                     item = QTableWidgetItem(val)
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 elif cols[c][1] == 26: #LOB
-                    val = val.read()
+                    # val = val.read()
+                    val = val
                     item = QTableWidgetItem(val)
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     print(val)
                 else:
