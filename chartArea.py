@@ -97,6 +97,9 @@ class myWidget(QWidget):
     zoomLock = False
     paintLock = False
     
+    gridColor = QColor('#DDD')
+    gridColorMj = QColor('#AAA')
+    
     #screenStartX = None # nasty work around for visible area screenshot
     #screenStopX = None # nasty work around for visible area screenshot
 
@@ -869,6 +872,7 @@ class myWidget(QWidget):
         '''
         
         #prnt('grid %i:%i' % (startX, stopX))
+        print('grid: ', self.gridColor.getRgb())
         
         t0 = time.time()
         
@@ -895,8 +899,7 @@ class myWidget(QWidget):
         
         seconds = (self.t_to - self.t_from).total_seconds()
         
-        qp.setPen(QColor('#DDD'))
-        
+        qp.setPen(self.gridColor)
 
         # vertical scale
         
@@ -904,12 +907,12 @@ class myWidget(QWidget):
             y = top_margin + j * y_step
             
             if j == 5:
-                qp.setPen(QColor('#AAA'))
+                qp.setPen(self.gridColorMj) #50% CPU line
             
             qp.drawLine(self.side_margin, y, wsize.width()-self.side_margin, y)
             
             if j == 5:
-                qp.setPen(QColor('#DDD'))
+                qp.setPen(self.gridColor)
         
         #x is in pixels
         x = self.side_margin+self.step_size
@@ -996,7 +999,7 @@ class myWidget(QWidget):
                     
             if major_line:
             
-                qp.setPen(QColor('#AAA'))
+                qp.setPen(self.gridColorMj)
                 qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
 
                 qp.setPen(QColor('#000'))
@@ -1011,7 +1014,7 @@ class myWidget(QWidget):
                     label = c_time.strftime('%Y-%m-%d')
                     qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
                     
-                qp.setPen(QColor('#DDD'))
+                qp.setPen(self.gridColor)
         
             x += self.step_size
         #log(seconds / t_scale * 10)
@@ -1800,14 +1803,6 @@ class chartArea(QFrame):
         '''
         self.scrollarea = QScrollArea()
 
-        try:
-            if cfg('color-bg'):
-                p = self.scrollarea.palette()
-                p.setColor(self.scrollarea.backgroundRole(), QColor(cfg('color-bg')))
-                self.scrollarea.setPalette(p)        
-        except:
-            log('[E] wrong color-bg value')
-        
         self.scrollarea.setWidgetResizable(False)
         
         self.scrollarea.keyPressEvent = self.keyPressEventZ # -- is it legal?!
@@ -1816,6 +1811,24 @@ class chartArea(QFrame):
         lo.addWidget(self.scrollarea)
         
         self.widget = myWidget()
+
+        try:
+            if cfg('color-bg'):
+                p = self.scrollarea.palette()
+                bgcolor = QColor(cfg('color-bg'))
+                p.setColor(self.scrollarea.backgroundRole(), bgcolor)
+                self.scrollarea.setPalette(p)
+                
+                print('--------------------')
+                rgb = bgcolor.getRgb()
+                print(bgcolor.rgb(), rgb[0] + rgb[1] + rgb[2])
+                
+                if rgb[0] + rgb[1] + rgb[2] >= 150*3: #smthng close to white!
+                    self.widget.gridColor = QColor('#EEE') #ddd
+                    self.widget.gridColorMj = QColor('#CCC') #aaa
+                
+        except:
+            log('[E] wrong color-bg value')
 
         #log(type(self.dp))
         #log(type(self.dp).__name__)
