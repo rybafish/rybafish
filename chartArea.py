@@ -872,7 +872,7 @@ class myWidget(QWidget):
         '''
         
         #prnt('grid %i:%i' % (startX, stopX))
-        print('grid: ', self.gridColor.getRgb())
+        #print('grid: ', self.gridColor.getRgb())
         
         t0 = time.time()
         
@@ -1823,7 +1823,7 @@ class chartArea(QFrame):
                 rgb = bgcolor.getRgb()
                 print(bgcolor.rgb(), rgb[0] + rgb[1] + rgb[2])
                 
-                if rgb[0] + rgb[1] + rgb[2] >= 150*3: #smthng close to white!
+                if rgb[0] + rgb[1] + rgb[2] >= 250*3: #smthng close to white!
                     self.widget.gridColor = QColor('#EEE') #ddd
                     self.widget.gridColorMj = QColor('#CCC') #aaa
                 

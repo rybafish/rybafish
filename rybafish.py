@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox;
 from PyQt5.QtGui import QPainter, QIcon
 
 import sys
+from os import getcwd
 import hslWindow
 
 from PyQt5 import QtCore
@@ -36,6 +37,7 @@ class ExceptionHandler(QtCore.QObject):
         super(ExceptionHandler, self).__init__()
 
     def handler(self, exctype, value, tb):
+        cwd = getcwd()
         log('[!] fatal exeption\n')
         #details = '%s: %s\n' % (str(exctype), str(value))
         details = '%s.%s: %s\n\n' % (exctype.__module__ , exctype.__qualname__  , str(value))
@@ -46,7 +48,7 @@ class ExceptionHandler(QtCore.QObject):
         
 
         for s in traceback.format_tb(tb):
-            details += s.replace('\\n', '\n')
+            details += '>>' + s.replace('\\n', '\n').replace(cwd, '..')
 
         log(details, nots = True)
 
