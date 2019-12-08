@@ -2,12 +2,12 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QSplitter, QStyleFactory, QTableWidget,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
-    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog
+    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog    
     )
     
-from PyQt5.QtGui import QPainter, QIcon
+from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QUrl
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -124,6 +124,13 @@ class hslWindow(QMainWindow):
     def menuAbout(self):
         abt = aboutDialog.About()
         abt.exec_()
+        
+    def menuConfHelp(self):
+        QDesktopServices.openUrl(QUrl('http://rybafish.net/config'))
+
+    def menuCustomConfHelp(self):
+        QDesktopServices.openUrl(QUrl('http://rybafish.net/customKPI'))
+        
         
     def menuDummy(self):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
@@ -300,11 +307,6 @@ class hslWindow(QMainWindow):
         exitAct.setStatusTip('Exit application')
         exitAct.triggered.connect(self.menuQuit)
 
-
-        aboutAct = QAction(QIcon(iconPath), '&About', self)
-        aboutAct.setStatusTip('About this app')
-        aboutAct.triggered.connect(self.menuAbout)
-
         dummyAct = QAction('&Dummy', self)
         dummyAct.setShortcut('Alt+D')
         dummyAct.setStatusTip('Dummy Data provider')
@@ -327,7 +329,6 @@ class hslWindow(QMainWindow):
 
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
-        fileMenu.addAction(aboutAct)
         fileMenu.addAction(configAct)
 
         if cfg('experimental'):
@@ -339,7 +340,7 @@ class hslWindow(QMainWindow):
         
         if cfg('experimental'):
             actionsMenu = menubar.addMenu('&Actions')
-            fileMenu.addAction(aboutAct)
+            # fileMenu.addAction(aboutAct) -- print not sure why its here
 
             fontAct = QAction('&Adjust Fonts', self)
             fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
@@ -359,10 +360,29 @@ class hslWindow(QMainWindow):
 
             actionsMenu.addAction(reloadCustomKPIsAct)
 
+        # help menu part
+        aboutAct = QAction(QIcon(iconPath), '&About', self)
+        aboutAct.setStatusTip('About this app')
+        aboutAct.triggered.connect(self.menuAbout)
+
+        confHelpAct = QAction('Configuration', self)
+        confHelpAct.setStatusTip('Configuration options description')
+        confHelpAct.triggered.connect(self.menuConfHelp)
+
+        confCustomHelpAct = QAction('Custom KPIs', self)
+        confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
+        confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
+        
+        helpMenu = menubar.addMenu('&Help')
+        helpMenu.addAction(confHelpAct)
+        
+        if cfg('experimental'):
+            helpMenu.addAction(confCustomHelpAct)
+            
+        helpMenu.addAction(aboutAct)
+
         # finalization
         self.setGeometry(200, 200, 1400, 800)
-        #self.setWindowTitle('SAP HANA Studio Light')
-        # self.setWindowTitle('HANA Army Knife')
         self.setWindowTitle('Ryba Fish Charts')
         
         self.setWindowIcon(QIcon(iconPath))
