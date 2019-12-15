@@ -41,6 +41,9 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 class sqlConsole(QWidget):
     conn = None
+    cursor = None # single cursor supported
+    
+    closeResult = False # True in case of LOBs, CLOSERESULTSET message to be sent
     
     headers = [] # column names
     
@@ -345,6 +348,10 @@ class sqlConsole(QWidget):
             if self.conn is None:
                 self.log('Error: No connection')
                 return
+                
+            if self.closeResult:
+                log('connection had LOBs so call CLOSERESULTSET...')
+                db.close_cursor(self.conn, self.cursor)
             
             try:
                 t0 = time.time()
@@ -354,7 +361,7 @@ class sqlConsole(QWidget):
                 self.log('\nExecute the query...')
                 self.logArea.repaint()
                 
-                self.rows, cols = db.execute_query_desc(self.conn, txt, [])
+                self.rows, cols, self.cursor = db.execute_query_desc(self.conn, txt, [])
                 
                 rows = self.rows
                 
@@ -363,7 +370,10 @@ class sqlConsole(QWidget):
                 t1 = time.time()
                 
                 logText = 'Query execution time: %s s\n' % (str(round(t1-t0, 3)))
-                logText += str(len(rows)) + ' rows fetched'
+                
+                lobs = ', +LOBs' if self.closeResult else ''
+                
+                logText += str(len(rows)) + ' rows fetched' + lobs
                 if resultSize == utils.cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
                 
                 self.log(logText)
@@ -403,6 +413,7 @@ class sqlConsole(QWidget):
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     elif cols[c][1] == 26: #LOB
                         val = val.read()
+                        self.closeResult = True
                         item = QTableWidgetItem(val)
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                         print(val)

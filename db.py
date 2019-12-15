@@ -1,6 +1,22 @@
 import pyhdb
 import time
 
+
+
+#### low-level pyhdb magic requred because of missing implementation of CLOSERESULTSET  ####
+
+from pyhdb.protocol.message import RequestMessage
+from pyhdb.protocol.segments import RequestSegment
+from pyhdb.protocol.parts import ResultSetId
+
+from pyhdb.protocol.constants import message_types 
+
+message_types.CLOSERESULTSET = 69 # SAP HANA SQL Command Network Protocol Reference
+                                  # this one is still missing in pyhdb 2019-12-15
+
+#### low-level pyhdb magic requred because of missing implementation of CLOSERESULTSET  ####
+
+
 for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
     print(k, pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])
 
@@ -128,12 +144,22 @@ def execute_query(connection, sql_string, params):
         log('[E] unexpected error: %s' % str(e))
         raise dbException(str(e))
 
-    #ps.close()
-    cursor.close()
-    
-    cursor = None
-    
     return rows
+
+def close_cursor(connection, cursor):
+    
+    request = RequestMessage.new(
+                connection,
+                RequestSegment(message_types.CLOSERESULTSET, (ResultSetId(cursor._resultset_id)))
+                )
+
+    response = connection.send_request(request)
+    
+    # no exception...
+    # no result check...
+    
+    cursor.close()
+    cursor = None
 
 def execute_query_desc(connection, sql_string, params):
 
@@ -177,11 +203,7 @@ def execute_query_desc(connection, sql_string, params):
 
     columns = cursor.description
 
-    cursor.close()
-    
-    cursor = None
-    
-    return rows, columns
+    return rows, columns, cursor
     
 def get_data(connection, kpis, times, data):
     '''
