@@ -246,10 +246,17 @@ class sqlConsole(QWidget):
         
         
     def dblClick(self, i, j):
-        lob = lobDialog.lobDialog('string to display')
+    
+        if db.ifLOBType(self.cols[j][1]):
+            blob = self.rows[i][j].read()
+            self.rows[i][j].seek(0) #rewind just in case
+        else:
+            blob = str(self.rows[i][j])
+
+        lob = lobDialog.lobDialog(blob)
+        
         lob.exec_()
 
-        print (i, j)
         return False
         
     def dummyResultTable(self):
@@ -352,6 +359,7 @@ class sqlConsole(QWidget):
             if self.closeResult:
                 log('connection had LOBs so call CLOSERESULTSET...')
                 db.close_cursor(self.conn, self.cursor)
+                self.closeResult = False
             
             try:
                 t0 = time.time()
@@ -361,15 +369,22 @@ class sqlConsole(QWidget):
                 self.log('\nExecute the query...')
                 self.logArea.repaint()
                 
-                self.rows, cols, self.cursor = db.execute_query_desc(self.conn, txt, [])
+                self.rows, self.cols, self.cursor = db.execute_query_desc(self.conn, txt, [])
                 
                 rows = self.rows
+                cols = self.cols
                 
                 resultSize = len(rows)
                 
                 t1 = time.time()
                 
                 logText = 'Query execution time: %s s\n' % (str(round(t1-t0, 3)))
+                
+                
+                for c in cols:
+                    if db.ifLOBType(c[1]):
+                        self.closeResult = True
+                        break
                 
                 lobs = ', +LOBs' if self.closeResult else ''
                 
@@ -411,10 +426,19 @@ class sqlConsole(QWidget):
                         
                         item = QTableWidgetItem(val)
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                    elif cols[c][1] == 26: #LOB
-                        val = val.read()
-                        self.closeResult = True
+                    elif db.ifLOBType(cols[c][1]): #LOB
+                        #val = val.read()
+                        if db.ifBLOBType(cols[c][1]):
+                            print('blob (%i)' % cols[c][1])
+                            if val is None:
+                                val = '?'
+                            else:
+                                val = str(val.encode())
+                        else:
+                            print('not blob')
+                            val = str(val)
                         item = QTableWidgetItem(val)
+                        #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                         print(val)
                     else:
@@ -426,7 +450,7 @@ class sqlConsole(QWidget):
                         item = QTableWidgetItem(val)
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
-                    
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     self.result.setItem(r, c, item) # Y-Scale
 
                 if r == adjRow - 1:
@@ -460,6 +484,9 @@ class sqlConsole(QWidget):
         self.result = QTableWidget()
         self.result.setWordWrap(False)
         self.result.horizontalHeader().setStyleSheet("QHeaderView::section { background-color: lightgray }")
+        
+        self.result.cellDoubleClicked.connect(self.dblClick) # LOB viewer
+        
         #self.result = QPlainTextEdit()
         #splitOne = QSplitter(Qt.Horizontal)
         spliter = QSplitter(Qt.Vertical)

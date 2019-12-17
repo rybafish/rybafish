@@ -10,6 +10,7 @@ from pyhdb.protocol.segments import RequestSegment
 from pyhdb.protocol.parts import ResultSetId
 
 from pyhdb.protocol.constants import message_types 
+from pyhdb.protocol.constants import type_codes
 
 message_types.CLOSERESULTSET = 69 # SAP HANA SQL Command Network Protocol Reference
                                   # this one is still missing in pyhdb 2019-12-15
@@ -304,3 +305,15 @@ def initHosts(c, hosts, hostKPIs, srvcKPIs):
     
     log('hostsInit time: %s' % (str(round(t1-t0, 3))))
     
+    
+def ifLOBType(t):
+    if t in (type_codes.CLOB, type_codes.NCLOB, type_codes.BLOB):
+        return True
+    else:
+        return False
+        
+def ifBLOBType(t):
+    if t == type_codes.BLOB:
+        return True
+    else:
+        return False        

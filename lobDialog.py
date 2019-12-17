@@ -37,12 +37,21 @@ class lobDialog(QDialog):
             self)
 
         self.buttons.accepted.connect(self.accept)
-
+        
         vbox = QVBoxLayout()
         
         te = QPlainTextEdit()
+
+
+        ls = len(lob)
         
-        te.setPlainText(lob)
+        lobsize = 'LOB length: %i' % ls
+        
+        if ls == 65536:
+            lobsize += ' <truncated?>'
+            
+        
+        te.setPlainText(lob + '\n\n' + lobsize)
         
         vbox.addWidget(te)
         
@@ -69,7 +78,7 @@ class lobDialog(QDialog):
         
         self.setWindowIcon(QIcon(iconPath))
         
-        #self.setGeometry(300, 300, 300, 150)
+        self.setGeometry(300, 400, 700, 400)
         self.setWindowTitle('LOB value')
         #self.show()
         
