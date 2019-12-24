@@ -45,38 +45,24 @@ class lobDialog(QDialog):
 
         ls = len(lob)
         
-        lobsize = 'LOB length: %i' % ls
+        lobsize = 'Length: %i' % ls
         
         if ls == 65536:
             lobsize += ' <truncated?>'
             
-        
-        te.setPlainText(lob + '\n\n' + lobsize)
+        te.setPlainText(lob)
         
         vbox.addWidget(te)
         
-        '''
-        hbox = QHBoxLayout()
-        vbox2 = QVBoxLayout()
+        txt = QLabel(lobsize)
         
-        vbox2.addStretch(1)
-        vbox2.addWidget(txt)
-        vbox2.addWidget(checkButton)
-        vbox2.addWidget(self.updatesLabel)
-        vbox2.addWidget(QLabel())
-        vbox2.addWidget(self.infoLabel)
-        vbox2.addStretch(1)
-        
-        hbox.addWidget(img)
-        hbox.addLayout(vbox2)
-        vbox.addLayout(hbox)
-
-        '''
+        vbox.addWidget(txt)
         vbox.addWidget(self.buttons)
         
         self.setLayout(vbox)
         
         self.setWindowIcon(QIcon(iconPath))
+
         
         self.setGeometry(300, 400, 700, 400)
         self.setWindowTitle('LOB value')
