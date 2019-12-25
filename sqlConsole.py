@@ -311,7 +311,6 @@ class sqlConsole(QWidget):
                     item = QTableWidgetItem(val)
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
-                    print(val)
                 else:
                     if val is None:
                         val = '?'
@@ -429,18 +428,16 @@ class sqlConsole(QWidget):
                     elif db.ifLOBType(cols[c][1]): #LOB
                         #val = val.read()
                         if db.ifBLOBType(cols[c][1]):
-                            print('blob (%i)' % cols[c][1])
                             if val is None:
                                 val = '?'
                             else:
                                 val = str(val.encode())
                         else:
-                            print('not blob')
                             val = str(val)
                         item = QTableWidgetItem(val)
                         #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
-                        print(val)
+                        #print(val)
                     else:
                         if val is None:
                             val = '?'
