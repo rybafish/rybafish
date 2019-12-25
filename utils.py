@@ -139,6 +139,6 @@ def log(s, nots = False, nonl = False):
     if cfg('logmode') != 'duplicate':
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
-        f.write(ts + str(s) + nl)
+        f.write(ts + str(s.encode()) + nl)
         f.close()
         

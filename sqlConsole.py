@@ -341,6 +341,14 @@ class sqlConsole(QWidget):
             
             if txt == '':
                 txt = self.cons.toPlainText()
+            else:
+                ParagraphSeparator = b'0x2029'.decode('utf-8')
+                ParagraphSeparator = u"\u2029"
+
+                print(txt)
+                txt = txt.replace(ParagraphSeparator, '\n')
+                print(txt)
+
             
             if len(txt) >= 2**17 and self.conn.large_sql != True:
                 log('reconnecting to hangle large SQL')
@@ -505,7 +513,7 @@ class sqlConsole(QWidget):
         self.result.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
                 
         #self.cons.setPlainText('select * from (select * from m_load_history_info)')
-        self.cons.setPlainText('select connection_id, statement_string from m_active_statements;\nselect connection_id, statement_string from m_active_statements;\n')
+        #self.cons.setPlainText('select connection_id, statement_string from m_active_statements;\nselect connection_id, statement_string from m_active_statements;\n')
         
         spliter.addWidget(self.cons)
         spliter.addWidget(self.result)
