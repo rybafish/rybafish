@@ -331,9 +331,16 @@ class sqlConsole(QWidget):
                         self.result.setColumnWidth(i, 512)
                             
     def consKeyPressHandler(self, event):
+    
+        def detectStatament(txt):
+            pass
         
         if event.key() == Qt.Key_F8:
-            txt = self.cons.toPlainText()
+            
+            txt = self.cons.textCursor().selectedText()
+            
+            if txt == '':
+                txt = self.cons.toPlainText()
             
             if len(txt) >= 2**17 and self.conn.large_sql != True:
                 log('reconnecting to hangle large SQL')
@@ -498,7 +505,7 @@ class sqlConsole(QWidget):
         self.result.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
                 
         #self.cons.setPlainText('select * from (select * from m_load_history_info)')
-        self.cons.setPlainText('select connection_id, statement_string from m_active_statements')
+        self.cons.setPlainText('select connection_id, statement_string from m_active_statements;\nselect connection_id, statement_string from m_active_statements;\n')
         
         spliter.addWidget(self.cons)
         spliter.addWidget(self.result)
