@@ -7,8 +7,6 @@ __pycache__/
 build/
 dist/
 
-_constants.py
-
 # PyInstaller
 *.manifest
 *.spec
