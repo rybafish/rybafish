@@ -306,6 +306,13 @@ def initHosts(c, hosts, hostKPIs, srvcKPIs):
     log('hostsInit time: %s' % (str(round(t1-t0, 3))))
     
     
+def ifNumericType(t):
+    if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT
+        type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
+        return True
+    else:
+        return False
+
 def ifLOBType(t):
     if t in (type_codes.CLOB, type_codes.NCLOB, type_codes.BLOB):
         return True
