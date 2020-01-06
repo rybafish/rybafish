@@ -122,7 +122,11 @@ class sqlConsole(QWidget):
             if db.ifBLOBType(vType):
                 values.append(str(val.encode()))
             else:
-                values.append(str(val))
+                if db.ifNumericType(vType):
+                    values.append(utils.numberToStrCSV(val))
+                else:
+                    values.append(val)
+                
             
         return ';'.join(values)
 
@@ -251,12 +255,13 @@ class sqlConsole(QWidget):
                         value = self.rows[c.row()][c.column()]
                         vType = self.cols[c.column()][1]
                         
-                        print (vType)
-                        
                         if db.ifBLOBType(vType):
                             csv = str(value.encode())
                         else:
-                            csv = str(value)
+                            if db.ifNumericType(vType):
+                                csv = utils.numberToStrCSV(value)
+                            else:
+                                csv = value
                         
                         QApplication.clipboard().setText(csv)
                         # we only copy first value, makes no sence otherwise

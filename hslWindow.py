@@ -243,7 +243,21 @@ class hslWindow(QMainWindow):
     def setTabName(self, str):
         self.tabs.setTabText(0, str)
         
-    def initUI(self):      
+    def initUI(self):
+    
+        from utils import numberToStrCSV
+        
+        n = 0.00002
+        print(n, numberToStrCSV(n))
+
+        n = 10.000000002
+        
+        print(n, numberToStrCSV(n))
+        
+        
+        exit(1)
+        
+    
         # bottom left frame (hosts)
         hostsArea = QFrame(self)
         self.hostTable = hostsTable.hostsTable()

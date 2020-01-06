@@ -15,7 +15,7 @@ config = {}
 class dbException(Exception):
     pass
     
-def numberToStr(num, d = 0):
+def numberToStr(num, d = 0, fix = True):
     if cfg('locale'):
         locale.setlocale(locale.LC_ALL, cfg('locale'))
     else:
@@ -25,7 +25,30 @@ def numberToStr(num, d = 0):
         return '?'
         
     fmt = '%.{0}f'.format(d)
+        
     s = locale.format(fmt, num, grouping=True)
+    
+    return s
+
+def numberToStrCSV(num):
+    if cfg('locale'):
+        locale.setlocale(locale.LC_ALL, cfg('locale'))
+    else:
+        locale.setlocale(locale.LC_ALL, '')
+        
+    dp = locale.localeconv()['decimal_point']
+    
+    if num is None:
+        return '?'
+
+    '''
+    fmt = '%g'
+    s = locale.format(fmt, num, grouping=False)
+    '''
+    
+    s = str(num) #python itself makes a better job...
+    
+    s = s.replace('.', dp)
     
     return s
     
