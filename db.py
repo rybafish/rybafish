@@ -312,6 +312,12 @@ def ifNumericType(t):
         return True
     else:
         return False
+        
+def ifDecimalType(t):
+    if t in (type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
+        return True
+    else:
+        return False
 
 def ifLOBType(t):
     if t in (type_codes.CLOB, type_codes.NCLOB, type_codes.BLOB):

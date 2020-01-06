@@ -455,7 +455,11 @@ class sqlConsole(QWidget):
                     
                     #if cols[c][1] == 4 or cols[c][1] == 3 or cols[c][1] == 1:
                     if db.ifNumericType(cols[c][1]):
-                        val = utils.numberToStr(val)
+                    
+                        if db.ifDecimalType(cols[c][1]):
+                            val = utils.numberToStr(val, 3)
+                        else:
+                            val = utils.numberToStr(val)
                         
                         item = QTableWidgetItem(val)
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
