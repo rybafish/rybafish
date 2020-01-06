@@ -115,7 +115,14 @@ class sqlConsole(QWidget):
         # print varchar values to be quoted by "" to be excel friendly
         for i in range(table.columnCount()):
             #values.append(table.item(r, i).text())
-            values.append(str(self.rows[r][i]))
+
+            val = self.rows[r][i]
+            vType = self.cols[i][1]
+
+            if db.ifBLOBType(vType):
+                values.append(str(val.encode()))
+            else:
+                values.append(str(val))
             
         return ';'.join(values)
 
@@ -215,14 +222,19 @@ class sqlConsole(QWidget):
             
             if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
             
+                '''
+                    copy cells or rows implementation
+                '''
+            
                 sm = self.result.selectionModel()
                 
-                #process rows
                 rowIndex = []
                 for r in sm.selectedRows():
                     rowIndex.append(r.row())
                     
-                if rowIndex:
+                if rowIndex: 
+                    # process rows
+                    
                     rowIndex.sort()
                     
                     csv = ';'.join(self.headers) + '\n'
@@ -232,10 +244,20 @@ class sqlConsole(QWidget):
                     QApplication.clipboard().setText(csv)
                     
                 else:
+                    # copy one cell
                     for c in sm.selectedIndexes():
                         #csv = self.result.item(c.row(), c.column()).text()
 
-                        csv = str(self.rows[c.row()][c.column()])
+                        value = self.rows[c.row()][c.column()]
+                        vType = self.cols[c.column()][1]
+                        
+                        print (vType)
+                        
+                        if db.ifBLOBType(vType):
+                            csv = str(value.encode())
+                        else:
+                            csv = str(value)
+                        
                         QApplication.clipboard().setText(csv)
                         # we only copy first value, makes no sence otherwise
                         break;

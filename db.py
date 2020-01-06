@@ -307,7 +307,7 @@ def initHosts(c, hosts, hostKPIs, srvcKPIs):
     
     
 def ifNumericType(t):
-    if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT
+    if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT,
         type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
         return True
     else:
