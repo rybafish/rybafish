@@ -365,11 +365,7 @@ class sqlConsole(QWidget):
                             
     def consKeyPressHandler(self, event):
     
-        def detectStatament(txt):
-            pass
-        
-        if event.key() == Qt.Key_F8:
-            
+        def executeStatement():
             txt = self.cons.textCursor().selectedText()
             
             if txt == '':
@@ -409,7 +405,10 @@ class sqlConsole(QWidget):
                 
                 print('clear rows array here?')
                 
-                self.log('\nExecute the query...')
+                txtSub = txt[:64]
+                txtSub.replace('\n', ' ')
+                
+                self.log('\nExecute: ' + txtSub + '...')
                 self.logArea.repaint()
                 
                 self.rows, self.cols, self.cursor = db.execute_query_desc(self.conn, txt, [])
@@ -505,6 +504,78 @@ class sqlConsole(QWidget):
                     for i in range(len(row0)):
                         if self.result.columnWidth(i) >= 512:
                             self.result.setColumnWidth(i, 512)
+        
+        def detectStatement():
+            txt = self.cons.toPlainText()
+            length = len(txt)
+            
+            cursorPos = self.cons.textCursor().position()
+            
+            str = ''
+            
+            i = 0
+            start = stop = 0
+            
+            for i in range(cursorPos):
+                c = txt[i]
+
+                if c == ';':
+                    str = ''
+                    continue
+                
+                if str == '':
+                    if c in (' ', '\n', '\t'):
+                        pass
+                    else:
+                        start = i
+                        str = str + c
+                else:
+                    str = str + c
+                    
+            # now get the rest of the string
+            finish = False
+            
+            if i > 0:
+                i+= 1
+            
+            while not finish:
+            
+                c = txt[i]
+            
+                if str == '':
+                    if c in (' ', '\n', '\t'):
+                        pass
+                    else:
+                        start = i
+                        str = str + c
+                else:
+                    str = str + c
+
+                i+= 1
+                
+                if c == ';' or i == length:
+                    stop = i
+                    finish = True
+             
+            #print(start, stop, str)
+            
+            if c == ';':
+                str = str[:-1]
+                stop -= 1
+            
+            cursor = QTextCursor(self.cons.document())
+
+            cursor.setPosition(start,QTextCursor.MoveAnchor);
+            cursor.setPosition(stop,QTextCursor.KeepAnchor);
+            
+            self.cons.setTextCursor(cursor)        
+
+        if event.key() == Qt.Key_F9:
+            detectStatement()
+            executeStatement()
+        
+        if event.key() == Qt.Key_F8:
+            executeStatement()
             
         else:
             QPlainTextEdit.keyPressEvent(self.cons, event)
