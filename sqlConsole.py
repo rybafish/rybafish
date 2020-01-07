@@ -506,6 +506,20 @@ class sqlConsole(QWidget):
                             self.result.setColumnWidth(i, 512)
         
         def detectStatement():
+            def isItEnd(s):
+                '''
+                    it shall ignor whitspaces
+                    and at this point ';' already 
+                    checked outside, so just \send^ regexp check
+                '''
+                print('is it?', s)
+                if s[-3:] == 'end':
+                    print('yes')
+                    return True
+                else:
+                    print('no')
+                    return False
+
             txt = self.cons.toPlainText()
             length = len(txt)
             
@@ -516,32 +530,65 @@ class sqlConsole(QWidget):
             i = 0
             start = stop = 0
             
+            insideString = False
+            insideProc = False
+            
             for i in range(cursorPos):
                 c = txt[i]
 
-                if c == ';':
-                    str = ''
-                    continue
+                if not insideString and c == ';':
+                    if not insideProc:
+                        str = ''
+                        continue
+                    else:
+                        if isItEnd(str[-10:]):
+                            insideProc = False
+                            str = ''
+                            continue
                 
                 if str == '':
                     if c in (' ', '\n', '\t'):
-                        pass
+                        # warning: insideString logic skipped here (as it is defined below this line
+                        continue
                     else:
                         start = i
                         str = str + c
                 else:
                     str = str + c
+
+                if not insideString and c == '\'':
+                    insideString = True
+                    continue
+                    
+                if insideString and c == '\'':
+                    insideString = False
+                    continue
+                    
+                if str == 'create procedure':
+                    insideProc = True
                     
             # now get the rest of the string
             finish = False
             
+            print('=================>', str)
+            print('inProc', insideProc)
+            
             if i > 0:
                 i+= 1
             
-            while not finish:
+            while not finish and i < length:
             
                 c = txt[i]
             
+                if not insideString and c == ';':
+                    if not insideProc:
+                        stop = i+1
+                        finish = True
+                    else:
+                        if isItEnd(str[-10:]):
+                            insideProc = False
+                            continue
+                            
                 if str == '':
                     if c in (' ', '\n', '\t'):
                         pass
@@ -553,15 +600,22 @@ class sqlConsole(QWidget):
 
                 i+= 1
                 
+                '''
                 if c == ';' or i == length:
                     stop = i
                     finish = True
-             
+                '''
+            
             #print(start, stop, str)
             
+            if stop == 0:
+                return False
+            
+            '''
             if c == ';':
                 str = str[:-1]
                 stop -= 1
+            '''
             
             cursor = QTextCursor(self.cons.document())
 
@@ -569,10 +623,12 @@ class sqlConsole(QWidget):
             cursor.setPosition(stop,QTextCursor.KeepAnchor);
             
             self.cons.setTextCursor(cursor)        
+            
+            return True
 
         if event.key() == Qt.Key_F9:
-            detectStatement()
-            executeStatement()
+            if detectStatement():
+                executeStatement()
         
         if event.key() == Qt.Key_F8:
             executeStatement()
