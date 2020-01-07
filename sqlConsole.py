@@ -10,7 +10,6 @@ import time
 import db
 
 import utils
-
 import re
 
 import lobDialog
@@ -506,14 +505,26 @@ class sqlConsole(QWidget):
                             self.result.setColumnWidth(i, 512)
         
         def detectStatement():
+            def isItCreate(s):
+                '''
+                    should also check case, etc...
+                    
+                    regexp \breate\s+procedure\b
+                '''
+                
+                if re.match('^\s*create procedure\W.*', s, re.IGNORECASE):
+                    return True
+                else:
+                    return False
+                    
             def isItEnd(s):
                 '''
                     it shall ignor whitspaces
                     and at this point ';' already 
-                    checked outside, so just \send^ regexp check
+                    checked outside, so just \bend\b regexp check
                 '''
-                print('is it?', s)
-                if s[-3:] == 'end':
+                #if s[-3:] == 'end':
+                if re.match('.*\W*end\s*$', s, re.IGNORECASE):
                     print('yes')
                     return True
                 else:
@@ -564,14 +575,11 @@ class sqlConsole(QWidget):
                     insideString = False
                     continue
                     
-                if str == 'create procedure':
+                if not insideProc and isItCreate(str[:64]):
                     insideProc = True
                     
             # now get the rest of the string
             finish = False
-            
-            print('=================>', str)
-            print('inProc', insideProc)
             
             if i > 0:
                 i+= 1
@@ -598,6 +606,9 @@ class sqlConsole(QWidget):
                 else:
                     str = str + c
 
+                if not insideProc and isItCreate(str[:64]):
+                    insideProc = True
+                    
                 i+= 1
                 
                 '''
@@ -605,8 +616,6 @@ class sqlConsole(QWidget):
                     stop = i
                     finish = True
                 '''
-            
-            #print(start, stop, str)
             
             if stop == 0:
                 return False
