@@ -125,7 +125,10 @@ class sqlConsole(QWidget):
                 if db.ifNumericType(vType):
                     values.append(utils.numberToStrCSV(val))
                 else:
-                    values.append(val)
+                    if val is None:
+                        values.append(utils.cfg('nullStringCSV', '?'))
+                    else:
+                        values.append(val)
                 
             
         return ';'.join(values)
@@ -255,13 +258,16 @@ class sqlConsole(QWidget):
                         value = self.rows[c.row()][c.column()]
                         vType = self.cols[c.column()][1]
                         
-                        if db.ifBLOBType(vType):
-                            csv = str(value.encode())
+                        if value is None:
+                            csv = utils.cfg('nullStringCSV', '?')
                         else:
-                            if db.ifNumericType(vType):
-                                csv = utils.numberToStrCSV(value)
+                            if db.ifBLOBType(vType):
+                                csv = str(value.encode())
                             else:
-                                csv = value
+                                if db.ifNumericType(vType):
+                                    csv = utils.numberToStrCSV(value)
+                                else:
+                                    csv = value
                         
                         QApplication.clipboard().setText(csv)
                         # we only copy first value, makes no sence otherwise
@@ -340,7 +346,7 @@ class sqlConsole(QWidget):
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                 else:
                     if val is None:
-                        val = '?'
+                        val = utils.cfg('nullString', '?')
                     else:
                         val = str(val)
                         
@@ -472,7 +478,7 @@ class sqlConsole(QWidget):
                         #val = val.read()
                         if db.ifBLOBType(cols[c][1]):
                             if val is None:
-                                val = '?'
+                                val = utils.cfg('nullString', '?')
                             else:
                                 val = str(val.encode())
                         else:
@@ -483,7 +489,7 @@ class sqlConsole(QWidget):
                         #print(val)
                     else:
                         if val is None:
-                            val = '?'
+                            val = utils.cfg('nullString', '?')
                         else:
                             val = str(val)
                             
