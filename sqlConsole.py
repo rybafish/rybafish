@@ -404,10 +404,15 @@ class sqlConsole(QWidget):
                 
                 print('clear rows array here?')
                 
-                txtSub = txt[:64]
-                txtSub.replace('\n', ' ')
+                suffix = ''
                 
-                self.log('\nExecute: ' + txtSub + '...')
+                if len(txtSub) > 128:
+                    txtSub = txt[:128]
+                    suffix = '...'
+                    
+                txtSub = txtSub.replace('\n', ' ')
+                
+                self.log('\nExecute: ' + txtSub + suffix)
                 self.logArea.repaint()
                 
                 self.rows, self.cols, self.cursor = db.execute_query_desc(self.conn, txt, [])
@@ -420,7 +425,6 @@ class sqlConsole(QWidget):
                 t1 = time.time()
                 
                 logText = 'Query execution time: %s s\n' % (str(round(t1-t0, 3)))
-                
                 
                 for c in cols:
                     if db.ifLOBType(c[1]):
