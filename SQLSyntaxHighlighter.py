@@ -15,7 +15,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         fmLiteral = QTextCharFormat()
         fmLiteral.setForeground(QColor('#00F'))
         
-        keywords = ['select', 'from', 'order', 'by', 'group', 'inner', 'left', 'right', 'join', 'as',
+        keywords = ['select', 'from', 'order', 'by', 'group', 'where', 'inner', 'left', 'right', 'join', 'as',
                     'where', 'asc', 'desc', 'case', 'when', 'else', 'like', 'round']
 
         rules = []
@@ -25,7 +25,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
             
             
         # literals
-        rules.append([QRegularExpression('\'.+\''), fmLiteral])
+        rules.append([QRegularExpression('\'.+?\''), fmLiteral])
 
         rules.append([QRegularExpression('".+"'), fmLiteral])
 
