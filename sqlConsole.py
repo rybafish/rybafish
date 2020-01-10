@@ -164,13 +164,31 @@ class sqlConsole(QWidget):
         line = self.cons.toPlainText()
         
         st = 0
+        
         while st >=0:
             st = line.find(str, st)
             
+            print('st = ', st)
+            
             if st >= 0:
                 # really this should be a \b regexp here instead of isalnum
+                '''
                 if (st>0 and not (line[st-1]).isalnum()) and (st < len (line) and not (line[st+1]).isalnum()):
                     self.highlight(self.cons.document(), st, st+len(str))
+                '''
+                
+                sample = line[st-1:st+len(str)+1]
+
+                #mask = '\\b%s\\b' % (str)
+                #mask = r'.\b%s\b.' % (str)
+                mask = r'\W%s\W' % (str)
+                
+                if re.match(mask, sample):
+                    self.highlight(self.cons.document(), st, st+len(str))
+                else:
+                    pass
+                    #print('nope (%s -- %s)' % (sample, mask))
+                
                 st += len(str)
                     
         self.lock = False
