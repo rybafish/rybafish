@@ -127,7 +127,7 @@ class sqlConsole(QWidget):
                     if val is None:
                         values.append(utils.cfg('nullStringCSV', '?'))
                     else:
-                        values.append(val)
+                        values.append(str(val))
                 
             
         return ';'.join(values)
