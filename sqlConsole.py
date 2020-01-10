@@ -155,7 +155,7 @@ class sqlConsole(QWidget):
             return
             
         self.lock = True
-        print('lets search/highlight: ' + str)
+        #print('lets search/highlight: ' + str)
         
         #for i in range(self.cons.blockCount()):
         #    txtline = self.cons.document().findBlockByLineNumber(i)
@@ -167,8 +167,6 @@ class sqlConsole(QWidget):
         
         while st >=0:
             st = line.find(str, st)
-            
-            print('st = ', st)
             
             if st >= 0:
                 # really this should be a \b regexp here instead of isalnum
@@ -550,10 +548,8 @@ class sqlConsole(QWidget):
                 '''
                 #if s[-3:] == 'end':
                 if re.match('.*\W*end\s*$', s, re.IGNORECASE):
-                    print('yes')
                     return True
                 else:
-                    print('no')
                     return False
 
             txt = self.cons.toPlainText()
@@ -569,6 +565,7 @@ class sqlConsole(QWidget):
             insideString = False
             insideProc = False
             
+            # process the part before the cursor
             for i in range(cursorPos):
                 c = txt[i]
 
@@ -606,6 +603,9 @@ class sqlConsole(QWidget):
             # now get the rest of the string
             finish = False
             
+            print('interm result:', str)
+            print('instring:', insideString)
+            
             if i > 0:
                 i+= 1
             
@@ -631,6 +631,12 @@ class sqlConsole(QWidget):
                 else:
                     str = str + c
 
+                if not insideString and c == '\'':
+                    insideString = True
+                    
+                if insideString and c == '\'':
+                    insideString = False
+                    
                 if not insideProc and isItCreate(str[:64]):
                     insideProc = True
                     
