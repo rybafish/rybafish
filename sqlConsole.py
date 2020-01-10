@@ -406,11 +406,14 @@ class sqlConsole(QWidget):
                 
                 suffix = ''
                 
-                if len(txtSub) > 128:
+                if len(txt) > 128:
                     txtSub = txt[:128]
                     suffix = '...'
+                else:
+                    txtSub = txt
                     
                 txtSub = txtSub.replace('\n', ' ')
+                txtSub = txtSub.replace('\t', ' ')
                 
                 self.log('\nExecute: ' + txtSub + suffix)
                 self.logArea.repaint()
@@ -434,7 +437,7 @@ class sqlConsole(QWidget):
                 lobs = ', +LOBs' if self.closeResult else ''
                 
                 logText += str(len(rows)) + ' rows fetched' + lobs
-                if resultSize == utils.cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
+                if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
                 
                 self.log(logText)
             except dbException as e:

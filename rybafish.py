@@ -38,7 +38,7 @@ class ExceptionHandler(QtCore.QObject):
 
     def handler(self, exctype, value, tb):
         cwd = getcwd()
-        log('[!] fatal exeption\n')
+        log('[!] fatal exception\n')
         #details = '%s: %s\n' % (str(exctype), str(value))
         details = '%s.%s: %s\n\n' % (exctype.__module__ , exctype.__qualname__  , str(value))
         #???
