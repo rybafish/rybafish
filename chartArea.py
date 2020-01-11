@@ -1584,6 +1584,7 @@ class chartArea(QFrame):
                     log('error: i = %i, array_size = %i' % (i, array_size))
                     log('timeKey = %s, kpi: = %s' % (timeKey, kpi))
                     log('scales[kpi][max] = %i' % (scales[kpi]['max']))
+                    log('len(data[kpi]) = %i' % (len(data[kpi])))
                     
                     log('scales[kpi] = %s' % str(scales[kpi]))
 
@@ -1593,7 +1594,8 @@ class chartArea(QFrame):
                         log('data[%i] = %s' % (j, str(data[kpi][j])))
                         
                     for j in range(1, 10):
-                        k = array_size - (10 - j)
+                        k = array_size - (10 - j) - 1
+                        log('k = %i, kpi = %s, timeKey = %s' % (k, kpi, timeKey))
                         log('data[%s][%i] = %s' % (kpi, k, str(data[kpi][k])))
                         log('data[%s][%i] = %s' % (timeKey, k, str(data[timeKey][k])))
                         
