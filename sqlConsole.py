@@ -282,16 +282,19 @@ class sqlConsole(QWidget):
                                 if db.ifNumericType(vType):
                                     csv = utils.numberToStrCSV(value)
                                 else:
-                                    csv = value
+                                    csv = str(value)
                         
                         QApplication.clipboard().setText(csv)
                         # we only copy first value, makes no sence otherwise
                         break;
                         
-    def log(self, text):
+    def log(self, text, error = False):
         #self.logArea.setPlainText(self.logArea.toPlainText() + '\n' + text)
-        self.logArea.appendPlainText(text)
         
+        if error:
+            self.logArea.appendHtml('<font color = "red">%s</font>' % text);
+        else:
+            self.logArea.appendPlainText(text)
         
     def dblClick(self, i, j):
     
@@ -401,7 +404,7 @@ class sqlConsole(QWidget):
                 except dbException as e:
                     err = str(e)
                     #
-                    self.log('DB Exception:' + err)
+                    self.log('DB Exception:' + err, True)
                     
                     self.connect = None
                     return
@@ -458,7 +461,7 @@ class sqlConsole(QWidget):
                 self.log(logText)
             except dbException as e:
                 err = str(e)
-                self.log('DB Exception:' + err)
+                self.log('DB Exception:' + err, True)
                 return
 
             row0 = []
