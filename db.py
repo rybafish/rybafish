@@ -9,8 +9,10 @@ from pyhdb.protocol.message import RequestMessage
 from pyhdb.protocol.segments import RequestSegment
 from pyhdb.protocol.parts import ResultSetId
 
-from pyhdb.protocol.constants import message_types 
-from pyhdb.protocol.constants import type_codes
+from pyhdb.protocol.constants import message_types, type_codes
+
+from dbCursor import cursor_mod
+from pyhdb.protocol.constants import function_codes #for the cursor_mod
 
 message_types.CLOSERESULTSET = 69 # SAP HANA SQL Command Network Protocol Reference
                                   # this one is still missing in pyhdb 2019-12-15
@@ -163,12 +165,17 @@ def close_cursor(connection, cursor):
     cursor = None
 
 def execute_query_desc(connection, sql_string, params):
+    '''
+        The method used solely by SQL console because it also needs a result set description.
+        It also used a modified version of the pyhdb cursor implementation because of the https://github.com/rybafish/rybafish/issues/97
+    '''
 
     if not connection:
         log('no db connection...')
         return
 
-    cursor = connection.cursor()
+    #cursor = connection.cursor()
+    cursor = cursor_mod(connection)
 
     # prepare the statement...
 
@@ -193,7 +200,13 @@ def execute_query_desc(connection, sql_string, params):
 
         cursor.execute_prepared(ps, [params])
 
-        rows = cursor.fetchmany(resultSize)
+        if cursor._function_code == function_codes.DDL:
+            rows = None
+        else:
+            print('not DDL: %i' % (cursor._function_code))
+            rows = cursor.fetchmany(resultSize)
+
+        # rows = cursor.fetchmany(resultSize)
 
     except pyhdb.exceptions.DatabaseError as e:
         log('[!]: sql execution issue %s\n' % e)

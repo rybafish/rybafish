@@ -442,11 +442,19 @@ class sqlConsole(QWidget):
                 rows = self.rows
                 cols = self.cols
                 
-                resultSize = len(rows)
-                
                 t1 = time.time()
+
+                logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
                 
-                logText = 'Query execution time: %s s\n' % (str(round(t1-t0, 3)))
+                if rows is None or cols is None:
+                    # it was a DDL or something else without a result set so we just stop
+                    
+                    logText += ', ' + str(self.cursor.rowcount) + ' rows affected'
+                    
+                    self.log(logText)
+                    return
+
+                resultSize = len(rows)
                 
                 for c in cols:
                     if db.ifLOBType(c[1]):
@@ -455,7 +463,7 @@ class sqlConsole(QWidget):
                 
                 lobs = ', +LOBs' if self.closeResult else ''
                 
-                logText += str(len(rows)) + ' rows fetched' + lobs
+                logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
                 if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
                 
                 self.log(logText)
@@ -464,6 +472,8 @@ class sqlConsole(QWidget):
                 self.log('DB Exception:' + err, True)
                 return
 
+            # draw the result
+            # probably new tab also to be created somewhere here?
             row0 = []
             
             #create headers
