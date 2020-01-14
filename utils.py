@@ -162,6 +162,10 @@ def log(s, nots = False, nonl = False):
     if cfg('logmode') != 'duplicate':
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
-        f.write(ts + str(s.encode()) + nl)
+        try:
+            f.write(ts + s + nl)
+        except builtins.UnicodeEncodeError:
+            f.write(ts + str(s.encode()) + nl)
+        
         f.close()
         
