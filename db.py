@@ -203,7 +203,6 @@ def execute_query_desc(connection, sql_string, params):
         if cursor._function_code == function_codes.DDL:
             rows = None
         else:
-            print('not DDL: %i' % (cursor._function_code))
             rows = cursor.fetchmany(resultSize)
 
         # rows = cursor.fetchmany(resultSize)
@@ -322,6 +321,12 @@ def initHosts(c, hosts, hostKPIs, srvcKPIs):
 def ifNumericType(t):
     if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT,
         type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
+        return True
+    else:
+        return False
+
+def ifRAWType(t):
+    if t == type_codes.VARBINARY:
         return True
     else:
         return False

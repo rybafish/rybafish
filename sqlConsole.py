@@ -123,6 +123,8 @@ class sqlConsole(QWidget):
             else:
                 if db.ifNumericType(vType):
                     values.append(utils.numberToStrCSV(val))
+                elif db.ifRAWType(vType):
+                    values.append(val.hex())
                 else:
                     if val is None:
                         values.append(utils.cfg('nullStringCSV', '?'))
@@ -281,6 +283,8 @@ class sqlConsole(QWidget):
                             else:
                                 if db.ifNumericType(vType):
                                     csv = utils.numberToStrCSV(value)
+                                elif db.ifRAWType(vType):
+                                    csv = value.hex()
                                 else:
                                     csv = str(value)
                         
@@ -521,6 +525,10 @@ class sqlConsole(QWidget):
                         #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                         #print(val)
+                    elif db.ifRAWType(cols[c][1]): #VARBINARY
+                        val = val.hex()
+                        
+                        item = QTableWidgetItem(val)
                     else:
                         if val is None:
                             val = utils.cfg('nullString', '?')
