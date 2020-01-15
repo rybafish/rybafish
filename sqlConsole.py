@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem, QApplication, QAbstractItemView
+from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
+        QTabWidget, QApplication, QAbstractItemView)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont
 from PyQt5.QtCore import QTimer
@@ -18,33 +19,221 @@ from utils import dbException, log
 
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
+class resultSet(QTableWidget):
 
-'''
-    types
-    1 - integer?
-    2 - smallint
-    3 - integer
-    5 - decimal
-
-    7 - double
+    closeResult = False # True in case of LOBs, CLOSERESULTSET message to be sent
+                        # this actually to be set by the driver, and not in the application level... << print create an issue for this
     
-    9 - varchar
-    11 - nvarchar
-
-    14 - date
-    15 - time
-    16 - timestamp
+    cols = [] #column descriptions
+    rows = [] # actual data 
     
-    26 - LOB
-'''
+    headers = [] # column names
+    
+    cursor = None # db cursor i dont remember what for
+    
+    def csvRow(self, r):
+        
+        values = []
+        
+        # print varchar values to be quoted by "" to be excel friendly
+        for i in range(self.columnCount()):
+            #values.append(table.item(r, i).text())
 
+            val = self.rows[r][i]
+            vType = self.cols[i][1]
+
+            if db.ifBLOBType(vType):
+                values.append(str(val.encode()))
+            else:
+                if db.ifNumericType(vType):
+                    values.append(utils.numberToStrCSV(val))
+                elif db.ifRAWType(vType):
+                    values.append(val.hex())
+                else:
+                    if val is None:
+                        values.append(utils.cfg('nullStringCSV', '?'))
+                    else:
+                        values.append(str(val))
+                
+            
+        return ';'.join(values)
+
+    def resultKeyPressHandler(self, event):
+    
+        modifiers = QApplication.keyboardModifiers()
+        
+        if modifiers == Qt.ControlModifier:
+            if event.key() == Qt.Key_A:
+                self.selectAll()
+            
+            if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
+            
+                '''
+                    copy cells or rows implementation
+                '''
+            
+                sm = self.selectionModel()
+                
+                rowIndex = []
+                for r in sm.selectedRows():
+                    rowIndex.append(r.row())
+                    
+                if rowIndex: 
+                    # process rows
+                    
+                    rowIndex.sort()
+                    
+                    csv = ';'.join(self.headers) + '\n'
+                    for r in rowIndex:
+                        csv += self.csvRow(r) + '\n'
+                        
+                    QApplication.clipboard().setText(csv)
+                    
+                else:
+                    # copy one cell
+                    for c in sm.selectedIndexes():
+                        #csv = self.result.item(c.row(), c.column()).text()
+
+                        value = self.rows[c.row()][c.column()]
+                        vType = self.cols[c.column()][1]
+                        
+                        if value is None:
+                            csv = utils.cfg('nullStringCSV', '?')
+                        else:
+                            if db.ifBLOBType(vType):
+                                csv = str(value.encode())
+                            else:
+                                if db.ifNumericType(vType):
+                                    csv = utils.numberToStrCSV(value)
+                                elif db.ifRAWType(vType):
+                                    csv = value.hex()
+                                else:
+                                    csv = str(value)
+                        
+                        QApplication.clipboard().setText(csv)
+                        # we only copy first value, makes no sence otherwise
+                        break;
+        else:
+            super().keyPressEvent(event)
+            
+    def clear(self):
+        self.setRowCount(0)
+        self.setColumnCount(0)
+        
+    def populate(self):
+        '''
+            populates the result set based on
+            self.rows, self.cols
+        '''
+    
+        self.clear()
+    
+        cols = self.cols
+        rows = self.rows
+    
+        row0 = []
+
+        for c in cols:
+            row0.append(c[0])
+            
+        self.headers = row0.copy()
+           
+        self.setColumnCount(len(row0))
+
+        self.setHorizontalHeaderLabels(row0)
+        self.resizeColumnsToContents();
+        
+        self.setRowCount(len(rows))
+        
+        adjRow = 5 if len(rows) >=5 else len(rows)
+        
+        #fill the result table
+        for r in range(len(rows)):
+                
+            for c in range(len(row0)):
+                
+                val = rows[r][c]
+                
+                #if cols[c][1] == 4 or cols[c][1] == 3 or cols[c][1] == 1:
+                if db.ifNumericType(cols[c][1]):
+                
+                    if db.ifDecimalType(cols[c][1]):
+                        val = utils.numberToStr(val, 3)
+                    else:
+                        val = utils.numberToStr(val)
+                    
+                    item = QTableWidgetItem(val)
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                elif db.ifLOBType(cols[c][1]): #LOB
+                    #val = val.read()
+                    if db.ifBLOBType(cols[c][1]):
+                        if val is None:
+                            val = utils.cfg('nullString', '?')
+                        else:
+                            val = str(val.encode())
+                    else:
+                        val = str(val)
+                    item = QTableWidgetItem(val)
+                    #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
+                    #print(val)
+                elif db.ifRAWType(cols[c][1]): #VARBINARY
+                    val = val.hex()
+                    
+                    item = QTableWidgetItem(val)
+                else:
+                    if val is None:
+                        val = utils.cfg('nullString', '?')
+                    else:
+                        val = str(val)
+                        
+                    item = QTableWidgetItem(val)
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
+                    
+                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                self.setItem(r, c, item) # Y-Scale
+
+            if r == adjRow - 1:
+                self.resizeColumnsToContents();
+                
+                for i in range(len(row0)):
+                    if self.columnWidth(i) >= 512:
+                        self.setColumnWidth(i, 512)
+                        
+    def dblClick(self, i, j):
+    
+        print(i, j)
+        print(self.rows)
+        print(self.cols)
+    
+        if db.ifLOBType(self.cols[j][1]):
+            blob = self.rows[i][j].read()
+            self.rows[i][j].seek(0) #rewind just in case
+        else:
+            blob = str(self.rows[i][j])
+
+        lob = lobDialog.lobDialog(blob)
+        
+        lob.exec_()
+
+        return False
+        
+    def __init__(self):
+        super().__init__()
+        
+        self.setWordWrap(False)
+        self.horizontalHeader().setStyleSheet("QHeaderView::section { background-color: lightgray }")
+        
+        self.cellDoubleClicked.connect(self.dblClick) # LOB viewer
+
+        self.keyPressEvent = self.resultKeyPressHandler
+        
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        
+        
 class sqlConsole(QWidget):
     conn = None
     cursor = None # single cursor supported
-    
-    closeResult = False # True in case of LOBs, CLOSERESULTSET message to be sent
-    
-    headers = [] # column names
     
     lock = False
     
@@ -67,7 +256,7 @@ class sqlConsole(QWidget):
             self.config = config
         except dbException as e:
             raise e
-                        
+            
     def enableKeepAlive(self, window, keepalive):
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
@@ -106,34 +295,6 @@ class sqlConsole(QWidget):
                 log('Connection lost, give up')
                 # print disable the timer?
                 self.conn = None
-            
-    def csvRow(self, table, r):
-        
-        values = []
-        
-        # print varchar values to be quoted by "" to be excel friendly
-        for i in range(table.columnCount()):
-            #values.append(table.item(r, i).text())
-
-            val = self.rows[r][i]
-            vType = self.cols[i][1]
-
-            if db.ifBLOBType(vType):
-                values.append(str(val.encode()))
-            else:
-                if db.ifNumericType(vType):
-                    values.append(utils.numberToStrCSV(val))
-                elif db.ifRAWType(vType):
-                    values.append(val.hex())
-                else:
-                    if val is None:
-                        values.append(utils.cfg('nullStringCSV', '?'))
-                    else:
-                        values.append(str(val))
-                
-            
-        return ';'.join(values)
-
 
     def clearHighlighting(self):
         print('clear highlights')
@@ -235,62 +396,6 @@ class sqlConsole(QWidget):
         # https://stackoverflow.com/questions/27716625/qtextedit-change-font-of-individual-paragraph-block
         # https://stackoverflow.com/questions/1849558/how-do-i-use-qtextblock
         # cursor.setPosition(0)
-                
-    def resultKeyPressHandler(self, event):
-    
-        modifiers = QApplication.keyboardModifiers()
-        
-        if modifiers == Qt.ControlModifier:
-            if event.key() == Qt.Key_A:
-                self.result.selectAll()
-            
-            if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
-            
-                '''
-                    copy cells or rows implementation
-                '''
-            
-                sm = self.result.selectionModel()
-                
-                rowIndex = []
-                for r in sm.selectedRows():
-                    rowIndex.append(r.row())
-                    
-                if rowIndex: 
-                    # process rows
-                    
-                    rowIndex.sort()
-                    
-                    csv = ';'.join(self.headers) + '\n'
-                    for r in rowIndex:
-                        csv += self.csvRow(self.result, r) + '\n'
-                        
-                    QApplication.clipboard().setText(csv)
-                    
-                else:
-                    # copy one cell
-                    for c in sm.selectedIndexes():
-                        #csv = self.result.item(c.row(), c.column()).text()
-
-                        value = self.rows[c.row()][c.column()]
-                        vType = self.cols[c.column()][1]
-                        
-                        if value is None:
-                            csv = utils.cfg('nullStringCSV', '?')
-                        else:
-                            if db.ifBLOBType(vType):
-                                csv = str(value.encode())
-                            else:
-                                if db.ifNumericType(vType):
-                                    csv = utils.numberToStrCSV(value)
-                                elif db.ifRAWType(vType):
-                                    csv = value.hex()
-                                else:
-                                    csv = str(value)
-                        
-                        QApplication.clipboard().setText(csv)
-                        # we only copy first value, makes no sence otherwise
-                        break;
                         
     def log(self, text, error = False):
         #self.logArea.setPlainText(self.logArea.toPlainText() + '\n' + text)
@@ -299,20 +404,6 @@ class sqlConsole(QWidget):
             self.logArea.appendHtml('<font color = "red">%s</font>' % text);
         else:
             self.logArea.appendPlainText(text)
-        
-    def dblClick(self, i, j):
-    
-        if db.ifLOBType(self.cols[j][1]):
-            blob = self.rows[i][j].read()
-            self.rows[i][j].seek(0) #rewind just in case
-        else:
-            blob = str(self.rows[i][j])
-
-        lob = lobDialog.lobDialog(blob)
-        
-        lob.exec_()
-
-        return False
         
     def dummyResultTable(self):
     
@@ -346,8 +437,6 @@ class sqlConsole(QWidget):
         adjRow = 5 if len(rows) >=5 else len(rows)
         
         #fill the result table
-        
-        self.result.cellDoubleClicked.connect(self.dblClick)
         
         for r in range(len(rows)):
                 
@@ -417,10 +506,10 @@ class sqlConsole(QWidget):
                 self.log('Error: No connection')
                 return
                 
-            if self.closeResult:
+            if self.result.closeResult:
                 log('connection had LOBs so call CLOSERESULTSET...')
-                db.close_cursor(self.conn, self.cursor)
-                self.closeResult = False
+                db.close_cursor(self.conn, self.result.cursor)
+                self.result.closeResult = False
             
             try:
                 t0 = time.time()
@@ -441,10 +530,10 @@ class sqlConsole(QWidget):
                 self.log('\nExecute: ' + txtSub + suffix)
                 self.logArea.repaint()
                 
-                self.rows, self.cols, self.cursor = db.execute_query_desc(self.conn, txt, [])
+                self.result.rows, self.result.cols, self.result.cursor = db.execute_query_desc(self.conn, txt, [])
                 
-                rows = self.rows
-                cols = self.cols
+                rows = self.result.rows
+                cols = self.result.cols
                 
                 t1 = time.time()
 
@@ -453,19 +542,21 @@ class sqlConsole(QWidget):
                 if rows is None or cols is None:
                     # it was a DDL or something else without a result set so we just stop
                     
-                    logText += ', ' + str(self.cursor.rowcount) + ' rows affected'
+                    logText += ', ' + str(self.result.cursor.rowcount) + ' rows affected'
                     
                     self.log(logText)
+                    
+                    self.result.clear()
                     return
 
                 resultSize = len(rows)
                 
                 for c in cols:
                     if db.ifLOBType(c[1]):
-                        self.closeResult = True
+                        self.result.closeResult = True
                         break
                 
-                lobs = ', +LOBs' if self.closeResult else ''
+                lobs = ', +LOBs' if self.result.closeResult else ''
                 
                 logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
                 if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
@@ -478,75 +569,10 @@ class sqlConsole(QWidget):
 
             # draw the result
             # probably new tab also to be created somewhere here?
-            row0 = []
             
-            #create headers
-            for c in cols:
-                row0.append(c[0])
+            self.result.populate()
                 
-            self.headers = row0.copy()
-               
-            self.result.setColumnCount(len(row0))
-            self.result.setRowCount(0)
-            self.result.setHorizontalHeaderLabels(row0)
-            self.result.resizeColumnsToContents();
-            
-            self.result.setRowCount(len(rows))
-            
-            adjRow = 5 if len(rows) >=5 else len(rows)
-            
-            #fill the result table
-            for r in range(len(rows)):
-                    
-                for c in range(len(row0)):
-                    
-                    val = rows[r][c]
-                    
-                    #if cols[c][1] == 4 or cols[c][1] == 3 or cols[c][1] == 1:
-                    if db.ifNumericType(cols[c][1]):
-                    
-                        if db.ifDecimalType(cols[c][1]):
-                            val = utils.numberToStr(val, 3)
-                        else:
-                            val = utils.numberToStr(val)
-                        
-                        item = QTableWidgetItem(val)
-                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                    elif db.ifLOBType(cols[c][1]): #LOB
-                        #val = val.read()
-                        if db.ifBLOBType(cols[c][1]):
-                            if val is None:
-                                val = utils.cfg('nullString', '?')
-                            else:
-                                val = str(val.encode())
-                        else:
-                            val = str(val)
-                        item = QTableWidgetItem(val)
-                        #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                        item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
-                        #print(val)
-                    elif db.ifRAWType(cols[c][1]): #VARBINARY
-                        val = val.hex()
-                        
-                        item = QTableWidgetItem(val)
-                    else:
-                        if val is None:
-                            val = utils.cfg('nullString', '?')
-                        else:
-                            val = str(val)
-                            
-                        item = QTableWidgetItem(val)
-                        item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
-                        
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    self.result.setItem(r, c, item) # Y-Scale
-
-                if r == adjRow - 1:
-                    self.result.resizeColumnsToContents();
-                    
-                    for i in range(len(row0)):
-                        if self.result.columnWidth(i) >= 512:
-                            self.result.setColumnWidth(i, 512)
+            return
         
         def detectStatement():
             def isItCreate(s):
@@ -715,11 +741,12 @@ class sqlConsole(QWidget):
             
         self.cons.setFont(font)
         
-        self.result = QTableWidget()
-        self.result.setWordWrap(False)
-        self.result.horizontalHeader().setStyleSheet("QHeaderView::section { background-color: lightgray }")
+        #self.result = QTableWidget()
+        self.result = resultSet()
         
-        self.result.cellDoubleClicked.connect(self.dblClick) # LOB viewer
+        self.resultTabs = QTabWidget()
+        
+        self.resultTabs.addTab(self.result, 'Results')
         
         #self.result = QPlainTextEdit()
         #splitOne = QSplitter(Qt.Horizontal)
@@ -729,16 +756,11 @@ class sqlConsole(QWidget):
         self.cons.keyPressEvent = self.consKeyPressHandler
         self.cons.selectionChanged.connect(self.consSelection) #does not work
 
-
-        self.result.keyPressEvent = self.resultKeyPressHandler
-        
-        self.result.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-                
         #self.cons.setPlainText('select * from (select * from m_load_history_info)')
         #self.cons.setPlainText('select connection_id, statement_string from m_active_statements;\nselect connection_id, statement_string from m_active_statements;\n')
         
         spliter.addWidget(self.cons)
-        spliter.addWidget(self.result)
+        spliter.addWidget(self.resultTabs)
         spliter.addWidget(self.logArea)
         
         spliter.setSizes([300, 200, 10])
