@@ -253,6 +253,7 @@ class sqlConsole(QWidget):
     haveHighlighrs = False
     
     results = [] #list of resultsets
+    resultTabs = None #tabs widget
     
     def __init__(self, config):
         super().__init__()
@@ -267,14 +268,29 @@ class sqlConsole(QWidget):
         except dbException as e:
             raise e
             
+    def closeResults(self):
+    
+        print('closeResults')
+    
+        for i in range(len(self.results) - 1, -1, -1):
+            print('kill', i)
+            self.resultTabs.removeTab(i)
+            self.results[i].clear()
+            del(self.results[i])
+        
     def newResult(self):
         
         result = resultSet()
         
-        rName = 'Results ' + str(len(self.results))
+        if len(self.results) > 0:
+            rName = 'Results ' + str(len(self.results))
+        else:
+            rName = 'Results'
         
         self.results.append(result)
         self.resultTabs.addTab(result, rName)
+        
+        self.resultTabs.setCurrentIndex(len(self.results) - 1)
         
         return result
         
@@ -589,12 +605,12 @@ class sqlConsole(QWidget):
             
             # main per character loop:
 
-            
-            
             for i in range(scanFrom, scanTo):
                 c = txt[i]
 
+                print('['+c+']')
                 if not insideString and c == ';':
+                    print(i)
                     if not insideProc:
                         str = ''
                         stop = i
@@ -611,7 +627,7 @@ class sqlConsole(QWidget):
                         # warning: insideString logic skipped here (as it is defined below this line
                         continue
                     else:
-                        if F9 and (start <= cursorPos <= stop):
+                        if F9 and (start <= cursorPos < stop):
                             selectSingle(start, stop)
                             break
                         else:
@@ -634,24 +650,37 @@ class sqlConsole(QWidget):
                 if not insideProc and isItCreate(str[:64]):
                     insideProc = True
 
+
+            #print(cursorPos)
+            #print(scanFrom, scanTo)
+            #print(start, stop)
+            
             if stop == 0:
                 stop = scanTo
             
-            if F9 and (start <= cursorPos <= stop):
+            if F9 and (start <= cursorPos < stop):
                 selectSingle(start, stop)
             else:
                 if not F9:
                     statementDetected(start, stop)
                 
+            self.closeResults()
+            
             print('\n---\nso what we have to execute: ')
-            if F9:
-                print('--> [%s]' % txt[start:stop])
+            if F9 and (start <= cursorPos < stop):
+                print('-> [%s] ' % txt[start:stop])
+                
+                result = self.newResult()
+                executeStatement(txt[start:stop], result)
             else:
                 for st in statements:
                     print('--> [%s]' % st)
                     
                     result = self.newResult()
                     executeStatement(st, result)
+                    
+                    #self.update()
+                    self.repaint()
 
             return
         
@@ -690,7 +719,7 @@ class sqlConsole(QWidget):
             try:
                 t0 = time.time()
                 
-                print('clear rows array here?')
+                #print('clear rows array here?')
                 
                 suffix = ''
                 
@@ -886,11 +915,14 @@ class sqlConsole(QWidget):
             
             return True
 
-        if event.key() == Qt.Key_F9:
+        #if event.key() == Qt.Key_F9:
+        #we now have exactly same logic for F9 / F8
+            '''
             if detectStatement():
                 executeStatement()
+            '''
         
-        if event.key() == Qt.Key_F8:
+        if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             executeSelection()
             
         else:
