@@ -429,15 +429,17 @@ class hslWindow(QMainWindow):
             
             self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
             #console.cons.setPlainText('select * from dummy;\n\nselect \n    *\n    from dummy;\n\nselect * from m_host_information;');
-            console.cons.setPlainText('''
+            console.cons.setPlainText('''select 0 from dummy;
+
 create procedure ...
 
 as begin
 select * from dummy;
 end;
 
-select from dummy;
-            ''');
+select 1 from dummy;
+select 2 from dummy;
+select 3 from dummy;''');
             
             console.dummyResultTable()
         

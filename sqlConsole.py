@@ -252,6 +252,7 @@ class sqlConsole(QWidget):
     
     haveHighlighrs = False
     
+    results = [] #list of resultsets
     
     def __init__(self, config):
         super().__init__()
@@ -265,6 +266,18 @@ class sqlConsole(QWidget):
             self.config = config
         except dbException as e:
             raise e
+            
+    def newResult(self):
+        
+        result = resultSet()
+        
+        rName = 'Results ' + str(len(self.results))
+        
+        self.results.append(result)
+        self.resultTabs.addTab(result, rName)
+        
+        return result
+        
             
     def enableKeepAlive(self, window, keepalive):
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
@@ -430,6 +443,7 @@ class sqlConsole(QWidget):
                 ['name','select * from dummy', 'no idea']
             ]
             
+        return
         #create headers
         for c in cols:
             row0.append(c[0])
@@ -485,20 +499,168 @@ class sqlConsole(QWidget):
                             
     def consKeyPressHandler(self, event):
     
-        def executeStatement():
-            '''
-                executes the selection without any analysis
-            '''
-            txt = self.cons.textCursor().selectedText()
+        def executeSelection():
+        
+            txt = ''
+            statements = []
+            F9 = True
             
-            if txt == '':
-                txt = self.cons.toPlainText()
-            else:
-                ParagraphSeparator = u"\u2029"
 
-                txt = txt.replace(ParagraphSeparator, '\n')
+            def isItCreate(s):
+                '''
+                    if in create procedure now?
+                '''
+                
+                if re.match('^\s*create procedure\W.*', s, re.IGNORECASE):
+                    return True
+                else:
+                    return False
+                    
+            def isItEnd(s):
+                '''
+                    it shall ignor whitspaces
+                    and at this point ';' already 
+                    checked outside, so just \bend\b regexp check
+
+
+                    The logic goes like this
+                    
+                    if there is a selection:
+                        split and execute stuff inside
+                    else:
+                        f9 mode - detect and execute one line
+
+                '''
+                #if s[-3:] == 'end':
+                if re.match('.*\W*end\s*$', s, re.IGNORECASE):
+                    return True
+                else:
+                    return False
+                    
+            def selectSingle(start, stop):
+                cursor = QTextCursor(self.cons.document())
+
+                cursor.setPosition(start,QTextCursor.MoveAnchor)
+                cursor.setPosition(stop,QTextCursor.KeepAnchor)
+                
+                self.cons.setTextCursor(cursor)
             
-            if len(txt) >= 2**17 and self.conn.large_sql != True:
+            def statementDetected(start, stop):
+
+                str = txt[start:stop]
+                
+                if str == '': 
+                    #typically only when start = 0, stop = 1
+                    if not (start == 0 and stop <= 1):
+                        log('[w] unusual empty string matched')
+                    return
+                    
+                statements.append(str)
+            
+            cursor = self.cons.textCursor()
+
+            selectionMode = False
+            
+            txt = self.cons.toPlainText()
+            length = len(txt)
+
+            if not cursor.selection().isEmpty():
+                F9 = False
+                selectionMode = True
+                scanFrom = cursor.selectionStart()
+                scanTo = cursor.selectionEnd()
+            else:
+                F9 = True
+                scanFrom = 0
+                scanTo = length
+                if F9:
+                    #detect and execute just one statement
+                    cursorPos = self.cons.textCursor().position()
+                else:
+                    cursorPos = None
+            
+            str = ''
+            
+            i = 0
+            start = stop = 0
+            
+            insideString = False
+            insideProc = False
+            
+            # main per character loop:
+
+            
+            
+            for i in range(scanFrom, scanTo):
+                c = txt[i]
+
+                if not insideString and c == ';':
+                    if not insideProc:
+                        str = ''
+                        stop = i
+                        continue
+                    else:
+                        if isItEnd(str[-10:]):
+                            insideProc = False
+                            str = ''
+                            stop = i
+                            continue
+                
+                if str == '':
+                    if c in (' ', '\n', '\t'):
+                        # warning: insideString logic skipped here (as it is defined below this line
+                        continue
+                    else:
+                        if F9 and (start <= cursorPos <= stop):
+                            selectSingle(start, stop)
+                            break
+                        else:
+                            if not F9:
+                                statementDetected(start, stop)
+                            
+                        start = i
+                        str = str + c
+                else:
+                    str = str + c
+
+                if not insideString and c == '\'':
+                    insideString = True
+                    continue
+                    
+                if insideString and c == '\'':
+                    insideString = False
+                    continue
+                    
+                if not insideProc and isItCreate(str[:64]):
+                    insideProc = True
+
+            if stop == 0:
+                stop = scanTo
+            
+            if F9 and (start <= cursorPos <= stop):
+                selectSingle(start, stop)
+            else:
+                if not F9:
+                    statementDetected(start, stop)
+                
+            print('\n---\nso what we have to execute: ')
+            if F9:
+                print('--> [%s]' % txt[start:stop])
+            else:
+                for st in statements:
+                    print('--> [%s]' % st)
+                    
+                    result = self.newResult()
+                    executeStatement(st, result)
+
+            return
+        
+        def executeStatement(sql, result):
+            '''
+                executes the string without any analysis
+                result filled
+            '''
+            if len(sql) >= 2**17 and self.conn.large_sql != True:
                 log('reconnecting to hangle large SQL')
                 print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
                 
@@ -518,10 +680,10 @@ class sqlConsole(QWidget):
                 self.log('Error: No connection')
                 return
                 
-            if self.result.closeResult:
+            if result.closeResult:
                 log('connection had LOBs so call CLOSERESULTSET...')
-                db.close_cursor(self.conn, self.result.cursor)
-                self.result.closeResult = False
+                db.close_cursor(self.conn, result.cursor)
+                result.closeResult = False
                 
             #execute the query
             
@@ -532,11 +694,11 @@ class sqlConsole(QWidget):
                 
                 suffix = ''
                 
-                if len(txt) > 128:
-                    txtSub = txt[:128]
+                if len(sql) > 128:
+                    txtSub = sql[:128]
                     suffix = '...'
                 else:
-                    txtSub = txt
+                    txtSub = sql
                     
                 txtSub = txtSub.replace('\n', ' ')
                 txtSub = txtSub.replace('\t', ' ')
@@ -544,10 +706,10 @@ class sqlConsole(QWidget):
                 self.log('\nExecute: ' + txtSub + suffix)
                 self.logArea.repaint()
                 
-                self.result.rows, self.result.cols, self.result.cursor = db.execute_query_desc(self.conn, txt, [])
+                result.rows, result.cols, result.cursor = db.execute_query_desc(self.conn, sql, [])
                 
-                rows = self.result.rows
-                cols = self.result.cols
+                rows = result.rows
+                cols = result.cols
                 
                 t1 = time.time()
 
@@ -556,21 +718,21 @@ class sqlConsole(QWidget):
                 if rows is None or cols is None:
                     # it was a DDL or something else without a result set so we just stop
                     
-                    logText += ', ' + str(self.result.cursor.rowcount) + ' rows affected'
+                    logText += ', ' + str(result.cursor.rowcount) + ' rows affected'
                     
                     self.log(logText)
                     
-                    self.result.clear()
+                    result.clear()
                     return
 
                 resultSize = len(rows)
                 
                 for c in cols:
                     if db.ifLOBType(c[1]):
-                        self.result.closeResult = True
+                        result.closeResult = True
                         break
                 
-                lobs = ', +LOBs' if self.result.closeResult else ''
+                lobs = ', +LOBs' if result.closeResult else ''
                 
                 logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
                 if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
@@ -581,10 +743,7 @@ class sqlConsole(QWidget):
                 self.log('DB Exception:' + err, True)
                 return
 
-            # draw the result
-            # probably new tab also to be created somewhere here?
-            
-            self.result.populate()
+            result.populate()
                 
             return
         
@@ -732,7 +891,7 @@ class sqlConsole(QWidget):
                 executeStatement()
         
         if event.key() == Qt.Key_F8:
-            executeStatement()
+            executeSelection()
             
         else:
             QPlainTextEdit.keyPressEvent(self.cons, event)
@@ -755,15 +914,9 @@ class sqlConsole(QWidget):
             
         self.cons.setFont(font)
         
-        #self.result = QTableWidget()
-        self.result = resultSet()
-        
         self.resultTabs = QTabWidget()
+        #self.newResult() #do we need an empty one?
         
-        self.resultTabs.addTab(self.result, 'Results')
-        
-        #self.result = QPlainTextEdit()
-        #splitOne = QSplitter(Qt.Horizontal)
         spliter = QSplitter(Qt.Vertical)
         self.logArea = QPlainTextEdit()
         
