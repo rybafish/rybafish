@@ -116,6 +116,15 @@ class resultSet(QTableWidget):
         else:
             super().keyPressEvent(event)
             
+    def close(self):
+        '''
+        if self.closeResult:
+            log('connection had LOBs so call CLOSERESULTSET...')
+            db.close_cursor(self.conn, self.result.cursor)
+            self.result.closeResult = False
+        '''
+        pass
+            
     def clear(self):
         self.setRowCount(0)
         self.setColumnCount(0)
@@ -477,6 +486,9 @@ class sqlConsole(QWidget):
     def consKeyPressHandler(self, event):
     
         def executeStatement():
+            '''
+                executes the selection without any analysis
+            '''
             txt = self.cons.textCursor().selectedText()
             
             if txt == '':
@@ -488,7 +500,7 @@ class sqlConsole(QWidget):
             
             if len(txt) >= 2**17 and self.conn.large_sql != True:
                 log('reconnecting to hangle large SQL')
-                print('replace by a pyhdb.constant?')
+                print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
                 
                 db.largeSql = True
                 
@@ -510,6 +522,8 @@ class sqlConsole(QWidget):
                 log('connection had LOBs so call CLOSERESULTSET...')
                 db.close_cursor(self.conn, self.result.cursor)
                 self.result.closeResult = False
+                
+            #execute the query
             
             try:
                 t0 = time.time()
