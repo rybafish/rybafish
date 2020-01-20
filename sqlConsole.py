@@ -117,19 +117,6 @@ class resultSet(QTableWidget):
         else:
             super().keyPressEvent(event)
             
-    def close(self):
-        '''
-        if self.closeResult:
-            log('connection had LOBs so call CLOSERESULTSET...')
-            db.close_cursor(self.conn, self.result.cursor)
-            self.result.closeResult = False
-        '''
-        pass
-            
-    def clear(self):
-        self.setRowCount(0)
-        self.setColumnCount(0)
-        
     def populate(self):
         '''
             populates the result set based on
@@ -235,12 +222,29 @@ class resultSet(QTableWidget):
         self.keyPressEvent = self.resultKeyPressHandler
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+
+    '''
+    seems standard method exists for this
+    
+    def clear(self):
+        self.setRowCount(0)
+        self.setColumnCount(0)
+    '''
         
-    def __del__(self):
+    def destroy(self):
+        
+        '''
+            __del__ seems to be potentially implicidly delayed so let's use a normal explicit method
+            Actually this seems to be exactly the right place to put
+            CLOSERESULTSET call, as before this we might need to call BLOB.read()
+        '''
         if self.closeResult:
             log('The resultSet had LOBs so call CLOSERESULTSET %s...' % str(self._resultset_id))
             db.close_cursor(self.conn, self._resultset_id)
             result.closeResult = False
+            
+    def __del__(self):
+        print('result set deleted')
     
         
         
@@ -296,6 +300,7 @@ class sqlConsole(QWidget):
             print('kill', i)
             self.resultTabs.removeTab(i)
             self.results[i].clear()
+            self.results[i].destroy()
             
             del(self.results[i])
             
