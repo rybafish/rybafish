@@ -21,15 +21,16 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 class resultSet(QTableWidget):
 
-    closeResult = False # True in case of LOBs, CLOSERESULTSET message to be sent
-                        # this actually to be set by the driver, and not in the application level... << print create an issue for this
+    closeResult = False     # True in case of LOBs, CLOSERESULTSET message to be sent
+                            # this actually to be set by the driver, and not in the application level... << print create an issue for this
+    _resultset_id = None    # filled manually right after execute_query
     
     cols = [] #column descriptions
     rows = [] # actual data 
     
     headers = [] # column names
     
-    cursor = None # db cursor i dont remember what for
+    #cursor = None # db cursor i dont remember what for -- not needed any more?
     
     def csvRow(self, r):
         
@@ -211,10 +212,6 @@ class resultSet(QTableWidget):
                         
     def dblClick(self, i, j):
     
-        print(i, j)
-        print(self.rows)
-        print(self.cols)
-    
         if db.ifLOBType(self.cols[j][1]):
             blob = self.rows[i][j].read()
             self.rows[i][j].seek(0) #rewind just in case
@@ -239,10 +236,17 @@ class resultSet(QTableWidget):
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         
+    def __del__(self):
+        if self.closeResult:
+            log('The resultSet had LOBs so call CLOSERESULTSET %s...' % str(self._resultset_id))
+            db.close_cursor(self.conn, self._resultset_id)
+            result.closeResult = False
+    
+        
         
 class sqlConsole(QWidget):
     conn = None
-    cursor = None # single cursor supported
+    #cursor = None # single cursor supported -- is it needed at all for console globally?
     
     lock = False
     
@@ -268,16 +272,6 @@ class sqlConsole(QWidget):
         except dbException as e:
             raise e
             
-    def closeResults(self):
-    
-        print('closeResults')
-    
-        for i in range(len(self.results) - 1, -1, -1):
-            print('kill', i)
-            self.resultTabs.removeTab(i)
-            self.results[i].clear()
-            del(self.results[i])
-        
     def newResult(self):
         
         result = resultSet()
@@ -294,6 +288,16 @@ class sqlConsole(QWidget):
         
         return result
         
+    def closeResults(self):
+    
+        print('closeResults()')
+    
+        for i in range(len(self.results) - 1, -1, -1):
+            print('kill', i)
+            self.resultTabs.removeTab(i)
+            self.results[i].clear()
+            
+            del(self.results[i])
             
     def enableKeepAlive(self, window, keepalive):
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
@@ -689,6 +693,9 @@ class sqlConsole(QWidget):
                 executes the string without any analysis
                 result filled
             '''
+            
+            self.renewKeepAlive()
+            
             if len(sql) >= 2**17 and self.conn.large_sql != True:
                 log('reconnecting to hangle large SQL')
                 print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
@@ -708,11 +715,6 @@ class sqlConsole(QWidget):
             if self.conn is None:
                 self.log('Error: No connection')
                 return
-                
-            if result.closeResult:
-                log('connection had LOBs so call CLOSERESULTSET...')
-                db.close_cursor(self.conn, result.cursor)
-                result.closeResult = False
                 
             #execute the query
             
@@ -735,7 +737,7 @@ class sqlConsole(QWidget):
                 self.log('\nExecute: ' + txtSub + suffix)
                 self.logArea.repaint()
                 
-                result.rows, result.cols, result.cursor = db.execute_query_desc(self.conn, sql, [])
+                result.rows, result.cols, dbCursor = db.execute_query_desc(self.conn, sql, [])
                 
                 rows = result.rows
                 cols = result.cols
@@ -747,7 +749,7 @@ class sqlConsole(QWidget):
                 if rows is None or cols is None:
                     # it was a DDL or something else without a result set so we just stop
                     
-                    logText += ', ' + str(result.cursor.rowcount) + ' rows affected'
+                    logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
                     
                     self.log(logText)
                     
@@ -759,6 +761,7 @@ class sqlConsole(QWidget):
                 for c in cols:
                     if db.ifLOBType(c[1]):
                         result.closeResult = True
+                        result._resultset_id = dbCursor._resultset_id
                         break
                 
                 lobs = ', +LOBs' if result.closeResult else ''

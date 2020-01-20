@@ -149,20 +149,18 @@ def execute_query(connection, sql_string, params):
 
     return rows
 
-def close_cursor(connection, cursor):
+def close_result(connection, _resultset_id):
     
     request = RequestMessage.new(
                 connection,
-                RequestSegment(message_types.CLOSERESULTSET, (ResultSetId(cursor._resultset_id)))
+                RequestSegment(message_types.CLOSERESULTSET, (ResultSetId(_resultset_id)))
                 )
 
     response = connection.send_request(request)
     
     # no exception...
     # no result check...
-    
-    cursor.close()
-    cursor = None
+    return
 
 def execute_query_desc(connection, sql_string, params):
     '''
