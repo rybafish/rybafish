@@ -20,17 +20,48 @@ from utils import dbException, log
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 class resultSet(QTableWidget):
+    '''
+        Implements the result set widget, basically QTableWidget with minor extensions
+    
+    '''
 
-    closeResult = False     # True in case of LOBs, CLOSERESULTSET message to be sent
-                            # this actually to be set by the driver, and not in the application level... << print create an issue for this
-    _resultset_id = None    # filled manually right after execute_query
-    
-    cols = [] #column descriptions
-    rows = [] # actual data 
-    
-    headers = [] # column names
-    
-    #cursor = None # db cursor i dont remember what for -- not needed any more?
+    def __init__(self):
+        self.closeResult = False     # True in case of LOBs, CLOSERESULTSET message to be sent
+                                # this actually to be set by the driver, and not in the application level... << print create an issue for this
+        self._resultset_id = None    # filled manually right after execute_query
+        self._connection = None    # filled manually right after execute_query
+        
+        self.cols = [] #column descriptions
+        self.rows = [] # actual data 
+        
+        self.headers = [] # column names
+        
+        super().__init__()
+        
+        self.setWordWrap(False)
+        self.horizontalHeader().setStyleSheet("QHeaderView::section { background-color: lightgray }")
+        
+        self.cellDoubleClicked.connect(self.dblClick) # LOB viewer
+
+        self.keyPressEvent = self.resultKeyPressHandler
+        
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        
+    def destroy(self):
+        
+        '''
+            __del__ seems to be potentially implicidly delayed so let's use a normal explicit method
+            Actually this seems to be exactly the right place to put
+            CLOSERESULTSET call, as before this we might need to call BLOB.read()
+        '''
+        if self.closeResult:
+            log('The resultSet had LOBs so send CLOSERESULTSET')
+            
+            db.close_result(self._connection, self._resultset_id) 
+            self.closeResult = False
+            
+    def __del__(self):
+        print('result set actually deleted')
     
     def csvRow(self, r):
         
@@ -211,62 +242,26 @@ class resultSet(QTableWidget):
 
         return False
         
-    def __init__(self):
-        super().__init__()
-        
-        self.setWordWrap(False)
-        self.horizontalHeader().setStyleSheet("QHeaderView::section { background-color: lightgray }")
-        
-        self.cellDoubleClicked.connect(self.dblClick) # LOB viewer
-
-        self.keyPressEvent = self.resultKeyPressHandler
-        
-        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-
-    '''
-    seems standard method exists for this
-    
-    def clear(self):
-        self.setRowCount(0)
-        self.setColumnCount(0)
-    '''
-        
-    def destroy(self):
-        
-        '''
-            __del__ seems to be potentially implicidly delayed so let's use a normal explicit method
-            Actually this seems to be exactly the right place to put
-            CLOSERESULTSET call, as before this we might need to call BLOB.read()
-        '''
-        if self.closeResult:
-            log('The resultSet had LOBs so call CLOSERESULTSET %s...' % str(self._resultset_id))
-            db.close_cursor(self.conn, self._resultset_id)
-            result.closeResult = False
-            
-    def __del__(self):
-        print('result set deleted')
-    
-        
         
 class sqlConsole(QWidget):
-    conn = None
-    #cursor = None # single cursor supported -- is it needed at all for console globally?
-    
-    lock = False
-    
-    config = None
-    
-    rows = []
-    
-    haveHighlighrs = False
-    
-    results = [] #list of resultsets
-    resultTabs = None #tabs widget
     
     def __init__(self, config):
+    
+        self.conn = None
+        self.lock = False
+        self.config = None
+        self.rows = []
+    
+        self.haveHighlighrs = False
+    
+        self.results = [] #list of resultsets
+        self.resultTabs = None #tabs widget
+
+
+
         super().__init__()
         self.initUI()
-        
+
         if config is None:
             return
         
@@ -294,10 +289,7 @@ class sqlConsole(QWidget):
         
     def closeResults(self):
     
-        print('closeResults()')
-    
         for i in range(len(self.results) - 1, -1, -1):
-            print('kill', i)
             self.resultTabs.removeTab(i)
             self.results[i].clear()
             self.results[i].destroy()
@@ -344,7 +336,6 @@ class sqlConsole(QWidget):
                 self.conn = None
 
     def clearHighlighting(self):
-        print('clear highlights')
         self.lock = True
         
         txt = self.cons.toPlainText()
@@ -617,9 +608,9 @@ class sqlConsole(QWidget):
             for i in range(scanFrom, scanTo):
                 c = txt[i]
 
-                print('['+c+']')
+                #print('['+c+']')
                 if not insideString and c == ';':
-                    print(i)
+                    #print(i)
                     if not insideProc:
                         str = ''
                         stop = i
@@ -675,15 +666,15 @@ class sqlConsole(QWidget):
                 
             self.closeResults()
             
-            print('\n---\nso what we have to execute: ')
+            #print('\n---\nso what we have to execute: ')
             if F9 and (start <= cursorPos < stop):
-                print('-> [%s] ' % txt[start:stop])
+                #print('-> [%s] ' % txt[start:stop])
                 
                 result = self.newResult()
                 executeStatement(txt[start:stop], result)
             else:
                 for st in statements:
-                    print('--> [%s]' % st)
+                    #print('--> [%s]' % st)
                     
                     result = self.newResult()
                     executeStatement(st, result)
@@ -766,6 +757,7 @@ class sqlConsole(QWidget):
                 for c in cols:
                     if db.ifLOBType(c[1]):
                         result.closeResult = True
+                        result._connection = self.conn
                         result._resultset_id = dbCursor._resultset_id
                         break
                 

@@ -16,7 +16,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         fmLiteral.setForeground(QColor('#00F'))
         
         keywords = ['select', 'from', 'order', 'by', 'group', 'where', 'inner', 'left', 'right', 'join', 'as',
-                    'where', 'asc', 'desc', 'case', 'when', 'else', 'like', 'round']
+                    'where', 'asc', 'desc', 'case', 'when', 'else', 'and', 'or', 'like', 'round']
 
         rules = []
         
