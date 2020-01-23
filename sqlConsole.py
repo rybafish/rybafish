@@ -31,6 +31,8 @@ class resultSet(QTableWidget):
         self._resultset_id = None    # filled manually right after execute_query
         self._connection = None    # filled manually right after execute_query
         
+        self.timer = None # result detach timer
+        
         self.cols = [] #column descriptions
         self.rows = [] # actual data 
         
@@ -47,15 +49,17 @@ class resultSet(QTableWidget):
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         
-    def autoCloseResult(self):
+    def detachResult(self):
         log('closing the LOB result set')
         db.close_result(self._connection, self._resultset_id) 
         self.closeResult = False
+        self.timer = False
         
     def triggerResultTimer(self, window):
         log('Setting closeResultTimer')
         self.timer = QTimer(window)
-        self.timer.timeout.connect(self.autoCloseResult)
+        self.timer.timeout.connect(self.detachResult)
+        self.timer = True
         self.timer.start(1000 * 60)
         
     def destroy(self):
@@ -67,6 +71,11 @@ class resultSet(QTableWidget):
         '''
         if self.closeResult:
             log('The resultSet had LOBs so send CLOSERESULTSET')
+
+            if self.timer:
+                self.timer.stop()
+            else:
+                log('[!] is it possible to have closeResult but no timer?')
             
             db.close_result(self._connection, self._resultset_id) 
             self.closeResult = False
