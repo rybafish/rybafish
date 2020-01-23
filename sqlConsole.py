@@ -250,6 +250,7 @@ class sqlConsole(QWidget):
         self.conn = None
         self.lock = False
         self.config = None
+        self.timer = None
         self.rows = []
     
         self.haveHighlighrs = False
@@ -270,6 +271,11 @@ class sqlConsole(QWidget):
             self.config = config
         except dbException as e:
             raise e
+            return
+
+        if cfg('keepalive-cons'):
+            keepalive = int(cfg('keepalive-cons'))
+            self.enableKeepAlive(self, keepalive)
             
     def newResult(self):
         
@@ -654,11 +660,15 @@ class sqlConsole(QWidget):
             #print(cursorPos)
             #print(scanFrom, scanTo)
             #print(start, stop)
+            #print(str)
             
             if stop == 0:
+                # no semicolon met
                 stop = scanTo
             
-            if F9 and (start <= cursorPos < stop):
+            #if F9 and (start <= cursorPos < stop):
+            #print so not sure abous this change
+            if F9 and (start <= cursorPos <= stop):
                 selectSingle(start, stop)
             else:
                 if not F9:

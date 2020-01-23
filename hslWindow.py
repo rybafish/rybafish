@@ -218,10 +218,6 @@ class hslWindow(QMainWindow):
 
         console = sqlConsole.sqlConsole(conf)
 
-        if cfg('keepalive-cons'):
-            keepalive = int(cfg('keepalive-cons'))
-            console.enableKeepAlive(self, keepalive)
-
         self.tabs.addTab(console, 'Sql')
         self.statusMessage('', False)
             
