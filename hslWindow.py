@@ -216,7 +216,7 @@ class hslWindow(QMainWindow):
             
         self.statusMessage('Connecting...', False)
 
-        console = sqlConsole.sqlConsole(conf)
+        console = sqlConsole.sqlConsole(self, conf) # self = window
 
         self.tabs.addTab(console, 'Sql')
         self.statusMessage('', False)
@@ -419,7 +419,7 @@ class hslWindow(QMainWindow):
         # offline console tests
         
         if (cfg('developmentMode')):
-            console = sqlConsole.sqlConsole(None)
+            console = sqlConsole.sqlConsole(self, None)
             from SQLSyntaxHighlighter import SQLSyntaxHighlighter
             self.tabs.addTab(console, 'Sql')
             

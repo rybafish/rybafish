@@ -47,6 +47,17 @@ class resultSet(QTableWidget):
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         
+    def autoCloseResult(self):
+        log('closing the LOB result set')
+        db.close_result(self._connection, self._resultset_id) 
+        self.closeResult = False
+        
+    def triggerResultTimer(self, window):
+        log('Setting closeResultTimer')
+        self.timer = QTimer(window)
+        self.timer.timeout.connect(self.autoCloseResult)
+        self.timer.start(1000 * 60)
+        
     def destroy(self):
         
         '''
@@ -245,8 +256,10 @@ class resultSet(QTableWidget):
         
 class sqlConsole(QWidget):
     
-    def __init__(self, config):
+    def __init__(self, window, config):
     
+        self.window = None # required for the timer
+        
         self.conn = None
         self.lock = False
         self.config = None
@@ -769,6 +782,8 @@ class sqlConsole(QWidget):
                         result.closeResult = True
                         result._connection = self.conn
                         result._resultset_id = dbCursor._resultset_id
+                        
+                        result.triggerResultTimer(self.window)
                         break
                 
                 lobs = ', +LOBs' if result.closeResult else ''
