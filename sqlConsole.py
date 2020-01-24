@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
         QTabWidget, QApplication, QAbstractItemView)
 
-from PyQt5.QtGui import QTextCursor, QColor, QFont
+from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF
 from PyQt5.QtCore import QTimer
 
 from PyQt5.QtCore import Qt
@@ -833,7 +833,9 @@ class sqlConsole(QWidget):
             font.setPointSize(fontSize)
             
         self.cons.setFont(font)
-        
+
+        self.cons.setTabStopDistance(QFontMetricsF(font).width(' ') * 4)
+    
         self.resultTabs = QTabWidget()
         #self.newResult() #do we need an empty one?
         

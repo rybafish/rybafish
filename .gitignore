@@ -21,6 +21,10 @@ pip-delete-this-directory.txt
 # npp backups
 *.bak
 
+# archives, just in case
+*.7z
+*.zip
+
 # avoid updating the config
 config.yaml
 
