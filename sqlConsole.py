@@ -11,6 +11,8 @@ import time
 import db
 
 import utils
+from utils import cfg
+
 import re
 
 import lobDialog
@@ -50,17 +52,16 @@ class resultSet(QTableWidget):
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         
     def detachResult(self):
-        log('closing the LOB result set')
+        log('closing the LOB resultset')
         db.close_result(self._connection, self._resultset_id) 
         self.closeResult = False
-        self.timer = False
+        self.timer = None
         
     def triggerResultTimer(self, window):
         log('Setting closeResultTimer')
         self.timer = QTimer(window)
         self.timer.timeout.connect(self.detachResult)
-        self.timer = True
-        self.timer.start(1000 * 60)
+        self.timer.start(1000 * 512)
         
     def destroy(self):
         
@@ -72,8 +73,9 @@ class resultSet(QTableWidget):
         if self.closeResult:
             log('The resultSet had LOBs so send CLOSERESULTSET')
 
-            if self.timer:
+            if self.timer is not None:
                 self.timer.stop()
+                self.timer = None
             else:
                 log('[!] is it possible to have closeResult but no timer?')
             
@@ -251,7 +253,16 @@ class resultSet(QTableWidget):
     def dblClick(self, i, j):
     
         if db.ifLOBType(self.cols[j][1]):
-            blob = self.rows[i][j].read()
+            if not self.closeResult:
+                self.log('warning: LOB resultset already detached')
+                
+                if db.ifBLOBType(self.cols[j][1]):
+                    blob = str(self.rows[i][j].encode())
+                else:
+                    blob = str(self.rows[i][j])
+            else:
+                blob = self.rows[i][j].read()
+                
             self.rows[i][j].seek(0) #rewind just in case
         else:
             blob = str(self.rows[i][j])
@@ -302,6 +313,7 @@ class sqlConsole(QWidget):
     def newResult(self):
         
         result = resultSet()
+        result.log = self.log
         
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results))
@@ -698,8 +710,9 @@ class sqlConsole(QWidget):
                 
             self.closeResults()
             
-            #print('\n---\nso what we have to execute: ')
-            if F9 and (start <= cursorPos < stop):
+            #if F9 and (start <= cursorPos < stop):
+            #print so not sure abous this change
+            if F9 and (start <= cursorPos <= stop):
                 #print('-> [%s] ' % txt[start:stop])
                 
                 result = self.newResult()
