@@ -275,7 +275,24 @@ class resultSet(QTableWidget):
         
         
 class sqlConsole(QWidget):
-    
+
+    def keyPressEvent(self, event):
+   
+        modifiers = QApplication.keyboardModifiers()
+       
+        if modifiers == Qt.ControlModifier:
+            if event.key() == Qt.Key_S:
+                print('Save as... dialog')
+                
+               
+        super().keyPressEvent(event)
+
+    def close(self):
+        print('close ---> ')
+
+        print('<---- close')
+        super().close()
+
     def __init__(self, window, config):
     
         self.window = None # required for the timer

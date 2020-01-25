@@ -48,10 +48,21 @@ class hslWindow(QMainWindow):
     def keyPressEvent(self, event):
         #log('window keypress: %s' % (str(event.key())))
 
-        if (event.modifiers() == Qt.ControlModifier and event.key() == 82) or event.key() == Qt.Key_F5:
+        modifiers = event.modifiers()
+
+        if (modifiers == Qt.ControlModifier and event.key() == 82) or event.key() == Qt.Key_F5:
             log('reload request!')
             self.chartArea.reloadChart()
             
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_W:
+            indx = self.tabs.currentIndex()
+            
+            print('close tab #', indx)
+            
+            if indx > 0: #need a better way...
+                cons = self.tabs.currentWidget()
+                cons.close()
+                self.tabs.removeTab(indx)
         else:
             super().keyPressEvent(event)
             
@@ -204,8 +215,7 @@ class hslWindow(QMainWindow):
                 msgBox.exec_()
                 
                 self.statusMessage('', False)
-                
-            
+        
     def menuSQLConsole(self):
     
         conf = self.connectionConf
