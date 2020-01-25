@@ -58,6 +58,7 @@ class hslWindow(QMainWindow):
             indx = self.tabs.currentIndex()
             
             print('close tab #', indx)
+            print('close tab #', indx)
             
             if indx > 0: #need a better way...
                 cons = self.tabs.currentWidget()
