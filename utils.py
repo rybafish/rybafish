@@ -159,7 +159,7 @@ def log(s, nots = False, nonl = False):
     else:
         nl = '\n'
         
-    if cfg('logmode') != 'duplicate':
+    if cfg('logmode') != 'screen':
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
         try:

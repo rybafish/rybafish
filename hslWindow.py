@@ -57,10 +57,7 @@ class hslWindow(QMainWindow):
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_W:
             indx = self.tabs.currentIndex()
             
-            print('close tab #', indx)
-            print('close tab #', indx)
-            
-            if indx > 0: #need a better way...
+            if indx > 0: #print need a better way to identify sql consoles...
                 cons = self.tabs.currentWidget()
                 cons.close()
                 self.tabs.removeTab(indx)

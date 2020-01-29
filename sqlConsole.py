@@ -21,19 +21,25 @@ from utils import dbException, log
 
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
+import binascii
+
 class resultSet(QTableWidget):
     '''
         Implements the result set widget, basically QTableWidget with minor extensions
-    
+        
+        Created to show the resultset (one result tab), destroyed when re-executed.
+
+        Table never refilled.
     '''
 
-    def __init__(self):
-        self.closeResult = False     # True in case of LOBs, CLOSERESULTSET message to be sent
-                                # this actually to be set by the driver, and not in the application level... << print create an issue for this
+    def __init__(self, conn):
         self._resultset_id = None    # filled manually right after execute_query
-        self._connection = None    # filled manually right after execute_query
+
+        self._connection = conn      
         
-        self.timer = None # result detach timer
+        self.LOBs = False            # if the result contains LOBs
+        self.detached = None         # supposed to be defined only if LOBs = True
+        self.detachTimer = None     # results detach timer
         
         self.cols = [] #column descriptions
         self.rows = [] # actual data 
@@ -50,40 +56,35 @@ class resultSet(QTableWidget):
         self.keyPressEvent = self.resultKeyPressHandler
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        
-    def detachResult(self):
-        log('closing the LOB resultset')
-        db.close_result(self._connection, self._resultset_id) 
-        self.closeResult = False
-        self.timer = None
-        
-    def triggerResultTimer(self, window):
-        log('Setting closeResultTimer')
-        self.timer = QTimer(window)
-        self.timer.timeout.connect(self.detachResult)
-        self.timer.start(1000 * 512)
-        
-    def destroy(self):
-        
-        '''
-            __del__ seems to be potentially implicidly delayed so let's use a normal explicit method
-            Actually this seems to be exactly the right place to put
-            CLOSERESULTSET call, as before this we might need to call BLOB.read()
-        '''
-        if self.closeResult:
-            log('The resultSet had LOBs so send CLOSERESULTSET')
 
-            if self.timer is not None:
-                self.timer.stop()
-                self.timer = None
-            else:
-                log('[!] is it possible to have closeResult but no timer?')
+    def detach(self):
+        if self._resultset_id is None:
+            # could be if the result did not have result: for example DDL or error statement
+            # but it's strange we are detachung it...
+            print('atttemnted to detach resultset with no _resultset_id')
+            return
             
+        result_str = binascii.hexlify(bytearray(self._resultset_id)).decode('ascii')
+        
+        if self.detached == False:
+            log('closing the resultset: %s' % result_str)
             db.close_result(self._connection, self._resultset_id) 
-            self.closeResult = False
-            
-    def __del__(self):
-        print('result set actually deleted')
+            self.detached = True
+        else:
+            log('[?] already detached?: %s' % result_str)
+
+    def detachCB(self):
+        print('detach timer triggered')
+        #print('do we need to stop the timer?')
+        self.detachTimer.stop()
+        self.detachTimer = None
+        self.detach()
+        
+    def triggerDetachTimer(self, window):
+        log('Setting detach timer')
+        self.detachTimer = QTimer(window)
+        self.detachTimer.timeout.connect(self.detachCB)
+        self.detachTimer.start(1000 * 256)
     
     def csvRow(self, r):
         
@@ -162,6 +163,8 @@ class resultSet(QTableWidget):
                                 elif db.ifRAWType(vType):
                                     csv = value.hex()
                                 else:
+                                    #this includes timestamp/datetime values, by default milliseconds: 2020-01-26 16:40:37.645000 (which is usually millisecs so can trim)
+
                                     csv = str(value)
                         
                         QApplication.clipboard().setText(csv)
@@ -253,7 +256,7 @@ class resultSet(QTableWidget):
     def dblClick(self, i, j):
     
         if db.ifLOBType(self.cols[j][1]):
-            if not self.closeResult:
+            if self.detached:
                 self.log('warning: LOB resultset already detached')
                 
                 if db.ifBLOBType(self.cols[j][1]):
@@ -290,6 +293,12 @@ class sqlConsole(QWidget):
     def close(self):
         print('close ---> ')
 
+        try: 
+            db.close_connection(self.conn)
+        except dbException as e:
+            raise e
+            return
+
         print('<---- close')
         super().close()
 
@@ -300,7 +309,7 @@ class sqlConsole(QWidget):
         self.conn = None
         self.lock = False
         self.config = None
-        self.timer = None
+        self.timer = None           # keep alive timer
         self.rows = []
     
         self.haveHighlighrs = False
@@ -327,9 +336,9 @@ class sqlConsole(QWidget):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
             
-    def newResult(self):
+    def newResult(self, conn):
         
-        result = resultSet()
+        result = resultSet(conn)
         result.log = self.log
         
         if len(self.results) > 0:
@@ -344,12 +353,57 @@ class sqlConsole(QWidget):
         
         return result
         
+    '''
+    def detachResultSets(self):
+        ''
+            to minimaze interraction with the db this to be performed
+            only if the console fetched LOBs, otherwise MVCC is starting to grow
+            
+            it has to be performed to all results from last execution
+        ''
+        #for i in range(len(self.results) - 1, -1, -1):
+        #    result = self.results[i]
+            
+        for result in self.results:
+        
+            if result._resultset_id is None:
+                # could be if the result did not have result: for example DDL or error statement
+                continue
+                
+            result_str = binascii.hexlify(bytearray(result._resultset_id)).decode('ascii')
+            
+            if result.detached == False:
+                log('closing the resultset: %s' % result_str)
+                db.close_result(self.conn, result._resultset_id) 
+                result.detached = True
+            else:
+                log('already detached?: %s' % result_str)
+        
+        self.detachResults = False
+
+    '''
+        
     def closeResults(self):
+        '''
+            closes all results tabs, detaches resultsets if any LOBs
+        '''
+        '''
+        if self.detachResults:
+            if self.detachTimer is not None:
+                self.detachTimer.stop()
+                self.detachTimer = None
+                
+            self.detachResultSets()
+        '''
     
         for i in range(len(self.results) - 1, -1, -1):
             self.resultTabs.removeTab(i)
-            self.results[i].clear()
-            self.results[i].destroy()
+            
+            result = self.results[i]
+            result.clear()
+            
+            if result.LOBs and not result.detached:
+                result.detach()
             
             del(self.results[i])
             
@@ -732,21 +786,22 @@ class sqlConsole(QWidget):
             if F9 and (start <= cursorPos <= stop):
                 #print('-> [%s] ' % txt[start:stop])
                 
-                result = self.newResult()
-                executeStatement(txt[start:stop], result)
+                result = self.newResult(self.conn)
+                
+                executeStatement(self, txt[start:stop], result)
             else:
                 for st in statements:
                     #print('--> [%s]' % st)
                     
-                    result = self.newResult()
-                    executeStatement(st, result)
+                    result = self.newResult(self.conn)
+                    executeStatement(self, st, result)
                     
                     #self.update()
                     self.repaint()
 
             return
         
-        def executeStatement(sql, result):
+        def executeStatement(self, sql, result):
             '''
                 executes the string without any analysis
                 result filled
@@ -795,7 +850,9 @@ class sqlConsole(QWidget):
                 self.log('\nExecute: ' + txtSub + suffix)
                 self.logArea.repaint()
                 
-                result.rows, result.cols, dbCursor = db.execute_query_desc(self.conn, sql, [])
+                resultSizeLimit = cfg('resultSize', 1000)
+                
+                result.rows, result.cols, dbCursor = db.execute_query_desc(self.conn, sql, [], resultSizeLimit)
                 
                 rows = result.rows
                 cols = result.cols
@@ -815,17 +872,26 @@ class sqlConsole(QWidget):
                     return
 
                 resultSize = len(rows)
+
+                result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
+                result.detached = False
+                result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
+                print('saving the resultset id: %s' % result_str)
                 
                 for c in cols:
                     if db.ifLOBType(c[1]):
-                        result.closeResult = True
-                        result._connection = self.conn
-                        result._resultset_id = dbCursor._resultset_id
+                        self.detachResults = True
+                        result.LOBs = True
                         
-                        result.triggerResultTimer(self.window)
+                        result.triggerDetachTimer(self.window)
                         break
+                        
+                if result.LOBs == False and resultSize == resultSizeLimit:
+                    print('detaching due to possible SUSPENDED')
+                    result.detach()
+                    print('done')
                 
-                lobs = ', +LOBs' if result.closeResult else ''
+                lobs = ', +LOBs' if result.LOBs else ''
                 
                 logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
                 if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'

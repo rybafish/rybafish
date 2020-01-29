@@ -163,7 +163,7 @@ def close_result(connection, _resultset_id):
     # no result check...
     return
 
-def execute_query_desc(connection, sql_string, params):
+def execute_query_desc(connection, sql_string, params, resultSize):
     '''
         The method used solely by SQL console because it also needs a result set description.
         It also used a modified version of the pyhdb cursor implementation because of the https://github.com/rybafish/rybafish/issues/97
@@ -191,9 +191,6 @@ def execute_query_desc(connection, sql_string, params):
         log("[!] unexpected DB exception:", sys.exc_info()[0])
         raise dbException(str(e))
         
-        
-    resultSize = cfg('resultSize', 1000)
-    
     try:
         ps = cursor.get_prepared_statement(psid)
 
@@ -203,6 +200,8 @@ def execute_query_desc(connection, sql_string, params):
             rows = None
         else:
             rows = cursor.fetchmany(resultSize)
+            
+            cursor.close()
 
         # rows = cursor.fetchmany(resultSize)
 
