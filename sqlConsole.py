@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
-        QTabWidget, QApplication, QAbstractItemView)
+        QTabWidget, QApplication, QAbstractItemView, QMenu)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF
 from PyQt5.QtCore import QTimer
@@ -57,6 +57,20 @@ class resultSet(QTableWidget):
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
 
+    def contextMenuEvent(self, event):
+       
+        cmenu = QMenu(self)
+
+        copyColumnName = cmenu.addAction('Copy column name')
+        
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
+
+        i = self.currentColumn()
+
+        if action == copyColumnName:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(self.cols[i][0])
+                
     def detach(self):
         if self._resultset_id is None:
             # could be if the result did not have result: for example DDL or error statement
