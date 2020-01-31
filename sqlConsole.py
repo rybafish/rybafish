@@ -312,12 +312,13 @@ class sqlConsole(QWidget):
         super().keyPressEvent(event)
 
     def close(self):
-        print('close ---> ')
 
         try: 
             db.close_connection(self.conn)
         except dbException as e:
             raise e
+            return
+        except:
             return
 
         print('<---- close')
@@ -337,8 +338,9 @@ class sqlConsole(QWidget):
     
         self.results = [] #list of resultsets
         self.resultTabs = None #tabs widget
-
-
+        
+        self.braketsHighlighted = False
+        self.braketsHighlightedPos = []
 
         super().__init__()
         self.initUI()
@@ -540,7 +542,7 @@ class sqlConsole(QWidget):
         
         self.haveHighlighrs = True
 
-    def highlightBraket(self, block, pos):
+    def highlightBraket(self, block, pos, mode):
         #print ('highlight here: ', block.text(), start, stop)
         cursor = QTextCursor(block)
 
@@ -549,7 +551,26 @@ class sqlConsole(QWidget):
         
         format = cursor.charFormat()
         
-        format.setBackground(QColor('#F00'))
+        font = cursor.charFormat().font()
+        
+        if mode == True:
+            font.setBold(True)
+            format.setForeground(QColor('#C22'))
+            format.setBackground(QColor('#CCF'))
+            format.setFont(font)
+        else:
+            font.setBold(False)
+            format.setForeground(QColor('black'));
+            format.setBackground(QColor('white'));
+            format.setFont(font)
+
+        '''
+        if mode == True:
+            format.setBackground(QColor('#8AF'))
+        else:
+            format.setBackground(QColor('white'));
+        '''
+            
         cursor.setCharFormat(format)
         
         self.haveHighlighrs = True
@@ -659,6 +680,10 @@ class sqlConsole(QWidget):
                     if self.result.columnWidth(i) >= 512:
                         self.result.setColumnWidth(i, 512)
                             
+    
+    def cursorPositionChanged(self):
+        self.checkBrakets()
+    
     def consKeyPressHandler(self, event):
     
         def executeSelection():
@@ -944,21 +969,22 @@ class sqlConsole(QWidget):
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             executeSelection()
 
-        if event.key() == Qt.Key_Left or  event.key() == Qt.Key_Right:
-            QPlainTextEdit.keyPressEvent(self.cons, event)
-            self.checkBrakets()
-            
         else:
             QPlainTextEdit.keyPressEvent(self.cons, event)
             #self.consSelection()
     def checkBrakets(self):
     
-        self.clearHighlighting()
+        if self.braketsHighlighted:
+            pos = self.braketsHighlightedPos
+            self.highlightBraket(self.cons.document(), pos[0], False)
+            self.highlightBraket(self.cons.document(), pos[1], False)
+            self.braketsHighlighted = False
     
         cursor = self.cons.textCursor()
         pos = cursor.position()
-        
+
         text = self.cons.toPlainText()
+
         textSize = len(text)
         
         def scanPairBraket(pos, shift):
@@ -987,7 +1013,7 @@ class sqlConsole(QWidget):
                 stop = 0
                 step = -1
             else:
-                stop = textSize
+                stop = textSize-1
                 step = 1
                 
             
@@ -1037,11 +1063,13 @@ class sqlConsole(QWidget):
                 shift = 0
                 pb = scanPairBraket(bPos, shift)
 
-            print(brLeft, brRight, bPos, pb)
+            #print(brLeft, brRight, bPos, pb)
             
             if pb >= 0:
-                self.highlightBraket(self.cons.document(), bPos)
-                self.highlightBraket(self.cons.document(), pb)
+                self.braketsHighlighted = True
+                self.braketsHighlightedPos = [bPos, pb]
+                self.highlightBraket(self.cons.document(), bPos, True)
+                self.highlightBraket(self.cons.document(), pb, True)
         
     def initUI(self):
         vbar = QVBoxLayout()
@@ -1069,6 +1097,8 @@ class sqlConsole(QWidget):
         self.logArea = QPlainTextEdit()
         
         self.cons.keyPressEvent = self.consKeyPressHandler
+        self.cons.cursorPositionChanged.connect(self.cursorPositionChanged)
+        
         self.cons.selectionChanged.connect(self.consSelection) #does not work
 
         #self.cons.setPlainText('select * from (select * from m_load_history_info)')
