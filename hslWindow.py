@@ -436,9 +436,9 @@ class hslWindow(QMainWindow):
             console.cons.setPlainText('''select 0 from dummy;
 
 create procedure ...
-
-as begin
-select * from dummy;
+(
+(as begin)
+select * from dummy);
 end;
 
 select 1 from dummy;

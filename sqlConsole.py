@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
         QTabWidget, QApplication, QAbstractItemView, QMenu)
 
-from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF
+from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap
 from PyQt5.QtCore import QTimer
 
 from PyQt5.QtCore import Qt
@@ -61,7 +61,8 @@ class resultSet(QTableWidget):
        
         cmenu = QMenu(self)
 
-        copyColumnName = cmenu.addAction('Copy column name')
+        copyColumnName = cmenu.addAction('Copy Column Name')
+        copyTableScreen = cmenu.addAction('Take a Screenshot')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -70,6 +71,12 @@ class resultSet(QTableWidget):
         if action == copyColumnName:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.cols[i][0])
+
+        if action == copyTableScreen:
+            pixmap = QPixmap(self.size())
+            self.render(pixmap)
+            
+            QApplication.clipboard().setPixmap(pixmap)
                 
     def detach(self):
         if self._resultset_id is None:
@@ -532,6 +539,20 @@ class sqlConsole(QWidget):
         cursor.setCharFormat(format)
         
         self.haveHighlighrs = True
+
+    def highlightBraket(self, block, pos):
+        #print ('highlight here: ', block.text(), start, stop)
+        cursor = QTextCursor(block)
+
+        cursor.setPosition(pos, QTextCursor.MoveAnchor)
+        cursor.setPosition(pos+1, QTextCursor.KeepAnchor)
+        
+        format = cursor.charFormat()
+        
+        format.setBackground(QColor('#F00'))
+        cursor.setCharFormat(format)
+        
+        self.haveHighlighrs = True
     
     def consSelection(self):
         if self.lock:
@@ -922,10 +943,105 @@ class sqlConsole(QWidget):
         
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             executeSelection()
+
+        if event.key() == Qt.Key_Left or  event.key() == Qt.Key_Right:
+            QPlainTextEdit.keyPressEvent(self.cons, event)
+            self.checkBrakets()
             
         else:
             QPlainTextEdit.keyPressEvent(self.cons, event)
             #self.consSelection()
+    def checkBrakets(self):
+    
+        self.clearHighlighting()
+    
+        cursor = self.cons.textCursor()
+        pos = cursor.position()
+        
+        text = self.cons.toPlainText()
+        textSize = len(text)
+        
+        def scanPairBraket(pos, shift):
+        
+            braket = text[pos]
+        
+            #print('scanPairBraket', pos, braket, shift)
+        
+            depth = 0
+        
+            if braket == ')':
+                pair = '('
+            elif braket == '(':
+                pair = ')'
+            elif braket == '[':
+                pair = ']'
+            elif braket == ']':
+                pair = '['
+            else:
+                return -1
+            
+            i = pos + shift
+            
+            if braket in (')', ']'):
+                # skan forward
+                stop = 0
+                step = -1
+            else:
+                stop = textSize
+                step = 1
+                
+            
+            while i != stop:
+                i += step
+                ch = text[i]
+                
+                if ch == braket:
+                    depth += 1
+                    continue
+                
+                if ch == pair:
+                    if depth == 0:
+                        return i
+                    else:
+                        depth -=1
+                    
+            return -1
+            
+        # text[pos] - symboll right to the cursor
+        # when pos == textSize text[pos] - crash
+        
+        bPos = None
+        
+        if pos > 0 and text[pos-1] in ('(', '[', ')', ']', ):
+            brLeft = True
+        else:
+            brLeft = False
+            
+        if pos < textSize and text[pos] in ('(', '[', ')', ']', ):
+            brRight = True
+        else:
+            brRight = False
+            
+            
+        if brLeft or brRight:
+        
+            if brLeft:
+                bPos = pos-1
+                if text[pos-1] in ('(', '['):
+                    shift = 0
+                else:
+                    shift = 0
+                pb = scanPairBraket(bPos, shift)
+            else:
+                bPos = pos
+                shift = 0
+                pb = scanPairBraket(bPos, shift)
+
+            print(brLeft, brRight, bPos, pb)
+            
+            if pb >= 0:
+                self.highlightBraket(self.cons.document(), bPos)
+                self.highlightBraket(self.cons.document(), pb)
         
     def initUI(self):
         vbar = QVBoxLayout()
