@@ -2,12 +2,13 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QSplitter, QStyleFactory, QTableWidget,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
-    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog    
+    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog, 
+    QApplication
     )
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt, QUrl, QEvent
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -73,8 +74,15 @@ class hslWindow(QMainWindow):
             if repaint:
                 self.repaint()
         
+    def closeEvent(self, event):
+        clipboard = QApplication.clipboard()
+        event = QEvent(QEvent.Clipboard)
+        QApplication.sendEvent(clipboard, event)
+        
+
     def menuQuit(self):
-        sys.exit(0)
+        print('exit')
+        self.close()
 
     def menuReloadCustomKPIs(self):
     

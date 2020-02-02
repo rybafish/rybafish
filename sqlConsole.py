@@ -39,7 +39,7 @@ class resultSet(QTableWidget):
         
         self.LOBs = False            # if the result contains LOBs
         self.detached = None         # supposed to be defined only if LOBs = True
-        self.detachTimer = None     # results detach timer
+        self.detachTimer = None      # results detach timer
         
         self.cols = [] #column descriptions
         self.rows = [] # actual data 
@@ -335,6 +335,7 @@ class sqlConsole(QWidget):
         self.rows = []
     
         self.haveHighlighrs = False
+        self.highlightedWords = []
     
         self.results = [] #list of resultsets
         self.resultTabs = None #tabs widget
@@ -475,13 +476,20 @@ class sqlConsole(QWidget):
         txt = self.cons.toPlainText()
         cursor = QTextCursor(self.cons.document())
 
-        cursor.setPosition(0,QTextCursor.MoveAnchor);
-        cursor.setPosition(len(txt),QTextCursor.KeepAnchor);
-        
         format = cursor.charFormat()
+        format.setBackground(QColor('white'))
+
+        #utils.timerStart()
         
-        format.setBackground(QColor('white'));
-        cursor.setCharFormat(format);
+        for w in self.highlightedWords:
+            cursor.setPosition(w[0],QTextCursor.MoveAnchor)
+            cursor.setPosition(w[1],QTextCursor.KeepAnchor)
+
+            cursor.setCharFormat(format)
+            
+        self.highlightedWords.clear()
+        #utils.timeLap('remove hl')
+        #utils.timePrint()
         
         self.lock = False
         
@@ -540,6 +548,7 @@ class sqlConsole(QWidget):
         format.setBackground(QColor('#0F0'))
         cursor.setCharFormat(format)
         
+        self.highlightedWords.append([start, stop])
         self.haveHighlighrs = True
 
     def highlightBraket(self, block, pos, mode):
@@ -970,15 +979,25 @@ class sqlConsole(QWidget):
             executeSelection()
 
         else:
+            #have to clear each time in case of input right behind the braket
+            if self.braketsHighlighted:
+                self.clearBraketsHighlight()
+                
             QPlainTextEdit.keyPressEvent(self.cons, event)
             #self.consSelection()
-    def checkBrakets(self):
-    
+
+    def clearBraketsHighlight(self):
         if self.braketsHighlighted:
             pos = self.braketsHighlightedPos
             self.highlightBraket(self.cons.document(), pos[0], False)
             self.highlightBraket(self.cons.document(), pos[1], False)
             self.braketsHighlighted = False
+    
+
+    def checkBrakets(self):
+    
+        if self.braketsHighlighted:
+            self.clearBraketsHighlight()
     
         cursor = self.cons.textCursor()
         pos = cursor.position()

@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QIcon
 
@@ -11,6 +11,28 @@ from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
 logmode = 'file'
 config = {}
+
+timers = []
+
+def timerStart():
+    timers.clear()
+    timers.append([time.time(), ''])
+    
+def timeLap(desc = None):
+
+    if desc is None:
+        desc = 't'+str(len(timers))
+
+    timers.append([time.time(), desc])
+
+def timePrint():
+
+    s = []
+    
+    for i in range(1, len(timers)):
+        s.append('%s:%s' % (timers[i][1], str(round(timers[i][0]-timers[i-1][0], 3))))
+
+    print('timers: ', ', '.join(s))
 
 class dbException(Exception):
     pass
