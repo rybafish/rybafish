@@ -22,6 +22,7 @@ from utils import dbException, log
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 import binascii
+import datetime
 
 class resultSet(QTableWidget):
     '''
@@ -125,6 +126,8 @@ class resultSet(QTableWidget):
                     values.append(utils.numberToStrCSV(val))
                 elif db.ifRAWType(vType):
                     values.append(val.hex())
+                elif db.ifTSType(vType):
+                    values.append(val.isoformat(' ', timespec='milliseconds'))
                 else:
                     if val is None:
                         values.append(utils.cfg('nullStringCSV', '?'))
@@ -183,9 +186,9 @@ class resultSet(QTableWidget):
                                     csv = utils.numberToStrCSV(value)
                                 elif db.ifRAWType(vType):
                                     csv = value.hex()
+                                elif db.ifTSType(vType):
+                                    csv = value.isoformat(' ', timespec='milliseconds')
                                 else:
-                                    #this includes timestamp/datetime values, by default milliseconds: 2020-01-26 16:40:37.645000 (which is usually millisecs so can trim)
-
                                     csv = str(value)
                         
                         QApplication.clipboard().setText(csv)
@@ -228,7 +231,6 @@ class resultSet(QTableWidget):
                 
                 val = rows[r][c]
                 
-                #if cols[c][1] == 4 or cols[c][1] == 3 or cols[c][1] == 1:
                 if db.ifNumericType(cols[c][1]):
                 
                     if db.ifDecimalType(cols[c][1]):
@@ -254,6 +256,9 @@ class resultSet(QTableWidget):
                 elif db.ifRAWType(cols[c][1]): #VARBINARY
                     val = val.hex()
                     
+                    item = QTableWidgetItem(val)
+                elif db.ifTSType(cols[c][1]):
+                    val = val.isoformat(' ', timespec='milliseconds') 
                     item = QTableWidgetItem(val)
                 else:
                     if val is None:
@@ -627,68 +632,21 @@ class sqlConsole(QWidget):
             ['Name',11],
             ['LOB String',26],
             ['Txt',11],
+            ['Timestamp',16],
         ]
         
         rows = [
-                ['name','select * from dummy', 'no idea'],
-                ['name','select * from dummy', 'no idea'],
-                ['name','select * from dummy', 'no idea']
+                ['name 1','select * from dummy fake blob 1', 'no idea', datetime.datetime.now()],
+                ['name 2','select * from dummy blob 2', 'no idea', datetime.datetime.now()],
+                ['name 3','select * from dummy blob 3', 'no idea', datetime.datetime.now()]
             ]
-            
-        return
-        #create headers
-        for c in cols:
-            row0.append(c[0])
-            
-        self.headers = row0.copy()
-           
-        self.result.setColumnCount(len(row0))
-        self.result.setRowCount(0)
-        self.result.setHorizontalHeaderLabels(row0)
-        self.result.resizeColumnsToContents();
         
-        self.result.setRowCount(len(rows))
+        result = self.newResult(self.conn)
         
-        adjRow = 5 if len(rows) >=5 else len(rows)
+        result.rows = rows
+        result.cols = cols
         
-        #fill the result table
-        
-        for r in range(len(rows)):
-                
-            for c in range(len(row0)):
-                
-                val = rows[r][c]
-                
-                if cols[c][1] == 4 or cols[c][1] == 3 or cols[c][1] == 1:
-                    val = utils.numberToStr(val)
-                    
-                    item = QTableWidgetItem(val)
-                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                elif cols[c][1] == 26: #LOB
-                    # val = val.read()
-                    val = val
-                    item = QTableWidgetItem(val)
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
-                else:
-                    if val is None:
-                        val = utils.cfg('nullString', '?')
-                    else:
-                        val = str(val)
-                        
-                    item = QTableWidgetItem(val)
-                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
-                    
-                
-                self.result.setItem(r, c, item) # Y-Scale
-
-            if r == adjRow - 1:
-                self.result.resizeColumnsToContents();
-                
-                for i in range(len(row0)):
-                    if self.result.columnWidth(i) >= 512:
-                        self.result.setColumnWidth(i, 512)
-                            
+        result.populate()
     
     def cursorPositionChanged(self):
         self.checkBrakets()

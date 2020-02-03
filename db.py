@@ -328,6 +328,12 @@ def ifRAWType(t):
         return True
     else:
         return False
+
+def ifTSType(t):
+    if t == type_codes.TIMESTAMP:
+        return True
+    else:
+        return False
         
 def ifDecimalType(t):
     if t in (type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
