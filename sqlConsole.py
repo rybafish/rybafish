@@ -169,31 +169,33 @@ class resultSet(QTableWidget):
                     QApplication.clipboard().setText(csv)
                     
                 else:
-                    # copy one cell
+                    # copy column
+                    values = []
                     for c in sm.selectedIndexes():
-                        #csv = self.result.item(c.row(), c.column()).text()
+                        # check if this is the same column? or why should I care...
 
                         value = self.rows[c.row()][c.column()]
                         vType = self.cols[c.column()][1]
                         
                         if value is None:
-                            csv = utils.cfg('nullStringCSV', '?')
+                            values.append(utils.cfg('nullStringCSV', '?'))
                         else:
                             if db.ifBLOBType(vType):
-                                csv = str(value.encode())
+                                values.append(str(value.encode()))
                             else:
                                 if db.ifNumericType(vType):
-                                    csv = utils.numberToStrCSV(value)
+                                    values.append(utils.numberToStrCSV(value))
                                 elif db.ifRAWType(vType):
-                                    csv = value.hex()
+                                    values.append(value.hex())
                                 elif db.ifTSType(vType):
-                                    csv = value.isoformat(' ', timespec='milliseconds')
+                                    values.append(value.isoformat(' ', timespec='milliseconds'))
                                 else:
-                                    csv = str(value)
+                                    values.append(str(value))
+
+                    column = '\n'.join(values)
+                    
+                    QApplication.clipboard().setText(column)
                         
-                        QApplication.clipboard().setText(csv)
-                        # we only copy first value, makes no sence otherwise
-                        break;
         else:
             super().keyPressEvent(event)
             
