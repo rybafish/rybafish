@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap
 from PyQt5.QtCore import QTimer
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 
 import time
 
@@ -74,7 +74,18 @@ class resultSet(QTableWidget):
             clipboard.setText(self.cols[i][0])
 
         if action == copyTableScreen:
-            pixmap = QPixmap(self.size())
+            w = self.verticalHeader().width() + self.horizontalHeader().length() + 1
+            h = self.verticalHeader().length() + self.horizontalHeader().height() + 1
+            #pixmap = QPixmap(self.size())
+            
+            if w > self.size().width():
+                w = self.size().width()
+            
+            if h > self.size().height():
+                h = self.size().height()
+            
+            pixmap = QPixmap(QSize(w, h))
+            
             self.render(pixmap)
             
             QApplication.clipboard().setPixmap(pixmap)
