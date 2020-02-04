@@ -133,17 +133,16 @@ class resultSet(QTableWidget):
             if db.ifBLOBType(vType):
                 values.append(str(val.encode()))
             else:
-                if db.ifNumericType(vType):
+                if val is None:
+                    values.append(utils.cfg('nullStringCSV', '?'))
+                elif db.ifNumericType(vType):
                     values.append(utils.numberToStrCSV(val))
                 elif db.ifRAWType(vType):
                     values.append(val.hex())
                 elif db.ifTSType(vType):
                     values.append(val.isoformat(' ', timespec='milliseconds'))
                 else:
-                    if val is None:
-                        values.append(utils.cfg('nullStringCSV', '?'))
-                    else:
-                        values.append(str(val))
+                    values.append(str(val))
                 
             
         return ';'.join(values)
@@ -244,7 +243,11 @@ class resultSet(QTableWidget):
                 
                 val = rows[r][c]
                 
-                if db.ifNumericType(cols[c][1]):
+                if val is None:
+                    val = utils.cfg('nullString', '?')
+                    
+                    item = QTableWidgetItem(val)
+                elif db.ifNumericType(cols[c][1]):
                 
                     if db.ifDecimalType(cols[c][1]):
                         val = utils.numberToStr(val, 3)
@@ -274,10 +277,7 @@ class resultSet(QTableWidget):
                     val = val.isoformat(' ', timespec='milliseconds') 
                     item = QTableWidgetItem(val)
                 else:
-                    if val is None:
-                        val = utils.cfg('nullString', '?')
-                    else:
-                        val = str(val)
+                    val = str(val)
                         
                     item = QTableWidgetItem(val)
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
