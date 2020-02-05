@@ -252,7 +252,8 @@ class resultSet(QTableWidget):
                 elif db.ifNumericType(cols[c][1]):
                 
                     if db.ifDecimalType(cols[c][1]):
-                        val = utils.numberToStr(val, 3)
+                        #val = utils.numberToStr(val, 3)
+                        val = utils.numberToStrCSV(val)
                     else:
                         val = utils.numberToStr(val)
                     
@@ -624,14 +625,14 @@ class sqlConsole(QWidget):
         cols = [
             ['Name',11],
             ['LOB String',26],
-            ['Txt',11],
+            ['Decimal',5],
             ['Timestamp',16],
         ]
         
         rows = [
-                ['name 1','select * from dummy fake blob 1', 'no idea', datetime.datetime.now()],
-                ['name 2','select * from dummy blob 2', 'no idea', datetime.datetime.now()],
-                ['name 3','select * from dummy blob 3', 'no idea', datetime.datetime.now()]
+                ['name 1','select * from dummy fake blob 1', 1/2, datetime.datetime.now()],
+                ['name 2','select * from dummy blob 2', 2/3, datetime.datetime.now()],
+                ['name 3','select * from dummy blob 3', 1/8, datetime.datetime.now()]
             ]
         
         result = self.newResult(self.conn)
