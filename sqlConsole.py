@@ -395,36 +395,6 @@ class sqlConsole(QWidget):
         
         return result
         
-    '''
-    def detachResultSets(self):
-        ''
-            to minimaze interraction with the db this to be performed
-            only if the console fetched LOBs, otherwise MVCC is starting to grow
-            
-            it has to be performed to all results from last execution
-        ''
-        #for i in range(len(self.results) - 1, -1, -1):
-        #    result = self.results[i]
-            
-        for result in self.results:
-        
-            if result._resultset_id is None:
-                # could be if the result did not have result: for example DDL or error statement
-                continue
-                
-            result_str = binascii.hexlify(bytearray(result._resultset_id)).decode('ascii')
-            
-            if result.detached == False:
-                log('closing the resultset: %s' % result_str)
-                db.close_result(self.conn, result._resultset_id) 
-                result.detached = True
-            else:
-                log('already detached?: %s' % result_str)
-        
-        self.detachResults = False
-
-    '''
-        
     def closeResults(self):
         '''
             closes all results tabs, detaches resultsets if any LOBs
@@ -526,7 +496,7 @@ class sqlConsole(QWidget):
         
         st = 0
         
-        while st >=0:
+        while st >= 0:
             st = line.find(str, st)
             
             if st >= 0:
@@ -536,17 +506,21 @@ class sqlConsole(QWidget):
                     self.highlight(self.cons.document(), st, st+len(str))
                 '''
                 
-                sample = line[st-1:st+len(str)+1]
+                if st > 0:
+                    sample = line[st-1:st+len(str)+1]
+                else:
+                    sample = line[0:len(str)+1]
 
-                #mask = '\\b%s\\b' % (str)
+                #mask = r'.?\b%s\b.?' % (str)
                 #mask = r'.\b%s\b.' % (str)
-                mask = r'\W%s\W' % (str)
+                mask = r'\W?%s\W' % (str)
                 
                 if re.match(mask, sample):
                     self.highlight(self.cons.document(), st, st+len(str))
+                    #print('lets highlight: ' + str)
                 else:
                     pass
-                    #print('nope (%s -- %s)' % (sample, mask))
+                    #print('nope [%s]/(%s)' % (sample, mask))
                 
                 st += len(str)
                     
