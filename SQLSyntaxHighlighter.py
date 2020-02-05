@@ -25,9 +25,10 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
             
             
         # literals
-        rules.append([QRegularExpression('\'?.+\'?'), fmLiteral])
+        #rules.append([QRegularExpression('\'[^\']*\''), fmLiteral])
+        rules.append([QRegularExpression('\'.+?\''), fmLiteral])
 
-        rules.append([QRegularExpression('"?.+"?'), fmLiteral])
+        rules.append([QRegularExpression('".+?"'), fmLiteral])
 
         # one line comment
         rules.append([QRegularExpression('--.+'), fmComment])

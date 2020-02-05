@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
-        QTabWidget, QApplication, QAbstractItemView, QMenu)
+        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap
 from PyQt5.QtCore import QTimer
@@ -41,6 +41,8 @@ class resultSet(QTableWidget):
         self.LOBs = False            # if the result contains LOBs
         self.detached = None         # supposed to be defined only if LOBs = True
         self.detachTimer = None      # results detach timer
+        
+        self.fileName = None      
         
         self.cols = [] #column descriptions
         self.rows = [] # actual data 
@@ -324,8 +326,12 @@ class sqlConsole(QWidget):
        
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_S:
-                print('Save as... dialog')
+                fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
+                print('Save as', fname)
                 
+            elif event.key() == Qt.Key_O:
+                fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
+                print('filename: ', fname)
                
         super().keyPressEvent(event)
 
@@ -920,6 +926,8 @@ class sqlConsole(QWidget):
                 
             return
         
+        # modifiers = QApplication.keyboardModifiers()
+        
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             executeSelection()
 
@@ -928,8 +936,10 @@ class sqlConsole(QWidget):
             if self.braketsHighlighted:
                 self.clearBraketsHighlight()
                 
+            # print explisit call of the normal processing? this looks real weird
+            # shouldnt it be just super().keyPressEvent(event) instead?
+            # may be if I inherited QPlainTextEdit...
             QPlainTextEdit.keyPressEvent(self.cons, event)
-            #self.consSelection()
 
     def clearBraketsHighlight(self):
         if self.braketsHighlighted:
