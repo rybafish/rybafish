@@ -626,7 +626,7 @@ class myWidget(QWidget):
                 self.statusMessage('%s, %s.%s = %s %s at %s%s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm, deltaVal))
                 
                 self.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm))
-                # if want instant need to re-define mouseMoveEvent()
+                # if want instant hit - need to re-define mouseMoveEvent()
                 # https://stackoverflow.com/questions/13720465/how-to-remove-the-time-delay-before-a-qtooltip-is-displayed
                 
                 found_some = True

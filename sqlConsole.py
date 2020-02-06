@@ -51,6 +51,18 @@ class resultSet(QTableWidget):
         
         super().__init__()
         
+        verticalHeader = self.verticalHeader()
+        verticalHeader.setSectionResizeMode(verticalHeader.Fixed)
+        
+        scale = 1
+
+        myFont = QFont ('SansSerif', 10)
+        rowHeight = scale * QFontMetricsF(myFont).height()
+        
+        rowHeight = 19
+        
+        verticalHeader.setDefaultSectionSize(rowHeight)
+        
         self.setWordWrap(False)
         self.horizontalHeader().setStyleSheet("QHeaderView::section { background-color: lightgray }")
         
@@ -138,7 +150,7 @@ class resultSet(QTableWidget):
                 if val is None:
                     values.append(utils.cfg('nullStringCSV', '?'))
                 elif db.ifNumericType(vType):
-                    values.append(utils.numberToStrCSV(val))
+                    values.append(utils.numberToStrCSV(val, False))
                 elif db.ifRAWType(vType):
                     values.append(val.hex())
                 elif db.ifTSType(vType):
@@ -196,7 +208,7 @@ class resultSet(QTableWidget):
                                 values.append(str(value.encode()))
                             else:
                                 if db.ifNumericType(vType):
-                                    values.append(utils.numberToStrCSV(value))
+                                    values.append(utils.numberToStrCSV(value, False))
                                 elif db.ifRAWType(vType):
                                     values.append(value.hex())
                                 elif db.ifTSType(vType):
@@ -269,6 +281,7 @@ class resultSet(QTableWidget):
                     else:
                         val = str(val)
                     item = QTableWidgetItem(val)
+                    
                     #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     #print(val)
@@ -630,9 +643,10 @@ class sqlConsole(QWidget):
         ]
         
         rows = [
-                ['name 1','select * from dummy fake blob 1', 1/2, datetime.datetime.now()],
+                ['name 1','select * from dummy fake blob 1', 1/12500, datetime.datetime.now()],
                 ['name 2','select * from dummy blob 2', 2/3, datetime.datetime.now()],
-                ['name 3','select 1/16 from dummy blob 3', 1/16, datetime.datetime.now()]
+                ['name 3','select 1/16 from dummy blob 3', 1/16, datetime.datetime.now()],
+                ['name 4','select 10000 from dummy blob 3', 10000, datetime.datetime.now()]
             ]
         
         result = self.newResult(self.conn)
