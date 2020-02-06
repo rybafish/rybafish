@@ -56,10 +56,13 @@ class resultSet(QTableWidget):
         
         scale = 1
 
-        myFont = QFont ('SansSerif', 10)
-        rowHeight = scale * QFontMetricsF(myFont).height()
         
-        rowHeight = 19
+        itemFont = QTableWidgetItem('').font()
+        #QFont ('SansSerif', 10)
+        rowHeight = scale * QFontMetricsF(itemFont).height() + 7
+        print(rowHeight)
+        
+        #rowHeight = 19
         
         verticalHeader.setDefaultSectionSize(rowHeight)
         
