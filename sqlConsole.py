@@ -632,7 +632,7 @@ class sqlConsole(QWidget):
         rows = [
                 ['name 1','select * from dummy fake blob 1', 1/2, datetime.datetime.now()],
                 ['name 2','select * from dummy blob 2', 2/3, datetime.datetime.now()],
-                ['name 3','select * from dummy blob 3', 1/8, datetime.datetime.now()]
+                ['name 3','select 1/16 from dummy blob 3', 1/16, datetime.datetime.now()]
             ]
         
         result = self.newResult(self.conn)

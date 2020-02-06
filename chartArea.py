@@ -519,6 +519,8 @@ class myWidget(QWidget):
         
         top_margin = self.top_margin + self.y_delta
         
+        reportDelta = False
+        
         for kpi in kpis:
         
             if kpi[:4] == 'time':
@@ -589,6 +591,9 @@ class myWidget(QWidget):
             #if abs(y - pos.y()) <= 2:
             if pos.y() <= ymin + tolerance and pos.y() >= ymax - tolerance: #it's reversed in Y calculation...
                 if (self.highlightedKpi):
+                
+                    if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
+                        reportDelta = True
                         
                     self.highlightedKpi = None
 
@@ -597,12 +602,20 @@ class myWidget(QWidget):
 
                 scaled_value = utils.numberToStr(normVal, d)
                 
-                log('click on %i.%s = %i, %s' % (host, kpi, data[kpi][j], scaled_value))
+                log('click on %s(%i).%s = %i, %s' % (self.hosts[host]['host'], host, kpi, data[kpi][j], scaled_value))
                 self.kpiPen[type][kpi].setWidth(2)
                     
                 self.highlightedKpi = kpi
                 self.highlightedKpiHost = host
                 self.highlightedPoint = j
+                
+                if reportDelta:
+                    deltaVal = normVal - self.highlightedNormVal
+                    deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
+                else:
+                    deltaVal = ''
+
+                self.highlightedNormVal = normVal
                 
                 hst = self.hosts[host]['host']
                 if self.hosts[host]['port'] != '':
@@ -610,7 +623,7 @@ class myWidget(QWidget):
                     
                 tm = datetime.datetime.fromtimestamp(data[timeKey][j]).strftime('%Y-%m-%d %H:%M:%S')
                 
-                self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm))
+                self.statusMessage('%s, %s.%s = %s %s at %s%s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm, deltaVal))
                 
                 self.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm))
                 # if want instant need to re-define mouseMoveEvent()
