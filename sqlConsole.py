@@ -222,6 +222,9 @@ class resultSet(QTableWidget):
         cols = self.cols
         rows = self.rows
     
+        #for c in cols:
+        #    print(c)
+    
         row0 = []
 
         for c in cols:
