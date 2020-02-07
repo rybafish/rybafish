@@ -39,7 +39,7 @@ class resultSet(QTableWidget):
     def __init__(self, conn):
         self._resultset_id = None    # filled manually right after execute_query
 
-        self._connection = conn      
+        self._connection = conn
         
         self.LOBs = False            # if the result contains LOBs
         self.detached = None         # supposed to be defined only if LOBs = True
@@ -200,31 +200,59 @@ class resultSet(QTableWidget):
                     
                 else:
                     # copy column
-                    values = []
-                    for c in sm.selectedIndexes():
-                        # check if this is the same column? or why should I care...
-
-                        value = self.rows[c.row()][c.column()]
-                        vType = self.cols[c.column()][1]
-                        
-                        if value is None:
-                            values.append(utils.cfg('nullStringCSV', '?'))
-                        else:
-                            if db.ifBLOBType(vType):
-                                values.append(str(value.encode()))
-                            else:
-                                if db.ifNumericType(vType):
-                                    values.append(utils.numberToStrCSV(value, False))
-                                elif db.ifRAWType(vType):
-                                    values.append(value.hex())
-                                elif db.ifTSType(vType):
-                                    values.append(value.isoformat(' ', timespec='milliseconds'))
-                                else:
-                                    values.append(str(value))
-
-                    column = '\n'.join(values)
                     
-                    QApplication.clipboard().setText(column)
+                    rowIndex = []
+                    colIndex = {}
+
+                    # very likely not the best way to order list of pairs...
+                    
+                    for c in sm.selectedIndexes():
+                    
+                        r = c.row() 
+                    
+                        if r not in rowIndex:
+                            rowIndex.append(r)
+                            
+                        if r in colIndex.keys():
+                            colIndex[r].append(c.column())
+                        else:
+                            colIndex[r] = []
+                            colIndex[r].append(c.column())
+                    
+                    rowIndex.sort()
+                    
+                    rows = []
+                    
+                    for r in rowIndex:
+                        colIndex[r].sort()
+
+                        values = []
+                        
+                        for c in colIndex[r]:
+                        
+                            value = self.rows[r][c]
+                            vType = self.cols[c][1]
+                            
+                            if value is None:
+                                values.append(utils.cfg('nullStringCSV', '?'))
+                            else:
+                                if db.ifBLOBType(vType):
+                                    values.append(str(value.encode()))
+                                else:
+                                    if db.ifNumericType(vType):
+                                        values.append(utils.numberToStrCSV(value, False))
+                                    elif db.ifRAWType(vType):
+                                        values.append(value.hex())
+                                    elif db.ifTSType(vType):
+                                        values.append(value.isoformat(' ', timespec='milliseconds'))
+                                    else:
+                                        values.append(str(value))
+                                        
+                        rows.append( ';'.join(values))
+
+                    result = '\n'.join(rows)
+                    
+                    QApplication.clipboard().setText(result)
                         
         else:
             super().keyPressEvent(event)
