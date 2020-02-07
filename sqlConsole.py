@@ -23,6 +23,9 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 import binascii
 import datetime
+import os
+
+from PyQt5.QtCore import pyqtSignal
 
 class resultSet(QTableWidget):
     '''
@@ -42,7 +45,8 @@ class resultSet(QTableWidget):
         self.detached = None         # supposed to be defined only if LOBs = True
         self.detachTimer = None      # results detach timer
         
-        self.fileName = None      
+        self.fileName = None
+        self.unsavedChanges = False
         
         self.cols = [] #column descriptions
         self.rows = [] # actual data 
@@ -60,7 +64,6 @@ class resultSet(QTableWidget):
         itemFont = QTableWidgetItem('').font()
         #QFont ('SansSerif', 10)
         rowHeight = scale * QFontMetricsF(itemFont).height() + 7
-        print(rowHeight)
         
         #rowHeight = 19
         
@@ -337,6 +340,8 @@ class resultSet(QTableWidget):
         
 class sqlConsole(QWidget):
 
+    nameChanged = pyqtSignal(['QString'])
+
     def keyPressEvent(self, event):
    
         modifiers = QApplication.keyboardModifiers()
@@ -344,11 +349,26 @@ class sqlConsole(QWidget):
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_S:
                 fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
-                print('Save as', fname)
-                
+                    
             elif event.key() == Qt.Key_O:
                 fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
-                print('filename: ', fname)
+                filename = fname[0]
+                
+                try:
+                    with open(filename, 'r') as f:
+                        data = f.read()
+                except Exception as e:
+                    print (str(e))
+                    
+                tabname = os.path.basename(filename)
+                tabname = tabname.split('.')[0]
+                
+                self.cons.setPlainText(data)
+                self.cons.fileName = filename
+
+                print('emit name changed...')
+                self.nameChanged.emit(tabname)
+                print('done')
                
         super().keyPressEvent(event)
 

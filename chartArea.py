@@ -1068,8 +1068,6 @@ class myWidget(QWidget):
         #log('paintEvent: prep/grid/chart/end: %s/%s/%s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), str(round(t4-t3, 3))))
 
 class chartArea(QFrame):
-
-    #scalesUpdated = pyqtSignal(['QString'])
     
     statusMessage_ = pyqtSignal(['QString', bool])
     
