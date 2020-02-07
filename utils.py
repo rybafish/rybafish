@@ -52,7 +52,7 @@ def numberToStr(num, d = 0, fix = True):
     
     return s
 
-def numberToStrCSV(num):
+def numberToStrCSV(num, grp = True):
     if cfg('locale'):
         locale.setlocale(locale.LC_ALL, cfg('locale'))
     else:
@@ -63,14 +63,14 @@ def numberToStrCSV(num):
     if num is None:
         return '?'
 
-    '''
-    fmt = '%g'
-    s = locale.format(fmt, num, grouping=False)
-    '''
+    #fmt = '%g'
     
-    s = str(num) #python itself makes a better job...
+    fmt = '%f'
+    s = locale.format(fmt, num, grouping = grp)
+
+    # trim ziroes for f:
     
-    s = s.replace('.', dp)
+    s = s.rstrip('0').rstrip(dp)
     
     return s
     

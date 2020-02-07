@@ -222,6 +222,10 @@ class hslWindow(QMainWindow):
                 
                 self.statusMessage('', False)
         
+    def changeActiveTabName(self, name):
+        i = self.tabs.currentIndex()
+        self.tabs.setTabText(i, name)
+        
     def menuSQLConsole(self):
     
         conf = self.connectionConf
@@ -233,8 +237,10 @@ class hslWindow(QMainWindow):
         self.statusMessage('Connecting...', False)
 
         console = sqlConsole.sqlConsole(self, conf) # self = window
+        console.nameChanged.connect(self.changeActiveTabName)
 
         self.tabs.addTab(console, 'Sql')
+        
         self.statusMessage('', False)
             
     
@@ -436,6 +442,7 @@ class hslWindow(QMainWindow):
         
         if (cfg('developmentMode')):
             console = sqlConsole.sqlConsole(self, None)
+            console.nameChanged.connect(self.changeActiveTabName)
             from SQLSyntaxHighlighter import SQLSyntaxHighlighter
             self.tabs.addTab(console, 'Sql')
             

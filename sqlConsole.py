@@ -23,6 +23,9 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 import binascii
 import datetime
+import os
+
+from PyQt5.QtCore import pyqtSignal
 
 class resultSet(QTableWidget):
     '''
@@ -42,7 +45,8 @@ class resultSet(QTableWidget):
         self.detached = None         # supposed to be defined only if LOBs = True
         self.detachTimer = None      # results detach timer
         
-        self.fileName = None      
+        self.fileName = None
+        self.unsavedChanges = False
         
         self.cols = [] #column descriptions
         self.rows = [] # actual data 
@@ -50,6 +54,20 @@ class resultSet(QTableWidget):
         self.headers = [] # column names
         
         super().__init__()
+        
+        verticalHeader = self.verticalHeader()
+        verticalHeader.setSectionResizeMode(verticalHeader.Fixed)
+        
+        scale = 1
+
+        
+        itemFont = QTableWidgetItem('').font()
+        #QFont ('SansSerif', 10)
+        rowHeight = scale * QFontMetricsF(itemFont).height() + 7
+        
+        #rowHeight = 19
+        
+        verticalHeader.setDefaultSectionSize(rowHeight)
         
         self.setWordWrap(False)
         self.horizontalHeader().setStyleSheet("QHeaderView::section { background-color: lightgray }")
@@ -138,7 +156,7 @@ class resultSet(QTableWidget):
                 if val is None:
                     values.append(utils.cfg('nullStringCSV', '?'))
                 elif db.ifNumericType(vType):
-                    values.append(utils.numberToStrCSV(val))
+                    values.append(utils.numberToStrCSV(val, False))
                 elif db.ifRAWType(vType):
                     values.append(val.hex())
                 elif db.ifTSType(vType):
@@ -196,7 +214,7 @@ class resultSet(QTableWidget):
                                 values.append(str(value.encode()))
                             else:
                                 if db.ifNumericType(vType):
-                                    values.append(utils.numberToStrCSV(value))
+                                    values.append(utils.numberToStrCSV(value, False))
                                 elif db.ifRAWType(vType):
                                     values.append(value.hex())
                                 elif db.ifTSType(vType):
@@ -272,6 +290,7 @@ class resultSet(QTableWidget):
                     else:
                         val = str(val)
                     item = QTableWidgetItem(val)
+                    
                     #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     #print(val)
@@ -324,6 +343,8 @@ class resultSet(QTableWidget):
         
 class sqlConsole(QWidget):
 
+    nameChanged = pyqtSignal(['QString'])
+
     def keyPressEvent(self, event):
    
         modifiers = QApplication.keyboardModifiers()
@@ -331,11 +352,26 @@ class sqlConsole(QWidget):
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_S:
                 fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
-                print('Save as', fname)
-                
+                    
             elif event.key() == Qt.Key_O:
                 fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
-                print('filename: ', fname)
+                filename = fname[0]
+                
+                try:
+                    with open(filename, 'r') as f:
+                        data = f.read()
+                except Exception as e:
+                    print (str(e))
+                    
+                tabname = os.path.basename(filename)
+                tabname = tabname.split('.')[0]
+                
+                self.cons.setPlainText(data)
+                self.cons.fileName = filename
+
+                print('emit name changed...')
+                self.nameChanged.emit(tabname)
+                print('done')
                
         super().keyPressEvent(event)
 
@@ -633,9 +669,10 @@ class sqlConsole(QWidget):
         ]
         
         rows = [
-                ['name 1','select * from dummy fake blob 1', 1/2, datetime.datetime.now()],
+                ['name 1','select * from dummy fake blob 1', 1/12500, datetime.datetime.now()],
                 ['name 2','select * from dummy blob 2', 2/3, datetime.datetime.now()],
-                ['name 3','select * from dummy blob 3', 1/8, datetime.datetime.now()]
+                ['name 3','select 1/16 from dummy blob 3', 1/16, datetime.datetime.now()],
+                ['name 4','select 10000 from dummy blob 3', 10000, datetime.datetime.now()]
             ]
         
         result = self.newResult(self.conn)
