@@ -27,6 +27,207 @@ import os
 
 from PyQt5.QtCore import pyqtSignal
 
+class console(QPlainTextEdit):
+
+    executionTriggered = pyqtSignal()
+
+    def __init__(self):
+        self.braketsHighlighted = False
+        self.braketsHighlightedPos = []
+        
+        super().__init__()
+
+        fontSize = utils.cfg('console-fontSize', 10)
+        
+        try: 
+            font = QFont ('Consolas', fontSize)
+        except:
+            font = QFont ()
+            font.setPointSize(fontSize)
+            
+        self.setFont(font)
+
+        self.setTabStopDistance(QFontMetricsF(font).width(' ') * 4)
+        
+        self.cursorPositionChanged.connect(self.cursorPositionChangedSignal) # why not just overload?
+        
+        '''
+        self.cons.keyPressEvent = self.consKeyPressHandler
+        self.cons.cursorPositionChanged.connect(self.cursorPositionChanged)
+        
+        self.cons.selectionChanged.connect(self.consSelection) #does not work
+        '''
+        
+    def contextMenuEvent(self, event):
+       
+        cmenu = QMenu(self)
+
+        menuExec = cmenu.addAction('Execute selection')
+        menuDummy = cmenu.addAction('test')
+        
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
+
+        if action == menuExec:
+            self.executionTriggered.emit()
+            
+        if action == menuDummy:
+            print('dummy menu')
+            
+    def keyPressEvent (self, event):
+        
+        if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
+            self.executionTriggered.emit()
+
+        else:
+            #have to clear each time in case of input right behind the braket
+            if self.braketsHighlighted:
+                self.clearBraketsHighlight()
+                
+            # print explisit call of the normal processing? this looks real weird
+            # shouldnt it be just super().keyPressEvent(event) instead?
+            # may be if I inherited QPlainTextEdit...
+            #QPlainTextEdit.keyPressEvent(self.cons, event)
+            super().keyPressEvent(event)
+
+    def clearBraketsHighlight(self):
+        if self.braketsHighlighted:
+            pos = self.braketsHighlightedPos
+            self.highlightBraket(self.document(), pos[0], False)
+            self.highlightBraket(self.document(), pos[1], False)
+            self.braketsHighlighted = False
+
+    def cursorPositionChangedSignal(self):
+        self.checkBrakets()
+        
+    def highlightBraket(self, block, pos, mode):
+        #print ('highlight here: ', block.text(), start, stop)
+        cursor = QTextCursor(block)
+
+        cursor.setPosition(pos, QTextCursor.MoveAnchor)
+        cursor.setPosition(pos+1, QTextCursor.KeepAnchor)
+        
+        format = cursor.charFormat()
+        
+        font = cursor.charFormat().font()
+        
+        if mode == True:
+            font.setBold(True)
+            format.setForeground(QColor('#C22'))
+            format.setBackground(QColor('#CCF'))
+            format.setFont(font)
+        else:
+            font.setBold(False)
+            format.setForeground(QColor('black'));
+            format.setBackground(QColor('white'));
+            format.setFont(font)
+
+        '''
+        if mode == True:
+            format.setBackground(QColor('#8AF'))
+        else:
+            format.setBackground(QColor('white'));
+        '''
+            
+        cursor.setCharFormat(format)
+        
+        self.haveHighlighrs = True
+        
+    def checkBrakets(self):
+    
+        if self.braketsHighlighted:
+            self.clearBraketsHighlight()
+    
+        cursor = self.textCursor()
+        pos = cursor.position()
+
+        text = self.toPlainText()
+
+        textSize = len(text)
+        
+        def scanPairBraket(pos, shift):
+        
+            braket = text[pos]
+        
+            #print('scanPairBraket', pos, braket, shift)
+        
+            depth = 0
+        
+            if braket == ')':
+                pair = '('
+            elif braket == '(':
+                pair = ')'
+            elif braket == '[':
+                pair = ']'
+            elif braket == ']':
+                pair = '['
+            else:
+                return -1
+            
+            i = pos + shift
+            
+            if braket in (')', ']'):
+                # skan forward
+                stop = 0
+                step = -1
+            else:
+                stop = textSize-1
+                step = 1
+                
+            
+            while i != stop:
+                i += step
+                ch = text[i]
+                
+                if ch == braket:
+                    depth += 1
+                    continue
+                
+                if ch == pair:
+                    if depth == 0:
+                        return i
+                    else:
+                        depth -=1
+                    
+            return -1
+            
+        # text[pos] - symboll right to the cursor
+        # when pos == textSize text[pos] - crash
+        
+        bPos = None
+        
+        if pos > 0 and text[pos-1] in ('(', '[', ')', ']', ):
+            brLeft = True
+        else:
+            brLeft = False
+            
+        if pos < textSize and text[pos] in ('(', '[', ')', ']', ):
+            brRight = True
+        else:
+            brRight = False
+            
+            
+        if brLeft or brRight:
+        
+            if brLeft:
+                bPos = pos-1
+                if text[pos-1] in ('(', '['):
+                    shift = 0
+                else:
+                    shift = 0
+                pb = scanPairBraket(bPos, shift)
+            else:
+                bPos = pos
+                shift = 0
+                pb = scanPairBraket(bPos, shift)
+
+            #print(brLeft, brRight, bPos, pb)
+            
+            if pb >= 0:
+                self.braketsHighlighted = True
+                self.braketsHighlightedPos = [bPos, pb]
+                self.highlightBraket(self.document(), bPos, True)
+                self.highlightBraket(self.document(), pb, True)        
+
 class resultSet(QTableWidget):
     '''
         Implements the result set widget, basically QTableWidget with minor extensions
@@ -39,7 +240,7 @@ class resultSet(QTableWidget):
     def __init__(self, conn):
         self._resultset_id = None    # filled manually right after execute_query
 
-        self._connection = conn      
+        self._connection = conn
         
         self.LOBs = False            # if the result contains LOBs
         self.detached = None         # supposed to be defined only if LOBs = True
@@ -200,31 +401,59 @@ class resultSet(QTableWidget):
                     
                 else:
                     # copy column
-                    values = []
-                    for c in sm.selectedIndexes():
-                        # check if this is the same column? or why should I care...
-
-                        value = self.rows[c.row()][c.column()]
-                        vType = self.cols[c.column()][1]
-                        
-                        if value is None:
-                            values.append(utils.cfg('nullStringCSV', '?'))
-                        else:
-                            if db.ifBLOBType(vType):
-                                values.append(str(value.encode()))
-                            else:
-                                if db.ifNumericType(vType):
-                                    values.append(utils.numberToStrCSV(value, False))
-                                elif db.ifRAWType(vType):
-                                    values.append(value.hex())
-                                elif db.ifTSType(vType):
-                                    values.append(value.isoformat(' ', timespec='milliseconds'))
-                                else:
-                                    values.append(str(value))
-
-                    column = '\n'.join(values)
                     
-                    QApplication.clipboard().setText(column)
+                    rowIndex = []
+                    colIndex = {}
+
+                    # very likely not the best way to order list of pairs...
+                    
+                    for c in sm.selectedIndexes():
+                    
+                        r = c.row() 
+                    
+                        if r not in rowIndex:
+                            rowIndex.append(r)
+                            
+                        if r in colIndex.keys():
+                            colIndex[r].append(c.column())
+                        else:
+                            colIndex[r] = []
+                            colIndex[r].append(c.column())
+                    
+                    rowIndex.sort()
+                    
+                    rows = []
+                    
+                    for r in rowIndex:
+                        colIndex[r].sort()
+
+                        values = []
+                        
+                        for c in colIndex[r]:
+                        
+                            value = self.rows[r][c]
+                            vType = self.cols[c][1]
+                            
+                            if value is None:
+                                values.append(utils.cfg('nullStringCSV', '?'))
+                            else:
+                                if db.ifBLOBType(vType):
+                                    values.append(str(value.encode()))
+                                else:
+                                    if db.ifNumericType(vType):
+                                        values.append(utils.numberToStrCSV(value, False))
+                                    elif db.ifRAWType(vType):
+                                        values.append(value.hex())
+                                    elif db.ifTSType(vType):
+                                        values.append(value.isoformat(' ', timespec='milliseconds'))
+                                    else:
+                                        values.append(str(value))
+                                        
+                        rows.append( ';'.join(values))
+
+                    result = '\n'.join(rows)
+                    
+                    QApplication.clipboard().setText(result)
                         
         else:
             super().keyPressEvent(event)
@@ -369,9 +598,7 @@ class sqlConsole(QWidget):
                 self.cons.setPlainText(data)
                 self.cons.fileName = filename
 
-                print('emit name changed...')
                 self.nameChanged.emit(tabname)
-                print('done')
                
         super().keyPressEvent(event)
 
@@ -403,9 +630,6 @@ class sqlConsole(QWidget):
     
         self.results = [] #list of resultsets
         self.resultTabs = None #tabs widget
-        
-        self.braketsHighlighted = False
-        self.braketsHighlightedPos = []
 
         super().__init__()
         self.initUI()
@@ -588,39 +812,6 @@ class sqlConsole(QWidget):
         
         self.highlightedWords.append([start, stop])
         self.haveHighlighrs = True
-
-    def highlightBraket(self, block, pos, mode):
-        #print ('highlight here: ', block.text(), start, stop)
-        cursor = QTextCursor(block)
-
-        cursor.setPosition(pos, QTextCursor.MoveAnchor)
-        cursor.setPosition(pos+1, QTextCursor.KeepAnchor)
-        
-        format = cursor.charFormat()
-        
-        font = cursor.charFormat().font()
-        
-        if mode == True:
-            font.setBold(True)
-            format.setForeground(QColor('#C22'))
-            format.setBackground(QColor('#CCF'))
-            format.setFont(font)
-        else:
-            font.setBold(False)
-            format.setForeground(QColor('black'));
-            format.setBackground(QColor('white'));
-            format.setFont(font)
-
-        '''
-        if mode == True:
-            format.setBackground(QColor('#8AF'))
-        else:
-            format.setBackground(QColor('white'));
-        '''
-            
-        cursor.setCharFormat(format)
-        
-        self.haveHighlighrs = True
     
     def consSelection(self):
         if self.lock:
@@ -682,290 +873,286 @@ class sqlConsole(QWidget):
         
         result.populate()
     
-    def cursorPositionChanged(self):
-        self.checkBrakets()
+    def executeSelection(self):
     
-    def consKeyPressHandler(self, event):
-    
-        def executeSelection():
+        txt = ''
+        statements = []
+        F9 = True
         
-            txt = ''
-            statements = []
-            F9 = True
+        def isItCreate(s):
+            '''
+                if in create procedure now?
+            '''
             
-
-            def isItCreate(s):
-                '''
-                    if in create procedure now?
-                '''
-                
-                if re.match('^\s*create procedure\W.*', s, re.IGNORECASE):
-                    return True
-                else:
-                    return False
-                    
-            def isItEnd(s):
-                '''
-                    it shall ignor whitspaces
-                    and at this point ';' already 
-                    checked outside, so just \bend\b regexp check
-
-
-                    The logic goes like this
-                    
-                    if there is a selection:
-                        split and execute stuff inside
-                    else:
-                        f9 mode - detect and execute one line
-
-                '''
-                #if s[-3:] == 'end':
-                if re.match('.*\W*end\s*$', s, re.IGNORECASE):
-                    return True
-                else:
-                    return False
-                    
-            def selectSingle(start, stop):
-                cursor = QTextCursor(self.cons.document())
-
-                cursor.setPosition(start,QTextCursor.MoveAnchor)
-                cursor.setPosition(stop,QTextCursor.KeepAnchor)
-                
-                self.cons.setTextCursor(cursor)
-            
-            def statementDetected(start, stop):
-
-                str = txt[start:stop]
-                
-                if str == '': 
-                    #typically only when start = 0, stop = 1
-                    if not (start == 0 and stop <= 1):
-                        log('[w] unusual empty string matched')
-                    return
-                    
-                statements.append(str)
-            
-            cursor = self.cons.textCursor()
-
-            selectionMode = False
-            
-            txt = self.cons.toPlainText()
-            length = len(txt)
-
-            if not cursor.selection().isEmpty():
-                F9 = False
-                selectionMode = True
-                scanFrom = cursor.selectionStart()
-                scanTo = cursor.selectionEnd()
+            if re.match('^\s*create procedure\W.*', s, re.IGNORECASE):
+                return True
             else:
-                F9 = True
-                scanFrom = 0
-                scanTo = length
-                if F9:
-                    #detect and execute just one statement
-                    cursorPos = self.cons.textCursor().position()
+                return False
+                
+        def isItEnd(s):
+            '''
+                it shall ignore whitspaces
+                and at this point ';' already 
+                checked outside, so just \bend\b regexp check
+
+
+                The logic goes like this
+                
+                if there is a selection:
+                    split and execute stuff inside
                 else:
-                    cursorPos = None
-            
-            str = ''
-            
-            i = 0
-            start = stop = 0
-            
-            insideString = False
-            insideProc = False
-            
-            # main per character loop:
+                    f9 mode - detect and execute one line
 
-            for i in range(scanFrom, scanTo):
-                c = txt[i]
+            '''
+            #if s[-3:] == 'end':
+            if re.match('.*\W*end\s*$', s, re.IGNORECASE):
+                return True
+            else:
+                return False
+                
+        def selectSingle(start, stop):
+            cursor = QTextCursor(self.cons.document())
 
-                #print('['+c+']')
-                if not insideString and c == ';':
-                    #print(i)
-                    if not insideProc:
+            cursor.setPosition(start,QTextCursor.MoveAnchor)
+            cursor.setPosition(stop,QTextCursor.KeepAnchor)
+            
+            self.cons.setTextCursor(cursor)
+        
+        def statementDetected(start, stop):
+
+            str = txt[start:stop]
+            
+            if str == '': 
+                #typically only when start = 0, stop = 1
+                if not (start == 0 and stop <= 1):
+                    log('[w] unusual empty string matched')
+                return
+                
+            statements.append(str)
+        
+        cursor = self.cons.textCursor()
+
+        selectionMode = False
+        
+        txt = self.cons.toPlainText()
+        length = len(txt)
+
+        if not cursor.selection().isEmpty():
+            F9 = False
+            selectionMode = True
+            scanFrom = cursor.selectionStart()
+            scanTo = cursor.selectionEnd()
+        else:
+            F9 = True
+            scanFrom = 0
+            scanTo = length
+            if F9:
+                #detect and execute just one statement
+                cursorPos = self.cons.textCursor().position()
+            else:
+                cursorPos = None
+        
+        str = ''
+        
+        i = 0
+        start = stop = 0
+        
+        insideString = False
+        insideProc = False
+        
+        # main per character loop:
+
+        for i in range(scanFrom, scanTo):
+            c = txt[i]
+
+            #print('['+c+']')
+            if not insideString and c == ';':
+                #print(i)
+                if not insideProc:
+                    str = ''
+                    stop = i
+                    continue
+                else:
+                    if isItEnd(str[-10:]):
+                        insideProc = False
                         str = ''
                         stop = i
                         continue
-                    else:
-                        if isItEnd(str[-10:]):
-                            insideProc = False
-                            str = ''
-                            stop = i
-                            continue
-                
-                if str == '':
-                    if c in (' ', '\n', '\t'):
-                        # warning: insideString logic skipped here (as it is defined below this line
-                        continue
-                    else:
-                        if F9 and (start <= cursorPos < stop):
-                            selectSingle(start, stop)
-                            break
-                        else:
-                            if not F9:
-                                statementDetected(start, stop)
-                            
-                        start = i
-                        str = str + c
+            
+            if str == '':
+                if c in (' ', '\n', '\t'):
+                    # warning: insideString logic skipped here (as it is defined below this line
+                    continue
                 else:
+                    if F9 and (start <= cursorPos < stop):
+                        selectSingle(start, stop)
+                        break
+                    else:
+                        if not F9:
+                            statementDetected(start, stop)
+                        
+                    start = i
                     str = str + c
-
-                if not insideString and c == '\'':
-                    insideString = True
-                    continue
-                    
-                if insideString and c == '\'':
-                    insideString = False
-                    continue
-                    
-                if not insideProc and isItCreate(str[:64]):
-                    insideProc = True
-
-
-            #print(cursorPos)
-            #print(scanFrom, scanTo)
-            #print(start, stop)
-            #print(str)
-            
-            if stop == 0:
-                # no semicolon met
-                stop = scanTo
-            
-            #if F9 and (start <= cursorPos < stop):
-            #print so not sure abous this change
-            if F9 and (start <= cursorPos <= stop):
-                selectSingle(start, stop)
             else:
-                if not F9:
-                    statementDetected(start, stop)
+                str = str + c
+
+            if not insideString and c == '\'':
+                insideString = True
+                continue
                 
-            self.closeResults()
+            if insideString and c == '\'':
+                insideString = False
+                continue
+                
+            if not insideProc and isItCreate(str[:64]):
+                insideProc = True
+
+
+        #print(cursorPos)
+        #print(scanFrom, scanTo)
+        #print(start, stop)
+        #print(str)
+        
+        if stop == 0:
+            # no semicolon met
+            stop = scanTo
+        
+        #if F9 and (start <= cursorPos < stop):
+        #print so not sure abous this change
+        if F9 and (start <= cursorPos <= stop):
+            selectSingle(start, stop)
+        else:
+            if not F9:
+                statementDetected(start, stop)
             
-            #if F9 and (start <= cursorPos < stop):
-            #print so not sure abous this change
-            if F9 and (start <= cursorPos <= stop):
-                #print('-> [%s] ' % txt[start:stop])
+        self.closeResults()
+        
+        #if F9 and (start <= cursorPos < stop):
+        #print so not sure abous this change
+        if F9 and (start <= cursorPos <= stop):
+            #print('-> [%s] ' % txt[start:stop])
+            
+            result = self.newResult(self.conn)
+            
+            self.executeStatement(txt[start:stop], result)
+        else:
+            for st in statements:
+                #print('--> [%s]' % st)
                 
                 result = self.newResult(self.conn)
+                self.executeStatement(st, result)
                 
-                executeStatement(self, txt[start:stop], result)
-            else:
-                for st in statements:
-                    #print('--> [%s]' % st)
-                    
-                    result = self.newResult(self.conn)
-                    executeStatement(self, st, result)
-                    
-                    #self.update()
-                    self.repaint()
+                #self.update()
+                self.repaint()
 
-            return
+        return
+    
+    def executeStatement(self, sql, result):
+        '''
+            executes the string without any analysis
+            result filled
+        '''
         
-        def executeStatement(self, sql, result):
-            '''
-                executes the string without any analysis
-                result filled
-            '''
+        self.renewKeepAlive()
+        
+        if len(sql) >= 2**17 and self.conn.large_sql != True:
+            log('reconnecting to hangle large SQL')
+            print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
             
-            self.renewKeepAlive()
+            db.largeSql = True
             
-            if len(sql) >= 2**17 and self.conn.large_sql != True:
-                log('reconnecting to hangle large SQL')
-                print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
-                
-                db.largeSql = True
-                
-                try: 
-                    self.conn = db.create_connection(self.config)
-                except dbException as e:
-                    err = str(e)
-                    #
-                    self.log('DB Exception:' + err, True)
-                    
-                    self.connect = None
-                    return
-                    
-            if self.conn is None:
-                self.log('Error: No connection')
-                return
-                
-            #execute the query
-            
-            try:
-                t0 = time.time()
-                
-                #print('clear rows array here?')
-                
-                suffix = ''
-                
-                if len(sql) > 128:
-                    txtSub = sql[:128]
-                    suffix = '...'
-                else:
-                    txtSub = sql
-                    
-                txtSub = txtSub.replace('\n', ' ')
-                txtSub = txtSub.replace('\t', ' ')
-                
-                self.log('\nExecute: ' + txtSub + suffix)
-                self.logArea.repaint()
-                
-                resultSizeLimit = cfg('resultSize', 1000)
-                
-                result.rows, result.cols, dbCursor = db.execute_query_desc(self.conn, sql, [], resultSizeLimit)
-                
-                rows = result.rows
-                cols = result.cols
-                
-                t1 = time.time()
-
-                logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
-                
-                if rows is None or cols is None:
-                    # it was a DDL or something else without a result set so we just stop
-                    
-                    logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
-                    
-                    self.log(logText)
-                    
-                    result.clear()
-                    return
-
-                resultSize = len(rows)
-
-                result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
-                result.detached = False
-                result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
-                print('saving the resultset id: %s' % result_str)
-                
-                for c in cols:
-                    if db.ifLOBType(c[1]):
-                        self.detachResults = True
-                        result.LOBs = True
-                        
-                        result.triggerDetachTimer(self.window)
-                        break
-                        
-                if result.LOBs == False and resultSize == resultSizeLimit:
-                    print('detaching due to possible SUSPENDED')
-                    result.detach()
-                    print('done')
-                
-                lobs = ', +LOBs' if result.LOBs else ''
-                
-                logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
-                if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
-                
-                self.log(logText)
+            try: 
+                self.conn = db.create_connection(self.config)
             except dbException as e:
                 err = str(e)
+                #
                 self.log('DB Exception:' + err, True)
+                
+                self.connect = None
+                return
+                
+        if self.conn is None:
+            self.log('Error: No connection')
+            return
+            
+        #execute the query
+        
+        try:
+            t0 = time.time()
+            
+            #print('clear rows array here?')
+            
+            suffix = ''
+            
+            if len(sql) > 128:
+                txtSub = sql[:128]
+                suffix = '...'
+            else:
+                txtSub = sql
+                
+            txtSub = txtSub.replace('\n', ' ')
+            txtSub = txtSub.replace('\t', ' ')
+            
+            self.log('\nExecute: ' + txtSub + suffix)
+            self.logArea.repaint()
+            
+            resultSizeLimit = cfg('resultSize', 1000)
+            
+            result.rows, result.cols, dbCursor = db.execute_query_desc(self.conn, sql, [], resultSizeLimit)
+            
+            rows = result.rows
+            cols = result.cols
+            
+            t1 = time.time()
+
+            logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
+            
+            if rows is None or cols is None:
+                # it was a DDL or something else without a result set so we just stop
+                
+                logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
+                
+                self.log(logText)
+                
+                result.clear()
                 return
 
-            result.populate()
-                
+            resultSize = len(rows)
+
+            result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
+            result.detached = False
+            result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
+            print('saving the resultset id: %s' % result_str)
+            
+            for c in cols:
+                if db.ifLOBType(c[1]):
+                    self.detachResults = True
+                    result.LOBs = True
+                    
+                    result.triggerDetachTimer(self.window)
+                    break
+                    
+            if result.LOBs == False and resultSize == resultSizeLimit:
+                print('detaching due to possible SUSPENDED')
+                result.detach()
+                print('done')
+            
+            lobs = ', +LOBs' if result.LOBs else ''
+            
+            logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
+            if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
+            
+            self.log(logText)
+        except dbException as e:
+            err = str(e)
+            self.log('DB Exception:' + err, True)
             return
+
+        result.populate()
+            
+        return
+            
+    def consKeyPressHandler(self, event):
         
         # modifiers = QApplication.keyboardModifiers()
         
@@ -982,142 +1169,20 @@ class sqlConsole(QWidget):
             # may be if I inherited QPlainTextEdit...
             QPlainTextEdit.keyPressEvent(self.cons, event)
 
-    def clearBraketsHighlight(self):
-        if self.braketsHighlighted:
-            pos = self.braketsHighlightedPos
-            self.highlightBraket(self.cons.document(), pos[0], False)
-            self.highlightBraket(self.cons.document(), pos[1], False)
-            self.braketsHighlighted = False
-    
-
-    def checkBrakets(self):
-    
-        if self.braketsHighlighted:
-            self.clearBraketsHighlight()
-    
-        cursor = self.cons.textCursor()
-        pos = cursor.position()
-
-        text = self.cons.toPlainText()
-
-        textSize = len(text)
-        
-        def scanPairBraket(pos, shift):
-        
-            braket = text[pos]
-        
-            #print('scanPairBraket', pos, braket, shift)
-        
-            depth = 0
-        
-            if braket == ')':
-                pair = '('
-            elif braket == '(':
-                pair = ')'
-            elif braket == '[':
-                pair = ']'
-            elif braket == ']':
-                pair = '['
-            else:
-                return -1
-            
-            i = pos + shift
-            
-            if braket in (')', ']'):
-                # skan forward
-                stop = 0
-                step = -1
-            else:
-                stop = textSize-1
-                step = 1
-                
-            
-            while i != stop:
-                i += step
-                ch = text[i]
-                
-                if ch == braket:
-                    depth += 1
-                    continue
-                
-                if ch == pair:
-                    if depth == 0:
-                        return i
-                    else:
-                        depth -=1
-                    
-            return -1
-            
-        # text[pos] - symboll right to the cursor
-        # when pos == textSize text[pos] - crash
-        
-        bPos = None
-        
-        if pos > 0 and text[pos-1] in ('(', '[', ')', ']', ):
-            brLeft = True
-        else:
-            brLeft = False
-            
-        if pos < textSize and text[pos] in ('(', '[', ')', ']', ):
-            brRight = True
-        else:
-            brRight = False
-            
-            
-        if brLeft or brRight:
-        
-            if brLeft:
-                bPos = pos-1
-                if text[pos-1] in ('(', '['):
-                    shift = 0
-                else:
-                    shift = 0
-                pb = scanPairBraket(bPos, shift)
-            else:
-                bPos = pos
-                shift = 0
-                pb = scanPairBraket(bPos, shift)
-
-            #print(brLeft, brRight, bPos, pb)
-            
-            if pb >= 0:
-                self.braketsHighlighted = True
-                self.braketsHighlightedPos = [bPos, pb]
-                self.highlightBraket(self.cons.document(), bPos, True)
-                self.highlightBraket(self.cons.document(), pb, True)
         
     def initUI(self):
         vbar = QVBoxLayout()
         hbar = QHBoxLayout()
         
         #self.cons = QPlainTextEdit()
-        self.cons = QPlainTextEdit()
+        self.cons = console()
         
-        fontSize = utils.cfg('console-fontSize', 10)
+        self.cons.executionTriggered.connect(self.executeSelection)
         
-        try: 
-            font = QFont ('Consolas', fontSize)
-        except:
-            font = QFont ()
-            font.setPointSize(fontSize)
-            
-        self.cons.setFont(font)
-
-        self.cons.setTabStopDistance(QFontMetricsF(font).width(' ') * 4)
-    
         self.resultTabs = QTabWidget()
-        #self.newResult() #do we need an empty one?
         
         spliter = QSplitter(Qt.Vertical)
         self.logArea = QPlainTextEdit()
-        
-        self.cons.keyPressEvent = self.consKeyPressHandler
-        self.cons.cursorPositionChanged.connect(self.cursorPositionChanged)
-        
-        self.cons.selectionChanged.connect(self.consSelection) #does not work
-
-        #self.cons.setPlainText('select * from (select * from m_load_history_info)')
-        #self.cons.setPlainText('select connection_id, statement_string from m_active_statements;\nselect connection_id, statement_string from m_active_statements;\n')
         
         spliter.addWidget(self.cons)
         spliter.addWidget(self.resultTabs)
