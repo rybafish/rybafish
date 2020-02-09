@@ -705,6 +705,11 @@ class sqlConsole(QWidget):
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_S:
                 fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
+                filename = fname[0]
+                
+                if os.path.isfile(filename):
+                    print('it already exists')
+                
                     
             elif event.key() == Qt.Key_O:
                 fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
