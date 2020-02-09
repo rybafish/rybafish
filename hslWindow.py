@@ -52,8 +52,11 @@ class hslWindow(QMainWindow):
         
         if indx > 0: #print need a better way to identify sql consoles...
             cons = self.tabs.currentWidget()
-            cons.close()
-            self.tabs.removeTab(indx)
+
+            status = cons.close()
+            
+            if status == True:
+                self.tabs.removeTab(indx)
     
         
     def keyPressEvent(self, event):
@@ -228,7 +231,13 @@ class hslWindow(QMainWindow):
                 self.statusMessage('', False)
         
     def changeActiveTabName(self, name):
+    
         i = self.tabs.currentIndex()
+        
+        # must be a better way verity if we attempt to update chart tab name
+        if i == 0:
+            return
+            
         self.tabs.setTabText(i, name)
         
     def menuSQLConsole(self):
@@ -245,7 +254,9 @@ class hslWindow(QMainWindow):
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
 
-        self.tabs.addTab(console, 'Sql')
+        tname = 'sql' + str(self.tabs.count()+1)
+        console.tabname = tname
+        self.tabs.addTab(console, tname)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
         
@@ -452,8 +463,12 @@ class hslWindow(QMainWindow):
             console = sqlConsole.sqlConsole(self, None)
             console.nameChanged.connect(self.changeActiveTabName)
             from SQLSyntaxHighlighter import SQLSyntaxHighlighter
-            self.tabs.addTab(console, 'Sql')
-            
+
+            tname = 'sql' + str(self.tabs.count()+1)
+            console.tabname = tname
+            self.tabs.addTab(console, tname)
+            self.tabs.setCurrentIndex(self.tabs.count() - 1)
+
             self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
             #console.cons.setPlainText('select * from dummy;\n\nselect \n    *\n    from dummy;\n\nselect * from m_host_information;');
             console.cons.setPlainText('''select 0 from dummy;

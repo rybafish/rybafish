@@ -33,6 +33,9 @@ class console(QPlainTextEdit):
 
     executionTriggered = pyqtSignal()
     closeSignal = pyqtSignal()
+    
+    openFileSignal = pyqtSignal()
+    saveFileSignal = pyqtSignal()
 
     def __init__(self):
         self.lock = False
@@ -166,19 +169,23 @@ class console(QPlainTextEdit):
        
         cmenu = QMenu(self)
 
-        menuExec = cmenu.addAction('Execute selection (F8)')
-        menuDummy = cmenu.addAction('test')
-        menuClose = cmenu.addAction('Close console (Ctrl+W)')
+        menuExec = cmenu.addAction('Execute selection\tF8')
+        cmenu.addSeparator()
+        menuOpenFile = cmenu.addAction('Open File\tCtrl+0')
+        menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
+        cmenu.addSeparator()
+        menuClose = cmenu.addAction('Close console\tCtrl+W')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
         if action == menuExec:
             self.executionTriggered.emit()
             
-        if action == menuDummy:
-            print('dummy menu')
-            
-        if action == menuClose:
+        elif action == menuOpenFile:
+            self.openFileSignal.emit()
+        elif action == menuSaveFile:
+            self.saveFileSignal.emit()
+        elif action == menuClose:
             self.closeSignal.emit()
             
     def keyPressEvent (self, event):
@@ -731,11 +738,15 @@ class sqlConsole(QWidget):
 
     def textChangedS(self):
     
-        if self.unsavedChanges == False and self.fileName is not None:
+        if self.unsavedChanges == False: #and self.fileName is not None:
             self.unsavedChanges = True
 
-            tabname = os.path.basename(self.fileName)
-            tabname = tabname.split('.')[0] + ' *'
+            if self.fileName is not None:
+                tabname = os.path.basename(self.fileName)
+                tabname = tabname.split('.')[0] + ' *'
+            else:
+                tabname = self.tabname + ' *'
+                
             self.nameChanged.emit(tabname)
             
     def saveBackup(self):
@@ -747,75 +758,90 @@ class sqlConsole(QWidget):
        
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_S:
-            
-                if self.fileName is None:
-                    fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
-                    
-                    filename = fname[0]
-                    
-                    if filename == '':
-                        return
-                    
-                    self.fileName = filename
-
-                else:
-                    filename = self.fileName
-
-                try:
-                    with open(filename, 'w') as f:
-                    
-                        data = self.cons.toPlainText()
-
-                        f.write(data)
-                        f.close()
-
-                        tabname = os.path.basename(filename)
-                        tabname = tabname.split('.')[0]
-                        self.nameChanged.emit(tabname)
-                        
-                        self.unsavedChanges = False
-
-                        self.log('File saved')
-                        
-                except Exception as e:
-                    self.log ('Error: ' + str(e), True)
-
+                self.saveFile()
             elif event.key() == Qt.Key_O:
-                fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
-                filename = fname[0]
-
-                if filename == '':
-                    return
-                
-                try:
-                    with open(filename, 'r') as f:
-                        data = f.read()
-                        f.close()
-                except Exception as e:
-                    self.log ('Error: ' + str(e), True)
-                    
-                tabname = os.path.basename(filename)
-                tabname = tabname.split('.')[0]
-                
-                self.cons.setPlainText(data)
-                self.fileName = filename
-                self.unsavedChanges = False
-
-                self.nameChanged.emit(tabname)
-               
+                self.openFile()
         super().keyPressEvent(event)
 
+    def saveFile(self):
+        if self.fileName is None:
+            fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
+            
+            filename = fname[0]
+            
+            if filename == '':
+                return
+            
+            self.fileName = filename
+
+        else:
+            filename = self.fileName
+
+        try:
+            with open(filename, 'w') as f:
+            
+                data = self.cons.toPlainText()
+
+                f.write(data)
+                f.close()
+
+                tabname = os.path.basename(filename)
+                tabname = tabname.split('.')[0]
+                self.nameChanged.emit(tabname)
+                
+                self.unsavedChanges = False
+
+                self.log('File saved')
+                
+        except Exception as e:
+            self.log ('Error: ' + str(e), True)
+    
+    def openFile(self):
+        fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
+        filename = fname[0]
+
+        if filename == '':
+            return
+        
+        try:
+            with open(filename, 'r') as f:
+                data = f.read()
+                f.close()
+        except Exception as e:
+            self.log ('Error: ' + str(e), True)
+            
+        tabname = os.path.basename(filename)
+        tabname = tabname.split('.')[0]
+        
+        self.cons.setPlainText(data)
+        self.fileName = filename
+        self.unsavedChanges = False
+
+        self.nameChanged.emit(tabname)
+    
     def close(self):
+    
+        if self.unsavedChanges:
+            answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes, do yo want to save?\n Note: "Yes" option DOES NOT WORK yet', True)
+            
+            if answer is None:
+                return False
+
+            if answer == True:
+                self.saveFile()
 
         try: 
             db.close_connection(self.conn)
         except dbException as e:
-            raise e
-            return
-        except:
-            return
+            log('close() db exception: '+ str(e))
+            return True
+        except Exception as e:
+            log('close() exception: '+ str(e))
+            return True
 
         super().close()
+        
+        return True
             
     def reconnect(self):
 
@@ -1300,6 +1326,9 @@ class sqlConsole(QWidget):
         self.cons = console()
         
         self.cons.executionTriggered.connect(self.executeSelection)
+        
+        self.cons.openFileSignal.connect(self.openFile)
+        self.cons.saveFileSignal.connect(self.saveFile)
         
         self.resultTabs = QTabWidget()
         

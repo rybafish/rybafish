@@ -81,11 +81,17 @@ def numberToStrCSV(num, grp = True):
     return s
     
 
-def yesNoDialog(title, message):
+def yesNoDialog(title, message, cancel = False):
     msgBox = QMessageBox()
     msgBox.setWindowTitle(title)
     msgBox.setText(message)
-    msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
+
+    if cancel == True:
+        buttons = QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+    else:
+        buttons = QMessageBox.Yes | QMessageBox.No
+        
+    msgBox.setStandardButtons(buttons)
     msgBox.setDefaultButton(QMessageBox.Yes)
     iconPath = resourcePath('ico\\favicon.ico')
     msgBox.setWindowIcon(QIcon(iconPath))
@@ -97,8 +103,10 @@ def yesNoDialog(title, message):
 
     if reply == QMessageBox.Yes:
         return True
+    elif reply == QMessageBox.No:
+        return False
         
-    return False
+    return None
         
 
 def GB(bytes, scale = 'GB'):
