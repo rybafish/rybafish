@@ -25,6 +25,9 @@ pip-delete-this-directory.txt
 *.7z
 *.zip
 
+# now we support saving files so...
+*.sql
+
 # avoid updating the config
 config.yaml
 

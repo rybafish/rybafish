@@ -370,9 +370,6 @@ class resultSet(QTableWidget):
         self.detached = None         # supposed to be defined only if LOBs = True
         self.detachTimer = None      # results detach timer
         
-        self.fileName = None
-        self.unsavedChanges = False
-        
         self.cols = [] #column descriptions
         self.rows = [] # actual data 
         
@@ -698,52 +695,6 @@ class sqlConsole(QWidget):
 
     nameChanged = pyqtSignal(['QString'])
 
-    def keyPressEvent(self, event):
-   
-        modifiers = QApplication.keyboardModifiers()
-       
-        if modifiers == Qt.ControlModifier:
-            if event.key() == Qt.Key_S:
-                fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
-                filename = fname[0]
-                
-                if os.path.isfile(filename):
-                    print('it already exists')
-                
-                    
-            elif event.key() == Qt.Key_O:
-                fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
-                filename = fname[0]
-                
-                try:
-                    with open(filename, 'r') as f:
-                        data = f.read()
-                except Exception as e:
-                    print (str(e))
-                    
-                tabname = os.path.basename(filename)
-                tabname = tabname.split('.')[0]
-                
-                self.cons.setPlainText(data)
-                self.cons.fileName = filename
-
-                self.nameChanged.emit(tabname)
-               
-        super().keyPressEvent(event)
-
-    def close(self):
-
-        try: 
-            db.close_connection(self.conn)
-        except dbException as e:
-            raise e
-            return
-        except:
-            return
-
-        print('<---- close')
-        super().close()
-
     def __init__(self, window, config):
     
         self.window = None # required for the timer
@@ -752,6 +703,9 @@ class sqlConsole(QWidget):
         self.config = None
         self.timer = None           # keep alive timer
         self.rows = []
+        
+        self.fileName = None
+        self.unsavedChanges = False
     
         self.results = [] #list of resultsets
         self.resultTabs = None #tabs widget
@@ -772,6 +726,73 @@ class sqlConsole(QWidget):
         if cfg('keepalive-cons'):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
+
+    def keyPressEvent(self, event):
+   
+        modifiers = QApplication.keyboardModifiers()
+       
+        if modifiers == Qt.ControlModifier:
+            if event.key() == Qt.Key_S:
+            
+                if self.fileName is None:
+                    fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
+                    filename = fname[0]
+                    
+                    self.fileName = filename
+
+                    tabname = os.path.basename(filename)
+                    tabname = tabname.split('.')[0]
+                    self.nameChanged.emit(tabname)
+                else:
+                    filename = self.fileName
+
+                try:
+                    with open(filename, 'w') as f:
+                    
+                        data = self.cons.toPlainText()
+
+                        f.write(data)
+                        f.close()
+
+                        self.log('File saved')
+                        
+                        
+                        
+                except Exception as e:
+                    self.log ('Error: ' + str(e), True)
+
+            elif event.key() == Qt.Key_O:
+                fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
+                filename = fname[0]
+                
+                try:
+                    with open(filename, 'r') as f:
+                        data = f.read()
+                        f.close()
+                except Exception as e:
+                    self.log ('Error: ' + str(e), True)
+                    
+                tabname = os.path.basename(filename)
+                tabname = tabname.split('.')[0]
+                
+                self.cons.setPlainText(data)
+                self.fileName = filename
+
+                self.nameChanged.emit(tabname)
+               
+        super().keyPressEvent(event)
+
+    def close(self):
+
+        try: 
+            db.close_connection(self.conn)
+        except dbException as e:
+            raise e
+            return
+        except:
+            return
+
+        super().close()
             
     def reconnect(self):
 
