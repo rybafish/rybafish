@@ -713,6 +713,8 @@ class sqlConsole(QWidget):
         super().__init__()
         self.initUI()
 
+        self.cons.textChanged.connect(self.textChangedS)
+        
         if config is None:
             return
         
@@ -727,6 +729,18 @@ class sqlConsole(QWidget):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
 
+    def textChangedS(self):
+    
+        if self.unsavedChanges == False and self.fileName is not None:
+            self.unsavedChanges = True
+
+            tabname = os.path.basename(self.fileName)
+            tabname = tabname.split('.')[0] + ' *'
+            self.nameChanged.emit(tabname)
+            
+    def saveBackup(self):
+        pass
+            
     def keyPressEvent(self, event):
    
         modifiers = QApplication.keyboardModifiers()
@@ -736,13 +750,14 @@ class sqlConsole(QWidget):
             
                 if self.fileName is None:
                     fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
+                    
                     filename = fname[0]
+                    
+                    if filename == '':
+                        return
                     
                     self.fileName = filename
 
-                    tabname = os.path.basename(filename)
-                    tabname = tabname.split('.')[0]
-                    self.nameChanged.emit(tabname)
                 else:
                     filename = self.fileName
 
@@ -754,9 +769,13 @@ class sqlConsole(QWidget):
                         f.write(data)
                         f.close()
 
+                        tabname = os.path.basename(filename)
+                        tabname = tabname.split('.')[0]
+                        self.nameChanged.emit(tabname)
+                        
+                        self.unsavedChanges = False
+
                         self.log('File saved')
-                        
-                        
                         
                 except Exception as e:
                     self.log ('Error: ' + str(e), True)
@@ -764,6 +783,9 @@ class sqlConsole(QWidget):
             elif event.key() == Qt.Key_O:
                 fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
                 filename = fname[0]
+
+                if filename == '':
+                    return
                 
                 try:
                     with open(filename, 'r') as f:
@@ -777,6 +799,7 @@ class sqlConsole(QWidget):
                 
                 self.cons.setPlainText(data)
                 self.fileName = filename
+                self.unsavedChanges = False
 
                 self.nameChanged.emit(tabname)
                
