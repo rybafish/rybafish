@@ -75,9 +75,25 @@ class console(QPlainTextEdit):
             
     def keyPressEvent (self, event):
         
+        modifiers = QApplication.keyboardModifiers()
+
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             self.executionTriggered.emit()
 
+        elif modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier and event.key() == Qt.Key_U:
+            cursor = self.textCursor()
+            
+            txt = cursor.selectedText()
+            
+            cursor.insertText(txt.upper())
+            
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_U:
+            cursor = self.textCursor()
+            
+            txt = cursor.selectedText()
+            
+            cursor.insertText(txt.lower())
+    
         else:
             #have to clear each time in case of input right behind the braket
             if self.braketsHighlighted:
