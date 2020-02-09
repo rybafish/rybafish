@@ -35,6 +35,11 @@ class console(QPlainTextEdit):
     closeSignal = pyqtSignal()
 
     def __init__(self):
+        self.lock = False
+        
+        self.haveHighlighrs = False
+        self.highlightedWords = []
+        
         self.braketsHighlighted = False
         self.braketsHighlightedPos = []
         
@@ -53,13 +58,109 @@ class console(QPlainTextEdit):
         self.setTabStopDistance(QFontMetricsF(font).width(' ') * 4)
         
         self.cursorPositionChanged.connect(self.cursorPositionChangedSignal) # why not just overload?
+        self.selectionChanged.connect(self.consSelection)
         
-        '''
-        self.cons.keyPressEvent = self.consKeyPressHandler
-        self.cons.cursorPositionChanged.connect(self.cursorPositionChanged)
+    def clearHighlighting(self):
+        self.lock = True
         
-        self.cons.selectionChanged.connect(self.consSelection) #does not work
-        '''
+        txt = self.toPlainText()
+        cursor = QTextCursor(self.document())
+
+        format = cursor.charFormat()
+        format.setBackground(QColor('white'))
+
+        #utils.timerStart()
+        
+        for w in self.highlightedWords:
+            cursor.setPosition(w[0],QTextCursor.MoveAnchor)
+            cursor.setPosition(w[1],QTextCursor.KeepAnchor)
+
+            cursor.setCharFormat(format)
+            
+        self.highlightedWords.clear()
+        
+        self.lock = False
+        
+    def highlight(self, block, start, stop):
+        #print ('highlight here: ', block.text(), start, stop)
+        cursor = QTextCursor(block)
+
+        cursor.setPosition(start, QTextCursor.MoveAnchor)
+        cursor.setPosition(stop, QTextCursor.KeepAnchor)
+        
+        format = cursor.charFormat()
+        
+        format.setBackground(QColor('#0F0'))
+        cursor.setCharFormat(format)
+        
+        self.highlightedWords.append([start, stop])
+        self.haveHighlighrs = True
+        
+    def searchWord(self, str):
+        if self.lock:
+            return
+            
+        self.lock = True
+        #print('lets search/highlight: ' + str)
+        
+        #for i in range(self.cons.blockCount()):
+        #    txtline = self.cons.document().findBlockByLineNumber(i)
+            
+        #line = txtline.text()
+        line = self.toPlainText()
+        
+        st = 0
+        
+        while st >= 0:
+            st = line.find(str, st)
+            
+            if st >= 0:
+                # really this should be a \b regexp here instead of isalnum
+                
+                if st > 0:
+                    sample = line[st-1:st+len(str)+1]
+                else:
+                    sample = line[0:len(str)+1]
+
+                #mask = r'.?\b%s\b.?' % (str)
+                #mask = r'.\b%s\b.' % (str)
+                mask = r'\W?%s\W' % (str)
+                
+                if re.match(mask, sample):
+                    self.highlight(self.document(), st, st+len(str))
+                    #print('lets highlight: ' + str)
+                else:
+                    pass
+                    #print('nope [%s]/(%s)' % (sample, mask))
+                
+                st += len(str)
+                    
+        self.lock = False
+            
+        return
+        
+    def consSelection(self):
+        if self.lock:
+            return
+            
+        cursor = self.textCursor()
+        selected = cursor.selectedText()
+        
+        if len(selected) == 0 and self.haveHighlighrs:
+            self.clearHighlighting()
+            
+            self.haveHighlighrs = False
+            return
+
+        txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
+        line = txtline.text()
+
+        if re.match('\w+$', selected):
+            if re.search('\\b%s\\b' % selected, line):
+                #we are not sure that this is exactly same found as the one selected...
+                self.searchWord(selected)
+
+        return
         
     def contextMenuEvent(self, event):
        
@@ -643,13 +744,9 @@ class sqlConsole(QWidget):
         self.window = None # required for the timer
         
         self.conn = None
-        self.lock = False
         self.config = None
         self.timer = None           # keep alive timer
         self.rows = []
-    
-        self.haveHighlighrs = False
-        self.highlightedWords = []
     
         self.results = [] #list of resultsets
         self.resultTabs = None #tabs widget
@@ -767,118 +864,6 @@ class sqlConsole(QWidget):
                 log('Connection lost, give up')
                 # print disable the timer?
                 self.conn = None
-
-    def clearHighlighting(self):
-        self.lock = True
-        
-        txt = self.cons.toPlainText()
-        cursor = QTextCursor(self.cons.document())
-
-        format = cursor.charFormat()
-        format.setBackground(QColor('white'))
-
-        #utils.timerStart()
-        
-        for w in self.highlightedWords:
-            cursor.setPosition(w[0],QTextCursor.MoveAnchor)
-            cursor.setPosition(w[1],QTextCursor.KeepAnchor)
-
-            cursor.setCharFormat(format)
-            
-        self.highlightedWords.clear()
-        #utils.timeLap('remove hl')
-        #utils.timePrint()
-        
-        self.lock = False
-        
-    def searchWord(self, str):
-        if self.lock:
-            return
-            
-        self.lock = True
-        #print('lets search/highlight: ' + str)
-        
-        #for i in range(self.cons.blockCount()):
-        #    txtline = self.cons.document().findBlockByLineNumber(i)
-            
-        #line = txtline.text()
-        line = self.cons.toPlainText()
-        
-        st = 0
-        
-        while st >= 0:
-            st = line.find(str, st)
-            
-            if st >= 0:
-                # really this should be a \b regexp here instead of isalnum
-                '''
-                if (st>0 and not (line[st-1]).isalnum()) and (st < len (line) and not (line[st+1]).isalnum()):
-                    self.highlight(self.cons.document(), st, st+len(str))
-                '''
-                
-                if st > 0:
-                    sample = line[st-1:st+len(str)+1]
-                else:
-                    sample = line[0:len(str)+1]
-
-                #mask = r'.?\b%s\b.?' % (str)
-                #mask = r'.\b%s\b.' % (str)
-                mask = r'\W?%s\W' % (str)
-                
-                if re.match(mask, sample):
-                    self.highlight(self.cons.document(), st, st+len(str))
-                    #print('lets highlight: ' + str)
-                else:
-                    pass
-                    #print('nope [%s]/(%s)' % (sample, mask))
-                
-                st += len(str)
-                    
-        self.lock = False
-            
-        return
-        
-    def highlight(self, block, start, stop):
-        #print ('highlight here: ', block.text(), start, stop)
-        cursor = QTextCursor(block)
-
-        cursor.setPosition(start, QTextCursor.MoveAnchor)
-        cursor.setPosition(stop, QTextCursor.KeepAnchor)
-        
-        format = cursor.charFormat()
-        
-        format.setBackground(QColor('#0F0'))
-        cursor.setCharFormat(format)
-        
-        self.highlightedWords.append([start, stop])
-        self.haveHighlighrs = True
-    
-    def consSelection(self):
-        if self.lock:
-            return
-        cursor = self.cons.textCursor()
-        selected = cursor.selectedText()
-        
-        if len(selected) == 0 and self.haveHighlighrs:
-            self.clearHighlighting()
-            
-            self.haveHighlighrs = False
-            return
-
-        txtline = self.cons.document().findBlockByLineNumber(cursor.blockNumber())
-        line = txtline.text()
-
-        if re.match('\w+$', selected):
-            if re.search('\\b%s\\b' % selected, line):
-                #we are not sure that this is exactly same found as the one selected...
-                self.searchWord(selected)
-
-        return
-            
-        
-        # https://stackoverflow.com/questions/27716625/qtextedit-change-font-of-individual-paragraph-block
-        # https://stackoverflow.com/questions/1849558/how-do-i-use-qtextblock
-        # cursor.setPosition(0)
                         
     def log(self, text, error = False):
         #self.logArea.setPlainText(self.logArea.toPlainText() + '\n' + text)
