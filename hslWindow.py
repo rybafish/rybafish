@@ -46,6 +46,16 @@ class hslWindow(QMainWindow):
         super().__init__()
         self.initUI()
         
+        
+    def closeTab(self):
+        indx = self.tabs.currentIndex()
+        
+        if indx > 0: #print need a better way to identify sql consoles...
+            cons = self.tabs.currentWidget()
+            cons.close()
+            self.tabs.removeTab(indx)
+    
+        
     def keyPressEvent(self, event):
         #log('window keypress: %s' % (str(event.key())))
 
@@ -56,12 +66,7 @@ class hslWindow(QMainWindow):
             self.chartArea.reloadChart()
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_W:
-            indx = self.tabs.currentIndex()
-            
-            if indx > 0: #print need a better way to identify sql consoles...
-                cons = self.tabs.currentWidget()
-                cons.close()
-                self.tabs.removeTab(indx)
+            self.closeTab()
         else:
             super().keyPressEvent(event)
             
@@ -238,8 +243,11 @@ class hslWindow(QMainWindow):
 
         console = sqlConsole.sqlConsole(self, conf) # self = window
         console.nameChanged.connect(self.changeActiveTabName)
+        console.cons.closeSignal.connect(self.closeTab)
 
         self.tabs.addTab(console, 'Sql')
+        
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
         
         self.statusMessage('', False)
             

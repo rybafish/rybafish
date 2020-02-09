@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
-        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog)
+        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog, QMessageBox)
 
-from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap
+from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap, QIcon
 from PyQt5.QtCore import QTimer
 
 from PyQt5.QtCore import Qt, QSize
@@ -25,11 +25,14 @@ import binascii
 import datetime
 import os
 
+from utils import resourcePath
+
 from PyQt5.QtCore import pyqtSignal
 
 class console(QPlainTextEdit):
 
     executionTriggered = pyqtSignal()
+    closeSignal = pyqtSignal()
 
     def __init__(self):
         self.braketsHighlighted = False
@@ -62,8 +65,9 @@ class console(QPlainTextEdit):
        
         cmenu = QMenu(self)
 
-        menuExec = cmenu.addAction('Execute selection')
+        menuExec = cmenu.addAction('Execute selection (F8)')
         menuDummy = cmenu.addAction('test')
+        menuClose = cmenu.addAction('Close console (Ctrl+W)')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -72,6 +76,9 @@ class console(QPlainTextEdit):
             
         if action == menuDummy:
             print('dummy menu')
+            
+        if action == menuClose:
+            self.closeSignal.emit()
             
     def keyPressEvent (self, event):
         
@@ -664,6 +671,23 @@ class sqlConsole(QWidget):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
             
+    def reconnect(self):
+
+        print('reconnect')
+
+        try: 
+            conn = db.create_connection(self.config)
+        except Exception as e:
+            raise e
+        
+        if conn is None:
+            self.log('[i] Failed to reconnect, dont know what to do next')
+            raise Exception('Failed to reconnect, dont know what to do next...')
+        else:
+            self.log('re-connected')
+            self.conn = conn
+        
+            
     def newResult(self, conn):
         
         result = resultSet(conn)
@@ -1063,6 +1087,40 @@ class sqlConsole(QWidget):
 
         return
     
+    def connectionLost(self, err_str = ''):
+        '''
+            very synchronous call, it holds controll until connection status resolved
+        '''
+        
+        print('Connection Lost...')
+        
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle('Connection lost')
+        msgBox.setText('Connection failed, reconnect?')
+        msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
+        msgBox.setDefaultButton(QMessageBox.Yes)
+        iconPath = resourcePath('ico\\favicon.ico')
+        msgBox.setWindowIcon(QIcon(iconPath))
+        msgBox.setIcon(QMessageBox.Warning)
+
+        reply = None
+        
+        while reply != QMessageBox.No and self.conn is None:
+            reply = msgBox.exec_()
+            if reply == QMessageBox.Yes:
+                try:
+                    self.log('Reconnecting to %s:%s...' % (self.config['host'], str(self.config['port'])))
+                    self.reconnect()
+                    self.log('Connection restored')
+                except Exception as e:
+                    log('Reconnect failed: %s' % e)
+                    self.log('Reconnect failed: %s' % str(e))
+
+        if reply == QMessageBox.Yes:
+            return True
+        else:
+            return False
+            
     def executeStatement(self, sql, result):
         '''
             executes the string without any analysis
@@ -1162,6 +1220,20 @@ class sqlConsole(QWidget):
         except dbException as e:
             err = str(e)
             self.log('DB Exception:' + err, True)
+            
+            if e.type == dbException.CONN:
+                log('connection lost, should we close it?')
+
+                try: 
+                    db.close_connection(self.conn)
+                except dbException as e:
+                    log('[?] ' + str(e))
+                except:
+                    log('[!] ' + str(e))
+                    
+                self.conn = None
+                
+                self.connectionLost()
             return
 
         result.populate()

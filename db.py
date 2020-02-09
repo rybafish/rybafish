@@ -181,6 +181,12 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     try:
         psid = cursor.prepare(sql_string)
     except pyhdb.exceptions.DatabaseError as e:
+    
+        log('DatabaseError: ' + str(e.code))
+    
+        if str(e).startswith('Lost connection to HANA server'):
+            raise dbException(str(e), dbException.CONN)
+    
         log('[!] SQL Error: %s' % sql_string)
         log('[!] SQL Error: %s' % (e))
         

@@ -35,7 +35,13 @@ def timePrint():
     print('timers: ', ', '.join(s))
 
 class dbException(Exception):
-    pass
+
+    CONN = 1
+    SQL = 2
+
+    def __init__ (self, message, type = None):
+        self.type = type
+        super().__init__(message, type)
     
 def numberToStr(num, d = 0, fix = True):
     if cfg('locale'):

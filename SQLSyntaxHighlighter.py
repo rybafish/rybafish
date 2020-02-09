@@ -1,5 +1,4 @@
 from PyQt5.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QColor
-from PyQt5.QtCore import Qt, QRegExp, QRegularExpression
 
 import re
 #from PyQt5.QtCore import Qt
@@ -48,7 +47,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         '''
         
         for kw in keywords:
-            git.append(['\\b'+kw+'\\b', fmKeyword])
+            rules.append(['\\b'+kw+'\\b', fmKeyword])
 
         # one line comment
         rules.append(['--.+', fmComment])
@@ -60,7 +59,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         for r in rules:
             (pattern, format) = (r[0], r[1])
 
-            m = re.search(pattern, text, re.Igit )
+            m = re.search(pattern, text, re.I )
         
             #just one possible?
             if m is not None:
