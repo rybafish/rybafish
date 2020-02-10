@@ -29,10 +29,29 @@ from utils import resourcePath
 
 from PyQt5.QtCore import pyqtSignal
 
+def generateTabName():
+    
+    base = 'sql'
+    i = 0
+    
+    while i < 100:
+        if i > 0:
+            fname = 'sql%i' % i
+        else:
+            fname = 'sql'
+            
+        print('checking ', fname)
+        if not os.path.isfile(fname+'.sqbkp'):
+            return fname
+            
+        i += 1
+
+
 class console(QPlainTextEdit):
 
     executionTriggered = pyqtSignal()
     closeSignal = pyqtSignal()
+    goingToCrash = pyqtSignal()
     
     openFileSignal = pyqtSignal()
     saveFileSignal = pyqtSignal()
@@ -702,7 +721,7 @@ class sqlConsole(QWidget):
 
     nameChanged = pyqtSignal(['QString'])
 
-    def __init__(self, window, config):
+    def __init__(self, window, config, tabname = None):
     
         self.window = None # required for the timer
         
@@ -719,6 +738,15 @@ class sqlConsole(QWidget):
 
         super().__init__()
         self.initUI()
+
+        if tabname is not None:
+            self.tabname = tabname
+            
+            if os.path.isfile(tabname+'.sqbkp'):
+                #looks we had a backup?
+                self.openFile(tabname+'.sqbkp')
+                
+                self.unsavedChanges = False
 
         self.cons.textChanged.connect(self.textChangedS)
         
@@ -739,18 +767,37 @@ class sqlConsole(QWidget):
     def textChangedS(self):
     
         if self.unsavedChanges == False: #and self.fileName is not None:
-            self.unsavedChanges = True
-
-            if self.fileName is not None:
-                tabname = os.path.basename(self.fileName)
-                tabname = tabname.split('.')[0] + ' *'
-            else:
-                tabname = self.tabname + ' *'
+            if self.cons.toPlainText() == '':
+                return
                 
-            self.nameChanged.emit(tabname)
+            self.unsavedChanges = True
+                
+            self.nameChanged.emit(self.tabname + ' *')
+    
+    def delayBackup(self):
+    
+        if self.unsavedChanges == False:
+            return
+    
+        if self.fileName is not None:
+            filename = self.fileName + '.sqbkp'
+        else:
+            filename = self.tabname + '.sqbkp'
+    
+        try:
+            with open(filename, 'w') as f:
             
-    def saveBackup(self):
-        pass
+                data = self.cons.toPlainText()
+
+                f.write(data)
+                f.close()
+
+                log('%s backup saved' % filename)
+        
+        except Exception as e:
+            # so sad...
+            log('[!] %s backup NOT saved' % filename)
+            log('[!]' + str(e))
             
     def keyPressEvent(self, event):
    
@@ -785,9 +832,9 @@ class sqlConsole(QWidget):
                 f.write(data)
                 f.close()
 
-                tabname = os.path.basename(filename)
-                tabname = tabname.split('.')[0]
-                self.nameChanged.emit(tabname)
+                self.tabname = os.path.basename(filename)
+                self.tabname = filename.split('.')[0]
+                self.nameChanged.emit(self.tabname)
                 
                 self.unsavedChanges = False
 
@@ -796,9 +843,11 @@ class sqlConsole(QWidget):
         except Exception as e:
             self.log ('Error: ' + str(e), True)
     
-    def openFile(self):
-        fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
-        filename = fname[0]
+    def openFile(self, filename = None):
+    
+        if filename is None:
+            fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
+            filename = fname[0]
 
         if filename == '':
             return
@@ -808,35 +857,55 @@ class sqlConsole(QWidget):
                 data = f.read()
                 f.close()
         except Exception as e:
+            log ('Error: ' + str(e), True)
             self.log ('Error: ' + str(e), True)
             
-        tabname = os.path.basename(filename)
-        tabname = tabname.split('.')[0]
+        self.tabname = os.path.basename(filename)
+        self.tabname = filename.split('.')[0]
+        
+        ext = filename.split('.')[1]
         
         self.cons.setPlainText(data)
-        self.fileName = filename
+        
+        if ext == 'sqbkp':
+            pass
+        else:
+            self.fileName = filename
+
         self.unsavedChanges = False
 
-        self.nameChanged.emit(tabname)
+        self.nameChanged.emit(self.tabname)
     
-    def close(self):
+    def close(self, cancelPossible = True):
+    
+        print('closing sql console...')
     
         if self.unsavedChanges:
-            answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes, do yo want to save?\n Note: "Yes" option DOES NOT WORK yet', True)
+            answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible)
             
-            if answer is None:
+            if answer is None: #cancel button
                 return False
 
+            if answer == False:
+                try:
+                    os.remove(self.tabname+'.sqbkp')
+                except:
+                    # whatever...
+                    pass
+            
             if answer == True:
                 self.saveFile()
 
         try: 
-            db.close_connection(self.conn)
+            if self.conn is not None:
+                db.close_connection(self.conn)
         except dbException as e:
             log('close() db exception: '+ str(e))
+            super().close()
             return True
         except Exception as e:
             log('close() exception: '+ str(e))
+            super().close()
             return True
 
         super().close()
@@ -978,6 +1047,8 @@ class sqlConsole(QWidget):
         txt = ''
         statements = []
         F9 = True
+        
+        self.delayBackup()
         
         def isItCreate(s):
             '''
@@ -1299,12 +1370,14 @@ class sqlConsole(QWidget):
         result.populate()
             
         return
-            
+
+    '''
     def consKeyPressHandler(self, event):
         
         # modifiers = QApplication.keyboardModifiers()
         
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
+            self.delayBackup()
             executeSelection()
 
         else:
@@ -1316,9 +1389,12 @@ class sqlConsole(QWidget):
             # shouldnt it be just super().keyPressEvent(event) instead?
             # may be if I inherited QPlainTextEdit...
             QPlainTextEdit.keyPressEvent(self.cons, event)
-
+    '''
         
     def initUI(self):
+        '''
+            main sqlConsole UI 
+        '''
         vbar = QVBoxLayout()
         hbar = QHBoxLayout()
         
@@ -1328,7 +1404,7 @@ class sqlConsole(QWidget):
         self.cons.executionTriggered.connect(self.executeSelection)
         
         self.cons.openFileSignal.connect(self.openFile)
-        self.cons.saveFileSignal.connect(self.saveFile)
+        self.cons.goingToCrash.connect(self.delayBackup)
         
         self.resultTabs = QTabWidget()
         

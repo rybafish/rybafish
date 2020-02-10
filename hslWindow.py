@@ -47,6 +47,8 @@ class hslWindow(QMainWindow):
         self.initUI()
         
         
+    # def tabChanged(self, newidx):
+        
     def closeTab(self):
         indx = self.tabs.currentIndex()
         
@@ -83,13 +85,32 @@ class hslWindow(QMainWindow):
                 self.repaint()
         
     def closeEvent(self, event):
+        log('Exiting...')
+        
+        for i in range(self.tabs.count() -1, 0, -1):
+
+            w = self.tabs.widget(i)
+
+            if isinstance(w, sqlConsole.sqlConsole):
+                status = w.close(False) # can not abort
+        
         clipboard = QApplication.clipboard()
         event = QEvent(QEvent.Clipboard)
         QApplication.sendEvent(clipboard, event)
         
-
     def menuQuit(self):
-        print('exit')
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            if isinstance(w, sqlConsole.sqlConsole):
+                
+                status = w.close(True) # can abort
+                
+                if status == True:
+                    self.tabs.removeTab(i)
+                
+                if status == False:
+                    return
+                    
         self.close()
 
     def menuReloadCustomKPIs(self):
@@ -254,7 +275,13 @@ class hslWindow(QMainWindow):
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
 
-        tname = 'sql' + str(self.tabs.count()+1)
+        idx = self.tabs.count()
+        
+        if idx > 1:
+            tname = 'sql' + str(idx)
+        else:
+            tname = 'sql'
+            
         console.tabname = tname
         self.tabs.addTab(console, tname)
         
@@ -311,6 +338,8 @@ class hslWindow(QMainWindow):
         
         
         self.tabs = QTabWidget()
+        
+        # self.tabs.currentChanged.connect(self.tabChanged)
         
         # main window splitter
         mainSplitter = QSplitter(Qt.Vertical)
@@ -460,18 +489,29 @@ class hslWindow(QMainWindow):
         # offline console tests
         
         if (cfg('developmentMode')):
-            console = sqlConsole.sqlConsole(self, None)
+        
+            #tname = sqlConsole.generateTabName()
+
+            idx = self.tabs.count()
+            
+            if idx > 1:
+                tname = 'sql' + str(idx)
+            else:
+                tname = 'sql'
+            
+            console = sqlConsole.sqlConsole(self, None, tname)
             console.nameChanged.connect(self.changeActiveTabName)
+            
             from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
-            tname = 'sql' + str(self.tabs.count()+1)
-            console.tabname = tname
             self.tabs.addTab(console, tname)
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
             self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
             #console.cons.setPlainText('select * from dummy;\n\nselect \n    *\n    from dummy;\n\nselect * from m_host_information;');
-            console.cons.setPlainText('''select 0 from dummy;
+            
+            if False: 
+                console.cons.setPlainText('''select 0 from dummy;
 
 create procedure ...
 (
@@ -482,7 +522,7 @@ end;
 select 1 from dummy;
 select 2 from dummy;
 select 3 from dummy;''');
-            
+                
             console.dummyResultTable()
         
         self.statusMessage('', False)

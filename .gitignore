@@ -27,6 +27,7 @@ pip-delete-this-directory.txt
 
 # now we support saving files so...
 *.sql
+*.sqbkp
 
 # avoid updating the config
 config.yaml
