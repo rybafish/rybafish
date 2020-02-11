@@ -55,6 +55,9 @@ class console(QPlainTextEdit):
     
     openFileSignal = pyqtSignal()
     saveFileSignal = pyqtSignal()
+    
+    connectSignal = pyqtSignal()
+    disconnectSignal = pyqtSignal()
 
     def __init__(self):
         self.lock = False
@@ -193,6 +196,8 @@ class console(QPlainTextEdit):
         menuOpenFile = cmenu.addAction('Open File\tCtrl+0')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
         cmenu.addSeparator()
+        menuDisconnect = cmenu.addAction('Disconnect from the DB')
+        menuConnect = cmenu.addAction('(re)connecto to the DB')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
@@ -200,6 +205,10 @@ class console(QPlainTextEdit):
         if action == menuExec:
             self.executionTriggered.emit()
             
+        elif action == menuDisconnect:
+            self.disconnectSignal.emit()
+        elif action == menuConnect:
+            self.connectSignal.emit()
         elif action == menuOpenFile:
             self.openFileSignal.emit()
         elif action == menuSaveFile:
@@ -467,10 +476,16 @@ class resultSet(QTableWidget):
             
         result_str = binascii.hexlify(bytearray(self._resultset_id)).decode('ascii')
         
+        if self._connection is None:
+            return
+        
         if self.detached == False:
             log('closing the resultset: %s' % result_str)
-            db.close_result(self._connection, self._resultset_id) 
-            self.detached = True
+            try:
+                db.close_result(self._connection, self._resultset_id) 
+                self.detached = True
+            except Exception as e:
+                log('[!] Exception: ' + str(e))
         else:
             log('[?] already detached?: %s' % result_str)
 
@@ -732,13 +747,15 @@ class sqlConsole(QWidget):
         
         self.fileName = None
         self.unsavedChanges = False
+        
+        self.backup = None
     
         self.results = [] #list of resultsets
         self.resultTabs = None #tabs widget
 
         super().__init__()
         self.initUI()
-
+        
         if tabname is not None:
             self.tabname = tabname
             
@@ -746,7 +763,7 @@ class sqlConsole(QWidget):
                 #looks we had a backup?
                 self.openFile(tabname+'.sqbkp')
                 
-                self.unsavedChanges = False
+                self.unsavedChanges = True
 
         self.cons.textChanged.connect(self.textChangedS)
         
@@ -763,9 +780,12 @@ class sqlConsole(QWidget):
         if cfg('keepalive-cons'):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
+            
+        self.cons.connectSignal.connect(self.connectDB)
+        self.cons.disconnectSignal.connect(self.disconnectDB)
 
     def textChangedS(self):
-    
+        
         if self.unsavedChanges == False: #and self.fileName is not None:
             if self.cons.toPlainText() == '':
                 return
@@ -781,8 +801,10 @@ class sqlConsole(QWidget):
     
         if self.fileName is not None:
             filename = self.fileName + '.sqbkp'
+            self.backup = filename
         else:
             filename = self.tabname + '.sqbkp'
+            self.backup = filename
     
         try:
             with open(filename, 'w') as f:
@@ -805,6 +827,7 @@ class sqlConsole(QWidget):
        
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_S:
+                self.delayBackup()
                 self.saveFile()
             elif event.key() == Qt.Key_O:
                 self.openFile()
@@ -832,11 +855,25 @@ class sqlConsole(QWidget):
                 f.write(data)
                 f.close()
 
-                self.tabname = os.path.basename(filename)
-                self.tabname = filename.split('.')[0]
+
+                print('filename', filename)
+                print('filename', os.path.basename(filename))
+
+
+                basename = os.path.basename(filename)
+                self.tabname = basename.split('.')[0]
                 self.nameChanged.emit(self.tabname)
                 
                 self.unsavedChanges = False
+                
+                if self.backup is not None:
+                    try:
+                        log('delete backup: %s' % self.backup)
+                        os.remove(self.backup)
+                    except:
+                        log('delete backup faileld, passing')
+                        # whatever...
+                        pass
 
                 self.log('File saved')
                 
@@ -860,10 +897,11 @@ class sqlConsole(QWidget):
             log ('Error: ' + str(e), True)
             self.log ('Error: ' + str(e), True)
             
-        self.tabname = os.path.basename(filename)
-        self.tabname = filename.split('.')[0]
+            
+        basename = os.path.basename(filename)
+        self.tabname = basename.split('.')[0]
         
-        ext = filename.split('.')[1]
+        ext = basename.split('.')[1]
         
         self.cons.setPlainText(data)
         
@@ -888,8 +926,10 @@ class sqlConsole(QWidget):
 
             if answer == False:
                 try:
+                    log('delete backup: %s' % (str(self.tabname+'.sqbkp')))
                     os.remove(self.tabname+'.sqbkp')
                 except:
+                    log('delete backup faileld, passing')
                     # whatever...
                     pass
             
@@ -912,6 +952,43 @@ class sqlConsole(QWidget):
         
         return True
             
+    def disconnectDB(self):
+        try: 
+            if self.conn is not None:
+                db.close_connection(self.conn)
+                self.conn = None
+                self.log('\nDisconnected')
+                
+        except dbException as e:
+            log('close() db exception: '+ str(e))
+            self.log('close() db exception: '+ str(e), True)
+            self.conn = None # ?
+            return
+        except Exception as e:
+            log('close() exception: '+ str(e))
+            self.log('close() exception: '+ str(e), True)
+            self.conn = None # ?
+            return
+        
+    def connectDB(self):
+        try: 
+            if self.conn is not None:
+                db.close_connection(self.conn)
+                self.conn = None
+
+            self.conn = db.create_connection(self.config)                
+            self.log('\nConnected')
+            
+        except dbException as e:
+            log('close() db exception: '+ str(e))
+            self.log('close() db exception: '+ str(e), True)
+            return
+        except Exception as e:
+            log('close() exception: '+ str(e))
+            self.log('close() exception: '+ str(e), True)
+            return
+
+    
     def reconnect(self):
 
         print('reconnect')
@@ -927,7 +1004,6 @@ class sqlConsole(QWidget):
         else:
             self.log('re-connected')
             self.conn = conn
-        
             
     def newResult(self, conn):
         
