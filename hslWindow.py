@@ -54,6 +54,8 @@ class hslWindow(QMainWindow):
         
         if indx > 0: #print need a better way to identify sql consoles...
             cons = self.tabs.currentWidget()
+            
+            cons.delayBackup()
 
             status = cons.close()
             
@@ -90,6 +92,8 @@ class hslWindow(QMainWindow):
         for i in range(self.tabs.count() -1, 0, -1):
 
             w = self.tabs.widget(i)
+            
+            w.delayBackup()
 
             if isinstance(w, sqlConsole.sqlConsole):
                 status = w.close(False) # can not abort
@@ -260,7 +264,37 @@ class hslWindow(QMainWindow):
             return
             
         self.tabs.setTabText(i, name)
+    
+    def menuOpen(self):
+        '''
+            so much duplicate code with menuSqlConsole
+        '''
+        fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
         
+        filename = fname[0]
+        
+        if filename == '':
+            return
+
+        conf = self.connectionConf
+        
+        if conf is None:
+            self.statusMessage('No configuration...', False)
+            return
+            
+        self.statusMessage('Connecting console...', False)
+        
+        console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
+        console.nameChanged.connect(self.changeActiveTabName)
+        console.cons.closeSignal.connect(self.closeTab)
+        
+        console.openFile(filename)
+        
+        self.tabs.addTab(console, console.tabname)
+        
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
+        
+
     def menuSQLConsole(self):
     
         conf = self.connectionConf
@@ -271,9 +305,6 @@ class hslWindow(QMainWindow):
             
         self.statusMessage('Connecting...', False)
 
-        console = sqlConsole.sqlConsole(self, conf) # self = window
-        console.nameChanged.connect(self.changeActiveTabName)
-        console.cons.closeSignal.connect(self.closeTab)
 
         idx = self.tabs.count()
         
@@ -282,10 +313,19 @@ class hslWindow(QMainWindow):
         else:
             tname = 'sql'
             
-        console.tabname = tname
+        console = sqlConsole.sqlConsole(self, conf, tname) # self = window
+        console.nameChanged.connect(self.changeActiveTabName)
+        console.cons.closeSignal.connect(self.closeTab)
         self.tabs.addTab(console, tname)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
+
+        if console.unsavedChanges:
+            # if autoloaded from backup
+            # cannot be triggered from inside as signal not connected on __init__
+            print(console.tabname)
+            self.changeActiveTabName(console.tabname + ' *')
+            print(console.tabname)
         
         self.statusMessage('', False)
             
@@ -384,24 +424,34 @@ class hslWindow(QMainWindow):
         configAct.setStatusTip('Configure connection')
         configAct.triggered.connect(self.menuConfig)
 
+        '''
+        not ready
+        
         importAct = QAction('&Import', self)
         importAct.setShortcut('Ctrl+I')
         importAct.setStatusTip('Import nameserver.trc')
         importAct.triggered.connect(self.menuImport)
+        '''
 
         sqlConsAct = QAction('New &SQL Console', self)
         sqlConsAct.setShortcut('Alt+S')
         sqlConsAct.setStatusTip('Create SQL Console')
         sqlConsAct.triggered.connect(self.menuSQLConsole)
 
+        openAct = QAction('&Open file in new sql console', self)
+        openAct.setShortcut('Ctrl+O')
+        openAct.setStatusTip('Open new console with the file')
+        openAct.triggered.connect(self.menuOpen)
+
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(configAct)
 
         if cfg('experimental'):
-            fileMenu.addAction(importAct)
+            #fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
             fileMenu.addAction(sqlConsAct)
+            fileMenu.addAction(openAct)
 
         fileMenu.addAction(exitAct)
         
