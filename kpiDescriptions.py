@@ -277,7 +277,7 @@ def clarifyGroups():
         if 'memory_used' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['memory_used']['group'], 'mem')
             
-            if cfg('experimental') and cfg('memoryGB'):
+            if cfg('memoryGB'):
                 updateDunit('mem', 'GB')
             
         if thread_kpis[0] in kpiStylesNN[h]:

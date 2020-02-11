@@ -1,0 +1,18 @@
+#connection configuration
+server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
+
+# force memory KPIs scale to GB
+memoryGB: True
+
+# enable white background
+color-bg: '#FFF'
+
+# chart keep-alives timer
+keepalive: 1200
+
+# sql console keep-alive timer
+keepalive-cons: 1800
+
+#uncomment to have experimental stuff
+experimental: False
+
