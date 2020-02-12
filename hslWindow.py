@@ -93,9 +93,8 @@ class hslWindow(QMainWindow):
 
             w = self.tabs.widget(i)
             
-            w.delayBackup()
-
             if isinstance(w, sqlConsole.sqlConsole):
+                w.delayBackup()
                 status = w.close(False) # can not abort
         
         clipboard = QApplication.clipboard()
@@ -272,27 +271,37 @@ class hslWindow(QMainWindow):
             so much duplicate code with menuSqlConsole
         '''
         fname = QFileDialog.getOpenFileNames(self, 'Open file', '','*.sql')
+        
+        openfiles = {}
+        
+        for i in range(self.tabs.count()):
+        
+            w = self.tabs.widget(i)
+        
+            if isinstance(w, sqlConsole.sqlConsole):
+
+                fn = w.fileName
+
+                if fn is not None:
+                    openfiles[fn] = i
 
         for filename in fname[0]:
-        
-            print('open', filename)
 
-            '''
-            if filename == '':
-                return
-            '''
-
-            conf = self.connectionConf
-
-            '''
-            if conf is None:
-                self.statusMessage('No configuration...', False)
-                return
-            '''
+            if filename in openfiles:
+                # the file is already open
+                idx = openfiles[filename]
                 
+                self.tabs.setCurrentIndex(idx)
+                continue
+                
+            conf = self.connectionConf
+               
             self.statusMessage('Connecting console...', False)
             
             console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
+            
+            self.statusMessage('', False)
+            
             console.nameChanged.connect(self.changeActiveTabName)
             console.cons.closeSignal.connect(self.closeTab)
 
