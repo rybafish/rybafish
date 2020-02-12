@@ -922,7 +922,7 @@ class myWidget(QWidget):
             if j == 5:
                 qp.setPen(self.gridColorMj) #50% CPU line
             
-            qp.drawLine(self.side_margin, y, wsize.width()-self.side_margin, y)
+            qp.drawLine(self.side_margin+1, y, wsize.width()-self.side_margin - 1, y)
             
             if j == 5:
                 qp.setPen(self.gridColor)
