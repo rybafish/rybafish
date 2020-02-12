@@ -258,6 +258,8 @@ class hslWindow(QMainWindow):
     def changeActiveTabName(self, name):
     
         i = self.tabs.currentIndex()
+
+        print('changeActiveTabName', i, name)
         
         # must be a better way verity if we attempt to update chart tab name
         if i == 0:
@@ -269,31 +271,35 @@ class hslWindow(QMainWindow):
         '''
             so much duplicate code with menuSqlConsole
         '''
-        fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
-        
-        filename = fname[0]
-        
-        if filename == '':
-            return
+        fname = QFileDialog.getOpenFileNames(self, 'Open file', '','*.sql')
 
-        conf = self.connectionConf
+        for filename in fname[0]:
         
-        if conf is None:
-            self.statusMessage('No configuration...', False)
-            return
+            print('open', filename)
+
+            '''
+            if filename == '':
+                return
+            '''
+
+            conf = self.connectionConf
+
+            '''
+            if conf is None:
+                self.statusMessage('No configuration...', False)
+                return
+            '''
+                
+            self.statusMessage('Connecting console...', False)
             
-        self.statusMessage('Connecting console...', False)
-        
-        console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
-        console.nameChanged.connect(self.changeActiveTabName)
-        console.cons.closeSignal.connect(self.closeTab)
-        
-        console.openFile(filename)
-        
-        self.tabs.addTab(console, console.tabname)
-        
-        self.tabs.setCurrentIndex(self.tabs.count() - 1)
-        
+            console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
+            console.nameChanged.connect(self.changeActiveTabName)
+            console.cons.closeSignal.connect(self.closeTab)
+
+            self.tabs.addTab(console, console.tabname)
+            self.tabs.setCurrentIndex(self.tabs.count() - 1)
+            
+            console.openFile(filename)
 
     def menuSQLConsole(self):
     
