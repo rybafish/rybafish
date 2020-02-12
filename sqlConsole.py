@@ -193,7 +193,7 @@ class console(QPlainTextEdit):
 
         menuExec = cmenu.addAction('Execute selection\tF8')
         cmenu.addSeparator()
-        menuOpenFile = cmenu.addAction('Open File\tCtrl+0')
+        menuOpenFile = cmenu.addAction('Open File in this console')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
         cmenu.addSeparator()
         menuDisconnect = cmenu.addAction('Disconnect from the DB')
@@ -824,13 +824,18 @@ class sqlConsole(QWidget):
     def keyPressEvent(self, event):
    
         modifiers = QApplication.keyboardModifiers()
-       
+
+        '''
+        
+        those both now operated from main window...
+        
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_S:
                 self.delayBackup()
                 self.saveFile()
             elif event.key() == Qt.Key_O:
                 self.openFile()
+        '''
         super().keyPressEvent(event)
 
     def saveFile(self):

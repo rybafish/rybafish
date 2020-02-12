@@ -258,13 +258,23 @@ class hslWindow(QMainWindow):
     
         i = self.tabs.currentIndex()
 
-        print('changeActiveTabName', i, name)
-        
         # must be a better way verity if we attempt to update chart tab name
         if i == 0:
             return
             
         self.tabs.setTabText(i, name)
+    
+    def menuSave(self):
+    
+        indx = self.tabs.currentIndex()
+
+        w = self.tabs.widget(indx)
+    
+        if not isinstance(w, sqlConsole.sqlConsole):
+            return
+            
+        w.delayBackup()
+        w.saveFile()
     
     def menuOpen(self):
         '''
@@ -338,9 +348,7 @@ class hslWindow(QMainWindow):
         if console.unsavedChanges:
             # if autoloaded from backup
             # cannot be triggered from inside as signal not connected on __init__
-            print(console.tabname)
             self.changeActiveTabName(console.tabname + ' *')
-            print(console.tabname)
         
         self.statusMessage('', False)
             
@@ -458,6 +466,11 @@ class hslWindow(QMainWindow):
         openAct.setStatusTip('Open new console with the file')
         openAct.triggered.connect(self.menuOpen)
 
+        saveAct = QAction('&Save sql to a file', self)
+        saveAct.setShortcut('Ctrl+S')
+        saveAct.setStatusTip('Saves sql from current console to a file')
+        saveAct.triggered.connect(self.menuSave)
+
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(configAct)
@@ -467,6 +480,7 @@ class hslWindow(QMainWindow):
             fileMenu.addAction(dummyAct)
             fileMenu.addAction(sqlConsAct)
             fileMenu.addAction(openAct)
+            fileMenu.addAction(saveAct)
 
         fileMenu.addAction(exitAct)
         
