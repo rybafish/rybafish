@@ -15,7 +15,7 @@ from utils import cfg
 
 import re
 
-import lobDialog
+import lobDialog, searchDialog
 
 from utils import dbException, log
 
@@ -79,6 +79,10 @@ class console(QPlainTextEdit):
             font.setPointSize(fontSize)
             
         self.setFont(font)
+        
+        
+        #self.setStyleSheet('{selection-background-color: #48F; selection-color: #fff;}')
+        self.setStyleSheet('selection-background-color: #48F')
 
         self.setTabStopDistance(QFontMetricsF(font).width(' ') * 4)
         
@@ -216,6 +220,29 @@ class console(QPlainTextEdit):
         elif action == menuClose:
             self.closeSignal.emit()
             
+    def findString(self, str):
+        def select(start, stop):
+            cursor = QTextCursor(self.document())
+
+            cursor.setPosition(start,QTextCursor.MoveAnchor)
+            cursor.setPosition(stop,QTextCursor.KeepAnchor)
+            
+            self.setTextCursor(cursor)
+            
+        text = self.toPlainText()
+        
+        st = self.textCursor().position()
+        
+        st = text.find(str, st)
+        
+        if st >= 0:
+            select(st, st+len(str))
+        else:
+            #search from the start
+            st = text.find(str, 0)
+            if st >= 0:
+                select(st, st+len(str))
+        
     def keyPressEvent (self, event):
         
         modifiers = QApplication.keyboardModifiers()
@@ -236,6 +263,13 @@ class console(QPlainTextEdit):
             txt = cursor.selectedText()
             
             cursor.insertText(txt.lower())
+            
+        if modifiers == Qt.ControlModifier and event.key() == Qt.Key_F:
+                search = searchDialog.searchDialog()
+                
+                search.findSignal.connect(self.findString)
+                
+                search.exec_()
     
         else:
             #have to clear each time in case of input right behind the braket
@@ -836,6 +870,7 @@ class sqlConsole(QWidget):
             elif event.key() == Qt.Key_O:
                 self.openFile()
         '''
+                
         super().keyPressEvent(event)
 
     def saveFile(self):

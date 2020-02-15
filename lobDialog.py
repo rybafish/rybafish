@@ -2,19 +2,13 @@ import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox, QPlainTextEdit,
     QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel)
 
+from PyQt5.QtGui import QIcon, QDesktopServices
 
-from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
-
-from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
-
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt
 
 from utils import resourcePath
-from yaml import safe_load, YAMLError
 
 from utils import log
-
-from _constants import build_date, version
 
 class lobDialog(QDialog):
 
