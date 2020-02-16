@@ -1426,7 +1426,10 @@ class sqlConsole(QWidget):
             
             t1 = time.time()
 
-            logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
+            #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
+
+
+            logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
             
             if rows is None or cols is None:
                 # it was a DDL or something else without a result set so we just stop

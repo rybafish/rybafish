@@ -79,7 +79,35 @@ def numberToStrCSV(num, grp = True):
     s = s.rstrip('0').rstrip(dp)
     
     return s
+
+def formatTime(t):
     
+    (ti, ms) = divmod(t, 1)
+    
+    ms = round(ms, 3)
+    
+    if ms == 1:
+        ti += 1
+        ms = '0'
+    else:
+        ms = str(int(ms*1000)).rstrip('0')
+    
+    if ti < 60:
+        
+        s = str(round(t, 3)) + ' s'
+        
+    elif ti < 3600:
+        format = '%M:%S'
+        msStr = '.%s' % ms
+        s = time.strftime(format, time.gmtime(ti)) + msStr
+    else:
+        format = '%H:%M:%S'
+        msStr = '.%s' % ms
+        s = time.strftime(format, time.gmtime(ti)) + msStr
+    
+    s += '   (' + str(round(t, 3)) + ')'
+    
+    return s
 
 def yesNoDialog(title, message, cancel = False):
     msgBox = QMessageBox()
