@@ -21,30 +21,6 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
                     'where', 'asc', 'desc', 'case', 'when', 'else', 'and', 'or', 'like', 'round']
 
         rules = []
-
-        '''
-        for kw in keywords:
-            rules.append([QRegularExpression('\\b'+kw+'\\b'), fmKeyword])
-            
-            
-        # literals
-        #rules.append([QRegularExpression('\'[^\']*\''), fmLiteral])
-        rules.append([QRegularExpression('\'.+?\''), fmLiteral])
-
-        rules.append([QRegularExpression('".+?"'), fmLiteral])
-
-        # one line comment
-        rules.append([QRegularExpression('--.+'), fmComment])
-
-        for r in rules:
-            (rule, format) = (r[0], r[1])
-            mi = rule.globalMatch(text)
-        
-            while mi.hasNext():
-                m = mi.next()
-                self.setFormat(m.capturedStart(), m.capturedLength(), format)
-                
-        '''
         
         for kw in keywords:
             rules.append(['\\b'+kw+'\\b', fmKeyword])
@@ -59,10 +35,9 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         for r in rules:
             (pattern, format) = (r[0], r[1])
 
-            m = re.search(pattern, text, re.I )
-        
-            #just one possible?
-            if m is not None:
+            ml = re.finditer(pattern, text, re.I )
+            
+            for m in ml:
                 self.setFormat(m.start(0), len(m.group(0)), format)
 
         '''

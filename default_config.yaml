@@ -13,6 +13,8 @@ keepalive: 1200
 # sql console keep-alive timer
 keepalive-cons: 1800
 
-#uncomment to have experimental stuff
-experimental: False
+# maximum result size
+maxResultSize: 1000
 
+# uncomment to have experimental stuff
+experimental: False

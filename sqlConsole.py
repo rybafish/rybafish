@@ -2,7 +2,9 @@ from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, 
         QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog, QMessageBox)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap, QIcon
-from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QTextCharFormat, QBrush, QPainter
+
+from PyQt5.QtCore import QTimer, QPoint
 
 from PyQt5.QtCore import Qt, QSize
 
@@ -169,6 +171,9 @@ class console(QPlainTextEdit):
         return
         
     def consSelection(self):
+    
+        return
+    
         if self.lock:
             return
             
@@ -203,6 +208,10 @@ class console(QPlainTextEdit):
         menuDisconnect = cmenu.addAction('Disconnect from the DB')
         menuConnect = cmenu.addAction('(re)connecto to the DB')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
+
+        if cfg('developmentMode'):
+            cmenu.addSeparator()
+            menuTest = cmenu.addAction('Test highlighter\tCtrl+T')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -219,6 +228,31 @@ class console(QPlainTextEdit):
             self.saveFileSignal.emit()
         elif action == menuClose:
             self.closeSignal.emit()
+        elif action == menuTest:
+            txtblk = self.document().findBlockByLineNumber(1)
+            
+            lo = txtblk.layout()
+            
+            r = lo.FormatRange()
+            r.start = 0
+            r.length = 8
+            brsh = QBrush(QColor('red'))
+            
+            charFmt = QTextCharFormat()
+            charFmt.setBackground(brsh)
+            charFmt.setForeground(QColor('#288'))
+            
+            r.format = charFmt
+            
+            lo.setAdditionalFormats([r])
+            
+            self.viewport().repaint()
+
+            #p = QPainter(self)
+            #lo.draw(p, QPoint(0, 0))
+            
+            
+            print('huest', txtblk.text())
             
     def findString(self, str):
         def select(start, stop):
@@ -290,6 +324,7 @@ class console(QPlainTextEdit):
             self.braketsHighlighted = False
 
     def cursorPositionChangedSignal(self):
+        return
         self.checkBrakets()
         
     def highlightBraket(self, block, pos, mode):
@@ -306,12 +341,12 @@ class console(QPlainTextEdit):
         if mode == True:
             font.setBold(True)
             format.setForeground(QColor('#C22'))
-            format.setBackground(QColor('#CCF'))
+            #format.setBackground(QColor('#CCF'))
             format.setFont(font)
         else:
             font.setBold(False)
             format.setForeground(QColor('black'));
-            format.setBackground(QColor('white'));
+            #format.setBackground(QColor('white'));
             format.setFont(font)
 
         '''

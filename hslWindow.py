@@ -589,14 +589,15 @@ class hslWindow(QMainWindow):
             self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
             #console.cons.setPlainText('select * from dummy;\n\nselect \n    *\n    from dummy;\n\nselect * from m_host_information;');
             
-            if False: 
+            if cfg('developmentMode'): 
                 console.cons.setPlainText('''select 0 from dummy;
-
 create procedure ...
 (
 (as begin)
 select * from dummy);
 end;
+
+where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59'
 
 select 1 from dummy;
 select 2 from dummy;
