@@ -117,11 +117,11 @@ def execute_query(connection, sql_string, params):
         log('no db connection...')
         return
 
-    cursor = connection.cursor()
-
     # prepare the statement...
 
     try:
+        cursor = connection.cursor()
+        
         psid = cursor.prepare(sql_string)
     except pyhdb.exceptions.DatabaseError as e:
         log('[!] SQL Error: %s' % sql_string)
