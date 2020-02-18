@@ -68,7 +68,11 @@ class console(QPlainTextEdit):
         self.highlightedWords = []
         
         self.braketsHighlighted = False
-        self.braketsHighlightedPos = []
+        #self.braketsHighlightedPos = []
+        
+        self.modifiedLayouts = []
+
+        self.lastSearch = ''    #for searchDialog
         
         super().__init__()
 
@@ -255,6 +259,9 @@ class console(QPlainTextEdit):
             print('huest', txtblk.text())
             
     def findString(self, str):
+    
+        self.lastSearch = str
+    
         def select(start, stop):
             cursor = QTextCursor(self.document())
 
@@ -263,11 +270,11 @@ class console(QPlainTextEdit):
             
             self.setTextCursor(cursor)
             
-        text = self.toPlainText()
+        text = self.toPlainText().lower()
         
         st = self.textCursor().position()
         
-        st = text.find(str, st)
+        st = text.find(str.lower(), st)
         
         if st >= 0:
             select(st, st+len(str))
@@ -299,7 +306,7 @@ class console(QPlainTextEdit):
             cursor.insertText(txt.lower())
             
         if modifiers == Qt.ControlModifier and event.key() == Qt.Key_F:
-                search = searchDialog.searchDialog()
+                search = searchDialog.searchDialog(self.lastSearch)
                 
                 search.findSignal.connect(self.findString)
                 
@@ -318,17 +325,79 @@ class console(QPlainTextEdit):
 
     def clearBraketsHighlight(self):
         if self.braketsHighlighted:
-            pos = self.braketsHighlightedPos
-            self.highlightBraket(self.document(), pos[0], False)
-            self.highlightBraket(self.document(), pos[1], False)
+            #pos = self.braketsHighlightedPos
+            #self.highlightBraket(self.document(), pos[0], False)
+            #self.highlightBraket(self.document(), pos[1], False)
+            
+            for lo in self.modifiedLayouts:
+                lo.clearAdditionalFormats()
+                
+            self.modifiedLayouts.clear()
+            
+            self.viewport().repaint()
+            
             self.braketsHighlighted = False
 
     def cursorPositionChangedSignal(self):
-        return
+    
+        if cfg('noBraketsHighlighting'):
+            return
+    
         self.checkBrakets()
         
-    def highlightBraket(self, block, pos, mode):
+    def highlightBrakets(self, block, pos1, pos2, mode):
+        #print ('highlight here: ', pos1, pos2)
+    
+        txtblk1 = self.document().findBlock(pos1)
+        txtblk2 = self.document().findBlock(pos2)
+        
+        delta1 = pos1 - txtblk1.position()
+        delta2 = pos2 - txtblk2.position()
+        
+        charFmt = QTextCharFormat()
+        charFmt.setForeground(QColor('#F00'))
+        
+        #fnt = charFmt.font().setWeight(QFont.Bold)
+        #charFmt.setFont(fnt)
+        
+        lo1 = txtblk1.layout()
+        r1 = lo1.FormatRange()
+        r1.start = delta1
+        r1.length = 1
+        
+        if txtblk1.position() == txtblk2.position():
+            lo2 = lo1
+            
+            r2 = lo2.FormatRange()
+            r2.start = delta2
+            r2.length = 1
+            
+            r1.format = charFmt
+            r2.format = charFmt
+
+            lo1.setAdditionalFormats([r1, r2])
+            
+            self.modifiedLayouts = [lo1]
+        else:
+            lo2 = txtblk2.layout()
+
+            r2 = lo2.FormatRange()
+            r2.start = delta2
+            r2.length = 1
+
+            r1.format = charFmt
+            r2.format = charFmt
+
+            lo1.setAdditionalFormats([r1])
+            lo2.setAdditionalFormats([r2])
+            
+            self.modifiedLayouts = [lo1, lo2]
+        
+        self.viewport().repaint()
+        
+    def highlightBraketDepr(self, block, pos, mode):
         #print ('highlight here: ', block.text(), start, stop)
+        
         cursor = QTextCursor(block)
 
         cursor.setPosition(pos, QTextCursor.MoveAnchor)
@@ -452,9 +521,10 @@ class console(QPlainTextEdit):
             
             if pb >= 0:
                 self.braketsHighlighted = True
-                self.braketsHighlightedPos = [bPos, pb]
-                self.highlightBraket(self.document(), bPos, True)
-                self.highlightBraket(self.document(), pb, True)        
+                #self.braketsHighlightedPos = [bPos, pb]
+                #self.highlightBraket(self.document(), bPos, True)
+                #self.highlightBraket(self.document(), pb, True)        
+                self.highlightBrakets(self.document(), bPos, pb, True)
 
 class resultSet(QTableWidget):
     '''

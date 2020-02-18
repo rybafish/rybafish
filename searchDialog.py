@@ -15,13 +15,13 @@ from PyQt5.QtCore import pyqtSignal
 class searchDialog(QDialog):
 
     findSignal = pyqtSignal(['QString'])
-
-    def __init__(self):
+    
+    def __init__(self, lastSearch = None):
     
         super().__init__()
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         
-        self.initUI()
+        self.initUI(lastSearch)
         
     def search(self):
         
@@ -32,13 +32,16 @@ class searchDialog(QDialog):
     def cancel(self):
         pass
         
-    def initUI(self):
+    def initUI(self, lastSearch):
 
         iconPath = resourcePath('ico\\favicon.ico')
 
         self.setWindowIcon(QIcon(iconPath))
         
-        self.str = QLineEdit()
+        self.str = QLineEdit(lastSearch)
+        
+        if lastSearch != '':
+            self.str.selectAll()
         
         vbox = QHBoxLayout()
         
