@@ -1314,6 +1314,8 @@ class sqlConsole(QWidget):
 
             str = txt[start:stop]
             
+            print('exec: ', str)
+            
             if str == '': 
                 #typically only when start = 0, stop = 1
                 if not (start == 0 and stop <= 1):
@@ -1354,6 +1356,8 @@ class sqlConsole(QWidget):
         
         # main per character loop:
 
+        print('from to: ', scanFrom, scanTo)
+
         for i in range(scanFrom, scanTo):
             c = txt[i]
 
@@ -1376,7 +1380,9 @@ class sqlConsole(QWidget):
                     # warning: insideString logic skipped here (as it is defined below this line
                     continue
                 else:
-                    if F9 and (start <= cursorPos < stop):
+                    #if F9 and (start <= cursorPos < stop):
+                    #reeeeeallly not sure!
+                    if F9 and (start <= cursorPos <= stop):
                         selectSingle(start, stop)
                         break
                     else:
@@ -1387,6 +1393,7 @@ class sqlConsole(QWidget):
                     str = str + c
             else:
                 str = str + c
+                print(str)
 
             if not insideString and c == '\'':
                 insideString = True
@@ -1400,10 +1407,11 @@ class sqlConsole(QWidget):
                 insideProc = True
 
 
-        #print(cursorPos)
-        #print(scanFrom, scanTo)
-        #print(start, stop)
-        #print(str)
+        print('F9?', F9)
+        print('cursorPos', cursorPos)
+        print('scanFrom, scanTo', scanFrom, scanTo)
+        print('start, stop', start, stop)
+        print('str:', str)
         
         if stop == 0:
             # no semicolon met
@@ -1413,6 +1421,8 @@ class sqlConsole(QWidget):
         #print so not sure abous this change
         if F9 and (start <= cursorPos <= stop):
             selectSingle(start, stop)
+        elif F9 and (start > stop and start < cursorPos): # no semicolon in the end
+            selectSingle(start, cursorPos)
         else:
             if not F9:
                 statementDetected(start, stop)
