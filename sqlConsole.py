@@ -284,6 +284,21 @@ class console(QPlainTextEdit):
             if st >= 0:
                 select(st, st+len(str))
         
+    def duplicateLine (self):
+        cursor = self.textCursor()
+        
+        if cursor.selection().isEmpty():
+            txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
+            
+            #self.moveCursor(QTextCursor.EndOfLine, QTextCursor.MoveAnchor)
+            cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.MoveAnchor)
+            cursor.insertText('\n' + txtline.text())
+        else:
+            txt = cursor.selectedText()
+
+            cursor.clearSelection()
+            cursor.insertText(txt)
+        
     def keyPressEvent (self, event):
         
         modifiers = QApplication.keyboardModifiers()
@@ -291,6 +306,10 @@ class console(QPlainTextEdit):
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             self.executionTriggered.emit()
 
+        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
+            
+            self.duplicateLine()
+            
         elif modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier and event.key() == Qt.Key_U:
             cursor = self.textCursor()
             
