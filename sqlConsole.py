@@ -329,8 +329,14 @@ class console(QPlainTextEdit):
             #self.highlightBraket(self.document(), pos[0], False)
             #self.highlightBraket(self.document(), pos[1], False)
             
-            for lo in self.modifiedLayouts:
-                lo.clearAdditionalFormats()
+            for lol in self.modifiedLayouts:
+            
+                lo = lol[0]
+                af = lol[1]
+                
+                    
+                #lo.clearAdditionalFormats()
+                lo.setAdditionalFormats(af)
                 
             self.modifiedLayouts.clear()
             
@@ -375,9 +381,11 @@ class console(QPlainTextEdit):
             r1.format = charFmt
             r2.format = charFmt
 
-            lo1.setAdditionalFormats([r1, r2])
+            af = lo1.additionalFormats()
             
-            self.modifiedLayouts = [lo1]
+            lo1.setAdditionalFormats(af + [r1, r2])
+            
+            self.modifiedLayouts = [[lo1, af]]
         else:
             lo2 = txtblk2.layout()
 
@@ -387,11 +395,14 @@ class console(QPlainTextEdit):
 
             r1.format = charFmt
             r2.format = charFmt
-
-            lo1.setAdditionalFormats([r1])
-            lo2.setAdditionalFormats([r2])
             
-            self.modifiedLayouts = [lo1, lo2]
+            af1 = lo1.additionalFormats()
+            af2 = lo2.additionalFormats()
+            
+            lo1.setAdditionalFormats(af1 + [r1])
+            lo2.setAdditionalFormats(af2 + [r2])
+            
+            self.modifiedLayouts = [[lo1, af1], [lo2, af2]]
         
         self.viewport().repaint()
         
@@ -1303,6 +1314,7 @@ class sqlConsole(QWidget):
                 return False
                 
         def selectSingle(start, stop):
+            print('selectSingle', start, stop)
             cursor = QTextCursor(self.cons.document())
 
             cursor.setPosition(start,QTextCursor.MoveAnchor)
@@ -1314,7 +1326,7 @@ class sqlConsole(QWidget):
 
             str = txt[start:stop]
             
-            print('exec: ', str)
+            print('exec: [%s]' % str)
             
             if str == '': 
                 #typically only when start = 0, stop = 1
@@ -1330,6 +1342,8 @@ class sqlConsole(QWidget):
         
         txt = self.cons.toPlainText()
         length = len(txt)
+
+        cursorPos = None
 
         if not cursor.selection().isEmpty():
             F9 = False
@@ -1357,9 +1371,18 @@ class sqlConsole(QWidget):
         # main per character loop:
 
         print('from to: ', scanFrom, scanTo)
-
+        
+        # startDelta = 0
+        # clearDelta = False
+        
         for i in range(scanFrom, scanTo):
             c = txt[i]
+            
+            '''
+            if clearDelta:
+                startDelta = 0
+                clearDelta = False
+            '''
 
             #print('['+c+']')
             if not insideString and c == ';':
@@ -1367,22 +1390,30 @@ class sqlConsole(QWidget):
                 if not insideProc:
                     str = ''
                     stop = i
+                    # clearDelta = True
                     continue
                 else:
                     if isItEnd(str[-10:]):
                         insideProc = False
                         str = ''
                         stop = i
+                        # clearDelta = True
                         continue
             
             if str == '':
+                #happens when semicolon detected.
+                # print('str = \'\'', 'startDelta: ', startDelta)
                 if c in (' ', '\n', '\t'):
                     # warning: insideString logic skipped here (as it is defined below this line
+                    # skip leading whitespaces
+                    # print(start, stop, cursorPos, i)
+                    # startDelta += 1
                     continue
                 else:
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
-                    if F9 and (start <= cursorPos <= stop):
+                    if F9 and (start <= cursorPos <= stop) and (start < stop):
+                        print('start <= cursorPos <= stop:', start, cursorPos, stop)
                         selectSingle(start, stop)
                         break
                     else:
@@ -1393,7 +1424,7 @@ class sqlConsole(QWidget):
                     str = str + c
             else:
                 str = str + c
-                print(str)
+                #print(str)
 
             if not insideString and c == '\'':
                 insideString = True
@@ -1407,11 +1438,14 @@ class sqlConsole(QWidget):
                 insideProc = True
 
 
+        '''
         print('F9?', F9)
         print('cursorPos', cursorPos)
+        # print('startDelta', startDelta)
         print('scanFrom, scanTo', scanFrom, scanTo)
         print('start, stop', start, stop)
         print('str:', str)
+        '''
         
         if stop == 0:
             # no semicolon met
@@ -1419,10 +1453,12 @@ class sqlConsole(QWidget):
         
         #if F9 and (start <= cursorPos < stop):
         #print so not sure abous this change
-        if F9 and (start <= cursorPos <= stop):
+        if F9 and (start <= cursorPos <= stop) and (start < stop):
+            print('m1')
             selectSingle(start, stop)
-        elif F9 and (start > stop and start < cursorPos): # no semicolon in the end
-            selectSingle(start, cursorPos)
+        elif F9 and (start > stop and start <= cursorPos): # no semicolon in the end
+            print('m2')
+            selectSingle(start, scanTo)
         else:
             if not F9:
                 statementDetected(start, stop)
@@ -1432,11 +1468,17 @@ class sqlConsole(QWidget):
         #if F9 and (start <= cursorPos < stop):
         #print so not sure abous this change
         if F9 and (start <= cursorPos <= stop):
-            #print('-> [%s] ' % txt[start:stop])
+            print('-> [%s] ' % txt[start:stop])
             
             result = self.newResult(self.conn)
-            
             self.executeStatement(txt[start:stop], result)
+            
+        elif F9 and (start > stop and start <= cursorPos): # no semicolon in the end
+            print('-> [%s] ' % txt[start:scanTo])
+
+            result = self.newResult(self.conn)
+            self.executeStatement(txt[start:scanTo], result)
+
         else:
             for st in statements:
                 #print('--> [%s]' % st)

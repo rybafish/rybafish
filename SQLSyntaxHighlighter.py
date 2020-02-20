@@ -18,27 +18,36 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         fmLiteral.setForeground(QColor('#00F'))
         
         keywords = ['select', 'from', 'order', 'by', 'group', 'where', 'inner', 'left', 'right', 'join', 'as',
-                    'where', 'asc', 'desc', 'case', 'when', 'else', 'and', 'or', 'like', 'round']
+                    'where', 'asc', 'desc', 'case', 'when', 'else', 'and', 'or', 'like', 'round', 
+                    'do', 'begin', 'end', 'then', 'if', 'between', 'having']
 
         rules = []
         
         for kw in keywords:
-            rules.append(['\\b'+kw+'\\b', fmKeyword])
+            rules.append(['\\b'+kw+'\\b', fmKeyword, False])
 
         # one line comment
-        rules.append(['--.+', fmComment])
+        rules.append(['--.+', fmComment, True])
         
         # literals
-        rules.append(['\'.+?\'', fmLiteral])
-        rules.append(['".+?"', fmLiteral])
+        rules.append(['\'.+?\'', fmLiteral, False])
+        rules.append(['".+?"', fmLiteral, False])
         
         for r in rules:
-            (pattern, format) = (r[0], r[1])
+            (pattern, format, stop) = (r[0], r[1], r[2])
 
             ml = re.finditer(pattern, text, re.I )
             
+            i = 0
             for m in ml:
+                i += 1
                 self.setFormat(m.start(0), len(m.group(0)), format)
+                
+            if i > 0 and stop:
+                # do not apply other rules
+                # for example in case of single line comments
+                break
+                
 
         '''
         # multiline comments
