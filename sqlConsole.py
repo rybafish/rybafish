@@ -18,14 +18,14 @@ from utils import cfg
 import re
 
 import lobDialog, searchDialog
-
 from utils import dbException, log
 
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
-import binascii
 import datetime
+import binascii
 import os
+
 
 from utils import resourcePath
 
@@ -298,7 +298,49 @@ class console(QPlainTextEdit):
 
             cursor.clearSelection()
             cursor.insertText(txt)
+
+    def moveLine(self, direction):
+
+        cursor = self.textCursor()
+        pos = cursor.position()
         
+        lineFrom = self.document().findBlock(pos)
+
+        startPos = lineFrom.position()
+        endPos = startPos + len(lineFrom.text())
+
+        if direction == 'down':
+            lineTo = self.document().findBlock(endPos + 1)
+        else:
+            lineTo = self.document().findBlock(startPos - 1)
+
+        # select original line
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+        
+        textMove = cursor.selectedText()
+        
+        # replace it by text from the new location
+        cursor.insertText(lineTo.text())
+
+        # now put moving text in place
+        startPos = lineTo.position()
+        endPos = startPos + len(lineTo.text())
+
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+
+        cursor.insertText(textMove)
+        
+        print(startPos, startPos + len(textMove))
+        
+        self.repaint()
+        
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
+        
+        self.setTextCursor(cursor)
+    
     def keyPressEvent (self, event):
         
         modifiers = QApplication.keyboardModifiers()
@@ -307,8 +349,13 @@ class console(QPlainTextEdit):
             self.executionTriggered.emit()
 
         elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
-            
             self.duplicateLine()
+
+        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Down:
+            self.moveLine('down')
+
+        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Up:
+            self.moveLine('up')
             
         elif modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier and event.key() == Qt.Key_U:
             cursor = self.textCursor()
