@@ -6,6 +6,17 @@ import re
 class SQLSyntaxHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text):
+
+        comments = []
+
+        def inComment(i):
+            '''
+                checks if position i is inside a block comment
+            '''
+            for c in comments:
+                if c[0] <= i <= c[1]:
+                    return True
+        
     
         fmKeyword = QTextCharFormat()
         fmKeyword.setFontWeight(QFont.Bold)
@@ -22,6 +33,34 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
                     'do', 'begin', 'end', 'then', 'if', 'between', 'having']
 
         rules = []
+        
+        startMLC = '/\\*'
+        stopMLC = '/\\*'
+        
+        imc = 0 #in multi line comment?
+        
+        self.setCurrentBlockState(0)
+
+        startIndex = 0
+        
+        if (self.previousBlockState() != 1):
+            startIndex = text.find('/*')
+
+        while startIndex >= 0:
+           
+           endIndex = text.find('*/', startIndex)
+           
+           if endIndex == -1:
+               self.setCurrentBlockState(1)
+               commentLength = len(text) - startIndex
+           else:
+               commentLength = endIndex - startIndex + 2
+               
+           self.setFormat(startIndex, commentLength, fmComment)
+           
+           comments.append((startIndex, startIndex+commentLength))
+
+           startIndex = text.find('/*', startIndex + commentLength)
         
         for kw in keywords:
             rules.append(['\\b'+kw+'\\b', fmKeyword, False])
@@ -41,7 +80,9 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
             i = 0
             for m in ml:
                 i += 1
-                self.setFormat(m.start(0), len(m.group(0)), format)
+                
+                if not inComment(m.start(0)):
+                    self.setFormat(m.start(0), len(m.group(0)), format)
                 
             if i > 0 and stop:
                 # do not apply other rules
