@@ -33,12 +33,8 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
                     'do', 'begin', 'end', 'then', 'if', 'between', 'having']
 
         rules = []
-        
-        startMLC = '/\\*'
-        stopMLC = '/\\*'
-        
-        imc = 0 #in multi line comment?
-        
+
+        #check multi line comments
         self.setCurrentBlockState(0)
 
         startIndex = 0
@@ -61,6 +57,12 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
            comments.append((startIndex, startIndex+commentLength))
 
            startIndex = text.find('/*', startIndex + commentLength)
+
+        # if the whole block is a comment - just skip the rest rules
+        if len(comments) == 1:
+            c = comments[0]
+            if c[0] == 0 and c[1] == len(text):
+                return
         
         for kw in keywords:
             rules.append(['\\b'+kw+'\\b', fmKeyword, False])
@@ -88,18 +90,3 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
                 # do not apply other rules
                 # for example in case of single line comments
                 break
-                
-
-        '''
-        # multiline comments
-        # https://doc.qt.io/qtforpython/PySide2/QtGui/QSyntaxHighlighter.html
-        
-        commStart = 0
-        
-        if self.previousBlockState() != 1:
-            mi = QRegularExpression('/\\*').globalMatch(text)
-            if mi.hasNext():
-                commStart = m.capturedStart()
-                
-        while commStart >= 0:
-        '''
