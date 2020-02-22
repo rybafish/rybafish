@@ -232,31 +232,8 @@ class console(QPlainTextEdit):
             self.saveFileSignal.emit()
         elif action == menuClose:
             self.closeSignal.emit()
-        elif action == menuTest:
-            txtblk = self.document().findBlockByLineNumber(1)
-            
-            lo = txtblk.layout()
-            
-            r = lo.FormatRange()
-            r.start = 0
-            r.length = 8
-            brsh = QBrush(QColor('red'))
-            
-            charFmt = QTextCharFormat()
-            charFmt.setBackground(brsh)
-            charFmt.setForeground(QColor('#288'))
-            
-            r.format = charFmt
-            
-            lo.setAdditionalFormats([r])
-            
-            self.viewport().repaint()
-
-            #p = QPainter(self)
-            #lo.draw(p, QPoint(0, 0))
-            
-            
-            print('huest', txtblk.text())
+        elif cfg('developmentMode') and action == menuTest:
+            pass
             
     def findString(self, str):
     
