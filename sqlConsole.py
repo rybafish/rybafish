@@ -309,8 +309,6 @@ class console(QPlainTextEdit):
 
         cursor.insertText(textMove)
         
-        print(startPos, startPos + len(textMove))
-        
         self.repaint()
         
         cursor.setPosition(startPos, QTextCursor.MoveAnchor)

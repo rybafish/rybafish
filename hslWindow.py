@@ -43,6 +43,9 @@ class hslWindow(QMainWindow):
     kpisTable = None
 
     def __init__(self):
+    
+        self.sqlTabCounter = 0 #static tab counter
+    
         super().__init__()
         self.initUI()
         
@@ -331,7 +334,9 @@ class hslWindow(QMainWindow):
         self.statusMessage('Connecting...', False)
 
 
-        idx = self.tabs.count()
+        #idx = self.tabs.count()
+        idx = self.sqlTabCounter
+        self.sqlTabCounter += 1
         
         if idx > 1:
             tname = 'sql' + str(idx)
@@ -571,7 +576,9 @@ class hslWindow(QMainWindow):
         
             #tname = sqlConsole.generateTabName()
 
-            idx = self.tabs.count()
+            #idx = self.tabs.count()
+            idx = self.sqlTabCounter
+            self.sqlTabCounter += 1
             
             if idx > 1:
                 tname = 'sql' + str(idx)
