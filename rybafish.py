@@ -14,6 +14,7 @@ from utils import resourcePath
 from _constants import build_date, version
 
 import traceback
+import sqlConsole
 
 '''
     TODO
@@ -37,8 +38,12 @@ class ExceptionHandler(QtCore.QObject):
         super(ExceptionHandler, self).__init__()
 
     def handler(self, exctype, value, tb):
+    
+        global ryba
+    
         cwd = getcwd()
         log('[!] fatal exception\n')
+        
         #details = '%s: %s\n' % (str(exctype), str(value))
         details = '%s.%s: %s\n\n' % (exctype.__module__ , exctype.__qualname__  , str(value))
         #???
@@ -51,6 +56,14 @@ class ExceptionHandler(QtCore.QObject):
             details += '>>' + s.replace('\\n', '\n').replace(cwd, '..')
 
         log(details, nots = True)
+
+
+        for i in range(ryba.tabs.count() -1, 0, -1):
+
+            w = ryba.tabs.widget(i)
+            
+            if isinstance(w, sqlConsole.sqlConsole):
+                w.delayBackup()
 
         msgBox = QMessageBox()
         msgBox.setWindowTitle('Fatal error')
@@ -65,6 +78,8 @@ class ExceptionHandler(QtCore.QObject):
 
 if __name__ == '__main__':
     
+    global ryba
+    
     exceptionHandler = ExceptionHandler()
     #sys._excepthook = sys.excepthook
     sys.excepthook = exceptionHandler.handler
@@ -76,7 +91,9 @@ if __name__ == '__main__':
     
     app = QApplication(sys.argv)
 
-    ex = hslWindow.hslWindow()
+    #ex = hslWindow.hslWindow()
+    ryba = hslWindow.hslWindow()
+    #ex = hslWindow.hslWindow()
     
     sys.exit(app.exec_())
     app.exec_()

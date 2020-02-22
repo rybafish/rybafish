@@ -233,6 +233,7 @@ class console(QPlainTextEdit):
         elif action == menuClose:
             self.closeSignal.emit()
         elif cfg('developmentMode') and action == menuTest:
+            print(1/0)
             pass
             
     def findString(self, str):
