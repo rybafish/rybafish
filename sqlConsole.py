@@ -1297,15 +1297,16 @@ class sqlConsole(QWidget):
         cols = [
             ['Name',11],
             ['LOB String',26],
+            ['Integer',3],
             ['Decimal',5],
             ['Timestamp',16],
         ]
         
         rows = [
-                ['name 1','select * from dummy fake blob 1', 1/12500, datetime.datetime.now()],
-                ['name 2','select * from dummy blob 2', 2/3, datetime.datetime.now()],
-                ['name 3','select 1/16 from dummy blob 3', 1/16, datetime.datetime.now()],
-                ['name 4','select 10000 from dummy blob 3', 10000, datetime.datetime.now()]
+                ['name 1','select * from dummy fake blob 1', 1024, 1/12500, datetime.datetime.now()],
+                ['name 2','select * from dummy blob 2', 22254, 2/3, datetime.datetime.now()],
+                ['name 3','select 1/16 from dummy blob 3', 654654, 1/16, datetime.datetime.now()],
+                ['name 4','select 10000 from dummy blob 3', 654654, 10000, datetime.datetime.now()]
             ]
         
         result = self.newResult(self.conn)

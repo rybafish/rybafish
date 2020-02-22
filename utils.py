@@ -14,6 +14,8 @@ config = {}
 
 timers = []
 
+localeCfg = None
+
 def timerStart():
     timers.clear()
     timers.append([time.time(), ''])
@@ -44,10 +46,21 @@ class dbException(Exception):
         super().__init__(message, type)
     
 def numberToStr(num, d = 0, fix = True):
-    if cfg('locale'):
-        locale.setlocale(locale.LC_ALL, cfg('locale'))
-    else:
-        locale.setlocale(locale.LC_ALL, '')
+
+    global localeCfg
+
+    if localeCfg is None:
+        
+        localeCfg = cfg('locale')
+        
+        try:
+            locale.setlocale(locale.LC_ALL, localeCfg)
+        except Exception as e:
+            localeCfg = ''
+            log('[!] '+ str(e))
+    
+
+    locale.setlocale(locale.LC_ALL, localeCfg)
     
     if num is None:
         return '?'
@@ -59,10 +72,20 @@ def numberToStr(num, d = 0, fix = True):
     return s
 
 def numberToStrCSV(num, grp = True):
-    if cfg('locale'):
-        locale.setlocale(locale.LC_ALL, cfg('locale'))
-    else:
-        locale.setlocale(locale.LC_ALL, '')
+
+    global localeCfg
+
+    if localeCfg is None:
+        
+        localeCfg = cfg('locale')
+        
+        try:
+            locale.setlocale(locale.LC_ALL, localeCfg)
+        except Exception as e:
+            localeCfg = ''
+            log('[!] '+ str(e))
+    
+    locale.setlocale(locale.LC_ALL, '')
         
     dp = locale.localeconv()['decimal_point']
     
