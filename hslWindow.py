@@ -335,8 +335,8 @@ class hslWindow(QMainWindow):
 
 
         #idx = self.tabs.count()
-        idx = self.sqlTabCounter
         self.sqlTabCounter += 1
+        idx = self.sqlTabCounter
         
         if idx > 1:
             tname = 'sql' + str(idx)
@@ -577,8 +577,8 @@ class hslWindow(QMainWindow):
             #tname = sqlConsole.generateTabName()
 
             #idx = self.tabs.count()
-            idx = self.sqlTabCounter
             self.sqlTabCounter += 1
+            idx = self.sqlTabCounter
             
             if idx > 1:
                 tname = 'sql' + str(idx)
