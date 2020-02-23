@@ -430,9 +430,6 @@ class console(QPlainTextEdit):
         
         modifiers = QApplication.keyboardModifiers()
 
-        if modifiers & Qt.ControlModifier:
-            print('Ctrl')
-
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             self.executionTriggered.emit()
 
