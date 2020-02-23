@@ -215,7 +215,7 @@ class console(QPlainTextEdit):
 
         if cfg('developmentMode'):
             cmenu.addSeparator()
-            menuTest = cmenu.addAction('Test highlighter\tCtrl+T')
+            menuTest = cmenu.addAction('Test menu')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -233,7 +233,10 @@ class console(QPlainTextEdit):
         elif action == menuClose:
             self.closeSignal.emit()
         elif cfg('developmentMode') and action == menuTest:
-            print(1/0)
+            cursor = self.textCursor()
+            cursor.removeSelectedText()
+            cursor.insertText('123')
+            self.setTextCursor(cursor)
             pass
             
     def findString(self, str):
@@ -292,6 +295,7 @@ class console(QPlainTextEdit):
         else:
             lineTo = self.document().findBlock(startPos - 1)
 
+        cursor.beginEditBlock() #deal with unso/redo
         # select original line
         cursor.setPosition(startPos, QTextCursor.MoveAnchor)
         cursor.setPosition(endPos, QTextCursor.KeepAnchor)
@@ -310,16 +314,124 @@ class console(QPlainTextEdit):
 
         cursor.insertText(textMove)
         
+        cursor.endEditBlock() #deal with unso/redo
+        
         self.repaint()
         
         cursor.setPosition(startPos, QTextCursor.MoveAnchor)
         cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
         
         self.setTextCursor(cursor)
+        
+    def tabKey(self):
+        
+        cursor = self.textCursor()
+        
+        cursor.beginEditBlock() # deal with undo/redo
+        
+        txt = cursor.selectedText()
+        
+        stPos = cursor.selectionStart()
+        endPos = cursor.selectionEnd()
+        
+        stLine = self.document().findBlock(stPos).blockNumber()
+        endLine = self.document().findBlock(endPos).blockNumber()
+        
+        if not cursor.hasSelection() or (stLine == endLine):
+            cursor.removeSelectedText()
+            cursor.insertText('    ')
+        else:
+
+            for i in range(stLine, endLine):
+                line = self.document().findBlockByLineNumber(i)
+                pos = line.position()
+                cursor.setPosition(pos, QTextCursor.MoveAnchor)
+                cursor.insertText('    ')
+                
+            #calculate last line end position to update selection
+            endPos = pos + len(line.text()) + 1
+            
+            cursor.clearSelection()
+            cursor.setPosition(stPos, QTextCursor.MoveAnchor)
+            cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+            
+        self.setTextCursor(cursor)
+        
+        cursor.endEditBlock() 
+        
+    def shiftTabKey(self):
+        
+        cursor = self.textCursor()
+        
+        cursor.beginEditBlock() # deal with undo/redo
+        
+        txt = cursor.selectedText()
+        
+        stPos = cursor.selectionStart()
+        endPos = cursor.selectionEnd()
+        
+        stLine = self.document().findBlock(stPos).blockNumber()
+        endLine = self.document().findBlock(endPos).blockNumber()
+        
+        if not cursor.hasSelection() or (stLine == endLine):
+            #cursor.removeSelectedText()
+            
+            line = self.document().findBlockByLineNumber(stLine)
+            pos = line.position()
+            cursor.setPosition(pos, QTextCursor.MoveAnchor)
+
+            txt = line.text()[:4]
+            print(txt)
+            
+            if txt[0] == '\t':
+                cursor.deleteChar()
+            else:
+                l = max(len(txt), 4)
+                for j in range(l):
+                    print('[',txt[j],']')
+                    if txt[j] == ' ':
+                        print('deleting...')
+                        cursor.deleteChar()
+                    else:
+                        break
+            
+        else:
+
+            for i in range(stLine, endLine):
+                line = self.document().findBlockByLineNumber(i)
+                pos = line.position()
+                cursor.setPosition(pos, QTextCursor.MoveAnchor)
+
+                txt = line.text()[:4]
+                
+                l = max(len(txt), 4)
+                
+                if txt[0] == '\t':
+                    cursor.deleteChar()
+                else:
+                    for j in range(l):
+                        if txt[j] == ' ':
+                            cursor.deleteChar()
+                        else:
+                            break
+                
+            #calculate last line end position to update selection
+            endPos = pos + len(line.text()) + 1
+            
+            cursor.clearSelection()
+            cursor.setPosition(stPos, QTextCursor.MoveAnchor)
+            cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+            
+        self.setTextCursor(cursor)
+        
+        cursor.endEditBlock() 
     
     def keyPressEvent (self, event):
         
         modifiers = QApplication.keyboardModifiers()
+
+        if modifiers & Qt.ControlModifier:
+            print('Ctrl')
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             self.executionTriggered.emit()
@@ -332,6 +444,12 @@ class console(QPlainTextEdit):
 
         elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Up:
             self.moveLine('up')
+
+        elif event.key() == Qt.Key_Backtab:
+            self.shiftTabKey()
+
+        elif event.key() == Qt.Key_Tab and not (modifiers & Qt.ControlModifier):
+            self.tabKey()
             
         elif modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier and event.key() == Qt.Key_U:
             cursor = self.textCursor()
@@ -347,7 +465,7 @@ class console(QPlainTextEdit):
             
             cursor.insertText(txt.lower())
             
-        if modifiers == Qt.ControlModifier and event.key() == Qt.Key_F:
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_F:
                 search = searchDialog.searchDialog(self.lastSearch)
                 
                 search.findSignal.connect(self.findString)
