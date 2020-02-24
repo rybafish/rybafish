@@ -1293,6 +1293,12 @@ class chartArea(QFrame):
             
             self.statusMessage('Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi), True)
 
+            timer = False
+            
+            if self.timer is not None:
+                timer = True
+                self.timer.stop()
+                
             while allOk is None:
                 try:
                     t0 = time.time()
@@ -1310,6 +1316,9 @@ class chartArea(QFrame):
                         allOk = False
                         
             # self.widget.paintLock = False
+            
+            if timer:
+                self.timer.start(1000 * self.refreshTime)
                         
             return allOk
         
