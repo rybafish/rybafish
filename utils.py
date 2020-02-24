@@ -214,6 +214,8 @@ def resourcePath(file):
 def loadConfig():
 
     global config
+    
+    config.clear()
 
     try: 
         f = open('config.yaml', 'r')
@@ -223,6 +225,9 @@ def loadConfig():
         config = {}
     
 def cfg(param, default = None):
+
+    global config
+
     if param in config:
         return config[param]
     else:

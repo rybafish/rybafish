@@ -403,9 +403,7 @@ class console(QPlainTextEdit):
                 l = min(len(txt), 4)
                 for j in range(l):
 
-                    print('[',txt[j],']')
                     if txt[j] == ' ':
-                        print('deleting...')
                         cursor.deleteChar()
                     else:
                         break
@@ -1493,7 +1491,7 @@ class sqlConsole(QWidget):
                 return False
                 
         def selectSingle(start, stop):
-            print('selectSingle', start, stop)
+            
             cursor = QTextCursor(self.cons.document())
 
             cursor.setPosition(start,QTextCursor.MoveAnchor)
@@ -1505,7 +1503,7 @@ class sqlConsole(QWidget):
 
             str = txt[start:stop]
             
-            print('exec: [%s]' % str)
+            #print('exec: [%s]' % str)
             
             if str == '': 
                 #typically only when start = 0, stop = 1
@@ -1647,13 +1645,13 @@ class sqlConsole(QWidget):
         #if F9 and (start <= cursorPos < stop):
         #print so not sure abous this change
         if F9 and (start <= cursorPos <= stop):
-            print('-> [%s] ' % txt[start:stop])
+            #print('-> [%s] ' % txt[start:stop])
             
             result = self.newResult(self.conn)
             self.executeStatement(txt[start:stop], result)
             
         elif F9 and (start > stop and start <= cursorPos): # no semicolon in the end
-            print('-> [%s] ' % txt[start:scanTo])
+            #print('-> [%s] ' % txt[start:scanTo])
 
             result = self.newResult(self.conn)
             self.executeStatement(txt[start:scanTo], result)
@@ -1712,6 +1710,9 @@ class sqlConsole(QWidget):
         
         self.renewKeepAlive()
         
+        if cfg('loglevel', 3) > 3:
+            log('console execute: [%s]' % (sql))
+        
         if len(sql) >= 2**17 and self.conn.large_sql != True:
             log('reconnecting to hangle large SQL')
             print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
@@ -1747,13 +1748,18 @@ class sqlConsole(QWidget):
             else:
                 txtSub = sql
                 
+            m = re.search(r'^\s*select\s+top\s+(\d+)', sql, re.I)
+            
+            if m:
+                resultSizeLimit = int(m.group(1))
+            else:
+                resultSizeLimit = cfg('resultSize', 1000)
+                
             txtSub = txtSub.replace('\n', ' ')
             txtSub = txtSub.replace('\t', ' ')
             
             self.log('\nExecute: ' + txtSub + suffix)
             self.logArea.repaint()
-            
-            resultSizeLimit = cfg('resultSize', 1000)
             
             result.rows, result.cols, dbCursor = db.execute_query_desc(self.conn, sql, [], resultSizeLimit)
             
