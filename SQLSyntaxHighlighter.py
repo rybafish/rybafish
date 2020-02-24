@@ -28,9 +28,10 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         fmLiteral = QTextCharFormat()
         fmLiteral.setForeground(QColor('#00F'))
         
-        keywords = ['select', 'from', 'order', 'by', 'group', 'where', 'inner', 'left', 'right', 'join', 'as',
+        keywords = ['select', 'from', 'order\s+by', 'group\s+by', 'where', 'inner', 'left', 'right', 
+                    'outer', 'join', 'as', 'on', 'with', 'distinct', 'create', 'drop', 'procedure', 'table', 'truncate',
                     'where', 'asc', 'desc', 'case', 'when', 'else', 'and', 'or', 'like', 'round', 
-                    'do', 'begin', 'end', 'then', 'if', 'between', 'having']
+                    'do', 'begin', 'end', 'then', 'if', 'between', 'having',  'union\s+all', 'union']
 
         rules = []
 

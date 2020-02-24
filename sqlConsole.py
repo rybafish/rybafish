@@ -335,7 +335,12 @@ class console(QPlainTextEdit):
         endPos = cursor.selectionEnd()
         
         stLine = self.document().findBlock(stPos).blockNumber()
-        endLine = self.document().findBlock(endPos).blockNumber()
+        endLineBlock = self.document().findBlock(endPos)
+        endLine = endLineBlock.blockNumber()
+        
+        #check the selection end position
+        if stLine != endLine and endLineBlock.position() < endPos:
+            endLine += 1 # endLine points to the next line after the block we move
         
         if not cursor.hasSelection() or (stLine == endLine):
             cursor.removeSelectedText()
@@ -345,6 +350,11 @@ class console(QPlainTextEdit):
             for i in range(stLine, endLine):
                 line = self.document().findBlockByLineNumber(i)
                 pos = line.position()
+
+                #move selection start to start of the line
+                if i == stLine:
+                    stPos = pos
+
                 cursor.setPosition(pos, QTextCursor.MoveAnchor)
                 cursor.insertText('    ')
                 
@@ -371,7 +381,12 @@ class console(QPlainTextEdit):
         endPos = cursor.selectionEnd()
         
         stLine = self.document().findBlock(stPos).blockNumber()
-        endLine = self.document().findBlock(endPos).blockNumber()
+        endLineBlock = self.document().findBlock(endPos)
+        endLine = endLineBlock.blockNumber()
+        
+        #check the selection end position
+        if endLineBlock.position() < endPos:
+            endLine += 1 # endLine points to the next line after the block we move
         
         if not cursor.hasSelection() or (stLine == endLine):
             #cursor.removeSelectedText()
@@ -381,13 +396,13 @@ class console(QPlainTextEdit):
             cursor.setPosition(pos, QTextCursor.MoveAnchor)
 
             txt = line.text()[:4]
-            print(txt)
             
-            if txt[0] == '\t':
+            if len(txt) > 0 and txt[0] == '\t':
                 cursor.deleteChar()
             else:
-                l = max(len(txt), 4)
+                l = min(len(txt), 4)
                 for j in range(l):
+
                     print('[',txt[j],']')
                     if txt[j] == ' ':
                         print('deleting...')
@@ -398,15 +413,20 @@ class console(QPlainTextEdit):
         else:
 
             for i in range(stLine, endLine):
+
                 line = self.document().findBlockByLineNumber(i)
                 pos = line.position()
                 cursor.setPosition(pos, QTextCursor.MoveAnchor)
 
+                #move selection start to start of the line
+                if i == stLine:
+                    stPos = pos
+
                 txt = line.text()[:4]
                 
-                l = max(len(txt), 4)
+                l = min(len(txt), 4)
                 
-                if txt[0] == '\t':
+                if len(txt) > 0 and txt[0] == '\t':
                     cursor.deleteChar()
                 else:
                     for j in range(l):
@@ -442,7 +462,7 @@ class console(QPlainTextEdit):
         elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Up:
             self.moveLine('up')
 
-        elif event.key() == Qt.Key_Backtab:
+        elif event.key() == Qt.Key_Backtab and not (modifiers & Qt.ControlModifier):
             self.shiftTabKey()
 
         elif event.key() == Qt.Key_Tab and not (modifiers & Qt.ControlModifier):
@@ -955,7 +975,7 @@ class resultSet(QTableWidget):
         
         self.setRowCount(len(rows))
         
-        adjRow = 5 if len(rows) >=5 else len(rows)
+        adjRow = 10 if len(rows) >= 10 else len(rows)
         
         #fill the result table
         for r in range(len(rows)):
@@ -1445,7 +1465,8 @@ class sqlConsole(QWidget):
                 if in create procedure now?
             '''
             
-            if re.match('^\s*create procedure\W.*', s, re.IGNORECASE):
+            if re.match('^\s*create\s+procedure\W.*', s, re.IGNORECASE) or \
+                re.match('^\s*do\s+begin\W.*', s, re.IGNORECASE):
                 return True
             else:
                 return False
