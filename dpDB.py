@@ -187,8 +187,7 @@ class dataProvider():
 
         t1 = time.time()
 
-        if cfg('experimental'):
-            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
 
         t2 = time.time()
         

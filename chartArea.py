@@ -20,7 +20,6 @@ from PyQt5.QtCore import pyqtSignal
 
 # my stuff
 import kpiDescriptions
-from kpiDescriptions import customKpi
 from kpiDescriptions import kpiStylesNN, hType
 from utils import resourcePath
 
