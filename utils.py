@@ -50,16 +50,14 @@ def numberToStr(num, d = 0, fix = True):
     global localeCfg
 
     if localeCfg is None:
-        
-        localeCfg = cfg('locale')
-        
-        try:
-            locale.setlocale(locale.LC_ALL, localeCfg)
-        except Exception as e:
-            localeCfg = ''
-            log('[!] '+ str(e))
-    
-
+        localeCfg = cfg('locale', '')
+        if localeCfg != '':
+            try:
+                locale.setlocale(locale.LC_ALL, localeCfg)
+            except Exception as e:
+                localeCfg = ''
+                log('[!] '+ str(e))
+                
     locale.setlocale(locale.LC_ALL, localeCfg)
     
     if num is None:
@@ -74,18 +72,20 @@ def numberToStr(num, d = 0, fix = True):
 def numberToStrCSV(num, grp = True):
 
     global localeCfg
-
+    
     if localeCfg is None:
         
-        localeCfg = cfg('locale')
-        
-        try:
-            locale.setlocale(locale.LC_ALL, localeCfg)
-        except Exception as e:
-            localeCfg = ''
-            log('[!] '+ str(e))
-    
-    locale.setlocale(locale.LC_ALL, '')
+        localeCfg = cfg('locale', '')
+                
+        if localeCfg != '':
+            try:
+                print (4, localeCfg)
+                locale.setlocale(locale.LC_ALL, localeCfg)
+            except Exception as e:
+                localeCfg = ''
+                log('[!] '+ str(e))
+                
+    locale.setlocale(locale.LC_ALL, localeCfg)
         
     dp = locale.localeconv()['decimal_point']
     
