@@ -1759,8 +1759,10 @@ class sqlConsole(QWidget):
             m = re.search(r'^\s*select\s+top\s+(\d+)', sql, re.I)
             
             if m:
+                explicitLimit = True
                 resultSizeLimit = int(m.group(1))
             else:
+                explicitLimit = False
                 resultSizeLimit = cfg('resultSize', 1000)
                 
             txtSub = txtSub.replace('\n', ' ')
@@ -1806,7 +1808,7 @@ class sqlConsole(QWidget):
                     result.triggerDetachTimer(self.window)
                     break
                     
-            if result.LOBs == False and resultSize == resultSizeLimit:
+            if result.LOBs == False and not explicitLimit and resultSize == resultSizeLimit:
                 print('detaching due to possible SUSPENDED')
                 result.detach()
                 print('done')
