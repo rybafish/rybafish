@@ -1130,6 +1130,14 @@ class sqlConsole(QWidget):
         else:
             filename = self.tabname + '.sqbkp'
             self.backup = filename
+            
+        fnsecure = filename
+
+        # apparently filename is with normal slashes, but getcwd with backslashes on windows, :facepalm:
+        cwd = os.getcwd()
+        cwd = cwd.replace('\\','/') 
+        
+        fnsecure = filename.replace(cwd, '..')
     
         try:
             with open(filename, 'w') as f:
@@ -1139,11 +1147,11 @@ class sqlConsole(QWidget):
                 f.write(data)
                 f.close()
 
-                log('%s backup saved' % filename)
+                log('%s backup saved' % fnsecure)
         
         except Exception as e:
             # so sad...
-            log('[!] %s backup NOT saved' % filename)
+            log('[!] %s backup NOT saved' % fnsecure)
             log('[!]' + str(e))
             
     def keyPressEvent(self, event):

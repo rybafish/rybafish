@@ -505,11 +505,11 @@ class hslWindow(QMainWindow):
             
             actionsMenu.addAction(reloadConfigAct)
 
-            reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
-            reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
-            reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
+        reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
+        reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
+        reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
 
-            actionsMenu.addAction(reloadCustomKPIsAct)
+        actionsMenu.addAction(reloadCustomKPIsAct)
 
         # help menu part
         aboutAct = QAction(QIcon(iconPath), '&About', self)
