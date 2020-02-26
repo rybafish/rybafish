@@ -745,7 +745,8 @@ class resultSet(QTableWidget):
         
         itemFont = QTableWidgetItem('').font()
         #QFont ('SansSerif', 10)
-        rowHeight = scale * QFontMetricsF(itemFont).height() + 7
+        #rowHeight = scale * QFontMetricsF(itemFont).height() + 7 
+        rowHeight = scale * QFontMetricsF(itemFont).height() + 8
         
         #rowHeight = 19
         
@@ -759,7 +760,15 @@ class resultSet(QTableWidget):
         self.keyPressEvent = self.resultKeyPressHandler
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        
+        #self.setStyleSheet('padding: 8px ')
 
+        #self.setStyleSheet('QTableWidget::item {padding: 2px; border: 1px}')
+        #self.setStyleSheet('QTableWidget::item {margin: 3px; border: 1px}')
+        
+        #self.setStyleSheet('QTableWidget::item {padding: 2px; border: 1px; selection-background-color}')
+        #self.setStyleSheet('QTableWidget::item:selected {padding: 2px; border: 1px; background-color: #08D}')
+        
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
@@ -995,7 +1004,7 @@ class resultSet(QTableWidget):
                         val = utils.numberToStr(val)
                     
                     item = QTableWidgetItem(val)
-                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    #item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 elif db.ifLOBType(cols[c][1]): #LOB
                     #val = val.read()
                     if db.ifBLOBType(cols[c][1]):
@@ -1007,9 +1016,13 @@ class resultSet(QTableWidget):
                         val = str(val)
                     item = QTableWidgetItem(val)
                     
+                    item.setBackground(QBrush(QColor('#eee')))
+                    
+                    #item.setBackground(QColor('#123'))
+                    
                     #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
-                    #print(val)
+                    #item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
+
                 elif db.ifRAWType(cols[c][1]): #VARBINARY
                     val = val.hex()
                     
@@ -1024,7 +1037,15 @@ class resultSet(QTableWidget):
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                     
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                
+                if db.ifNumericType(cols[c][1]):
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                else:
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                
                 self.setItem(r, c, item) # Y-Scale
+                
+                #self.setBackgroundColor(r, c, QColor('#123'))
 
             if r == adjRow - 1:
                 self.resizeColumnsToContents();
@@ -1446,9 +1467,12 @@ class sqlConsole(QWidget):
         
         rows = [
                 ['name 1','select * from dummy fake blob 1', 1024, 1/12500, datetime.datetime.now()],
-                ['name 2','select * from dummy blob 2', 22254, 2/3, datetime.datetime.now()],
+                ['name 2','select * from \r\n dummy blob 2', 22254, 2/3, datetime.datetime.now()],
                 ['name 3','select 1/16 from dummy blob 3', 654654, 1/16, datetime.datetime.now()],
-                ['name 4','select 10000 from dummy blob 3', 654654, 10000, datetime.datetime.now()]
+                ['name 4','''select 10000 from dummy blob 3 
+                
+                and too many 
+                characters''', 654654, 10000, datetime.datetime.now()]
             ]
         
         result = self.newResult(self.conn)
