@@ -114,10 +114,12 @@ class dataProvider():
                     log('Connection restored automatically')
                 else:
                     log('Some connection issue, give up')
+                    self.timer.stop()
                     self.connection = None
             except:
                 log('Connection lost, give up')
-                # print disable the timer?
+
+                self.timer.stop()
                 self.connection = None
             
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
@@ -358,16 +360,16 @@ class dataProvider():
         
         # self.lock = False
 
-        print('before clnp', kpiIn)
+        #print('before clnp', kpiIn)
         #remove disabled stuff
         
         for kpi in kpiIn.copy():
-            print('kpi: ', kpi)
+            #print('kpi: ', kpi)
             if 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
                 # this will affect the actual list of enabled kpis, which is good!
                 kpiIn.remove(kpi)
                 
-        print('after clnp', kpiIn)
+        #print('after clnp', kpiIn)
         
         return 
 

@@ -434,10 +434,15 @@ class console(QPlainTextEdit):
                             break
                 
             #calculate last line end position to update selection
-            endPos = pos + len(line.text()) + 1
+
+            if endLine < self.document().blockCount():
+                endPos = pos + len(line.text()) + 1
+            else:
+                endPos = pos + len(line.text())
             
             cursor.clearSelection()
             cursor.setPosition(stPos, QTextCursor.MoveAnchor)
+            
             cursor.setPosition(endPos, QTextCursor.KeepAnchor)
             
         self.setTextCursor(cursor)
@@ -760,8 +765,9 @@ class resultSet(QTableWidget):
         self.keyPressEvent = self.resultKeyPressHandler
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        
-        #self.setStyleSheet('padding: 8px ')
+
+        # any style change resets everything to some defaults....
+        # like selected color, etc. just gave up.
 
         #self.setStyleSheet('QTableWidget::item {padding: 2px; border: 1px}')
         #self.setStyleSheet('QTableWidget::item {margin: 3px; border: 1px}')
@@ -1004,7 +1010,7 @@ class resultSet(QTableWidget):
                         val = utils.numberToStr(val)
                     
                     item = QTableWidgetItem(val)
-                    #item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 elif db.ifLOBType(cols[c][1]): #LOB
                     #val = val.read()
                     if db.ifBLOBType(cols[c][1]):
@@ -1016,17 +1022,16 @@ class resultSet(QTableWidget):
                         val = str(val)
                     item = QTableWidgetItem(val)
                     
-                    item.setBackground(QBrush(QColor('#eee')))
+                    if cfg('highlightLOBs'):
+                        item.setBackground(QBrush(QColor('#fafafa')))
                     
-                    #item.setBackground(QColor('#123'))
-                    
-                    #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    #item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
 
                 elif db.ifRAWType(cols[c][1]): #VARBINARY
                     val = val.hex()
                     
                     item = QTableWidgetItem(val)
+                    
                 elif db.ifTSType(cols[c][1]):
                     val = val.isoformat(' ', timespec='milliseconds') 
                     item = QTableWidgetItem(val)
@@ -1038,10 +1043,12 @@ class resultSet(QTableWidget):
                     
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 
+                '''
                 if db.ifNumericType(cols[c][1]):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 else:
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                '''
                 
                 self.setItem(r, c, item) # Y-Scale
                 
@@ -1065,7 +1072,10 @@ class resultSet(QTableWidget):
                 else:
                     blob = str(self.rows[i][j])
             else:
-                blob = self.rows[i][j].read()
+                if self.rows[i][j]:
+                    blob = self.rows[i][j].read()
+                else:
+                    self.log('null value')
                 
             self.rows[i][j].seek(0) #rewind just in case
         else:
@@ -1214,11 +1224,6 @@ class sqlConsole(QWidget):
 
                 f.write(data)
                 f.close()
-
-
-                print('filename', filename)
-                print('filename', os.path.basename(filename))
-
 
                 basename = os.path.basename(filename)
                 self.tabname = basename.split('.')[0]

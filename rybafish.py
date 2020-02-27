@@ -58,12 +58,13 @@ class ExceptionHandler(QtCore.QObject):
         log(details, nots = True)
 
 
-        for i in range(ryba.tabs.count() -1, 0, -1):
+        if ryba.tabs:
+            for i in range(ryba.tabs.count() -1, 0, -1):
 
-            w = ryba.tabs.widget(i)
-            
-            if isinstance(w, sqlConsole.sqlConsole):
-                w.delayBackup()
+                w = ryba.tabs.widget(i)
+                
+                if isinstance(w, sqlConsole.sqlConsole):
+                    w.delayBackup()
 
         msgBox = QMessageBox()
         msgBox.setWindowTitle('Fatal error')

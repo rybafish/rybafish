@@ -45,6 +45,8 @@ class hslWindow(QMainWindow):
     def __init__(self):
     
         self.sqlTabCounter = 0 #static tab counter
+        
+        self.tabs = None
     
         super().__init__()
         self.initUI()
@@ -489,8 +491,9 @@ class hslWindow(QMainWindow):
 
         fileMenu.addAction(exitAct)
         
+        actionsMenu = menubar.addMenu('&Actions')
+        
         if cfg('experimental'):
-            actionsMenu = menubar.addMenu('&Actions')
             # fileMenu.addAction(aboutAct) -- print not sure why its here
 
             fontAct = QAction('&Adjust Fonts', self)
@@ -527,8 +530,8 @@ class hslWindow(QMainWindow):
         helpMenu = menubar.addMenu('&Help')
         helpMenu.addAction(confHelpAct)
         
-        if cfg('experimental'):
-            helpMenu.addAction(confCustomHelpAct)
+        
+        helpMenu.addAction(confCustomHelpAct)
             
         helpMenu.addAction(aboutAct)
 
