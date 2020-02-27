@@ -216,7 +216,10 @@ class hslWindow(QMainWindow):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
                     self.chartArea.reloadChart()
 
-                self.tabs.setTabText(0, conf['user'] + '@' + self.chartArea.dp.dbProperties['sid'])
+                propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
+                
+                self.tabs.setTabText(0, propStr)
+                self.setWindowTitle('RybaFish Charts [%s]' % propStr)
                 
                 #setup keep alives
                 
@@ -537,7 +540,7 @@ class hslWindow(QMainWindow):
 
         # finalization
         self.setGeometry(200, 200, 1400, 800)
-        self.setWindowTitle('Ryba Fish Charts')
+        self.setWindowTitle('RybaFish Charts')
         
         self.setWindowIcon(QIcon(iconPath))
         
