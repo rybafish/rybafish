@@ -314,7 +314,7 @@ class hslWindow(QMainWindow):
                 
             conf = self.connectionConf
                
-            self.statusMessage('Connecting console...', False)
+            self.statusMessage('Connecting console...', True)
             
             console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
             
@@ -336,7 +336,7 @@ class hslWindow(QMainWindow):
             self.statusMessage('No configuration...', False)
             return
             
-        self.statusMessage('Connecting...', False)
+        self.statusMessage('Connecting...', True)
 
 
         #idx = self.tabs.count()

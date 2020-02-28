@@ -1023,7 +1023,7 @@ class resultSet(QTableWidget):
                     item = QTableWidgetItem(val)
                     
                     if cfg('highlightLOBs'):
-                        item.setBackground(QBrush(QColor('#fafafa')))
+                        item.setBackground(QBrush(QColor('#f4f4f4')))
                     
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
 
