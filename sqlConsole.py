@@ -216,12 +216,23 @@ class console(QPlainTextEdit):
         if cfg('developmentMode'):
             cmenu.addSeparator()
             menuTest = cmenu.addAction('Test menu')
-        
+            createDummyTable = cmenu.addAction('Generate test')
+            createClearResults = cmenu.addAction('Clear results')
+
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
+
+
+        if cfg('developmentMode'):
+            if action == createDummyTable:
+                self.parent.closeResults()
+                self.parent.dummyResultTable2(10 * 1000)
+
+            if action == createClearResults:
+                self.parent.closeResults()
+
 
         if action == menuExec:
             self.executionTriggered.emit()
-            
         elif action == menuDisconnect:
             self.disconnectSignal.emit()
         elif action == menuConnect:
@@ -811,7 +822,7 @@ class resultSet(QTableWidget):
         if self._resultset_id is None:
             # could be if the result did not have result: for example DDL or error statement
             # but it's strange we are detachung it...
-            print('atttemnted to detach resultset with no _resultset_id')
+            log('attempted to detach resultset with no _resultset_id')
             return
             
         result_str = binascii.hexlify(bytearray(self._resultset_id)).decode('ascii')
@@ -831,7 +842,7 @@ class resultSet(QTableWidget):
 
     def detachCB(self):
         print('detach timer triggered')
-        #print('do we need to stop the timer?')
+        
         self.detachTimer.stop()
         self.detachTimer = None
         self.detach()
@@ -1281,7 +1292,9 @@ class sqlConsole(QWidget):
     
     def close(self, cancelPossible = True):
     
-        print('closing sql console...')
+        log('closing sql console...')
+        
+        self.closeResults()
     
         if self.unsavedChanges:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible)
@@ -1312,6 +1325,7 @@ class sqlConsole(QWidget):
             log('close() exception: '+ str(e))
             super().close()
             return True
+        
 
         super().close()
         
@@ -1399,17 +1413,30 @@ class sqlConsole(QWidget):
                 
             self.detachResultSets()
         '''
-    
+        
         for i in range(len(self.results) - 1, -1, -1):
-            self.resultTabs.removeTab(i)
             
+            self.resultTabs.removeTab(i)
+
             result = self.results[i]
+            
+            
+            #model = result.model()
+            #model.removeRows(0, 10000)
+
             result.clear()
+
+            del(result.cols)
+            del(result.rows)
             
             if result.LOBs and not result.detached:
                 result.detach()
             
-            del(self.results[i])
+            result.destroy()
+            #result.deleteLater()
+            
+            del(result)
+            del self.results[i]
             
     def enableKeepAlive(self, window, keepalive):
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
@@ -1458,6 +1485,28 @@ class sqlConsole(QWidget):
         else:
             self.logArea.appendPlainText(text)
         
+    def dummyResultTable2(self, n):
+        row0 = []
+    
+        cols = [
+            ['Name',11],
+            ['Integer',3],
+            ['Decimal',5]
+        ]
+
+        
+        rows = []
+        for i in range(n):
+            row = ['name ' + str(i), i, i/312]
+            rows.append(row)
+        
+        result = self.newResult(self.conn)
+        
+        result.rows = rows
+        result.cols = cols
+        
+        result.populate()
+    
     def dummyResultTable(self):
     
         row0 = []
@@ -1481,6 +1530,7 @@ class sqlConsole(QWidget):
             ]
         
         result = self.newResult(self.conn)
+        result.parent = self
         
         result.rows = rows
         result.cols = cols
@@ -1584,7 +1634,7 @@ class sqlConsole(QWidget):
         
         # main per character loop:
 
-        print('from to: ', scanFrom, scanTo)
+        # print('from to: ', scanFrom, scanTo)
         
         # startDelta = 0
         # clearDelta = False
@@ -1900,6 +1950,8 @@ class sqlConsole(QWidget):
         
         #self.cons = QPlainTextEdit()
         self.cons = console()
+        
+        self.cons.parent = self
         
         self.cons.executionTriggered.connect(self.executeSelection)
         
