@@ -398,8 +398,9 @@ class myWidget(QWidget):
 
         time = self.posToTime(pos.x())
         
-        if action == fakeDisconnection:
-            self._parent.dp.connection = None
+        if cfg('developmentMode') and action == fakeDisconnection:
+            log('dp.fakeDisconnect = True')
+            self._parent.dp.fakeDisconnect = True
         
         if action == savePNG:
             if not os.path.isdir('screens'):

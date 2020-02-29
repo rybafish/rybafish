@@ -96,6 +96,8 @@ class dataProvider():
     def keepAlive(self):
     
         if self.connection is None:
+            log('no connection, disabeling the keep-alive timer')
+            self.timer.stop()
             return
 
         try:
@@ -103,6 +105,11 @@ class dataProvider():
             
             t0 = time.time()
             db.execute_query(self.connection, 'select * from dummy', [])
+            
+            if hasattr(self, 'fakeDisconnect'):
+                print ('generate an exception...')
+                print (10/0)
+            
             t1 = time.time()
             log('ok: %s ms' % (str(round(t1-t0, 3))), True)
         except dbException as e:
@@ -121,6 +128,11 @@ class dataProvider():
 
                 self.timer.stop()
                 self.connection = None
+        except Exception as e:
+            log('[!] unexpected exception, disable the connection')
+            log('[!] %s' % str(e))
+            self.connection = None
+        
             
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
     

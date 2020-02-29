@@ -1476,6 +1476,11 @@ class sqlConsole(QWidget):
                 log('Connection lost, give up')
                 # print disable the timer?
                 self.conn = None
+        except Exception as e:
+            log('[!] unexpected exception, disable the connection')
+            log('[!] %s' % str(e))
+            
+            self.conn = None
                         
     def log(self, text, error = False):
         #self.logArea.setPlainText(self.logArea.toPlainText() + '\n' + text)
