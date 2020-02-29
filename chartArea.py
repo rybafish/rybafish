@@ -386,6 +386,10 @@ class myWidget(QWidget):
         saveVAPNG = cmenu.addAction("Save screen")
         copyPNG = cmenu.addAction("Copy full area")
         savePNG = cmenu.addAction("Save full area")
+
+        if cfg('developmentMode'):
+            cmenu.addSeparator()
+            fakeDisconnection = cmenu.addAction("fake disconnection")
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -393,6 +397,9 @@ class myWidget(QWidget):
         pos = event.pos()
 
         time = self.posToTime(pos.x())
+        
+        if action == fakeDisconnection:
+            self._parent.dp.connection = None
         
         if action == savePNG:
             if not os.path.isdir('screens'):
@@ -1832,6 +1839,8 @@ class chartArea(QFrame):
         lo.addWidget(self.scrollarea)
         
         self.widget = myWidget()
+        
+        self.widget._parent = self
 
         try:
             if cfg('color-bg'):

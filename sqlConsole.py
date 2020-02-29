@@ -216,7 +216,7 @@ class console(QPlainTextEdit):
         if cfg('developmentMode'):
             cmenu.addSeparator()
             menuTest = cmenu.addAction('Test menu')
-            createDummyTable = cmenu.addAction('Generate test')
+            createDummyTable = cmenu.addAction('Generate test result')
             createClearResults = cmenu.addAction('Clear results')
 
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
@@ -224,11 +224,11 @@ class console(QPlainTextEdit):
 
         if cfg('developmentMode'):
             if action == createDummyTable:
-                self.parent.closeResults()
-                self.parent.dummyResultTable2(10 * 1000)
+                self._parent.closeResults()
+                self._parent.dummyResultTable2(10 * 1000)
 
             if action == createClearResults:
-                self.parent.closeResults()
+                self._parent.closeResults()
 
 
         if action == menuExec:
@@ -1530,7 +1530,7 @@ class sqlConsole(QWidget):
             ]
         
         result = self.newResult(self.conn)
-        result.parent = self
+        result._parent = self
         
         result.rows = rows
         result.cols = cols
@@ -1951,7 +1951,7 @@ class sqlConsole(QWidget):
         #self.cons = QPlainTextEdit()
         self.cons = console()
         
-        self.cons.parent = self
+        self.cons._parent = self
         
         self.cons.executionTriggered.connect(self.executeSelection)
         
