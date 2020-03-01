@@ -51,7 +51,7 @@ def generateTabName():
 
 class console(QPlainTextEdit):
 
-    executionTriggered = pyqtSignal([bool])
+    executionTriggered = pyqtSignal(['QString'])
     
     closeSignal = pyqtSignal()
     goingToCrash = pyqtSignal()
@@ -207,6 +207,7 @@ class console(QPlainTextEdit):
 
         menuExec = cmenu.addAction('Execute selection\tF8')
         menuExecNP = cmenu.addAction('Execute without parsing')
+        menuExecLR = cmenu.addAction('Execute, leave results')
         cmenu.addSeparator()
         menuOpenFile = cmenu.addAction('Open File in this console')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
@@ -234,9 +235,11 @@ class console(QPlainTextEdit):
 
 
         if action == menuExec:
-            self.executionTriggered.emit(False)
+            self.executionTriggered.emit('normal')
         if action == menuExecNP:
-            self.executionTriggered.emit(True)
+            self.executionTriggered.emit('no parsing')
+        if action == menuExecLR:
+            self.executionTriggered.emit('leave results')
         elif action == menuDisconnect:
             self.disconnectSignal.emit()
         elif action == menuConnect:
@@ -1565,19 +1568,24 @@ class sqlConsole(QWidget):
 
         self.executeStatement(result.statement, result, True)
         
-    def executeSelection(self, noParsing):
-        if noParsing:
-            self.executeSelectionNP()
-        else:
+    def executeSelection(self, mode):
+        if mode == 'normal':
             self.executeSelectionParse()
+        elif mode == 'no parsing':
+            self.executeSelectionNP(False)
+        elif mode == 'no parsint':
+            self.executeSelectionNP(True)
             
-    def executeSelectionNP(self):
+    def executeSelectionNP(self, leaveResults):
     
         cursor = self.cons.textCursor()
     
         if cursor.selection().isEmpty():
             self.log('You need to select statement manually for this option')
             return
+
+        if leaveResults == False:
+            self.closeResults()
 
         statement = cursor.selection().toPlainText()
         
