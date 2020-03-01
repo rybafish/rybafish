@@ -51,7 +51,8 @@ def generateTabName():
 
 class console(QPlainTextEdit):
 
-    executionTriggered = pyqtSignal()
+    executionTriggered = pyqtSignal([bool])
+    
     closeSignal = pyqtSignal()
     goingToCrash = pyqtSignal()
     
@@ -205,6 +206,7 @@ class console(QPlainTextEdit):
         cmenu = QMenu(self)
 
         menuExec = cmenu.addAction('Execute selection\tF8')
+        menuExecNP = cmenu.addAction('Execute without parsing')
         cmenu.addSeparator()
         menuOpenFile = cmenu.addAction('Open File in this console')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
@@ -232,7 +234,9 @@ class console(QPlainTextEdit):
 
 
         if action == menuExec:
-            self.executionTriggered.emit()
+            self.executionTriggered.emit(False)
+        if action == menuExecNP:
+            self.executionTriggered.emit(True)
         elif action == menuDisconnect:
             self.disconnectSignal.emit()
         elif action == menuConnect:
@@ -465,7 +469,7 @@ class console(QPlainTextEdit):
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
-            self.executionTriggered.emit()
+            self.executionTriggered.emit(False)
 
         elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
             self.duplicateLine()
@@ -1561,7 +1565,26 @@ class sqlConsole(QWidget):
 
         self.executeStatement(result.statement, result, True)
         
-    def executeSelection(self):
+    def executeSelection(self, noParsing):
+        if noParsing:
+            self.executeSelectionNP()
+        else:
+            self.executeSelectionParse()
+            
+    def executeSelectionNP(self):
+    
+        cursor = self.cons.textCursor()
+    
+        if cursor.selection().isEmpty():
+            self.log('You need to select statement manually for this option')
+            return
+
+        statement = cursor.selection().toPlainText()
+        
+        result = self.newResult(statement, self.conn)
+        self.executeStatement(statement, result)
+        
+    def executeSelectionParse(self):
     
         txt = ''
         statements = []
