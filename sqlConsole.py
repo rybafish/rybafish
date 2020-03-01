@@ -738,9 +738,12 @@ class resultSet(QTableWidget):
     '''
 
     def __init__(self, conn):
+    
         self._resultset_id = None    # filled manually right after execute_query
 
         self._connection = conn
+        
+        self.statement = None        # statements string (for refresh)
         
         self.LOBs = False            # if the result contains LOBs
         self.detached = None         # supposed to be defined only if LOBs = True
@@ -967,11 +970,11 @@ class resultSet(QTableWidget):
                     result = '\n'.join(rows)
                     
                     QApplication.clipboard().setText(result)
-                        
+        
         else:
             super().keyPressEvent(event)
             
-    def populate(self):
+    def populate(self, refreshMode = False):
         '''
             populates the result set based on
             self.rows, self.cols
@@ -995,7 +998,9 @@ class resultSet(QTableWidget):
         self.setColumnCount(len(row0))
 
         self.setHorizontalHeaderLabels(row0)
-        self.resizeColumnsToContents();
+        
+        if not refreshMode:
+            self.resizeColumnsToContents()
         
         self.setRowCount(len(rows))
         
@@ -1065,7 +1070,7 @@ class resultSet(QTableWidget):
                 
                 #self.setBackgroundColor(r, c, QColor('#123'))
 
-            if r == adjRow - 1:
+            if r == adjRow - 1 and not refreshMode:
                 self.resizeColumnsToContents();
                 
                 for i in range(len(row0)):
@@ -1118,7 +1123,7 @@ class sqlConsole(QWidget):
         self.backup = None
     
         self.results = [] #list of resultsets
-        self.resultTabs = None #tabs widget
+        self.resultTabs = None # tabs widget
 
         super().__init__()
         self.initUI()
@@ -1384,9 +1389,11 @@ class sqlConsole(QWidget):
             self.log('re-connected')
             self.conn = conn
             
-    def newResult(self, conn):
+    def newResult(self, conn, st):
         
         result = resultSet(conn)
+        result.statement = st
+        
         result.log = self.log
         
         if len(self.results) > 0:
@@ -1505,7 +1512,7 @@ class sqlConsole(QWidget):
             row = ['name ' + str(i), i, i/312]
             rows.append(row)
         
-        result = self.newResult(self.conn)
+        result = self.newResult(self.conn, 'select * from dummy')
         
         result.rows = rows
         result.cols = cols
@@ -1534,7 +1541,7 @@ class sqlConsole(QWidget):
                 characters''', 654654, 10000, datetime.datetime.now()]
             ]
         
-        result = self.newResult(self.conn)
+        result = self.newResult(self.conn, '<None>')
         result._parent = self
         
         result.rows = rows
@@ -1542,6 +1549,18 @@ class sqlConsole(QWidget):
         
         result.populate()
     
+    def refresh(self, idx):
+        '''
+            executed the attached statement without full table cleanup
+            and header processing
+        '''
+        
+        result = self.results[idx]
+        
+        #result.clear()
+
+        self.executeStatement(result.statement, result, True)
+        
     def executeSelection(self):
     
         txt = ''
@@ -1556,6 +1575,7 @@ class sqlConsole(QWidget):
             '''
             
             if re.match('^\s*create\s+procedure\W.*', s, re.IGNORECASE) or \
+                re.match('^\s*create\s+function\W.*', s, re.IGNORECASE) or \
                 re.match('^\s*do\s+begin\W.*', s, re.IGNORECASE):
                 return True
             else:
@@ -1739,20 +1759,22 @@ class sqlConsole(QWidget):
         if F9 and (start <= cursorPos <= stop):
             #print('-> [%s] ' % txt[start:stop])
             
-            result = self.newResult(self.conn)
-            self.executeStatement(txt[start:stop], result)
+            st = txt[start:stop]
+            result = self.newResult(self.conn, st)
+            self.executeStatement(st, result)
             
         elif F9 and (start > stop and start <= cursorPos): # no semicolon in the end
             #print('-> [%s] ' % txt[start:scanTo])
+            st = txt[start:scanTo]
 
-            result = self.newResult(self.conn)
-            self.executeStatement(txt[start:scanTo], result)
+            result = self.newResult(self.conn, st)
+            self.executeStatement(st, result)
 
         else:
             for st in statements:
                 #print('--> [%s]' % st)
                 
-                result = self.newResult(self.conn)
+                result = self.newResult(self.conn, st)
                 self.executeStatement(st, result)
                 
                 #self.update()
@@ -1794,7 +1816,7 @@ class sqlConsole(QWidget):
         else:
             return False
             
-    def executeStatement(self, sql, result):
+    def executeStatement(self, sql, result, refreshMode = False):
         '''
             executes the string without any analysis
             result filled
@@ -1922,7 +1944,7 @@ class sqlConsole(QWidget):
                 self.connectionLost()
             return
 
-        result.populate()
+        result.populate(refreshMode)
             
         return
 
@@ -1946,6 +1968,23 @@ class sqlConsole(QWidget):
             QPlainTextEdit.keyPressEvent(self.cons, event)
     '''
         
+    def resultTabsKey (self, event):
+        super().keyPressEvent(event)
+        print('key')
+
+        modifiers = QApplication.keyboardModifiers()
+
+        if not ((modifiers & Qt.ControlModifier) or (modifiers & Qt.AltModifier)):
+            if event.key() == Qt.Key_F8 or event.key() == Qt.Key_F9 or event.key() == Qt.Key_F5:
+                i = self.resultTabs.currentIndex()
+                log('refresh %i', i)
+                self.refresh(i) # we refresh by index here...
+                return
+                
+        print('key 2')
+
+        super().keyPressEvent(event)
+        
     def initUI(self):
         '''
             main sqlConsole UI 
@@ -1965,6 +2004,8 @@ class sqlConsole(QWidget):
         
         self.resultTabs = QTabWidget()
         
+        self.resultTabs.keyPressEvent = self.resultTabsKey
+                
         spliter = QSplitter(Qt.Vertical)
         self.logArea = QPlainTextEdit()
         
