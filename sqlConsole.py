@@ -207,7 +207,7 @@ class console(QPlainTextEdit):
 
         menuExec = cmenu.addAction('Execute selection\tF8')
         menuExecNP = cmenu.addAction('Execute without parsing')
-        menuExecLR = cmenu.addAction('Execute, leave results')
+        menuExecLR = cmenu.addAction('Execute but leave results')
         cmenu.addSeparator()
         menuOpenFile = cmenu.addAction('Open File in this console')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
@@ -472,7 +472,7 @@ class console(QPlainTextEdit):
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
-            self.executionTriggered.emit(False)
+            self.executionTriggered.emit('normal')
 
         elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
             self.duplicateLine()
@@ -861,7 +861,7 @@ class resultSet(QTableWidget):
         log('Setting detach timer')
         self.detachTimer = QTimer(window)
         self.detachTimer.timeout.connect(self.detachCB)
-        self.detachTimer.start(1000 * 256)
+        self.detachTimer.start(1000 * 25)
     
     def csvRow(self, r):
         
@@ -1306,8 +1306,6 @@ class sqlConsole(QWidget):
     
         log('closing sql console...')
         
-        self.closeResults()
-    
         if self.unsavedChanges:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible)
             
@@ -1325,6 +1323,8 @@ class sqlConsole(QWidget):
             
             if answer == True:
                 self.saveFile()
+                
+        self.closeResults()
 
         try: 
             if self.conn is not None:
@@ -1573,7 +1573,7 @@ class sqlConsole(QWidget):
             self.executeSelectionParse()
         elif mode == 'no parsing':
             self.executeSelectionNP(False)
-        elif mode == 'no parsint':
+        elif mode == 'leave results':
             self.executeSelectionNP(True)
             
     def executeSelectionNP(self, leaveResults):
@@ -1589,7 +1589,7 @@ class sqlConsole(QWidget):
 
         statement = cursor.selection().toPlainText()
         
-        result = self.newResult(statement, self.conn)
+        result = self.newResult(self.conn, statement)
         self.executeStatement(statement, result)
         
     def executeSelectionParse(self):
@@ -1774,10 +1774,8 @@ class sqlConsole(QWidget):
         #if F9 and (start <= cursorPos < stop):
         #print so not sure abous this change
         if F9 and (start <= cursorPos <= stop) and (start < stop):
-            print('m1')
             selectSingle(start, stop)
         elif F9 and (start > stop and start <= cursorPos): # no semicolon in the end
-            print('m2')
             selectSingle(start, scanTo)
         else:
             if not F9:
@@ -2001,19 +1999,16 @@ class sqlConsole(QWidget):
         
     def resultTabsKey (self, event):
         super().keyPressEvent(event)
-        print('key')
 
         modifiers = QApplication.keyboardModifiers()
 
         if not ((modifiers & Qt.ControlModifier) or (modifiers & Qt.AltModifier)):
             if event.key() == Qt.Key_F8 or event.key() == Qt.Key_F9 or event.key() == Qt.Key_F5:
                 i = self.resultTabs.currentIndex()
-                log('refresh %i', i)
+                log('refresh %i' % i)
                 self.refresh(i) # we refresh by index here...
                 return
                 
-        print('key 2')
-
         super().keyPressEvent(event)
         
     def initUI(self):
