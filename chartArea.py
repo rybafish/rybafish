@@ -1779,6 +1779,7 @@ class chartArea(QFrame):
             
         self.refreshCB.addItem('1 minute')
         self.refreshCB.addItem('5 minutes')
+        self.refreshCB.addItem('10 minutes')
         self.refreshCB.addItem('15 minutes')
         self.refreshCB.addItem('30 minutes')
         
@@ -1850,13 +1851,11 @@ class chartArea(QFrame):
                 p.setColor(self.scrollarea.backgroundRole(), bgcolor)
                 self.scrollarea.setPalette(p)
                 
-                print('--------------------')
                 rgb = bgcolor.getRgb()
-                print(bgcolor.rgb(), rgb[0] + rgb[1] + rgb[2])
                 
-                if rgb[0] + rgb[1] + rgb[2] >= 250*3: #smthng close to white!
-                    self.widget.gridColor = QColor('#EEE') #ddd
-                    self.widget.gridColorMj = QColor('#CCC') #aaa
+                if rgb[0] + rgb[1] + rgb[2] >= 250*3: #smthng close to white
+                    self.widget.gridColor = QColor('#EEE')
+                    self.widget.gridColorMj = QColor('#CCC')
                 
         except:
             log('[E] wrong color-bg value')
