@@ -340,6 +340,12 @@ def ifTSType(t):
         return True
     else:
         return False
+
+def ifVarcharType(t):
+    if t == type_codes.VARCHAR or t == type_codes.NVARCHAR:
+        return True
+    else:
+        return False
         
 def ifDecimalType(t):
     if t in (type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):

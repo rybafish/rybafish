@@ -1054,7 +1054,16 @@ class resultSet(QTableWidget):
                     val = val.hex()
                     
                     item = QTableWidgetItem(val)
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     
+                elif db.ifVarcharType(cols[c][1]):
+                    item = QTableWidgetItem(val)
+                    
+                    if '\n' in val:
+                        item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
+                    else:
+                        item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
+                
                 elif db.ifTSType(cols[c][1]):
                     val = val.isoformat(' ', timespec='milliseconds') 
                     item = QTableWidgetItem(val)
@@ -1545,6 +1554,9 @@ class sqlConsole(QWidget):
                 ['name 4','''select 10000 from dummy blob 3 
                 
                 and too many 
+                
+                \n
+                
                 characters''', 654654, 10000, datetime.datetime.now()]
             ]
         
