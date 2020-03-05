@@ -1107,7 +1107,7 @@ class resultSet(QTableWidget):
                 if self.rows[i][j]:
                     blob = self.rows[i][j].read()
                 else:
-                    self.log('null value')
+                    blob = '<Null value>'
                 
             self.rows[i][j].seek(0) #rewind just in case
         else:
