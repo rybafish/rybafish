@@ -861,7 +861,7 @@ class resultSet(QTableWidget):
         log('Setting detach timer')
         self.detachTimer = QTimer(window)
         self.detachTimer.timeout.connect(self.detachCB)
-        self.detachTimer.start(1000 * 25)
+        self.detachTimer.start(1000 * 256)
     
     def csvRow(self, r):
         
@@ -1042,7 +1042,12 @@ class resultSet(QTableWidget):
                         else:
                             val = str(val.encode())
                     else:
-                        val = str(val)
+#                        val = str(val)
+                        if val is None:
+                            val = utils.cfg('nullString', '?')
+                        else:
+                            val = str(val)
+                            
                     item = QTableWidgetItem(val)
                     
                     if cfg('highlightLOBs'):
@@ -1104,12 +1109,13 @@ class resultSet(QTableWidget):
                 else:
                     blob = str(self.rows[i][j])
             else:
-                if self.rows[i][j]:
+                if self.rows[i][j] is not None:
                     blob = self.rows[i][j].read()
                 else:
                     blob = '<Null value>'
-                
-            self.rows[i][j].seek(0) #rewind just in case
+
+            if self.rows[i][j]:
+                self.rows[i][j].seek(0) #rewind just in case
         else:
             blob = str(self.rows[i][j])
 
