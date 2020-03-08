@@ -204,7 +204,7 @@ class console(QPlainTextEdit):
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
-
+        
         menuExec = cmenu.addAction('Execute selection\tF8')
         menuExecNP = cmenu.addAction('Execute without parsing')
         menuExecLR = cmenu.addAction('Execute but leave results')
@@ -224,11 +224,10 @@ class console(QPlainTextEdit):
 
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
-
         if cfg('developmentMode'):
             if action == createDummyTable:
                 self._parent.closeResults()
-                self._parent.dummyResultTable2(10 * 1000)
+                self._parent.dummyResultTable2(200 * 1000)
 
             if action == createClearResults:
                 self._parent.closeResults()
@@ -255,7 +254,6 @@ class console(QPlainTextEdit):
             cursor.removeSelectedText()
             cursor.insertText('123')
             self.setTextCursor(cursor)
-            pass
             
     def findString(self, str):
     
@@ -1006,12 +1004,15 @@ class resultSet(QTableWidget):
 
         self.setHorizontalHeaderLabels(row0)
         
+        
         if not refreshMode:
             self.resizeColumnsToContents()
         
         self.setRowCount(len(rows))
         
         adjRow = 10 if len(rows) >= 10 else len(rows)
+
+        #return <-- it leaks even before this point
         
         #fill the result table
         for r in range(len(rows)):
@@ -1080,16 +1081,8 @@ class resultSet(QTableWidget):
                     
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 
-                '''
-                if db.ifNumericType(cols[c][1]):
-                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                else:
-                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                '''
                 
                 self.setItem(r, c, item) # Y-Scale
-                
-                #self.setBackgroundColor(r, c, QColor('#123'))
 
             if r == adjRow - 1 and not refreshMode:
                 self.resizeColumnsToContents();
@@ -1434,14 +1427,6 @@ class sqlConsole(QWidget):
         '''
             closes all results tabs, detaches resultsets if any LOBs
         '''
-        '''
-        if self.detachResults:
-            if self.detachTimer is not None:
-                self.detachTimer.stop()
-                self.detachTimer = None
-                
-            self.detachResultSets()
-        '''
         
         for i in range(len(self.results) - 1, -1, -1):
             
@@ -1461,11 +1446,13 @@ class sqlConsole(QWidget):
             if result.LOBs and not result.detached:
                 result.detach()
             
-            result.destroy()
+            #result.destroy()
             #result.deleteLater()
             
             del(result)
             del self.results[i]
+            
+        self.results.clear()
             
     def enableKeepAlive(self, window, keepalive):
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
@@ -1525,13 +1512,14 @@ class sqlConsole(QWidget):
         cols = [
             ['Name',11],
             ['Integer',3],
-            ['Decimal',5]
+            ['Decimal',5],
+            ['Str',11]
         ]
 
         
         rows = []
         for i in range(n):
-            row = ['name ' + str(i), i, i/312]
+            row = ['name ' + str(i), i, i/312, 'String String String String String String String String']
             rows.append(row)
         
         result = self.newResult(self.conn, 'select * from dummy')
