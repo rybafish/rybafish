@@ -784,6 +784,8 @@ class resultSet(QTableWidget):
         self.keyPressEvent = self.resultKeyPressHandler
         
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        
+        self.horizontalHeader().setMinimumSectionSize(0)
 
         # any style change resets everything to some defaults....
         # like selected color, etc. just gave up.
