@@ -50,7 +50,7 @@ def generateTabName():
 
 
 class console(QPlainTextEdit):
-
+    
     executionTriggered = pyqtSignal(['QString'])
     
     closeSignal = pyqtSignal()
@@ -61,6 +61,12 @@ class console(QPlainTextEdit):
     
     connectSignal = pyqtSignal()
     disconnectSignal = pyqtSignal()
+    
+    def insertTextS(self, str):
+        cursor = self.textCursor()
+        cursor.clearSelection()
+        self.setTextCursor(cursor)
+        cursor.insertText(str)
 
     def __init__(self):
         self.lock = False
@@ -741,6 +747,8 @@ class resultSet(QTableWidget):
 
         Table never refilled.
     '''
+    
+    insertText = pyqtSignal(['QString'])
 
     def __init__(self, conn):
     
@@ -754,7 +762,7 @@ class resultSet(QTableWidget):
         self.detached = None         # supposed to be defined only if LOBs = True
         self.detachTimer = None      # results detach timer
         
-        self.cols = [] #column descriptions
+        self.cols = [] # column descriptions
         self.rows = [] # actual data 
         
         self.headers = [] # column names
@@ -803,6 +811,10 @@ class resultSet(QTableWidget):
         copyColumnName = cmenu.addAction('Copy Column Name')
         copyTableScreen = cmenu.addAction('Take a Screenshot')
         
+        if cfg('developmentMode'):
+            cmenu.addSeparator()
+            copyFilter = cmenu.addAction('Generate Filter Condition')
+        
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
         i = self.currentColumn()
@@ -811,6 +823,31 @@ class resultSet(QTableWidget):
             clipboard = QApplication.clipboard()
             clipboard.setText(self.cols[i][0])
 
+        if cfg('developmentMode') and action == copyFilter:
+            sm = self.selectionModel()
+            
+            values = []
+                        
+            for c in sm.selectedIndexes():
+                r, c = c.row(), c.column()
+
+                value = self.rows[r][c]
+                cname = self.headers[c]
+
+                if db.ifNumericType(self.cols[c][1]):
+                    if cname.isupper():
+                        values.append('%s = %s' % (cname, value))
+                    else:
+                        values.append('"%s" = %s' % (cname, value))
+                else:
+                    values.append('"%s" = \'%s\'' % (cname, str(value)))
+                    
+            filter = ' and '.join(values)
+
+            self.insertText.emit(' ' + filter)
+            
+            #QApplication.clipboard().setText(filter)
+            
         if action == copyTableScreen:
             w = self.verticalHeader().width() + self.horizontalHeader().length() + 1
             h = self.verticalHeader().length() + self.horizontalHeader().height() + 1
@@ -1412,6 +1449,8 @@ class sqlConsole(QWidget):
         result.statement = st
         
         result.log = self.log
+        
+        result.insertText.connect(self.cons.insertTextS)
         
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results))
