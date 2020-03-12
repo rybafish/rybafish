@@ -57,8 +57,12 @@ class lobDialog(QDialog):
         
         self.setWindowIcon(QIcon(iconPath))
 
+        #app = QApplication.instance()
+        #screen_rect = app.desktop().screen().rect()
+        #self.setGeometry(300, 400, 700, 400)
         
-        self.setGeometry(300, 400, 700, 400)
+        self.resize(700, 400)
+        
         self.setWindowTitle('LOB value')
         #self.show()
         
