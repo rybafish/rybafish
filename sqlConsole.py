@@ -834,13 +834,23 @@ class resultSet(QTableWidget):
                 value = self.rows[r][c]
                 cname = self.headers[c]
 
+                if cname.isupper():
+                    print('upper!', cname)
+                else:
+                    print('not upper', cname)
+                
+                
+
                 if db.ifNumericType(self.cols[c][1]):
                     if cname.isupper():
                         values.append('%s = %s' % (cname, value))
                     else:
                         values.append('"%s" = %s' % (cname, value))
                 else:
-                    values.append('"%s" = \'%s\'' % (cname, str(value)))
+                    if cname.isupper():
+                        values.append('%s = \'%s\'' % (cname, str(value)))
+                    else:
+                        values.append('"%s" = \'%s\'' % (cname, str(value)))
                     
             filter = ' and '.join(values)
 
@@ -1576,11 +1586,18 @@ class sqlConsole(QWidget):
     
         cols = [
             ['Name',11],
-            ['LOB String',26],
-            ['Integer',3],
-            ['Decimal',5],
-            ['Timestamp',16],
+            ['STATEMENT_ID',26],
+            ['CONNECTION_ID',3],
+            ['USER_NAME',5],
+            ['dontknow',16]
         ]
+
+        ''''
+        ['LOB String',26],
+        ['Integer',3],
+        ['Decimal',5],
+        ['Timestamp',16]
+        '''
         
         rows = [
                 ['name 1','select * from dummy fake blob 1', 1024, 1/12500, datetime.datetime.now()],
