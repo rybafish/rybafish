@@ -689,16 +689,17 @@ class myWidget(QWidget):
         top_margin = self.top_margin + self.y_delta
                 
         for h in range(0, len(self.hosts)):
+
             if len(self.ndata[h]) == 0:
                 continue
-                
                 
             type = hType(h, self.hosts)
             for kpi in self.nkpis[h]:
             
                 if kpi not in self.ndata[h]:
                     # alt-added kpis here, already in kpis but no data requested
-                    return
+                    continue
+                    #return -- but draw the rest hosts/kpis
 
                 if kpi not in self.nscales[h]:
                     # Sometimes (!) like in request_kpis -> exception -> yesNoDialog it is not modal
@@ -1612,7 +1613,7 @@ class chartArea(QFrame):
                             log('[!] host: %s' % (self.widget.hosts[h]))
                             
                             log('[!] len(kpi), len(time)', len(data[kpi]), len(data[timeKey]))
-                            continue
+                            # continue - to have more details
                         
                         if t >= t_from:
                     
