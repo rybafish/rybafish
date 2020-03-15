@@ -64,18 +64,17 @@ class myWidget(QWidget):
     
     highlightedPoint = None #point currently highlihed (currently just one)
     
-    data = {} # dictionary of data sets + time line (all same length)
-    scales = {} # min and max values
+    #data = {} # dictionary of data sets + time line (all same length)
+    #scales = {} # min and max values
     
     ndata = [] # list of dicts of data sets + time line (all same length)
     nscales = [] # min and max values, list of dicts (per host)
     
     manual_scales = {} # if/when scale manually adjusted, per group! like 'mem', 'threads'
 
-    #config section
+    # config section
     # to be filled during __init__ somehow
     conf_fontSize = 6
-    
     
     font_height = 8 # to be calculated in __init__
     
@@ -98,22 +97,16 @@ class myWidget(QWidget):
     
     gridColor = QColor('#DDD')
     gridColorMj = QColor('#AAA')
-    
-    #screenStartX = None # nasty work around for visible area screenshot
-    #screenStopX = None # nasty work around for visible area screenshot
-
-    #t_from = datetime.datetime.strptime("2019-05-01 12:00:00", "%Y-%m-%d %H:%M:%S")
-    #t_to = datetime.datetime.now()
-
-    '''
-    this approach does not detect screen change
-    
-    def resizeEvent(self, event):
-        # check the documentation: https://doc.qt.io/qt-5/qwidget.html#resizeEvent
-        # надо сравнить старый layout и новый и если они одинаковые - то это наш вот тот нужный resize
-        if (event.oldSize().height() == event.size().height() and event.oldSize().width() == event.size().width()):
-            pass #('resize: nash client')
-    '''
+        
+    def __init__(self):
+        super().__init__()
+        
+        if cfg('fontSize') is not None:
+            self.conf_fontSize = cfg('fontSize')
+            
+        self.calculateMargins()
+        
+        self.initPens()
         
     def wheelEvent (self, event):
         if self.zoomLock:
@@ -153,17 +146,6 @@ class myWidget(QWidget):
             self.nkpis.append([])
             self.ndata.append({})
             self.nscales.append({})
-            
-    
-    def __init__(self):
-        super().__init__()
-        
-        if cfg('fontSize') is not None:
-            self.conf_fontSize = cfg('fontSize')
-            
-        self.calculateMargins()
-        
-        self.initPens()
         
     def calculateMargins(self, scale = 1):
     
@@ -1341,15 +1323,31 @@ class chartArea(QFrame):
                 for hst in range(0, len(self.widget.hosts)):
                     if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
                         
+                        if cfg('loglevel', 3) > 3:
+                            log('unclick, %s, %s:' % (str(hst), kpi))
+                            log('kpis before unclick: %s' % (self.widget.nkpis[hst]))
                         if kpi in self.widget.nkpis[hst]:
                             self.widget.nkpis[hst].remove(kpi)
                             
-                            if kpi in self.widget.ndata[host]: #might be empty for alt-added (2019-08-30)
+                            if kpi in self.widget.ndata[hst]: #might be empty for alt-added (2019-08-30)
                                 del(self.widget.ndata[hst][kpi])
-            else:
+                                
+                        if cfg('loglevel', 3) > 3:
+                            log('kpis after unclick: %s' % (self.widget.nkpis[hst]))
+                            log('data keys: %s' % str(self.widget.ndata[hst].keys()))
+                        
+            else:       
+                if cfg('loglevel', 3) > 3:
+                    log('unclick, %s, %s:' % (str(host), kpi))
+                    log('kpis before unclick: %s' % (self.widget.nkpis[host]))
+                
                 self.widget.nkpis[host].remove(kpi) # kpis is a list
                 if kpi in self.widget.ndata[host]: #might be empty for alt-added
                     del(self.widget.ndata[host][kpi]) # ndata is a dict
+                    
+                if cfg('loglevel', 3) > 3:
+                    log('kpis after unclick: %s' % (self.widget.nkpis[host]))
+                    log('data keys: %s' % str(self.widget.ndata[host].keys()))
             
             self.widget.update()
         else:
@@ -1366,8 +1364,9 @@ class chartArea(QFrame):
                             #self.widget.nkpis[hst].append(kpi)
                             kpis[hst] = self.widget.nkpis[hst] + [kpi]
                 else:
-                    log('adding kpi: %s' % (kpi))
-                    log('hosts: %s' % (str(self.widget.hosts)))
+                    if cfg('loglevel', 3) > 3:
+                        log('adding kpi: %s' % (kpi))
+                        log('hosts: %s' % (str(self.widget.hosts)))
                     for hst in range(0, len(self.widget.hosts)):
                         kpis[hst] = self.widget.nkpis[hst].copy() #otherwise it might be empty --> key error later in get_data
 
@@ -1589,17 +1588,32 @@ class chartArea(QFrame):
                     continue
                     
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)
+                    
+                # array_size = len(self.widget.ndata[h][timeKey]) # 2020-03-11
+                array_size = len(data[timeKey])
                 
-                array_size = len(self.widget.ndata[h][timeKey])
+                if cfg('loglevel', 3) > 3:
+                    log('h: %i (%s), array_size: %i, timekey = %s, kpi = %s' %(h, self.widget.hosts[h]['host'], array_size, timeKey, kpi))
+                
                 scales[timeKey] = {'min': data[timeKey][0], 'max': data[timeKey][array_size-1]}
 
                 #log('  scan %i -> %s' % (h, kpi))
                 #log('  timekey: ' + timeKey)
                 #log('  array size: %i' % (array_size))
+                
+                anti_crash_len = len(data[kpi])
 
                 try:
                     for i in range(0, array_size):
                         t = data[timeKey][i]
+                        
+                        if i >= anti_crash_len:
+                            log('[!] I am seriously considering crash here, my anti_crash_len=%i, i = %i! host %i, kpi = %s, timeKey = %s' % (anti_crash_len, i, h, kpi, timeKey))
+                            log('[!] host: %s' % (self.widget.hosts[h]))
+                            
+                            log('[!] len(kpi), len(time)', len(data[kpi]), len(data[timeKey]))
+                            continue
+                        
                         if t >= t_from:
                     
                             if scales[kpi]['max'] < data[kpi][i]:
@@ -1647,6 +1661,7 @@ class chartArea(QFrame):
         
         t0 = time.time()
         log('  reloadChart()')
+        log('  hosts:', str(self.widget.hosts))
         
         #time.sleep(2)
         fromTime = self.fromEdit.text()

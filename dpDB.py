@@ -440,7 +440,7 @@ class dataProvider():
                             '''
                                 
                             #log('allocate %i for %s' % (trace_lines, kpis_[j]))
-                            data[kpis_[j]] = [0]* (trace_lines)  #array('l', [0]*data_size) ??
+                            data[kpis_[j]] = [0] * (trace_lines)  #array('l', [0]*data_size) ??
                             log('allocate data[%s]: %i' %(kpis_[j], trace_lines))
 
                 for j in range(0, len(kpis_)):
