@@ -1336,6 +1336,9 @@ class chartArea(QFrame):
                         if cfg('loglevel', 3) > 3:
                             log('kpis after unclick: %s' % (self.widget.nkpis[hst]))
                             log('data keys: %s' % str(self.widget.ndata[hst].keys()))
+                            
+                            if len(self.widget.nkpis[hst]) == 0:
+                                print('clear data[time]?')
                         
             else:       
                 if cfg('loglevel', 3) > 3:

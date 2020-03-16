@@ -1,6 +1,13 @@
 #connection configuration
 server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 
+##
+## Chart related stuff here
+##
+
+# labels font size
+# fontSize: 6
+
 # force memory KPIs scale to GB
 memoryGB: True
 
@@ -10,11 +17,25 @@ color-bg: '#FFF'
 # chart keep-alives timer
 keepalive: 1200
 
+##
+## SQL Console related section
+##
+
+# editor font size 
+# console-fontSize: 10
+
 # sql console keep-alive timer
 keepalive-cons: 1800
 
 # maximum result size
 maxResultSize: 1000
 
+# disable words highlighting
+# noWordHighlighting: True
+
+##
+## experimental stuff
+##
+
 # uncomment to have experimental stuff
-experimental: False
+# experimental: False

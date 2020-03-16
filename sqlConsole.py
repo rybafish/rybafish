@@ -122,20 +122,50 @@ class console(QPlainTextEdit):
         self.highlightedWords.clear()
         
         self.lock = False
+      
+    def newLayout(self, position, lo, af):
         
-    def highlight(self, block, start, stop):
-        #print ('highlight here: ', block.text(), start, stop)
-        cursor = QTextCursor(block)
+        for l in self.modifiedLayouts:
+            if l[0] == position:
+                #this layout already in the list
+                return
+            
+        self.modifiedLayouts.append([position, lo, af])
+            
+    def highlight(self):
+    
+        blkStInit = None
+        blkStCurrent = None
+    
+        charFmt = QTextCharFormat()
+        charFmt.setBackground(QColor('#8F8'))
 
-        cursor.setPosition(start, QTextCursor.MoveAnchor)
-        cursor.setPosition(stop, QTextCursor.KeepAnchor)
-        
-        format = cursor.charFormat()
-        
-        format.setBackground(QColor('#0F0'))
-        cursor.setCharFormat(format)
-        
-        self.highlightedWords.append([start, stop])
+        for p in self.highlightedWords:
+            txtblk = self.document().findBlock(p[0])
+            
+            blkStCurrent = txtblk.position()
+    
+            delta = p[0] - blkStCurrent
+            
+            lo = txtblk.layout()
+            
+            r = lo.FormatRange()
+            
+            r.start = delta
+            r.length = p[1] - p[0]
+            
+            r.format = charFmt
+            
+            af = lo.additionalFormats()
+            
+            if blkStInit != blkStCurrent:
+                #self.modifiedLayouts.append([blkStCurrent, lo, af])
+                self.newLayout(blkStCurrent, lo, af)
+                
+                blkStInit = blkStCurrent
+
+            lo.setAdditionalFormats(af + [r])
+
         self.haveHighlighrs = True
         
     def searchWord(self, str):
@@ -153,6 +183,8 @@ class console(QPlainTextEdit):
         
         st = 0
         
+        self.highlightedWords = []
+        
         while st >= 0:
             st = line.find(str, st)
             
@@ -167,23 +199,26 @@ class console(QPlainTextEdit):
                 #mask = r'.?\b%s\b.?' % (str)
                 #mask = r'.\b%s\b.' % (str)
                 mask = r'\W?%s\W' % (str)
-                
+
                 if re.match(mask, sample):
-                    self.highlight(self.document(), st, st+len(str))
-                    #print('lets highlight: ' + str)
-                else:
-                    pass
-                    #print('nope [%s]/(%s)' % (sample, mask))
+                    #self.highlight(self.document(), st, st+len(str))
+                    self.highlightedWords.append([st, st+len(str)])
                 
                 st += len(str)
                     
         self.lock = False
+        
+        if self.highlightedWords:
+            self.highlight()
+            
+            self.viewport().repaint()
             
         return
         
     def consSelection(self):
     
-        return
+        if cfg('noWordHighlighting'):
+            return
     
         if self.lock:
             return
@@ -191,18 +226,14 @@ class console(QPlainTextEdit):
         cursor = self.textCursor()
         selected = cursor.selectedText()
         
-        if len(selected) == 0 and self.haveHighlighrs:
+        if self.haveHighlighrs:
             self.clearHighlighting()
-            
-            self.haveHighlighrs = False
-            return
 
         txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
         line = txtline.text()
 
         if re.match('\w+$', selected):
             if re.search('\\b%s\\b' % selected, line):
-                #we are not sure that this is exactly same found as the one selected...
                 self.searchWord(selected)
 
         return
@@ -517,7 +548,7 @@ class console(QPlainTextEdit):
         else:
             #have to clear each time in case of input right behind the braket
             if self.braketsHighlighted:
-                self.clearBraketsHighlight()
+                self.clearHighlighting()
                 
             # print explisit call of the normal processing? this looks real weird
             # shouldnt it be just super().keyPressEvent(event) instead?
@@ -525,17 +556,16 @@ class console(QPlainTextEdit):
             #QPlainTextEdit.keyPressEvent(self.cons, event)
             super().keyPressEvent(event)
 
-    def clearBraketsHighlight(self):
-        if self.braketsHighlighted:
+    def clearHighlighting(self):
+        if self.braketsHighlighted or self.haveHighlighrs:
             #pos = self.braketsHighlightedPos
             #self.highlightBraket(self.document(), pos[0], False)
             #self.highlightBraket(self.document(), pos[1], False)
             
             for lol in self.modifiedLayouts:
             
-                lo = lol[0]
-                af = lol[1]
-                
+                lo = lol[1]
+                af = lol[2]
                     
                 #lo.clearAdditionalFormats()
                 lo.setAdditionalFormats(af)
@@ -545,6 +575,7 @@ class console(QPlainTextEdit):
             self.viewport().repaint()
             
             self.braketsHighlighted = False
+            self.haveHighlighrs = False
 
     def cursorPositionChangedSignal(self):
     
@@ -587,7 +618,9 @@ class console(QPlainTextEdit):
             
             lo1.setAdditionalFormats(af + [r1, r2])
             
-            self.modifiedLayouts = [[lo1, af]]
+            #self.modifiedLayouts = [[lo1, af]]
+            #self.modifiedLayouts.append([lo1, af])
+            self.newLayout(txtblk1.position(), lo1, af)
         else:
             lo2 = txtblk2.layout()
 
@@ -604,7 +637,12 @@ class console(QPlainTextEdit):
             lo1.setAdditionalFormats(af1 + [r1])
             lo2.setAdditionalFormats(af2 + [r2])
             
-            self.modifiedLayouts = [[lo1, af1], [lo2, af2]]
+            #self.modifiedLayouts = [[lo1, af1], [lo2, af2]]
+            #self.modifiedLayouts.append([[lo1, af1], [lo2, af2]])
+            #self.modifiedLayouts.append([lo1, af1])
+            #self.modifiedLayouts.append([lo2, af2])
+            self.newLayout(txtblk1.position(), lo1, af1)
+            self.newLayout(txtblk2.position(), lo2, af2)
         
         self.viewport().repaint()
         
@@ -645,7 +683,7 @@ class console(QPlainTextEdit):
     def checkBrakets(self):
     
         if self.braketsHighlighted:
-            self.clearBraketsHighlight()
+            self.clearHighlighting()
     
         cursor = self.textCursor()
         pos = cursor.position()
@@ -811,9 +849,8 @@ class resultSet(QTableWidget):
         copyColumnName = cmenu.addAction('Copy Column Name')
         copyTableScreen = cmenu.addAction('Take a Screenshot')
         
-        if cfg('developmentMode'):
-            cmenu.addSeparator()
-            copyFilter = cmenu.addAction('Generate Filter Condition')
+        cmenu.addSeparator()
+        copyFilter = cmenu.addAction('Generate Filter Condition')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -823,7 +860,7 @@ class resultSet(QTableWidget):
             clipboard = QApplication.clipboard()
             clipboard.setText(self.cols[i][0])
 
-        if cfg('developmentMode') and action == copyFilter:
+        if action == copyFilter:
             sm = self.selectionModel()
             
             values = []
@@ -833,13 +870,6 @@ class resultSet(QTableWidget):
 
                 value = self.rows[r][c]
                 cname = self.headers[c]
-
-                if cname.isupper():
-                    print('upper!', cname)
-                else:
-                    print('not upper', cname)
-                
-                
 
                 if db.ifNumericType(self.cols[c][1]):
                     if cname.isupper():
@@ -1038,9 +1068,6 @@ class resultSet(QTableWidget):
     
         cols = self.cols
         rows = self.rows
-    
-        #for c in cols:
-        #    print(c)
     
         row0 = []
 
@@ -1439,8 +1466,6 @@ class sqlConsole(QWidget):
     
     def reconnect(self):
 
-        print('reconnect')
-
         try: 
             conn = db.create_connection(self.config)
         except Exception as e:
@@ -1709,8 +1734,6 @@ class sqlConsole(QWidget):
         def statementDetected(start, stop):
 
             str = txt[start:stop]
-            
-            #print('exec: [%s]' % str)
             
             if str == '': 
                 #typically only when start = 0, stop = 1
@@ -2040,26 +2063,6 @@ class sqlConsole(QWidget):
         result.populate(refreshMode)
             
         return
-
-    '''
-    def consKeyPressHandler(self, event):
-        
-        # modifiers = QApplication.keyboardModifiers()
-        
-        if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
-            self.delayBackup()
-            executeSelection()
-
-        else:
-            #have to clear each time in case of input right behind the braket
-            if self.braketsHighlighted:
-                self.clearBraketsHighlight()
-                
-            # print explisit call of the normal processing? this looks real weird
-            # shouldnt it be just super().keyPressEvent(event) instead?
-            # may be if I inherited QPlainTextEdit...
-            QPlainTextEdit.keyPressEvent(self.cons, event)
-    '''
         
     def resultTabsKey (self, event):
         super().keyPressEvent(event)
