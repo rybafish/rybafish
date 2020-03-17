@@ -41,6 +41,7 @@ class dataProvider():
         try: 
             conn = db.create_connection(server, self.dbProperties)
         except dbException as e:
+            log('dataprovider exception bubble up...')
             raise e
         
         if conn is None:

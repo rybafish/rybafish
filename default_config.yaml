@@ -22,7 +22,8 @@ keepalive: 1200
 ##
 
 # editor font size 
-# console-fontSize: 10
+# console-fontSize: 14
+# result-fontSize: 14
 
 # sql console keep-alive timer
 keepalive-cons: 1800

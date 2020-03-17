@@ -337,6 +337,8 @@ class hslWindow(QMainWindow):
             return
             
         self.statusMessage('Connecting...', True)
+        
+        log('menuSQLConsole...')
 
 
         #idx = self.tabs.count()
@@ -347,8 +349,21 @@ class hslWindow(QMainWindow):
             tname = 'sql' + str(idx)
         else:
             tname = 'sql'
-            
-        console = sqlConsole.sqlConsole(self, conf, tname) # self = window
+
+        # console = sqlConsole.sqlConsole(self, conf, tname) # self = window
+
+        try:
+            console = sqlConsole.sqlConsole(self, conf, tname) # self = window
+            log('seems connected...')
+        except dbException as e:
+            log('[!] failed to open console expectedly')
+            self.statusMessage('Connection error', True)
+            return
+        except:
+            log('[!] failed to open console unexpectedly')
+            self.statusMessage('Connection error?', True)
+            return
+        
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
         self.tabs.addTab(console, tname)

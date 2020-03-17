@@ -813,8 +813,15 @@ class resultSet(QTableWidget):
         scale = 1
 
         
+        fontSize = utils.cfg('result-fontSize', 10)
+        
+        font = QFont ()
+        font.setPointSize(fontSize)
+        
+        self.setFont(font)
+        
         itemFont = QTableWidgetItem('').font()
-        #QFont ('SansSerif', 10)
+        
         #rowHeight = scale * QFontMetricsF(itemFont).height() + 7 
         rowHeight = scale * QFontMetricsF(itemFont).height() + 8
         
@@ -1234,9 +1241,11 @@ class sqlConsole(QWidget):
             return
         
         try: 
+            log('starting console connection')
             self.conn = db.create_connection(config)
             self.config = config
         except dbException as e:
+            log('[!] failed!')
             raise e
             return
 
