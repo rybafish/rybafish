@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QWidget
 
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen
 
-class Indicator(QWidget):
+class indicator(QWidget):
     def __init__(self, parent = None):
         self.active = False
         super().__init__(parent)

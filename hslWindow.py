@@ -23,6 +23,8 @@ import dpDummy
 import dpDB
 import sqlConsole
 
+from indicator import indicator
+
 from utils import resourcePath
 
 from utils import loadConfig
