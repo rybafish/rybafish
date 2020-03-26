@@ -142,6 +142,19 @@ class sqlWorker(QObject):
                 log('connectionLost() used to be here, but now no UI possible from the thread')
                 #cons.connectionLost()
                 
+        resultSize = len(result.rows)
+
+        if cons.wrkException is None:
+            result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
+            result.detached = False
+            result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
+            print('saving the resultset id: %s' % result_str)
+
+            if result.LOBs == False and not explicitLimit and resultSize == resultSizeLimit:
+                print('detaching due to possible SUSPENDED')
+                result.detach()
+                print('done')
+
         self.finished.emit()
     
 
@@ -1049,7 +1062,7 @@ class resultSet(QTableWidget):
             log('[?] already detached?: %s' % result_str)
 
     def detachCB(self):
-        print('detach timer triggered')
+        log('detach timer triggered')
         
         self.detachTimer.stop()
         self.detachTimer = None
@@ -1342,7 +1355,7 @@ class sqlConsole(QWidget):
         self.sqlWorker.finished.connect(self.sqlFinished)
         self.thread.started.connect(self.sqlWorker.executeStatement)
         
-        self.window = None # required for the timer
+        #self.window = None # required for the timer
         
         self.conn = None
         self.config = None
@@ -1677,6 +1690,7 @@ class sqlConsole(QWidget):
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)
+        log('keep alive timer')
         self.timer.timeout.connect(self.keepAlive)
         self.timer.start(1000 * keepalive)
         
@@ -2051,7 +2065,7 @@ class sqlConsole(QWidget):
             
             if len(statements) > 1:
                 self.stQueue = statements.copy()
-                self.lounchStatementQueue()
+                self.launchStatementQueue()
             else:
                 result = self.newResult(self.conn, statements[0])
                 self.executeStatement(statements[0], result)
@@ -2059,7 +2073,7 @@ class sqlConsole(QWidget):
 
         return
         
-    def lounchStatementQueue(self):
+    def launchStatementQueue(self):
         '''
             triggers statements queue execution using new cool QThreads
             list of statements is in self.statements
@@ -2145,32 +2159,19 @@ class sqlConsole(QWidget):
             
             logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
             
-            cons.log(logText)
+            self.log(logText)
             
             result.clear()
             return
 
         resultSize = len(rows)
 
-        '''
-        result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
-        result.detached = False
-        result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
-        print('saving the resultset id: %s' % result_str)
-
         for c in cols:
             if db.ifLOBType(c[1]):
-                cons.detachResults = True
                 result.LOBs = True
                 
-                result.triggerDetachTimer(cons.window)
+                result.triggerDetachTimer(self)
                 break
-                
-        if result.LOBs == False and not explicitLimit and resultSize == resultSizeLimit:
-            print('detaching due to possible SUSPENDED')
-            result.detach()
-            print('done')
-        '''
 
         lobs = ', +LOBs' if result.LOBs else ''
 
@@ -2181,7 +2182,7 @@ class sqlConsole(QWidget):
 
         result.populate(refreshMode)
         
-        self.lounchStatementQueue()
+        self.launchStatementQueue()
         
     def executeStatement(self, sql, result, refreshMode = False):
         '''
