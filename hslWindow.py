@@ -17,6 +17,8 @@ import chartArea
 import configDialog, aboutDialog
 import dpDBCustom
 
+import dpTrace
+
 import dpDummy
 import dpDB
 import sqlConsole
@@ -381,6 +383,11 @@ class hslWindow(QMainWindow):
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import...',  None, 'Nameserver trace files (*.trc)')
         log(fname[0])
+        
+        self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
+        self.chartArea.initDP()
+        
+        '''
         log('But I dont work...')
 
         if len(fname[0]) > 0:
@@ -391,6 +398,7 @@ class hslWindow(QMainWindow):
             msgBox.setWindowIcon(QIcon(iconPath))
             msgBox.setIcon(QMessageBox.Warning)
             msgBox.exec_()
+        '''
         
     def setTabName(self, str):
         self.tabs.setTabText(0, str)
@@ -472,14 +480,12 @@ class hslWindow(QMainWindow):
         configAct.setStatusTip('Configure connection')
         configAct.triggered.connect(self.menuConfig)
 
-        '''
-        not ready
-        
-        importAct = QAction('&Import', self)
-        importAct.setShortcut('Ctrl+I')
-        importAct.setStatusTip('Import nameserver.trc')
-        importAct.triggered.connect(self.menuImport)
-        '''
+
+        if cfg('developmentMode'):
+            importAct = QAction('&Import', self)
+            importAct.setShortcut('Ctrl+I')
+            importAct.setStatusTip('Import nameserver.trc')
+            importAct.triggered.connect(self.menuImport)
 
         sqlConsAct = QAction('New &SQL Console', self)
         sqlConsAct.setShortcut('Alt+S')
@@ -506,6 +512,9 @@ class hslWindow(QMainWindow):
             fileMenu.addAction(sqlConsAct)
             fileMenu.addAction(openAct)
             fileMenu.addAction(saveAct)
+
+        if cfg('developmentMode'):
+            fileMenu.addAction(importAct)
 
         fileMenu.addAction(exitAct)
         

@@ -92,7 +92,7 @@ def findKPIns(t, nsName):
         if kpi[1] == t and kpi[3] == nsName:
             return kpi
             
-    log('ns kpi not found: %s.%s' % (t, nsName))
+    #log('ns kpi not found: %s.%s' % (t, nsName))
 
     return None
    

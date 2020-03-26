@@ -8,6 +8,8 @@ from PyQt5.QtCore import QTimer, QPoint
 
 from PyQt5.QtCore import Qt, QSize
 
+from PyQt5.QtCore import QObject, QThread
+
 import time
 
 import db
@@ -30,6 +32,118 @@ import os
 from utils import resourcePath
 
 from PyQt5.QtCore import pyqtSignal
+
+class sqlWorker(QObject):
+    finished = pyqtSignal()
+    
+    def __init__(self, cons):
+        super().__init__()
+        self.cons = cons
+        
+        self.args = []
+    
+    def executeStatement(self):
+    
+        #print('inside thread')
+        
+        if not self.args:
+            log('[!] sqlWorker with no args?')
+            self.finished.emit()
+            return
+            
+        sql, result, refreshMode = self.args
+        
+        cons = self.cons # cons - sqlConsole class itself, not just a console...
+
+        cons.wrkException = None
+    
+        if cfg('loglevel', 3) > 3:
+            log('console execute: [%s]' % (sql))
+        
+        if len(sql) >= 2**17 and cons.conn.large_sql != True:
+            log('reconnecting to hangle large SQL')
+            print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
+            
+            db.largeSql = True
+            
+            try: 
+                cons.conn = db.create_connection(cons.config)
+            except dbException as e:
+                err = str(e)
+                #
+                # cons.log('DB Exception:' + err, True)
+                
+                cons.wrkException = 'DB Exception:' + err
+                
+                cons.connect = None
+                self.finished.emit()
+                return
+                
+        if cons.conn is None:
+            #cons.log('Error: No connection')
+            cons.wrkException = 'no db connection'
+            self.finished.emit()
+            return
+            
+        #execute the query
+        
+        try:
+            # t0 = time.time()
+            
+            #print('clear rows array here?')
+            
+            suffix = ''
+            
+            if len(sql) > 128:
+                txtSub = sql[:128]
+                suffix = '...'
+            else:
+                txtSub = sql
+                
+            m = re.search(r'^\s*select\s+top\s+(\d+)', sql, re.I)
+            
+            if m:
+                explicitLimit = True
+                resultSizeLimit = int(m.group(1))
+            else:
+                explicitLimit = False
+                resultSizeLimit = cfg('resultSize', 1000)
+                
+            txtSub = txtSub.replace('\n', ' ')
+            txtSub = txtSub.replace('\t', ' ')
+            
+            #print('start sql')
+            result.rows, result.cols, dbCursor = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+            #print('sql finished')
+            
+            self.dbCursor = dbCursor
+            
+        except dbException as e:
+            err = str(e)
+            
+            # fixme 
+            # cons.log('DB Exception:' + err, True)
+            
+            cons.wrkException = 'DB Exception:' + err
+            
+            if e.type == dbException.CONN:
+                # fixme 
+                log('connection lost, should we close it?')
+
+                try: 
+                    db.close_connection(cons.conn)
+                except dbException as e:
+                    log('[?] ' + str(e))
+                except:
+                    log('[!] ' + str(e))
+                    
+                cons.conn = None
+                
+                log('connectionLost() used to be here, but now no UI possible from the thread')
+                #cons.connectionLost()
+                
+        self.finished.emit()
+    
 
 def generateTabName():
     
@@ -1208,6 +1322,26 @@ class sqlConsole(QWidget):
 
     def __init__(self, window, config, tabname = None):
     
+        self.thread = QThread()             # main sql processing thread
+        self.sqlWorker = sqlWorker(self)    # thread worker object (linked to console instance)
+        self.sqlRunning = False             # thread is running flag
+        
+        self.wrkException = None            # thread exit exception
+        
+        self.stQueue = []                   # list of statements to be executed
+                                            # for the time being for one statement we do not build a queue, just directly run executeStatement
+                                            
+        self.t0 = None                      # set on statement start
+        
+        #todo:
+        #self.t0 = None                      # set on queue start
+        #self.t1 = None                      # set on statement start
+
+        # one time thread init...
+        self.sqlWorker.moveToThread(self.thread)
+        self.sqlWorker.finished.connect(self.sqlFinished)
+        self.thread.started.connect(self.sqlWorker.executeStatement)
+        
         self.window = None # required for the timer
         
         self.conn = None
@@ -1698,6 +1832,14 @@ class sqlConsole(QWidget):
         
         self.delayBackup()
         
+        if self.sqlRunning:
+            if len(self.stQueue) > 0:
+                self.log('SQL still running, %i left in queue' % (len(self.stQueue)), True)
+            else:
+                self.log('SQL still running', True)
+            
+            return
+        
         def isItCreate(s):
             '''
                 if in create procedure now?
@@ -1896,6 +2038,7 @@ class sqlConsole(QWidget):
             self.executeStatement(st, result)
 
         else:
+            '''
             for st in statements:
                 #print('--> [%s]' % st)
                 
@@ -1904,8 +2047,30 @@ class sqlConsole(QWidget):
                 
                 #self.update()
                 self.repaint()
+            '''
+            
+            if len(statements) > 1:
+                self.stQueue = statements.copy()
+                self.lounchStatementQueue()
+            else:
+                result = self.newResult(self.conn, statements[0])
+                self.executeStatement(statements[0], result)
+            
 
         return
+        
+    def lounchStatementQueue(self):
+        '''
+            triggers statements queue execution using new cool QThreads
+            list of statements is in self.statements
+            
+            each execution pops the statement from the list right after thread start!
+        '''
+        
+        if self.stQueue:
+            st = self.stQueue.pop(0)
+            result = self.newResult(self.conn, st)
+            self.executeStatement(st, result)
     
     def connectionLost(self, err_str = ''):
         '''
@@ -1941,135 +2106,122 @@ class sqlConsole(QWidget):
         else:
             return False
             
+    def sqlFinished(self):
+        '''
+            post-process the sql reaults
+            also handle exceptions
+        '''
+        
+        self.thread.quit()
+        self.sqlRunning = False
+
+        if self.wrkException is not None:
+            self.log(self.wrkException, True)
+            
+            self.thread.quit()
+            self.sqlRunning = False
+            
+            if self.stQueue:
+                self.log('Queue processing stopped due to this exception.', True)
+                self.stQueue.clear()
+            return
+        
+        sql, result, refreshMode = self.sqlWorker.args
+        
+        dbCursor = self.sqlWorker.dbCursor
+        
+        rows = result.rows
+        cols = result.cols
+
+        t0 = self.t0
+        t1 = time.time()
+
+        #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
+
+        logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
+
+        if rows is None or cols is None:
+            # it was a DDL or something else without a result set so we just stop
+            
+            logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
+            
+            cons.log(logText)
+            
+            result.clear()
+            return
+
+        resultSize = len(rows)
+
+        '''
+        result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
+        result.detached = False
+        result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
+        print('saving the resultset id: %s' % result_str)
+
+        for c in cols:
+            if db.ifLOBType(c[1]):
+                cons.detachResults = True
+                result.LOBs = True
+                
+                result.triggerDetachTimer(cons.window)
+                break
+                
+        if result.LOBs == False and not explicitLimit and resultSize == resultSizeLimit:
+            print('detaching due to possible SUSPENDED')
+            result.detach()
+            print('done')
+        '''
+
+        lobs = ', +LOBs' if result.LOBs else ''
+
+        logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
+        if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
+
+        self.log(logText)
+
+        result.populate(refreshMode)
+        
+        self.lounchStatementQueue()
+        
     def executeStatement(self, sql, result, refreshMode = False):
         '''
-            executes the string without any analysis
-            result filled
+            triggers thread to execute the string without any analysis
+            result populated in callback signal sqlFinished
         '''
+        
+        if self.sqlRunning:
+            self.log('SQL still running...')
+            return
         
         self.renewKeepAlive()
         
-        if cfg('loglevel', 3) > 3:
-            log('console execute: [%s]' % (sql))
+        suffix = ''
         
-        if len(sql) >= 2**17 and self.conn.large_sql != True:
-            log('reconnecting to hangle large SQL')
-            print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
+        if len(sql) > 128:
+            txtSub = sql[:128]
+            suffix = '...'
+        else:
+            txtSub = sql
             
-            db.largeSql = True
-            
-            try: 
-                self.conn = db.create_connection(self.config)
-            except dbException as e:
-                err = str(e)
-                #
-                self.log('DB Exception:' + err, True)
-                
-                self.connect = None
-                return
-                
-        if self.conn is None:
-            self.log('Error: No connection')
-            return
-            
-        #execute the query
+        txtSub = txtSub.replace('\n', ' ')
+        txtSub = txtSub.replace('\t', ' ')
+        txtSub = txtSub.replace('    ', ' ')
         
-        try:
-            t0 = time.time()
-            
-            #print('clear rows array here?')
-            
-            suffix = ''
-            
-            if len(sql) > 128:
-                txtSub = sql[:128]
-                suffix = '...'
-            else:
-                txtSub = sql
-                
-            m = re.search(r'^\s*select\s+top\s+(\d+)', sql, re.I)
-            
-            if m:
-                explicitLimit = True
-                resultSizeLimit = int(m.group(1))
-            else:
-                explicitLimit = False
-                resultSizeLimit = cfg('resultSize', 1000)
-                
-            txtSub = txtSub.replace('\n', ' ')
-            txtSub = txtSub.replace('\t', ' ')
-            
-            self.log('\nExecute: ' + txtSub + suffix)
-            self.logArea.repaint()
-            
-            result.rows, result.cols, dbCursor = db.execute_query_desc(self.conn, sql, [], resultSizeLimit)
-            
-            rows = result.rows
-            cols = result.cols
-            
-            t1 = time.time()
+        self.log('\nExecute: ' + txtSub + suffix)
+        # fixme cons.logArea.repaint()        
 
-            #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
-
-
-            logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
-            
-            if rows is None or cols is None:
-                # it was a DDL or something else without a result set so we just stop
-                
-                logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
-                
-                self.log(logText)
-                
-                result.clear()
-                return
-
-            resultSize = len(rows)
-
-            result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
-            result.detached = False
-            result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
-            print('saving the resultset id: %s' % result_str)
-            
-            for c in cols:
-                if db.ifLOBType(c[1]):
-                    self.detachResults = True
-                    result.LOBs = True
-                    
-                    result.triggerDetachTimer(self.window)
-                    break
-                    
-            if result.LOBs == False and not explicitLimit and resultSize == resultSizeLimit:
-                print('detaching due to possible SUSPENDED')
-                result.detach()
-                print('done')
-            
-            lobs = ', +LOBs' if result.LOBs else ''
-            
-            logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
-            if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
-            
-            self.log(logText)
-        except dbException as e:
-            err = str(e)
-            self.log('DB Exception:' + err, True)
-            
-            if e.type == dbException.CONN:
-                log('connection lost, should we close it?')
-
-                try: 
-                    db.close_connection(self.conn)
-                except dbException as e:
-                    log('[?] ' + str(e))
-                except:
-                    log('[!] ' + str(e))
-                    
-                self.conn = None
-                
-                self.connectionLost()
-            return
-
-        result.populate(refreshMode)
+        ##########################
+        ### trigger the thread ###
+        ##########################
+        #self.sqlWorker.executeStatement(sql, result, refreshMode)
+        
+        self.sqlWorker.args = [sql, result, refreshMode]
+        
+        self.t0 = time.time()
+        self.sqlRunning = True
+        
+        #print('self.thread.start()')
+        self.thread.start()
             
         return
         

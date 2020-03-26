@@ -51,11 +51,21 @@ class dataProvider:
                     
                     row_len = len(row)
                     
-                    portIdx = titles.index('port')
+                    if 'port' in titles:
+                        portIdx = titles.index('port')
+                    elif 'tenant' in titles:
+                        portIdx = titles.index('tenant')
+                    else:
+                        portIdx = None
+                        
                     hostIdx = titles.index('host')
                     
                 else:
-                    port = row[portIdx]
+                
+                    if portIdx is not None:
+                        port = row[portIdx]
+                    else:
+                        port = 0
                     
                     if host == '':
                         host = row[hostIdx]
@@ -115,7 +125,11 @@ class dataProvider:
                     i += 1
                     continue
                 
-                port = row[portIdx]
+                
+                if portIdx is not None:
+                    port = row[portIdx]
+                else:
+                    port = 0
                 
                 #iterrate values
                 for j in range(0, len(row)):
@@ -197,13 +211,16 @@ class dataProvider:
                 #log('%s ----> %i' % (port, ii[port]))
                 ii[port] += 1
                 i += 1
+                
+                if i > 100:
+                    break
             
         t2 = time.time()
         log('parsing time %s' % str(round(t2-t1, 3)))
         
         port = '30003'
         #port = '30001'
-        #port = ''
+        port = ''
         s = ''
         
         #log(titles)
