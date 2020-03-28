@@ -69,6 +69,8 @@ class hslWindow(QMainWindow):
             status = cons.close()
             
             if status == True:
+                print('kill indicator')
+                self.statusbar.removeWidget(cons.indicator)
                 self.tabs.removeTab(indx)
     
         
@@ -343,8 +345,7 @@ class hslWindow(QMainWindow):
         self.statusMessage('Connecting...', True)
         
         log('menuSQLConsole...')
-
-
+        
         #idx = self.tabs.count()
         self.sqlTabCounter += 1
         idx = self.sqlTabCounter
@@ -371,6 +372,12 @@ class hslWindow(QMainWindow):
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
         self.tabs.addTab(console, tname)
+        
+        ind = indicator()
+        console.indicator = ind
+        
+        self.statusbar.addPermanentWidget(ind)
+        
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -619,7 +626,7 @@ class hslWindow(QMainWindow):
             
             console = sqlConsole.sqlConsole(self, None, tname)
             console.nameChanged.connect(self.changeActiveTabName)
-            
+
             from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
             self.tabs.addTab(console, tname)

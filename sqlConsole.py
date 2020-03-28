@@ -1340,6 +1340,7 @@ class sqlConsole(QWidget):
         self.sqlRunning = False             # thread is running flag
         
         self.wrkException = None            # thread exit exception
+        self.indicator = None               # progress indicator widget, assigned OUTSIDE
         
         self.stQueue = []                   # list of statements to be executed
                                             # for the time being for one statement we do not build a queue, just directly run executeStatement
@@ -2128,6 +2129,8 @@ class sqlConsole(QWidget):
         
         self.thread.quit()
         self.sqlRunning = False
+        self.indicator.active = False
+        self.indicator.repaint()
 
         if self.wrkException is not None:
             self.log(self.wrkException, True)
@@ -2222,6 +2225,9 @@ class sqlConsole(QWidget):
         self.sqlRunning = True
         
         #print('self.thread.start()')
+        self.indicator.active = True
+        self.indicator.repaint()
+        
         self.thread.start()
             
         return

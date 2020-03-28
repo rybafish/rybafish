@@ -2,12 +2,17 @@ from PyQt5.QtWidgets import QWidget
 
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen
 
+from PyQt5.QtCore import QSize, Qt
+
 class indicator(QWidget):
     def __init__(self, parent = None):
         self.active = False
         super().__init__(parent)
         
         self.setMinimumSize(QSize(15, 15))
+
+    def mousePressEvent(self, event):
+        print('click-click')
         
     def paintEvent(self, QPaintEvent):
 
