@@ -1267,6 +1267,14 @@ class chartArea(QFrame):
         else:
             return False
     
+    def setStatus(self, st, repaint = False):
+        
+        if self.indicator:
+            self.indicator.status = st
+            
+            if repaint:
+                self.indicator.repaint()
+    
     def checkboxToggle(self, host, kpi):
         def substract(list1, list2):
             res = [item for item in list1 if item not in list2]
@@ -1281,6 +1289,7 @@ class chartArea(QFrame):
             # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
             # self.widget.paintLock = True
             
+            self.setStatus('sync')
             self.statusMessage('Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi), True)
 
             timer = False
@@ -1309,7 +1318,8 @@ class chartArea(QFrame):
             
             if timer:
                 self.timer.start(1000 * self.refreshTime)
-                        
+            
+            self.setStatus('idle', True)
             return allOk
         
         modifiers = QApplication.keyboardModifiers()
@@ -1389,6 +1399,7 @@ class chartArea(QFrame):
                     self.statusMessage('Request all/%s...' % (kpi), True)
                     t0 = time.time()
 
+                    self.setStatus('sync', True)
                     while allOk is None:
                         try:
                             t0 = time.time()
@@ -1407,10 +1418,13 @@ class chartArea(QFrame):
                             allOk = True
                         except utils.dbException as e:
                             log('[!] getData: %s' % str(e))
+                            self.setStatus('error')
                             reconnected = self.connectionLost(str(e))
                             
                             if reconnected == False:
                                 allOk = False
+                                
+                    self.setStatus('idle', True)
                         
                 else:
                     for hst in range(0, len(self.widget.hosts)):
@@ -1705,6 +1719,9 @@ class chartArea(QFrame):
         fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
         
         allOk = None
+        
+        self.setStatus('sync', True)
+        
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):
@@ -1713,9 +1730,11 @@ class chartArea(QFrame):
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
                 allOk = True
             except utils.dbException as e:
+                self.setStatus('error', True)
                 reconnected = self.connectionLost(str(e))
                 
                 if reconnected == False:
+                    self.setStatus('sync', True)
                     allOk = False
 
         self.renewMaxValues()
@@ -1734,6 +1753,9 @@ class chartArea(QFrame):
         if timer:
             self.timer.start(1000 * self.refreshTime)
 
+
+        self.setStatus('idle', True)
+
     def adjustScale(self, scale = 1):
         font = self.fromEdit.font()
         fm = QFontMetrics(font)
@@ -1749,6 +1771,8 @@ class chartArea(QFrame):
             
             all this crap to be moved some place else one day...
         '''
+        
+        self.indicator = None
         
         super().__init__()
 

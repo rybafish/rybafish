@@ -214,7 +214,9 @@ class hslWindow(QMainWindow):
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
+                self.chartArea.setStatus('sync', True)
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+                self.chartArea.setStatus('idle')
                 
                 self.chartArea.initDP()
                 
@@ -322,7 +324,13 @@ class hslWindow(QMainWindow):
                
             self.statusMessage('Connecting console...', True)
             
-            console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
+            try:
+                console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
+            except:
+                self.statusMessage('Failed', True)
+                self.log('[!] error creating console for the file')
+                return
+                
             
             self.statusMessage('', False)
             
@@ -330,9 +338,16 @@ class hslWindow(QMainWindow):
             console.cons.closeSignal.connect(self.closeTab)
 
             self.tabs.addTab(console, console.tabname)
+            
+            ind = indicator()
+            console.indicator = ind
+            self.statusbar.addPermanentWidget(ind)
+            
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
             
             console.openFile(filename)
+
+    #def populateConsoleTab(self):
 
     def menuSQLConsole(self):
     
@@ -377,7 +392,6 @@ class hslWindow(QMainWindow):
         console.indicator = ind
         
         self.statusbar.addPermanentWidget(ind)
-        
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -426,6 +440,9 @@ class hslWindow(QMainWindow):
         # top (main chart area)
         self.chartArea = chartArea.chartArea()
 
+        ind = indicator()
+        self.chartArea.indicator = ind
+
         # establish hard links:
         kpisTable.kpiScales = self.chartArea.widget.nscales
         self.chartArea.widget.hosts = self.hostTable.hosts
@@ -470,6 +487,7 @@ class hslWindow(QMainWindow):
         
         # service stuff
         self.statusbar = self.statusBar()
+        self.statusbar.addPermanentWidget(ind)
 
         #menu
         iconPath = resourcePath('ico\\favicon.ico')
@@ -611,7 +629,7 @@ class hslWindow(QMainWindow):
 
         # offline console tests
         
-        if (cfg('developmentMode')):
+        if False and cfg('developmentMode'):
         
             #tname = sqlConsole.generateTabName()
 

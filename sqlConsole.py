@@ -150,7 +150,13 @@ class sqlWorker(QObject):
             result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
             print('saving the resultset id: %s' % result_str)
 
-            if result.LOBs == False and not explicitLimit and resultSize == resultSizeLimit:
+            for c in result.cols:
+                if db.ifLOBType(c[1]):
+                    result.LOBs = True
+                    
+                    break
+                    
+            if result.LOBs == False and (not explicitLimit and resultSize == resultSizeLimit):
                 print('detaching due to possible SUSPENDED')
                 result.detach()
                 print('done')
@@ -1072,7 +1078,7 @@ class resultSet(QTableWidget):
         log('Setting detach timer')
         self.detachTimer = QTimer(window)
         self.detachTimer.timeout.connect(self.detachCB)
-        self.detachTimer.start(1000 * 256)
+        self.detachTimer.start(1000 * 120)
     
     def csvRow(self, r):
         
@@ -1762,6 +1768,7 @@ class sqlConsole(QWidget):
         result.cols = cols
         
         result.populate()
+
     
     def dummyResultTable(self):
     
@@ -2129,7 +2136,8 @@ class sqlConsole(QWidget):
         
         self.thread.quit()
         self.sqlRunning = False
-        self.indicator.active = False
+        #self.indicator.active = False
+        self.indicator.status = 'render'
         self.indicator.repaint()
 
         if self.wrkException is not None:
@@ -2169,12 +2177,10 @@ class sqlConsole(QWidget):
 
         resultSize = len(rows)
 
-        for c in cols:
-            if db.ifLOBType(c[1]):
-                result.LOBs = True
-                
-                result.triggerDetachTimer(self)
-                break
+
+
+        if result.LOBs:
+            result.triggerDetachTimer(self)
 
         lobs = ', +LOBs' if result.LOBs else ''
 
@@ -2184,6 +2190,9 @@ class sqlConsole(QWidget):
         self.log(logText)
 
         result.populate(refreshMode)
+
+        self.indicator.status = 'idle'
+        self.indicator.repaint()
         
         self.launchStatementQueue()
         
@@ -2225,7 +2234,8 @@ class sqlConsole(QWidget):
         self.sqlRunning = True
         
         #print('self.thread.start()')
-        self.indicator.active = True
+        #self.indicator.active = True
+        self.indicator.status = 'running'
         self.indicator.repaint()
         
         self.thread.start()
