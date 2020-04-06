@@ -142,7 +142,10 @@ class sqlWorker(QObject):
                 log('connectionLost() used to be here, but now no UI possible from the thread')
                 #cons.connectionLost()
                 
-        resultSize = len(result.rows)
+        if result.rows:
+            resultSize = len(result.rows)
+        else:
+            resultSize = -1
 
         if cons.wrkException is None:
             result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
@@ -1322,7 +1325,7 @@ class resultSet(QTableWidget):
     
         if db.ifLOBType(self.cols[j][1]):
             if self.detached:
-                self.log('warning: LOB resultset already detached')
+                self.log('warning: LOB resultset already detached', True)
                 
                 if db.ifBLOBType(self.cols[j][1]):
                     blob = str(self.rows[i][j].encode())
@@ -2009,7 +2012,7 @@ class sqlConsole(QWidget):
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
                     if F9 and (start <= cursorPos <= stop) and (start < stop):
-                        print('start <= cursorPos <= stop:', start, cursorPos, stop)
+                        #print('start <= cursorPos <= stop:', start, cursorPos, stop)
                         selectSingle(start, stop)
                         break
                     else:

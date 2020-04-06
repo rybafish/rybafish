@@ -358,6 +358,12 @@ class hslWindow(QMainWindow):
             return
             
         self.statusMessage('Connecting...', True)
+
+        ind = indicator()
+        self.statusbar.addPermanentWidget(ind)
+
+        ind.status = 'sync'
+        ind.repaint()
         
         log('menuSQLConsole...')
         
@@ -384,14 +390,11 @@ class hslWindow(QMainWindow):
             self.statusMessage('Connection error?', True)
             return
         
+        console.indicator = ind
+        
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
         self.tabs.addTab(console, tname)
-        
-        ind = indicator()
-        console.indicator = ind
-        
-        self.statusbar.addPermanentWidget(ind)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -401,6 +404,8 @@ class hslWindow(QMainWindow):
             self.changeActiveTabName(console.tabname + ' *')
         
         self.statusMessage('', False)
+        console.indicator.status = 'idle'
+        console.indicator.repaint()
             
     
     def menuImport(self):
