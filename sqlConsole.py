@@ -1070,6 +1070,10 @@ class resultSet(QTableWidget):
     def detachCB(self):
         log('detach timer triggered')
         
+        if self.detachTimer is None:
+            log('[?] why the timer is None?')
+            return
+            
         self.detachTimer.stop()
         self.detachTimer = None
         self.detach()
