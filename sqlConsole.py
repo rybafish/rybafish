@@ -157,9 +157,8 @@ class sqlWorker(QObject):
                     break
                     
             if result.LOBs == False and (not explicitLimit and resultSize == resultSizeLimit):
-                print('detaching due to possible SUSPENDED')
+                log('detaching due to possible SUSPENDED')
                 result.detach()
-                print('done')
 
         self.finished.emit()
     
@@ -1049,7 +1048,7 @@ class resultSet(QTableWidget):
         if self._resultset_id is None:
             # could be if the result did not have result: for example DDL or error statement
             # but it's strange we are detachung it...
-            log('attempted to detach resultset with no _resultset_id')
+            log('[!] attempted to detach resultset with no _resultset_id')
             return
             
         result_str = binascii.hexlify(bytearray(self._resultset_id)).decode('ascii')
@@ -1082,7 +1081,7 @@ class resultSet(QTableWidget):
         log('Setting detach timer')
         self.detachTimer = QTimer(window)
         self.detachTimer.timeout.connect(self.detachCB)
-        self.detachTimer.start(1000 * 120)
+        self.detachTimer.start(1000 * 300)
     
     def csvRow(self, r):
         
@@ -1687,6 +1686,11 @@ class sqlConsole(QWidget):
             del(result.rows)
             
             if result.LOBs and not result.detached:
+                if result.detachTimer is not None:
+                    log('stopping the detach timer in advance...')
+                    result.detachTimer.stop()
+                    result.detachTimer = None
+                    
                 result.detach()
             
             #result.destroy()
