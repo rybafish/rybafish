@@ -147,14 +147,19 @@ class sqlWorker(QObject):
         if cons.wrkException is None:
             result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
             result.detached = False
-            result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
+            
+            if dbCursor._resultset_id:
+                result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
+            else:
+                result_str = 'None'
             print('saving the resultset id: %s' % result_str)
 
-            for c in result.cols:
-                if db.ifLOBType(c[1]):
-                    result.LOBs = True
-                    
-                    break
+            if result.cols is not None:
+                for c in result.cols:
+                    if db.ifLOBType(c[1]):
+                        result.LOBs = True
+                        
+                        break
                     
             if result.LOBs == False and (not explicitLimit and resultSize == resultSizeLimit):
                 log('detaching due to possible SUSPENDED')
@@ -1051,12 +1056,15 @@ class resultSet(QTableWidget):
             log('[!] attempted to detach resultset with no _resultset_id')
             return
             
-        result_str = binascii.hexlify(bytearray(self._resultset_id)).decode('ascii')
+        if self._resultset_id:
+            result_str = binascii.hexlify(bytearray(self._resultset_id)).decode('ascii')
+        else:
+            result_str = 'None'
         
         if self._connection is None:
             return
         
-        if self.detached == False:
+        if self.detached == False and self._resultset_id is not None:
             log('closing the resultset: %s' % result_str)
             try:
                 db.close_result(self._connection, self._resultset_id) 
@@ -2176,7 +2184,8 @@ class sqlConsole(QWidget):
         if rows is None or cols is None:
             # it was a DDL or something else without a result set so we just stop
             
-            logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
+            #logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
+            logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
             
             self.log(logText)
             

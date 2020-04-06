@@ -13,11 +13,12 @@ class cursor_mod(cursor.Cursor):
         
         maybe - many result sets because of: #issue_numner#
     '''
-    _function_code = None # extention to keep function code after the request executed
-                    # should be reset every 'prepare/execute'
+    #_function_code = None # extention to keep function code after the request executed
+    #                # should be reset every 'prepare/execute'
 
     def prepare(self, statement):
-        _function_code = None
+        self._function_code = None
+        self._resultset_id = None
         return super().prepare(statement)
         
     def execute_prepared(self, prepared_statement, multi_row_parameters):

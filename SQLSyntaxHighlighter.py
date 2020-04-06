@@ -31,6 +31,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
         keywords = ['select', 'from', 'order\s+by', 'group\s+by', 'where', 'inner', 'left', 'right', 
                     'outer', 'join', 'as', 'on', 'with', 'distinct', 'create', 'drop', 'procedure', 'table', 'truncate', 'function',
                     'where', 'asc', 'desc', 'case', 'when', 'else', 'and', 'or', 'like', 'round', 'count', 'sum', 'min', 'max', 'avg',
+                    'updtae', 'insert', 'into',
                     'do', 'begin', 'end', 'then', 'if', 'between', 'having',  'union\s+all', 'union']
 
         rules = []
