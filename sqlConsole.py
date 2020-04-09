@@ -1627,9 +1627,13 @@ class sqlConsole(QWidget):
             if self.conn is not None:
                 db.close_connection(self.conn)
                 self.conn = None
+                self.log('\nDisconnected')
+
+            self.sqlRunning = False
+            self.stQueue.clear()
 
             self.conn = db.create_connection(self.config)                
-            self.log('\nConnected')
+            self.log('Connected')
             
         except dbException as e:
             log('close() db exception: '+ str(e))
@@ -1642,7 +1646,7 @@ class sqlConsole(QWidget):
 
     
     def reconnect(self):
-
+            
         try: 
             conn = db.create_connection(self.config)
         except Exception as e:
@@ -1746,14 +1750,17 @@ class sqlConsole(QWidget):
                     log('Connection restored automatically')
                 else:
                     log('Some connection issue, give up')
+                    self.log('Some connection issue, give up', True)
                     self.conn = None
             except:
                 log('Connection lost, give up')
+                self.log('Connection lost, give up', True)
                 # print disable the timer?
                 self.conn = None
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
             log('[!] %s' % str(e))
+            self.log('[!] unexpected exception, disable the connection', True)
             
             self.conn = None
                         
@@ -2093,9 +2100,12 @@ class sqlConsole(QWidget):
             if len(statements) > 1:
                 self.stQueue = statements.copy()
                 self.launchStatementQueue()
-            else:
+            elif len(statements) > 0:
                 result = self.newResult(self.conn, statements[0])
                 self.executeStatement(statements[0], result)
+            else:
+                #empty string selected
+                pass
             
 
         return
