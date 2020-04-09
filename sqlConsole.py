@@ -1624,6 +1624,9 @@ class sqlConsole(QWidget):
         
     def connectDB(self):
         try: 
+            self.indicator.status = 'sync'
+            self.indicator.repaint()
+
             if self.conn is not None:
                 db.close_connection(self.conn)
                 self.conn = None
@@ -1638,11 +1641,13 @@ class sqlConsole(QWidget):
         except dbException as e:
             log('close() db exception: '+ str(e))
             self.log('close() db exception: '+ str(e), True)
-            return
         except Exception as e:
             log('close() exception: '+ str(e))
             self.log('close() exception: '+ str(e), True)
-            return
+
+
+        self.indicator.status = 'idle'
+        self.indicator.repaint()
 
     
     def reconnect(self):
