@@ -385,10 +385,12 @@ class hslWindow(QMainWindow):
             log('[!] failed to open console expectedly')
             self.statusMessage('Connection error', True)
             return
-        except:
-            log('[!] failed to open console unexpectedly')
+        '''
+        except Exception as e:
+            log('[!] failed to open console unexpectedly: ' + str(e))
             self.statusMessage('Connection error?', True)
             return
+        '''
         
         console.indicator = ind
         

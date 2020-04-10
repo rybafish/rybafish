@@ -35,16 +35,16 @@ from PyQt5.QtCore import pyqtSignal
 
 class sqlWorker(QObject):
     finished = pyqtSignal()
-    
+
     def __init__(self, cons):
         super().__init__()
-        self.cons = cons
         
+        self.cons = cons
         self.args = []
     
     def executeStatement(self):
     
-        #print('inside thread')
+        #print('0 --> main thread method')
         
         if not self.args:
             log('[!] sqlWorker with no args?')
@@ -168,8 +168,11 @@ class sqlWorker(QObject):
                 log('detaching due to possible SUSPENDED')
                 result.detach()
 
+        #print('1 <-- self.finished.emit()')
         self.finished.emit()
-    
+        #time.sleep(0.5)
+        
+        #print('4 <-- main thread method <-- ')
 
 def generateTabName():
     
@@ -1242,7 +1245,7 @@ class resultSet(QTableWidget):
         
         adjRow = 10 if len(rows) >= 10 else len(rows)
 
-        #return <-- it leaks even before this point
+        #return -- it leaks even before this point
         
         #fill the result table
         for r in range(len(rows)):
@@ -1374,6 +1377,7 @@ class sqlConsole(QWidget):
         # one time thread init...
         self.sqlWorker.moveToThread(self.thread)
         self.sqlWorker.finished.connect(self.sqlFinished)
+        #self.thread.finished.connect(self.sqlFinished)
         self.thread.started.connect(self.sqlWorker.executeStatement)
         
         #self.window = None # required for the timer
@@ -1674,7 +1678,7 @@ class sqlConsole(QWidget):
         result.insertText.connect(self.cons.insertTextS)
         
         if len(self.results) > 0:
-            rName = 'Results ' + str(len(self.results))
+            rName = 'Results ' + str(len(self.results)+1)
         else:
             rName = 'Results'
         
@@ -2123,6 +2127,7 @@ class sqlConsole(QWidget):
             each execution pops the statement from the list right after thread start!
         '''
         
+        #print('0 launchStatementQueue')
         if self.stQueue:
             st = self.stQueue.pop(0)
             result = self.newResult(self.conn, st)
@@ -2167,18 +2172,19 @@ class sqlConsole(QWidget):
             post-process the sql reaults
             also handle exceptions
         '''
-        
+        #print('2 --> sql finished')
+
         self.thread.quit()
         self.sqlRunning = False
-        #self.indicator.active = False
+        
         self.indicator.status = 'render'
         self.indicator.repaint()
 
         if self.wrkException is not None:
             self.log(self.wrkException, True)
             
-            self.thread.quit()
-            self.sqlRunning = False
+            #self.thread.quit()
+            #self.sqlRunning = False
             
             if self.stQueue:
                 self.log('Queue processing stopped due to this exception.', True)
@@ -2212,8 +2218,6 @@ class sqlConsole(QWidget):
 
         resultSize = len(rows)
 
-
-
         if result.LOBs:
             result.triggerDetachTimer(self)
 
@@ -2229,7 +2233,22 @@ class sqlConsole(QWidget):
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
+        # should rather be some kind of mutex here...
+        
+        if self.thread.isRunning():
+            time.sleep(0.05)
+            
+        if self.thread.isRunning():
+            log('[!!] self.thread.isRunning()!')
+            time.sleep(0.1)
+
+        if self.thread.isRunning():
+            log('[!!!] self.thread.isRunning()!')
+            time.sleep(0.2)
+            
         self.launchStatementQueue()
+        
+        #print('3 <-- finished')
         
     def executeStatement(self, sql, result, refreshMode = False):
         '''
@@ -2261,19 +2280,18 @@ class sqlConsole(QWidget):
         ##########################
         ### trigger the thread ###
         ##########################
-        #self.sqlWorker.executeStatement(sql, result, refreshMode)
         
         self.sqlWorker.args = [sql, result, refreshMode]
         
         self.t0 = time.time()
         self.sqlRunning = True
         
-        #print('self.thread.start()')
-        #self.indicator.active = True
         self.indicator.status = 'running'
         self.indicator.repaint()
         
+        #print('--> self.thread.start()')
         self.thread.start()
+        #print('<-- self.thread.start()')
             
         return
         
