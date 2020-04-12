@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QIcon
 
@@ -12,26 +12,137 @@ from yaml import safe_load, dump, YAMLError #pip install pyyaml
 logmode = 'file'
 config = {}
 
+timers = []
+
+localeCfg = None
+
+def timerStart():
+    timers.clear()
+    timers.append([time.time(), ''])
+    
+def timeLap(desc = None):
+
+    if desc is None:
+        desc = 't'+str(len(timers))
+
+    timers.append([time.time(), desc])
+
+def timePrint():
+
+    s = []
+    
+    for i in range(1, len(timers)):
+        s.append('%s:%s' % (timers[i][1], str(round(timers[i][0]-timers[i-1][0], 3))))
+
+    print('timers: ', ', '.join(s))
+
 class dbException(Exception):
-    pass
+
+    CONN = 1
+    SQL = 2
+
+    def __init__ (self, message, type = None):
+        self.type = type
+        super().__init__(message, type)
     
-def numberToStr(num, d = 0):
-    if cfg('locale'):
-        locale.setlocale(locale.LC_ALL, cfg('locale'))
-    else:
-        locale.setlocale(locale.LC_ALL, '')
+def numberToStr(num, d = 0, fix = True):
+
+    global localeCfg
+
+    if localeCfg is None:
+        localeCfg = cfg('locale', '')
+        if localeCfg != '':
+            try:
+                locale.setlocale(locale.LC_ALL, localeCfg)
+            except Exception as e:
+                localeCfg = ''
+                log('[!] '+ str(e))
+                
+    locale.setlocale(locale.LC_ALL, localeCfg)
     
+    if num is None:
+        return '?'
+        
     fmt = '%.{0}f'.format(d)
+        
     s = locale.format(fmt, num, grouping=True)
     
     return s
-    
 
-def yesNoDialog(title, message):
+def numberToStrCSV(num, grp = True):
+
+    global localeCfg
+    
+    if localeCfg is None:
+        
+        localeCfg = cfg('locale', '')
+                
+        if localeCfg != '':
+            try:
+                print (4, localeCfg)
+                locale.setlocale(locale.LC_ALL, localeCfg)
+            except Exception as e:
+                localeCfg = ''
+                log('[!] '+ str(e))
+                
+    locale.setlocale(locale.LC_ALL, localeCfg)
+        
+    dp = locale.localeconv()['decimal_point']
+    
+    if num is None:
+        return '?'
+
+    #fmt = '%g'
+    
+    fmt = '%f'
+    s = locale.format(fmt, num, grouping = grp)
+
+    # trim ziroes for f:
+    
+    s = s.rstrip('0').rstrip(dp)
+    
+    return s
+
+def formatTime(t):
+    
+    (ti, ms) = divmod(t, 1)
+    
+    ms = round(ms, 3)
+    
+    if ms == 1:
+        ti += 1
+        ms = '0'
+    else:
+        ms = str(int(ms*1000)).rstrip('0')
+    
+    if ti < 60:
+        
+        s = str(round(t, 3)) + ' s'
+        
+    elif ti < 3600:
+        format = '%M:%S'
+        msStr = '.%s' % ms
+        s = time.strftime(format, time.gmtime(ti)) + msStr
+    else:
+        format = '%H:%M:%S'
+        msStr = '.%s' % ms
+        s = time.strftime(format, time.gmtime(ti)) + msStr
+    
+    s += '   (' + str(round(t, 3)) + ')'
+    
+    return s
+
+def yesNoDialog(title, message, cancel = False):
     msgBox = QMessageBox()
     msgBox.setWindowTitle(title)
     msgBox.setText(message)
-    msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
+
+    if cancel == True:
+        buttons = QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+    else:
+        buttons = QMessageBox.Yes | QMessageBox.No
+        
+    msgBox.setStandardButtons(buttons)
     msgBox.setDefaultButton(QMessageBox.Yes)
     iconPath = resourcePath('ico\\favicon.ico')
     msgBox.setWindowIcon(QIcon(iconPath))
@@ -43,8 +154,10 @@ def yesNoDialog(title, message):
 
     if reply == QMessageBox.Yes:
         return True
+    elif reply == QMessageBox.No:
+        return False
         
-    return False
+    return None
         
 
 def GB(bytes, scale = 'GB'):
@@ -101,6 +214,8 @@ def resourcePath(file):
 def loadConfig():
 
     global config
+    
+    config.clear()
 
     try: 
         f = open('config.yaml', 'r')
@@ -110,6 +225,9 @@ def loadConfig():
         config = {}
     
 def cfg(param, default = None):
+
+    global config
+
     if param in config:
         return config[param]
     else:
@@ -133,9 +251,16 @@ def log(s, nots = False, nonl = False):
     else:
         nl = '\n'
         
-    if cfg('logmode') != 'duplicate':
+    if cfg('logmode') != 'screen':
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
-        f.write(ts + str(s) + nl)
+        try:
+            f.write(ts + s + nl)
+        #except builtins.UnicodeEncodeError:   builtins unknown smth.
+        #    f.write(ts + str(s.encode()) + nl)
+
+        except Exception as e:
+            f.write(ts + str(e) + nl)
+        
         f.close()
         

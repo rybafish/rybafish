@@ -1,6 +1,28 @@
 import pyhdb
 import time
 
+
+
+#### low-level pyhdb magic requred because of missing implementation of CLOSERESULTSET  ####
+
+from pyhdb.protocol.message import RequestMessage
+from pyhdb.protocol.segments import RequestSegment
+from pyhdb.protocol.parts import ResultSetId
+
+from pyhdb.protocol.constants import message_types, type_codes
+
+from dbCursor import cursor_mod
+from pyhdb.protocol.constants import function_codes #for the cursor_mod
+
+message_types.CLOSERESULTSET = 69 # SAP HANA SQL Command Network Protocol Reference
+                                  # this one is still missing in pyhdb 2019-12-15
+
+#### low-level pyhdb magic requred because of missing implementation of CLOSERESULTSET  ####
+
+
+for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
+    print(k, pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])
+
 from datetime import datetime
 
 import kpiDescriptions
@@ -8,20 +30,51 @@ import sql
 
 import sys
 
-from utils import log
+from utils import log, cfg
 from utils import dbException
+
+largeSql = False
 
 def create_connection (server, dbProperties = None):
 
+    global largeSql
+
     t0 = time.time()
     try: 
-        connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+        if largeSql:
+            old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
+            old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
+            pyhdb.protocol.constants.MAX_MESSAGE_SIZE = 2**19
+            pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
+            
+            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+            connection.large_sql = True
+            largeSql = False
+            
+            old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
+            old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
+        else:
+            # normal connection
+            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+            connection.large_sql = False
+            largeSql = False
+            
+        
     except Exception as e:
 #    except pyhdb.exceptions.DatabaseError as e:
         log('[!]: connection failed: %s\n' % e)
         connection = None
         raise dbException(str(e))
     
+    '''
+    print('MAX_MESSAGE_SIZE: ', pyhdb.protocol.constants.MAX_MESSAGE_SIZE)
+    print('MAX_SEGMENT_SIZE: ', pyhdb.protocol.constants.MAX_SEGMENT_SIZE)
+
+    print('[DEFAULT_CONNECTION_OPTIONS]')
+    for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
+        print(k, pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])
+    '''
+
     t1 = time.time()
 
     if dbProperties is not None:
@@ -58,17 +111,17 @@ def close_connection (c):
         
     return
     
-def execute_query(connection, sql_string, params = []):
+def execute_query(connection, sql_string, params):
 
     if not connection:
         log('no db connection...')
         return
 
-    cursor = connection.cursor()
-
     # prepare the statement...
-    
+
     try:
+        cursor = connection.cursor()
+        
         psid = cursor.prepare(sql_string)
     except pyhdb.exceptions.DatabaseError as e:
         log('[!] SQL Error: %s' % sql_string)
@@ -95,14 +148,79 @@ def execute_query(connection, sql_string, params = []):
         log('[E] unexpected error: %s' % str(e))
         raise dbException(str(e))
 
-    #log('columns: ' + str(cursor.description))
-    
-    #ps.close()
-    cursor.close()
-    
-    cursor = None
-    
     return rows
+
+def close_result(connection, _resultset_id):
+    
+    request = RequestMessage.new(
+                connection,
+                RequestSegment(message_types.CLOSERESULTSET, (ResultSetId(_resultset_id)))
+                )
+
+    response = connection.send_request(request)
+    
+    # no exception...
+    # no result check...
+    return
+
+def execute_query_desc(connection, sql_string, params, resultSize):
+    '''
+        The method used solely by SQL console because it also needs a result set description.
+        It also used a modified version of the pyhdb cursor implementation because of the https://github.com/rybafish/rybafish/issues/97
+    '''
+
+    if not connection:
+        log('no db connection...')
+        return
+
+    #cursor = connection.cursor()
+    cursor = cursor_mod(connection)
+
+    # prepare the statement...
+
+    try:
+        psid = cursor.prepare(sql_string)
+    except pyhdb.exceptions.DatabaseError as e:
+    
+        log('DatabaseError: ' + str(e.code))
+    
+        if str(e).startswith('Lost connection to HANA server'):
+            raise dbException(str(e), dbException.CONN)
+    
+        log('[!] SQL Error: %s' % sql_string)
+        log('[!] SQL Error: %s' % (e))
+        
+        raise dbException(str(e))
+    except Exception as e:
+        log("[!] unexpected DB exception, sql: %s" % sql_string)
+        log("[!] unexpected DB exception:", str(e))
+        log("[!] unexpected DB exception:", sys.exc_info()[0])
+        raise dbException(str(e))
+        
+    try:
+        ps = cursor.get_prepared_statement(psid)
+
+        cursor.execute_prepared(ps, [params])
+
+        if cursor._function_code == function_codes.DDL:
+            rows = None
+        else:
+            rows = cursor.fetchmany(resultSize)
+            
+            cursor.close()
+
+        # rows = cursor.fetchmany(resultSize)
+
+    except pyhdb.exceptions.DatabaseError as e:
+        log('[!]: sql execution issue %s\n' % e)
+        raise dbException(str(e))
+    except Exception as e:
+        log('[E] unexpected error: %s' % str(e))
+        raise dbException(str(e))
+
+    columns = cursor.description
+
+    return rows, columns, cursor
     
 def get_data(connection, kpis, times, data):
     '''
@@ -203,3 +321,46 @@ def initHosts(c, hosts, hostKPIs, srvcKPIs):
     
     log('hostsInit time: %s' % (str(round(t1-t0, 3))))
     
+    
+def ifNumericType(t):
+    if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT,
+        type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
+        return True
+    else:
+        return False
+
+def ifRAWType(t):
+    if t == type_codes.VARBINARY:
+        return True
+    else:
+        return False
+
+def ifTSType(t):
+    if t == type_codes.TIMESTAMP:
+        return True
+    else:
+        return False
+
+def ifVarcharType(t):
+    if t == type_codes.VARCHAR or t == type_codes.NVARCHAR:
+        return True
+    else:
+        return False
+        
+def ifDecimalType(t):
+    if t in (type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
+        return True
+    else:
+        return False
+
+def ifLOBType(t):
+    if t in (type_codes.CLOB, type_codes.NCLOB, type_codes.BLOB):
+        return True
+    else:
+        return False
+        
+def ifBLOBType(t):
+    if t == type_codes.BLOB:
+        return True
+    else:
+        return False        

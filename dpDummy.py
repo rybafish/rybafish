@@ -84,8 +84,7 @@ class dataProvider:
                     'to':etime
                     })
                     
-        if cfg('experimental'):
-            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
                     
     def getData(self, host, fromto, kpis, data):
         

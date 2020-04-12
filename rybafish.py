@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox;
 from PyQt5.QtGui import QPainter, QIcon
 
 import sys
+from os import getcwd
 import hslWindow
 
 from PyQt5 import QtCore
@@ -13,6 +14,7 @@ from utils import resourcePath
 from _constants import build_date, version
 
 import traceback
+import sqlConsole
 
 '''
     TODO
@@ -36,7 +38,12 @@ class ExceptionHandler(QtCore.QObject):
         super(ExceptionHandler, self).__init__()
 
     def handler(self, exctype, value, tb):
-        log('[!] fatal exeption\n')
+    
+        global ryba
+    
+        cwd = getcwd()
+        log('[!] fatal exception\n')
+        
         #details = '%s: %s\n' % (str(exctype), str(value))
         details = '%s.%s: %s\n\n' % (exctype.__module__ , exctype.__qualname__  , str(value))
         #???
@@ -46,9 +53,18 @@ class ExceptionHandler(QtCore.QObject):
         
 
         for s in traceback.format_tb(tb):
-            details += s.replace('\\n', '\n')
+            details += '>>' + s.replace('\\n', '\n').replace(cwd, '..')
 
         log(details, nots = True)
+
+
+        if ryba.tabs:
+            for i in range(ryba.tabs.count() -1, 0, -1):
+
+                w = ryba.tabs.widget(i)
+                
+                if isinstance(w, sqlConsole.sqlConsole):
+                    w.delayBackup()
 
         msgBox = QMessageBox()
         msgBox.setWindowTitle('Fatal error')
@@ -63,19 +79,22 @@ class ExceptionHandler(QtCore.QObject):
 
 if __name__ == '__main__':
     
+    global ryba
+    
     exceptionHandler = ExceptionHandler()
     #sys._excepthook = sys.excepthook
     sys.excepthook = exceptionHandler.handler
 
     utils.loadConfig()
     
-    
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))
     
     app = QApplication(sys.argv)
 
-    ex = hslWindow.hslWindow()
+    #ex = hslWindow.hslWindow()
+    ryba = hslWindow.hslWindow()
+    #ex = hslWindow.hslWindow()
     
     sys.exit(app.exec_())
     app.exec_()

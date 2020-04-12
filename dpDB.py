@@ -41,6 +41,7 @@ class dataProvider():
         try: 
             conn = db.create_connection(server, self.dbProperties)
         except dbException as e:
+            log('dataprovider exception bubble up...')
             raise e
         
         if conn is None:
@@ -96,13 +97,20 @@ class dataProvider():
     def keepAlive(self):
     
         if self.connection is None:
+            log('no connection, disabeling the keep-alive timer')
+            self.timer.stop()
             return
 
         try:
-            log('sending keep alive... ', False, True)
+            log('chart keep alive... ', False, True)
             
             t0 = time.time()
             db.execute_query(self.connection, 'select * from dummy', [])
+            
+            if hasattr(self, 'fakeDisconnect'):
+                print ('generate an exception...')
+                print (10/0)
+            
             t1 = time.time()
             log('ok: %s ms' % (str(round(t1-t0, 3))), True)
         except dbException as e:
@@ -114,11 +122,18 @@ class dataProvider():
                     log('Connection restored automatically')
                 else:
                     log('Some connection issue, give up')
+                    self.timer.stop()
                     self.connection = None
             except:
                 log('Connection lost, give up')
-                # print disable the timer?
+
+                self.timer.stop()
                 self.connection = None
+        except Exception as e:
+            log('[!] unexpected exception, disable the connection')
+            log('[!] %s' % str(e))
+            self.connection = None
+        
             
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
     
@@ -138,7 +153,7 @@ class dataProvider():
 
         t0 = time.time()
         
-        rows = db.execute_query(self.connection, sql_string)
+        rows = db.execute_query(self.connection, sql_string, [])
         
         for i in range(0, len(rows)):
             hosts.append({
@@ -148,7 +163,7 @@ class dataProvider():
                         'to':rows[i][3]
                         })
 
-        rows = db.execute_query(self.connection, kpis_sql)
+        rows = db.execute_query(self.connection, kpis_sql, [])
         
         for kpi in rows:
         
@@ -187,8 +202,7 @@ class dataProvider():
 
         t1 = time.time()
 
-        if cfg('experimental'):
-            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
 
         t2 = time.time()
         
@@ -359,16 +373,16 @@ class dataProvider():
         
         # self.lock = False
 
-        print('before clnp', kpiIn)
+        #print('before clnp', kpiIn)
         #remove disabled stuff
         
         for kpi in kpiIn.copy():
-            print('kpi: ', kpi)
+            #print('kpi: ', kpi)
             if 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
                 # this will affect the actual list of enabled kpis, which is good!
                 kpiIn.remove(kpi)
                 
-        print('after clnp', kpiIn)
+        #print('after clnp', kpiIn)
         
         return 
 
@@ -427,7 +441,7 @@ class dataProvider():
                             '''
                                 
                             #log('allocate %i for %s' % (trace_lines, kpis_[j]))
-                            data[kpis_[j]] = [0]* (trace_lines)  #array('l', [0]*data_size) ??
+                            data[kpis_[j]] = [0] * (trace_lines)  #array('l', [0]*data_size) ??
                             log('allocate data[%s]: %i' %(kpis_[j], trace_lines))
 
                 for j in range(0, len(kpis_)):

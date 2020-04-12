@@ -92,7 +92,7 @@ def findKPIns(t, nsName):
         if kpi[1] == t and kpi[3] == nsName:
             return kpi
             
-    log('ns kpi not found: %s.%s' % (t, nsName))
+    #log('ns kpi not found: %s.%s' % (t, nsName))
 
     return None
    
@@ -252,6 +252,8 @@ def clarifyGroups():
                 kpis[kpi]['group'] = grp
             
     def update(grpIdx, grpName):
+        if grpIdx == 0:
+            return;
     
         if grpIdx == grpName:
             return
@@ -275,7 +277,7 @@ def clarifyGroups():
         if 'memory_used' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['memory_used']['group'], 'mem')
             
-            if cfg('experimental') and cfg('memoryGB'):
+            if cfg('memoryGB'):
                 updateDunit('mem', 'GB')
             
         if thread_kpis[0] in kpiStylesNN[h]:

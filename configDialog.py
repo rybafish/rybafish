@@ -97,7 +97,7 @@ class Config(QDialog):
         
         self.setWindowIcon(QIcon(iconPath))
         
-        self.setLayout(vbox)    
+        self.setLayout(vbox)
         
         #self.setGeometry(300, 300, 300, 150)
         self.setWindowTitle('Connection')

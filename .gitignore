@@ -3,9 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
-
 # Distribution / packaging
 build/
 dist/
@@ -23,6 +20,14 @@ pip-delete-this-directory.txt
 
 # npp backups
 *.bak
+
+# archives, just in case
+*.7z
+*.zip
+
+# now we support saving files so...
+*.sql
+*.sqbkp
 
 # avoid updating the config
 config.yaml

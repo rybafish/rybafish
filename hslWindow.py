@@ -2,12 +2,13 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QSplitter, QStyleFactory, QTableWidget,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
-    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog
+    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog, 
+    QApplication
     )
     
-from PyQt5.QtGui import QPainter, QIcon
+from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QUrl, QEvent
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -16,9 +17,13 @@ import chartArea
 import configDialog, aboutDialog
 import dpDBCustom
 
+import dpTrace
+
 import dpDummy
 import dpDB
 import sqlConsole
+
+from indicator import indicator
 
 from utils import resourcePath
 
@@ -42,16 +47,44 @@ class hslWindow(QMainWindow):
     kpisTable = None
 
     def __init__(self):
+    
+        self.sqlTabCounter = 0 #static tab counter
+        
+        self.tabs = None
+    
         super().__init__()
         self.initUI()
+        
+        
+    # def tabChanged(self, newidx):
+        
+    def closeTab(self):
+        indx = self.tabs.currentIndex()
+        
+        if indx > 0: #print need a better way to identify sql consoles...
+            cons = self.tabs.currentWidget()
+            
+            cons.delayBackup()
+
+            status = cons.close()
+            
+            if status == True:
+                print('kill indicator')
+                self.statusbar.removeWidget(cons.indicator)
+                self.tabs.removeTab(indx)
+    
         
     def keyPressEvent(self, event):
         #log('window keypress: %s' % (str(event.key())))
 
-        if (event.modifiers() == Qt.ControlModifier and event.key() == 82) or event.key() == Qt.Key_F5:
+        modifiers = event.modifiers()
+
+        if (modifiers == Qt.ControlModifier and event.key() == 82) or event.key() == Qt.Key_F5:
             log('reload request!')
             self.chartArea.reloadChart()
             
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_W:
+            self.closeTab()
         else:
             super().keyPressEvent(event)
             
@@ -64,8 +97,35 @@ class hslWindow(QMainWindow):
             if repaint:
                 self.repaint()
         
+    def closeEvent(self, event):
+        log('Exiting...')
+        
+        for i in range(self.tabs.count() -1, 0, -1):
+
+            w = self.tabs.widget(i)
+            
+            if isinstance(w, sqlConsole.sqlConsole):
+                w.delayBackup()
+                status = w.close(False) # can not abort
+        
+        clipboard = QApplication.clipboard()
+        event = QEvent(QEvent.Clipboard)
+        QApplication.sendEvent(clipboard, event)
+        
     def menuQuit(self):
-        sys.exit(0)
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            if isinstance(w, sqlConsole.sqlConsole):
+                
+                status = w.close(True) # can abort
+                
+                if status == True:
+                    self.tabs.removeTab(i)
+                
+                if status == False:
+                    return
+                    
+        self.close()
 
     def menuReloadCustomKPIs(self):
     
@@ -125,6 +185,13 @@ class hslWindow(QMainWindow):
         abt = aboutDialog.About()
         abt.exec_()
         
+    def menuConfHelp(self):
+        QDesktopServices.openUrl(QUrl('http://rybafish.net/config'))
+
+    def menuCustomConfHelp(self):
+        QDesktopServices.openUrl(QUrl('http://rybafish.net/customKPI'))
+        
+        
     def menuDummy(self):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
         self.chartArea.initDP()
@@ -147,7 +214,9 @@ class hslWindow(QMainWindow):
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
+                self.chartArea.setStatus('sync', True)
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+                self.chartArea.setStatus('idle')
                 
                 self.chartArea.initDP()
                 
@@ -155,7 +224,10 @@ class hslWindow(QMainWindow):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
                     self.chartArea.reloadChart()
 
-                self.tabs.setTabText(0, conf['user'] + '@' + self.chartArea.dp.dbProperties['sid'])
+                propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
+                
+                self.tabs.setTabText(0, propStr)
+                self.setWindowTitle('RybaFish Charts [%s]' % propStr)
                 
                 #setup keep alives
                 
@@ -197,11 +269,155 @@ class hslWindow(QMainWindow):
                 msgBox.exec_()
                 
                 self.statusMessage('', False)
+        
+    def changeActiveTabName(self, name):
+    
+        i = self.tabs.currentIndex()
+
+        # must be a better way verity if we attempt to update chart tab name
+        if i == 0:
+            return
+            
+        self.tabs.setTabText(i, name)
+    
+    def menuSave(self):
+    
+        indx = self.tabs.currentIndex()
+
+        w = self.tabs.widget(indx)
+    
+        if not isinstance(w, sqlConsole.sqlConsole):
+            return
+            
+        w.delayBackup()
+        w.saveFile()
+    
+    def menuOpen(self):
+        '''
+            so much duplicate code with menuSqlConsole
+        '''
+        fname = QFileDialog.getOpenFileNames(self, 'Open file', '','*.sql')
+        
+        openfiles = {}
+        
+        for i in range(self.tabs.count()):
+        
+            w = self.tabs.widget(i)
+        
+            if isinstance(w, sqlConsole.sqlConsole):
+
+                fn = w.fileName
+
+                if fn is not None:
+                    openfiles[fn] = i
+
+        for filename in fname[0]:
+
+            if filename in openfiles:
+                # the file is already open
+                idx = openfiles[filename]
+                
+                self.tabs.setCurrentIndex(idx)
+                continue
+                
+            conf = self.connectionConf
+               
+            self.statusMessage('Connecting console...', True)
+            
+            try:
+                console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
+            except:
+                self.statusMessage('Failed', True)
+                self.log('[!] error creating console for the file')
+                return
                 
             
+            self.statusMessage('', False)
+            
+            console.nameChanged.connect(self.changeActiveTabName)
+            console.cons.closeSignal.connect(self.closeTab)
+
+            self.tabs.addTab(console, console.tabname)
+            
+            ind = indicator()
+            console.indicator = ind
+            self.statusbar.addPermanentWidget(ind)
+            
+            self.tabs.setCurrentIndex(self.tabs.count() - 1)
+            
+            console.openFile(filename)
+
+    #def populateConsoleTab(self):
+
+    def menuSQLConsole(self):
+    
+        conf = self.connectionConf
+        
+        if conf is None:
+            self.statusMessage('No configuration...', False)
+            return
+            
+        self.statusMessage('Connecting...', True)
+
+        ind = indicator()
+        self.statusbar.addPermanentWidget(ind)
+
+        ind.status = 'sync'
+        ind.repaint()
+        
+        log('menuSQLConsole...')
+        
+        #idx = self.tabs.count()
+        self.sqlTabCounter += 1
+        idx = self.sqlTabCounter
+        
+        if idx > 1:
+            tname = 'sql' + str(idx)
+        else:
+            tname = 'sql'
+
+        # console = sqlConsole.sqlConsole(self, conf, tname) # self = window
+
+        try:
+            console = sqlConsole.sqlConsole(self, conf, tname) # self = window
+            log('seems connected...')
+        except dbException as e:
+            log('[!] failed to open console expectedly')
+            self.statusMessage('Connection error', True)
+            return
+        '''
+        except Exception as e:
+            log('[!] failed to open console unexpectedly: ' + str(e))
+            self.statusMessage('Connection error?', True)
+            return
+        '''
+        
+        console.indicator = ind
+        
+        console.nameChanged.connect(self.changeActiveTabName)
+        console.cons.closeSignal.connect(self.closeTab)
+        self.tabs.addTab(console, tname)
+        
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
+
+        if console.unsavedChanges:
+            # if autoloaded from backup
+            # cannot be triggered from inside as signal not connected on __init__
+            self.changeActiveTabName(console.tabname + ' *')
+        
+        self.statusMessage('', False)
+        console.indicator.status = 'idle'
+        console.indicator.repaint()
+            
+    
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import...',  None, 'Nameserver trace files (*.trc)')
         log(fname[0])
+        
+        self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
+        self.chartArea.initDP()
+        
+        '''
         log('But I dont work...')
 
         if len(fname[0]) > 0:
@@ -212,11 +428,13 @@ class hslWindow(QMainWindow):
             msgBox.setWindowIcon(QIcon(iconPath))
             msgBox.setIcon(QMessageBox.Warning)
             msgBox.exec_()
+        '''
         
     def setTabName(self, str):
         self.tabs.setTabText(0, str)
         
-    def initUI(self):      
+    def initUI(self):
+    
         # bottom left frame (hosts)
         hostsArea = QFrame(self)
         self.hostTable = hostsTable.hostsTable()
@@ -228,6 +446,9 @@ class hslWindow(QMainWindow):
 
         # top (main chart area)
         self.chartArea = chartArea.chartArea()
+
+        ind = indicator()
+        self.chartArea.indicator = ind
 
         # establish hard links:
         kpisTable.kpiScales = self.chartArea.widget.nscales
@@ -247,7 +468,7 @@ class hslWindow(QMainWindow):
         
         self.tabs = QTabWidget()
         
-        console = sqlConsole.sqlConsole()
+        # self.tabs.currentChanged.connect(self.tabChanged)
         
         # main window splitter
         mainSplitter = QSplitter(Qt.Vertical)
@@ -269,13 +490,11 @@ class hslWindow(QMainWindow):
         
         self.tabs.addTab(mainSplitter, 'Chart')
         
-        if cfg('experimental-notnow'):
-            self.tabs.addTab(console, 'Sql')
-        
         self.setCentralWidget(self.tabs)
         
         # service stuff
         self.statusbar = self.statusBar()
+        self.statusbar.addPermanentWidget(ind)
 
         #menu
         iconPath = resourcePath('ico\\favicon.ico')
@@ -284,11 +503,6 @@ class hslWindow(QMainWindow):
         exitAct.setShortcut('Alt+Q')
         exitAct.setStatusTip('Exit application')
         exitAct.triggered.connect(self.menuQuit)
-
-
-        aboutAct = QAction(QIcon(iconPath), '&About', self)
-        aboutAct.setStatusTip('About this app')
-        aboutAct.triggered.connect(self.menuAbout)
 
         dummyAct = QAction('&Dummy', self)
         dummyAct.setShortcut('Alt+D')
@@ -300,25 +514,48 @@ class hslWindow(QMainWindow):
         configAct.setStatusTip('Configure connection')
         configAct.triggered.connect(self.menuConfig)
 
-        importAct = QAction('&Import', self)
-        importAct.setShortcut('Ctrl+I')
-        importAct.setStatusTip('Import nameserver.trc')
-        importAct.triggered.connect(self.menuImport)
+
+        if cfg('developmentMode'):
+            importAct = QAction('&Import', self)
+            importAct.setShortcut('Ctrl+I')
+            importAct.setStatusTip('Import nameserver.trc')
+            importAct.triggered.connect(self.menuImport)
+
+        sqlConsAct = QAction('New &SQL Console', self)
+        sqlConsAct.setShortcut('Alt+S')
+        sqlConsAct.setStatusTip('Create SQL Console')
+        sqlConsAct.triggered.connect(self.menuSQLConsole)
+
+        openAct = QAction('&Open file in new sql console', self)
+        openAct.setShortcut('Ctrl+O')
+        openAct.setStatusTip('Open new console with the file')
+        openAct.triggered.connect(self.menuOpen)
+
+        saveAct = QAction('&Save sql to a file', self)
+        saveAct.setShortcut('Ctrl+S')
+        saveAct.setStatusTip('Saves sql from current console to a file')
+        saveAct.triggered.connect(self.menuSave)
 
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
-        fileMenu.addAction(aboutAct)
         fileMenu.addAction(configAct)
 
         if cfg('experimental'):
-            fileMenu.addAction(importAct)
+            #fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
+            fileMenu.addAction(sqlConsAct)
+            fileMenu.addAction(openAct)
+            fileMenu.addAction(saveAct)
+
+        if cfg('developmentMode'):
+            fileMenu.addAction(importAct)
 
         fileMenu.addAction(exitAct)
         
+        actionsMenu = menubar.addMenu('&Actions')
+        
         if cfg('experimental'):
-            actionsMenu = menubar.addMenu('&Actions')
-            fileMenu.addAction(aboutAct)
+            # fileMenu.addAction(aboutAct) -- print not sure why its here
 
             fontAct = QAction('&Adjust Fonts', self)
             fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
@@ -332,17 +569,36 @@ class hslWindow(QMainWindow):
             
             actionsMenu.addAction(reloadConfigAct)
 
-            reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
-            reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
-            reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
+        reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
+        reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
+        reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
 
-            actionsMenu.addAction(reloadCustomKPIsAct)
+        actionsMenu.addAction(reloadCustomKPIsAct)
+
+        # help menu part
+        aboutAct = QAction(QIcon(iconPath), '&About', self)
+        aboutAct.setStatusTip('About this app')
+        aboutAct.triggered.connect(self.menuAbout)
+
+        confHelpAct = QAction('Configuration', self)
+        confHelpAct.setStatusTip('Configuration options description')
+        confHelpAct.triggered.connect(self.menuConfHelp)
+
+        confCustomHelpAct = QAction('Custom KPIs', self)
+        confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
+        confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
+        
+        helpMenu = menubar.addMenu('&Help')
+        helpMenu.addAction(confHelpAct)
+        
+        
+        helpMenu.addAction(confCustomHelpAct)
+            
+        helpMenu.addAction(aboutAct)
 
         # finalization
         self.setGeometry(200, 200, 1400, 800)
-        #self.setWindowTitle('SAP HANA Studio Light')
-        # self.setWindowTitle('HANA Army Knife')
-        self.setWindowTitle('Ryba Fish Charts')
+        self.setWindowTitle('RybaFish Charts')
         
         self.setWindowIcon(QIcon(iconPath))
         
@@ -376,6 +632,51 @@ class hslWindow(QMainWindow):
 
         self.chartArea.connected.connect(self.setTabName)
         log('init finish()')
+        
+
+        # offline console tests
+        
+        if False and cfg('developmentMode'):
+        
+            #tname = sqlConsole.generateTabName()
+
+            #idx = self.tabs.count()
+            self.sqlTabCounter += 1
+            idx = self.sqlTabCounter
+            
+            if idx > 1:
+                tname = 'sql' + str(idx)
+            else:
+                tname = 'sql'
+            
+            console = sqlConsole.sqlConsole(self, None, tname)
+            console.nameChanged.connect(self.changeActiveTabName)
+
+            from SQLSyntaxHighlighter import SQLSyntaxHighlighter
+
+            self.tabs.addTab(console, tname)
+            self.tabs.setCurrentIndex(self.tabs.count() - 1)
+
+            self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
+            #console.cons.setPlainText('select * from dummy;\n\nselect \n    *\n    from dummy;\n\nselect * from m_host_information;');
+            
+            if cfg('developmentMode'): 
+                console.cons.setPlainText('''select 0 from dummy;
+create procedure ...
+(
+(as begin)
+select * from dummy);
+end;
+
+where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59'
+
+select 1 from dummy;
+select 2 from dummy;
+select 3 from dummy;''');
+                
+            console.dummyResultTable()
+        
+        self.statusMessage('', False)
         
         if self.chartArea.dp:
             self.chartArea.initDP()
