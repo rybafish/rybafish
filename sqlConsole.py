@@ -1709,6 +1709,7 @@ class sqlConsole(QWidget):
             del(result.cols)
             del(result.rows)
             
+            #same code in refresh()
             if result.LOBs and not result.detached:
                 if result.detachTimer is not None:
                     log('stopping the detach timer in advance...')
@@ -1854,6 +1855,15 @@ class sqlConsole(QWidget):
         result = self.results[idx]
         
         #result.clear()
+
+        # same code in close_results
+        if result.LOBs and not result.detached:
+            if result.detachTimer is not None:
+                log('stopping the detach timer in advance...')
+                result.detachTimer.stop()
+                result.detachTimer = None
+                
+            result.detach()
 
         self.executeStatement(result.statement, result, True)
         
