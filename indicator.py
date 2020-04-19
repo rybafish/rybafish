@@ -17,8 +17,9 @@ class indicator(QWidget):
         'idle': '#CCC',
         'sync': '#44F',
         'running': '#8F8',
-        'error': '#F44',
-        'render': '#FFF'
+        'error': '#CCC',
+        'render': '#FFF',
+        'disconnected': '#FCC'
     }
 
     def __init__(self, parent = None):
@@ -52,7 +53,11 @@ class indicator(QWidget):
             qp.setBrush(QBrush(QColor('#F00'), Qt.SolidPattern))
             #qp.setBrush(QBrush(QColor('#8C8'), Qt.SolidPattern))
         
-        qp.setPen(QColor('#888'))
+        if self.status == 'disconnected' or self.status == 'error':
+            qp.setPen(QColor('#F00'))
+        else:
+            qp.setPen(QColor('#888'))
+            
         qp.drawRect((h - 10 )/2, (w - 10 )/2, 10, 10)
         
         qp.end()
