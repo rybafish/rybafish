@@ -1,0 +1,32 @@
+server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
+
+# chart keep-alives timer
+keepalive: 1200
+
+#force memory metrics in GB
+memoryGB: True
+
+color-bg: '#FFF'
+
+# chart font size
+# fontSize: 6
+
+# maximum result size
+resultSize: 1000
+
+#uncomment to have experimental stuff
+#experimental: True
+
+# sql console keep-alive timer
+# keepalive-cons: 1800
+
+# sql console font size
+# console-fontSize: 10
+# result-fontSize 10
+
+# sql console null value representation
+# nullString: '?'
+# nullStringCSV: ''
+
+# light gray background for LOB columns just to be aware
+highlightLOBs: True

@@ -1,0 +1,22 @@
+
+server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
+
+#db keep-alive time
+keepalive: 1200
+
+fontSize: 6
+
+#uncomment to have experimental stuff
+experimental: True
+
+developmentMode: True
+
+# noWordHighlighting: True
+
+console-fontSize: 12
+
+developmentMode: True
+
+logmode: 'screen'
+
+loglevel: 5

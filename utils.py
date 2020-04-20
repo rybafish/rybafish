@@ -223,6 +223,10 @@ def loadConfig():
     except:
         log('no config file? <-')
         config = {}
+        
+        return False
+        
+    return True
     
 def cfg(param, default = None):
 
