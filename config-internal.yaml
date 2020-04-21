@@ -1,0 +1,50 @@
+server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
+
+##
+## Chart related stuff here
+##
+
+# chart keep-alives timer
+keepalive: 1200
+
+# force memory metrics in GB
+memoryGB: True
+
+# enable white background
+color-bg: '#FFF'
+
+# chart keep-alive timer
+keepalive: 1200
+
+# chart font size
+# fontSize: 6
+
+# uncomment to have experimental stuff (like sql console)
+experimental: False
+
+##
+## SQL Console related section
+##
+
+# maximum result size
+resultSize: 1000
+
+## sql console keep-alive timer
+keepalive-cons: 1800
+
+## light gray background for LOB columns just to be aware
+highlightLOBs: True
+
+## sql console font sizes
+#console-fontSize: 10
+#result-fontSize 10
+
+## sql console null value representation
+#nullString: '?'
+#nullStringCSV: ''
+
+## disable words highlighting
+#noWordHighlighting: True
+
+## disable parentesis highlighting
+#noBraketsHighlighting: True
