@@ -2250,7 +2250,7 @@ class sqlConsole(QWidget):
         lobs = ', +LOBs' if result.LOBs else ''
 
         logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
-        if resultSize == utils.cfg('maxResultSize', 1000): logText += ', note: this is the resultSize limit'
+        if resultSize == cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
 
         self.log(logText)
 

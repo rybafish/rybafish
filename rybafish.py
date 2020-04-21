@@ -97,7 +97,7 @@ if __name__ == '__main__':
         ok = utils.loadConfig()
         
         if not ok:
-            loadConfig = utils.yesNoDialog('Config loading', 'Cannot load/parse config.yaml\nTry again?')
+            loadConfig = utils.yesNoDialog('Config error', 'Cannot load/parse config.yaml\nTry again?')
         else:
             loadConfig = False
 

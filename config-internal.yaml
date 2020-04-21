@@ -1,22 +1,50 @@
-
 server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 
-#db keep-alive time
+##
+## Chart related stuff here
+##
+
+# chart keep-alives timer
 keepalive: 1200
 
-fontSize: 6
+# force memory metrics in GB
+memoryGB: True
 
-#uncomment to have experimental stuff
-experimental: True
+# enable white background
+color-bg: '#FFF'
 
-developmentMode: True
+# chart keep-alive timer
+keepalive: 1200
 
-# noWordHighlighting: True
+# chart font size
+# fontSize: 6
 
-console-fontSize: 12
+# uncomment to have experimental stuff (like sql console)
+experimental: False
 
-developmentMode: True
+##
+## SQL Console related section
+##
 
-logmode: 'screen'
+# maximum result size
+resultSize: 1000
 
-loglevel: 5
+## sql console keep-alive timer
+keepalive-cons: 1800
+
+## light gray background for LOB columns just to be aware
+highlightLOBs: True
+
+## sql console font sizes
+#console-fontSize: 10
+#result-fontSize 10
+
+## sql console null value representation
+#nullString: '?'
+#nullStringCSV: ''
+
+## disable words highlighting
+#noWordHighlighting: True
+
+## disable parentesis highlighting
+#noBraketsHighlighting: True
