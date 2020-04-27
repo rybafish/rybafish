@@ -19,8 +19,8 @@ keepalive: 1200
 # chart font size
 # fontSize: 6
 
-# uncomment to have experimental stuff (like sql console)
-# experimental: False
+## uncomment to have experimental stuff (like sql console)
+#experimental: True
 
 ##
 ## SQL Console related section

@@ -20,7 +20,7 @@ keepalive: 1200
 # fontSize: 6
 
 # uncomment to have experimental stuff (like sql console)
-experimental: False
+experimental: True
 
 ##
 ## SQL Console related section
