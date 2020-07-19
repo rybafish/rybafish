@@ -1108,12 +1108,12 @@ class resultSet(QTableWidget):
             val = self.rows[r][i]
             vType = self.cols[i][1]
 
-            if db.ifBLOBType(vType):
+            if val is None:
+                values.append(utils.cfg('nullStringCSV', ''))
+            elif db.ifBLOBType(vType):
                 values.append(str(val.encode()))
             else:
-                if val is None:
-                    values.append(utils.cfg('nullStringCSV', ''))
-                elif db.ifNumericType(vType):
+                if db.ifNumericType(vType):
                     values.append(utils.numberToStrCSV(val, False))
                 elif db.ifRAWType(vType):
                     values.append(val.hex())
