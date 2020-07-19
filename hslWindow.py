@@ -636,7 +636,7 @@ class hslWindow(QMainWindow):
 
         # offline console tests
         
-        if False and cfg('developmentMode'):
+        if True and cfg('developmentMode'):
         
             #tname = sqlConsole.generateTabName()
 
@@ -668,7 +668,7 @@ create procedure ...
 select * from dummy);
 end;
 
-where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59'
+where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59' -- test comment
 
 select 1 from dummy;
 select 2 from dummy;
