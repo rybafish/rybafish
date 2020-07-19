@@ -670,6 +670,8 @@ end;
 
 where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59' -- test comment
 
+where not "NAME1" = '' and "DOKST" in ('D0', 'D2') and (1 = 2)
+
 select 1 from dummy;
 select 2 from dummy;
 select 3 from dummy;''');

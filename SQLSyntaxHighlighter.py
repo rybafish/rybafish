@@ -32,7 +32,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
                     'outer', 'join', 'as', 'on', 'with', 'distinct', 'create', 'drop', 'procedure', 'table', 'truncate', 'function',
                     'where', 'asc', 'desc', 'case', 'when', 'else', 'and', 'or', 'like', 'round', 'count', 'sum', 'min', 'max', 'avg',
                     'updtae', 'insert', 'into',
-                    'do', 'begin', 'end', 'then', 'if', 'between', 'having',  'union\s+all', 'union', 'except']
+                    'do', 'begin', 'end', 'then', 'if', 'in', 'not', 'between', 'having',  'union\s+all', 'union', 'except']
 
         rules = []
 
@@ -70,7 +70,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
             rules.append(['\\b'+kw+'\\b', fmKeyword, False])
 
         # literals
-        rules.append(['\'.+?\'', fmLiteral, False])
+        rules.append(['\'.*?\'', fmLiteral, False])
         rules.append(['".+?"', fmLiteral, False])
 
         # one line comment
