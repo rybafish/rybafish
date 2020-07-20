@@ -67,8 +67,6 @@ class About(QDialog):
         
         
     def checkUpdates(self):
-        href="https://rybafish.net">http://rybafish.net</a> for updates')
-        
         manager = QNetworkAccessManager(self)
         
         manager.finished[QNetworkReply].connect(self.gotResponse)

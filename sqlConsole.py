@@ -245,6 +245,24 @@ class console(QPlainTextEdit):
         self.cursorPositionChanged.connect(self.cursorPositionChangedSignal) # why not just overload?
         self.selectionChanged.connect(self.consSelection)
         
+    def cut(self):
+        print('cut')
+        
+    def insertFromMimeData(self, src):
+        '''
+            for some reason ctrl+v does not trigger highliqter
+            so do it manually
+        '''
+        a = super().insertFromMimeData(src)
+        
+        cursor = self.textCursor()
+        block = self.document().findBlockByLineNumber(cursor.blockNumber())
+        
+        self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
+        
+        return a
+        
+        
     def clearHighlighting(self):
         self.lock = True
         
@@ -2369,5 +2387,6 @@ class sqlConsole(QWidget):
         
         self.setLayout(vbar)
         
-        self.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
+        # self.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
+        self.cons.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
         #console = QPlainTextEdit()
