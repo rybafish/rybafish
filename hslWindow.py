@@ -69,7 +69,6 @@ class hslWindow(QMainWindow):
             status = cons.close()
             
             if status == True:
-                print('kill indicator')
                 self.statusbar.removeWidget(cons.indicator)
                 self.tabs.removeTab(indx)
     
@@ -384,6 +383,8 @@ class hslWindow(QMainWindow):
         except dbException as e:
             log('[!] failed to open console expectedly')
             self.statusMessage('Connection error', True)
+
+            self.statusbar.removeWidget(cons.ind)
             return
         '''
         except Exception as e:
