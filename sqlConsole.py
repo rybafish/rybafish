@@ -245,9 +245,6 @@ class console(QPlainTextEdit):
         self.cursorPositionChanged.connect(self.cursorPositionChangedSignal) # why not just overload?
         self.selectionChanged.connect(self.consSelection)
         
-    def cut(self):
-        print('cut')
-        
     def insertFromMimeData(self, src):
         '''
             for some reason ctrl+v does not trigger highliqter

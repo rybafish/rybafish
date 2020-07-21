@@ -1700,7 +1700,9 @@ class chartArea(QFrame):
             try:
                 self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
                 self.fromEdit.setStyleSheet("color: black;")
-                self.setFocus()
+                
+                if self.fromEdit.hasFocus() or self.toEdit.hasFocus():
+                    self.setFocus()
             except:
                 self.fromEdit.setStyleSheet("color: red;")
                 self.statusMessage('datetime syntax error')
