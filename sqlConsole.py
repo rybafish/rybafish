@@ -1008,10 +1008,17 @@ class resultSet(QTableWidget):
         #self.setStyleSheet('QTableWidget::item:selected {padding: 2px; border: 1px; background-color: #08D}')
         
     def contextMenuEvent(self, event):
+        def normalize_header(header):
+            if header.isupper() and header[0].isalpha():
+                h = header
+            else:
+                h = '"%s"' % (header)
+                
+            return h            
        
         cmenu = QMenu(self)
 
-        copyColumnName = cmenu.addAction('Copy Column Name')
+        copyColumnName = cmenu.addAction('Copy Column Name(s)')
         copyTableScreen = cmenu.addAction('Take a Screenshot')
         
         cmenu.addSeparator()
@@ -1021,9 +1028,35 @@ class resultSet(QTableWidget):
 
         i = self.currentColumn()
 
+        '''
         if action == copyColumnName:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.cols[i][0])
+        '''
+        
+        if action == copyColumnName:
+            clipboard = QApplication.clipboard()
+            
+            headers = []
+            headers_norm = []
+            
+            sm = self.selectionModel()
+            
+            for c in sm.selectedIndexes():
+                r, c = c.row(), c.column()
+
+                cname = self.headers[c]
+                
+                if cname not in headers:
+                    headers.append(cname)
+                
+                
+            for h in headers:
+                headers_norm.append(normalize_header(h))
+                
+            names = ', '.join(headers_norm)
+
+            clipboard.setText(names)
 
         if action == copyFilter:
             sm = self.selectionModel()
@@ -1037,15 +1070,9 @@ class resultSet(QTableWidget):
                 cname = self.headers[c]
 
                 if db.ifNumericType(self.cols[c][1]):
-                    if cname.isupper():
-                        values.append('%s = %s' % (cname, value))
-                    else:
-                        values.append('"%s" = %s' % (cname, value))
+                    values.append('%s = %s' % (normalize_header(cname), value))
                 else:
-                    if cname.isupper():
-                        values.append('%s = \'%s\'' % (cname, str(value)))
-                    else:
-                        values.append('"%s" = \'%s\'' % (cname, str(value)))
+                    values.append('%s = \'%s\'' % (normalize_header(cname), str(value)))
                     
             filter = ' and '.join(values)
 
@@ -1834,8 +1861,8 @@ class sqlConsole(QWidget):
         cols = [
             ['Name',11],
             ['STATEMENT_ID',26],
-            ['CONNECTION_ID',3],
-            ['USER_NAME',5],
+            ['7CONNECTION_ID',3],
+            ['/USER_NAME',5],
             ['dontknow',16]
         ]
 
