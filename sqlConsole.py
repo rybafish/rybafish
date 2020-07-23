@@ -1460,6 +1460,8 @@ class sqlConsole(QWidget):
         self.timer = None           # keep alive timer
         self.rows = []
         
+        self.splitterSizes = None
+        
         self.fileName = None
         self.unsavedChanges = False
         
@@ -1550,17 +1552,16 @@ class sqlConsole(QWidget):
    
         modifiers = QApplication.keyboardModifiers()
 
-        '''
+        if event.key() == Qt.Key_F12:
         
-        those both now operated from main window...
-        
-        if modifiers == Qt.ControlModifier:
-            if event.key() == Qt.Key_S:
-                self.delayBackup()
-                self.saveFile()
-            elif event.key() == Qt.Key_O:
-                self.openFile()
-        '''
+            backTo = self.spliter.sizes()
+
+            if self.splitterSizes is None:
+                self.splitterSizes = [4000, 200, 100]
+                
+            self.spliter.setSizes(self.splitterSizes)
+            
+            self.splitterSizes = backTo
                 
         super().keyPressEvent(event)
 
@@ -2426,17 +2427,17 @@ class sqlConsole(QWidget):
         
         self.resultTabs.keyPressEvent = self.resultTabsKey
                 
-        spliter = QSplitter(Qt.Vertical)
+        self.spliter = QSplitter(Qt.Vertical)
         #self.logArea = QPlainTextEdit()
         self.logArea = logArea()
         
-        spliter.addWidget(self.cons)
-        spliter.addWidget(self.resultTabs)
-        spliter.addWidget(self.logArea)
+        self.spliter.addWidget(self.cons)
+        self.spliter.addWidget(self.resultTabs)
+        self.spliter.addWidget(self.logArea)
         
-        spliter.setSizes([300, 200, 10])
+        self.spliter.setSizes([300, 200, 10])
         
-        vbar.addWidget(spliter)
+        vbar.addWidget(self.spliter)
         
         self.setLayout(vbar)
         
