@@ -1393,6 +1393,37 @@ class resultSet(QTableWidget):
 
         return False
         
+class logArea(QPlainTextEdit):
+    def __init__(self):
+        super().__init__()
+
+    def contextMenuEvent(self, event):
+       
+        cmenu = QMenu(self)
+
+        '''
+        print delete this
+        t1 = cmenu.addAction('test html')
+        t2 = cmenu.addAction('test text')
+        '''
+        reset = cmenu.addAction('Clear log')
+        
+        # cmenu.addSeparator()
+
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
+
+        if action == reset:
+            # will it restore the color?
+            self.clear()
+            
+        '''
+        if action == t1:
+            self.appendHtml('<font color = "red">%s</font>' % 'red text');
+            
+        if action == t2:
+            self.appendPlainText('random text')
+        '''
+              
         
 class sqlConsole(QWidget):
 
@@ -1823,8 +1854,6 @@ class sqlConsole(QWidget):
             
                         
     def log(self, text, error = False):
-        #self.logArea.setPlainText(self.logArea.toPlainText() + '\n' + text)
-        
         if error:
             self.logArea.appendHtml('<font color = "red">%s</font>' % text);
         else:
@@ -2343,7 +2372,6 @@ class sqlConsole(QWidget):
         txtSub = txtSub.replace('    ', ' ')
         
         self.log('\nExecute: ' + txtSub + suffix)
-        # fixme cons.logArea.repaint()        
 
         ##########################
         ### trigger the thread ###
@@ -2399,7 +2427,8 @@ class sqlConsole(QWidget):
         self.resultTabs.keyPressEvent = self.resultTabsKey
                 
         spliter = QSplitter(Qt.Vertical)
-        self.logArea = QPlainTextEdit()
+        #self.logArea = QPlainTextEdit()
+        self.logArea = logArea()
         
         spliter.addWidget(self.cons)
         spliter.addWidget(self.resultTabs)
