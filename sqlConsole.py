@@ -2298,6 +2298,8 @@ class sqlConsole(QWidget):
 
         t0 = self.t0
         t1 = time.time()
+        
+        self.t0 = None
 
         #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
 
@@ -2406,6 +2408,15 @@ class sqlConsole(QWidget):
                 
         super().keyPressEvent(event)
         
+    def reportRuntime(self):
+        t0 = self.t0
+        t1 = time.time()
+        
+        if t0 is not None:
+            self.log('Current run time: %s' % utils.formatTime(t1-t0))
+        else:
+            self.log('Nothing is running')
+    
     def initUI(self):
         '''
             main sqlConsole UI 

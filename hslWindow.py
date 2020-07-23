@@ -394,6 +394,7 @@ class hslWindow(QMainWindow):
         '''
         
         console.indicator = ind
+        ind.iClicked.connect(console.reportRuntime)
         
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
@@ -660,6 +661,12 @@ class hslWindow(QMainWindow):
 
             self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
             #console.cons.setPlainText('select * from dummy;\n\nselect \n    *\n    from dummy;\n\nselect * from m_host_information;');
+
+            ind = indicator()
+            console.indicator = ind
+            self.statusbar.addPermanentWidget(ind)
+            
+            ind.iClicked.connect(console.reportRuntime)
             
             if cfg('developmentMode'): 
                 console.cons.setPlainText('''select 0 from dummy;
