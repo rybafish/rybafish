@@ -1378,7 +1378,13 @@ class resultSet(QTableWidget):
                     blob = str(self.rows[i][j])
             else:
                 if self.rows[i][j] is not None:
-                    blob = self.rows[i][j].read()
+                    
+                    value = self.rows[i][j].read()
+                    
+                    if db.ifBLOBType(self.cols[j][1]):
+                        blob = str(value.encode())
+                    else:
+                        blob = str(value)
                 else:
                     blob = '<Null value>'
 

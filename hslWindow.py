@@ -340,6 +340,9 @@ class hslWindow(QMainWindow):
             
             ind = indicator()
             console.indicator = ind
+            
+            ind.iClicked.connect(console.reportRuntime)
+            
             self.statusbar.addPermanentWidget(ind)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
