@@ -1382,7 +1382,7 @@ class resultSet(QTableWidget):
                     value = self.rows[i][j].read()
                     
                     if db.ifBLOBType(self.cols[j][1]):
-                        blob = str(value.encode())
+                        blob = str(value.decode("utf-8", errors="ignore"))
                     else:
                         blob = str(value)
                 else:
