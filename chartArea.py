@@ -1746,6 +1746,7 @@ class chartArea(QFrame):
                 if reconnected == False:
                     self.setStatus('sync', True)
                     allOk = False
+                    timer = False
 
         self.renewMaxValues()
         
