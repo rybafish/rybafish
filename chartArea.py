@@ -166,6 +166,9 @@ class myWidget(QWidget):
                 
     def initPens(self):
     
+        if utils.cfg('raduga'):
+            kpiDescriptions.generateRaduga(utils.cfg('raduga'))
+    
         for t in kpiStylesNN:
             self.kpiPen[t] = {}
             for kpi in kpiStylesNN[t]:
@@ -687,7 +690,8 @@ class myWidget(QWidget):
         
         
         top_margin = self.top_margin + self.y_delta
-                
+            
+        raduga_i = 0
         for h in range(0, len(self.hosts)):
 
             if len(self.ndata[h]) == 0:
@@ -719,7 +723,11 @@ class myWidget(QWidget):
             
                 t0 = time.time()
                 
-                kpiPen = self.kpiPen[type][kpi]
+                if utils.cfg('raduga'):
+                    kpiPen = kpiDescriptions.radugaPens[raduga_i % 32]
+                    raduga_i += 1
+                else:
+                    kpiPen = self.kpiPen[type][kpi]
                 
                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
                     kpiPen.setWidth(2)
@@ -1700,7 +1708,9 @@ class chartArea(QFrame):
             try:
                 self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
                 self.fromEdit.setStyleSheet("color: black;")
-                self.setFocus()
+                
+                if self.fromEdit.hasFocus() or self.toEdit.hasFocus():
+                    self.setFocus()
             except:
                 self.fromEdit.setStyleSheet("color: red;")
                 self.statusMessage('datetime syntax error')
@@ -1736,6 +1746,7 @@ class chartArea(QFrame):
                 if reconnected == False:
                     self.setStatus('sync', True)
                     allOk = False
+                    timer = False
 
         self.renewMaxValues()
         

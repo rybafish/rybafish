@@ -1,12 +1,49 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPen, QColor
 
+import random
+
 kpiKeys = []
 kpiGroup = {}
 
-import utils
+radugaColors = []
+radugaPens = []
 
+import utils
+        
 from utils import log, cfg
+
+def generateRaduga(n):
+
+    #random.seed(cfg('radugaSeed', 1))
+
+    colors = utils.cfg('raduga')
+    
+    for c in colors:
+        
+        color = QColor(c)
+        pen = QPen(color)
+        
+        radugaColors.append(color)
+        radugaPens.append(pen)
+    
+    '''
+    for i in range(n):
+    
+        r = random.randint(0, 8)
+        g = random.randint(0, 8)
+        b = random.randint(0, 8)
+        
+        r = r*16+64
+        g = g*16+64
+        b = b*16+64
+        
+        color = QColor(r, g, b)
+        pen = QPen(color)
+        
+        radugaColors.append(color)
+        radugaPens.append(pen)
+    '''
 
 '''
     0 - index?

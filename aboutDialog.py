@@ -39,6 +39,13 @@ class About(QDialog):
 
         if status != 200:
             self.updatesLabel.setText('Network error: ' + str(status))
+            
+            try:
+                for h in (QNetworkReply.rawHeaderList()):
+                    log('[w] %s: %s' % (str(h, 'utf-8'), str(QNetworkReply.rawHeader(h), 'utf-8')))
+            except Exception as e:
+                log('[e]: %s' % str(e))
+                
             return
         
         try: 
@@ -60,8 +67,6 @@ class About(QDialog):
         
         
     def checkUpdates(self):
-        #self.updatesLabel.setText('Not implemented yet, please check <a href="http://rybafish.net">http://rybafish.net</a> for updates')
-        
         manager = QNetworkAccessManager(self)
         
         manager.finished[QNetworkReply].connect(self.gotResponse)

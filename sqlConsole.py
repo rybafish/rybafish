@@ -245,6 +245,21 @@ class console(QPlainTextEdit):
         self.cursorPositionChanged.connect(self.cursorPositionChangedSignal) # why not just overload?
         self.selectionChanged.connect(self.consSelection)
         
+    def insertFromMimeData(self, src):
+        '''
+            for some reason ctrl+v does not trigger highliqter
+            so do it manually
+        '''
+        a = super().insertFromMimeData(src)
+        
+        cursor = self.textCursor()
+        block = self.document().findBlockByLineNumber(cursor.blockNumber())
+        
+        self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
+        
+        return a
+        
+        
     def clearHighlighting(self):
         self.lock = True
         
@@ -993,10 +1008,17 @@ class resultSet(QTableWidget):
         #self.setStyleSheet('QTableWidget::item:selected {padding: 2px; border: 1px; background-color: #08D}')
         
     def contextMenuEvent(self, event):
+        def normalize_header(header):
+            if header.isupper() and header[0].isalpha():
+                h = header
+            else:
+                h = '"%s"' % (header)
+                
+            return h            
        
         cmenu = QMenu(self)
 
-        copyColumnName = cmenu.addAction('Copy Column Name')
+        copyColumnName = cmenu.addAction('Copy Column Name(s)')
         copyTableScreen = cmenu.addAction('Take a Screenshot')
         
         cmenu.addSeparator()
@@ -1006,9 +1028,35 @@ class resultSet(QTableWidget):
 
         i = self.currentColumn()
 
+        '''
         if action == copyColumnName:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.cols[i][0])
+        '''
+        
+        if action == copyColumnName:
+            clipboard = QApplication.clipboard()
+            
+            headers = []
+            headers_norm = []
+            
+            sm = self.selectionModel()
+            
+            for c in sm.selectedIndexes():
+                r, c = c.row(), c.column()
+
+                cname = self.headers[c]
+                
+                if cname not in headers:
+                    headers.append(cname)
+                
+                
+            for h in headers:
+                headers_norm.append(normalize_header(h))
+                
+            names = ', '.join(headers_norm)
+
+            clipboard.setText(names)
 
         if action == copyFilter:
             sm = self.selectionModel()
@@ -1022,15 +1070,9 @@ class resultSet(QTableWidget):
                 cname = self.headers[c]
 
                 if db.ifNumericType(self.cols[c][1]):
-                    if cname.isupper():
-                        values.append('%s = %s' % (cname, value))
-                    else:
-                        values.append('"%s" = %s' % (cname, value))
+                    values.append('%s = %s' % (normalize_header(cname), value))
                 else:
-                    if cname.isupper():
-                        values.append('%s = \'%s\'' % (cname, str(value)))
-                    else:
-                        values.append('"%s" = \'%s\'' % (cname, str(value)))
+                    values.append('%s = \'%s\'' % (normalize_header(cname), str(value)))
                     
             filter = ' and '.join(values)
 
@@ -1108,12 +1150,12 @@ class resultSet(QTableWidget):
             val = self.rows[r][i]
             vType = self.cols[i][1]
 
-            if db.ifBLOBType(vType):
+            if val is None:
+                values.append(utils.cfg('nullStringCSV', ''))
+            elif db.ifBLOBType(vType):
                 values.append(str(val.encode()))
             else:
-                if val is None:
-                    values.append(utils.cfg('nullStringCSV', ''))
-                elif db.ifNumericType(vType):
+                if db.ifNumericType(vType):
                     values.append(utils.numberToStrCSV(val, False))
                 elif db.ifRAWType(vType):
                     values.append(val.hex())
@@ -1336,7 +1378,13 @@ class resultSet(QTableWidget):
                     blob = str(self.rows[i][j])
             else:
                 if self.rows[i][j] is not None:
-                    blob = self.rows[i][j].read()
+                    
+                    value = self.rows[i][j].read()
+                    
+                    if db.ifBLOBType(self.cols[j][1]):
+                        blob = str(value.encode())
+                    else:
+                        blob = str(value)
                 else:
                     blob = '<Null value>'
 
@@ -1351,6 +1399,37 @@ class resultSet(QTableWidget):
 
         return False
         
+class logArea(QPlainTextEdit):
+    def __init__(self):
+        super().__init__()
+
+    def contextMenuEvent(self, event):
+       
+        cmenu = QMenu(self)
+
+        '''
+        print delete this
+        t1 = cmenu.addAction('test html')
+        t2 = cmenu.addAction('test text')
+        '''
+        reset = cmenu.addAction('Clear log')
+        
+        # cmenu.addSeparator()
+
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
+
+        if action == reset:
+            # will it restore the color?
+            self.clear()
+            
+        '''
+        if action == t1:
+            self.appendHtml('<font color = "red">%s</font>' % 'red text');
+            
+        if action == t2:
+            self.appendPlainText('random text')
+        '''
+              
         
 class sqlConsole(QWidget):
 
@@ -1386,6 +1465,8 @@ class sqlConsole(QWidget):
         self.config = None
         self.timer = None           # keep alive timer
         self.rows = []
+        
+        self.splitterSizes = None
         
         self.fileName = None
         self.unsavedChanges = False
@@ -1477,17 +1558,16 @@ class sqlConsole(QWidget):
    
         modifiers = QApplication.keyboardModifiers()
 
-        '''
+        if event.key() == Qt.Key_F12:
         
-        those both now operated from main window...
-        
-        if modifiers == Qt.ControlModifier:
-            if event.key() == Qt.Key_S:
-                self.delayBackup()
-                self.saveFile()
-            elif event.key() == Qt.Key_O:
-                self.openFile()
-        '''
+            backTo = self.spliter.sizes()
+
+            if self.splitterSizes is None:
+                self.splitterSizes = [4000, 200, 100]
+                
+            self.spliter.setSizes(self.splitterSizes)
+            
+            self.splitterSizes = backTo
                 
         super().keyPressEvent(event)
 
@@ -1781,8 +1861,6 @@ class sqlConsole(QWidget):
             
                         
     def log(self, text, error = False):
-        #self.logArea.setPlainText(self.logArea.toPlainText() + '\n' + text)
-        
         if error:
             self.logArea.appendHtml('<font color = "red">%s</font>' % text);
         else:
@@ -1819,8 +1897,8 @@ class sqlConsole(QWidget):
         cols = [
             ['Name',11],
             ['STATEMENT_ID',26],
-            ['CONNECTION_ID',3],
-            ['USER_NAME',5],
+            ['7CONNECTION_ID',3],
+            ['/USER_NAME',5],
             ['dontknow',16]
         ]
 
@@ -2226,6 +2304,8 @@ class sqlConsole(QWidget):
 
         t0 = self.t0
         t1 = time.time()
+        
+        self.t0 = None
 
         #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
 
@@ -2301,7 +2381,6 @@ class sqlConsole(QWidget):
         txtSub = txtSub.replace('    ', ' ')
         
         self.log('\nExecute: ' + txtSub + suffix)
-        # fixme cons.logArea.repaint()        
 
         ##########################
         ### trigger the thread ###
@@ -2335,6 +2414,15 @@ class sqlConsole(QWidget):
                 
         super().keyPressEvent(event)
         
+    def reportRuntime(self):
+        t0 = self.t0
+        t1 = time.time()
+        
+        if t0 is not None:
+            self.log('Current run time: %s' % utils.formatTime(t1-t0))
+        else:
+            self.log('Nothing is running')
+    
     def initUI(self):
         '''
             main sqlConsole UI 
@@ -2356,18 +2444,20 @@ class sqlConsole(QWidget):
         
         self.resultTabs.keyPressEvent = self.resultTabsKey
                 
-        spliter = QSplitter(Qt.Vertical)
-        self.logArea = QPlainTextEdit()
+        self.spliter = QSplitter(Qt.Vertical)
+        #self.logArea = QPlainTextEdit()
+        self.logArea = logArea()
         
-        spliter.addWidget(self.cons)
-        spliter.addWidget(self.resultTabs)
-        spliter.addWidget(self.logArea)
+        self.spliter.addWidget(self.cons)
+        self.spliter.addWidget(self.resultTabs)
+        self.spliter.addWidget(self.logArea)
         
-        spliter.setSizes([300, 200, 10])
+        self.spliter.setSizes([300, 200, 10])
         
-        vbar.addWidget(spliter)
+        vbar.addWidget(self.spliter)
         
         self.setLayout(vbar)
         
-        self.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
+        # self.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
+        self.cons.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
         #console = QPlainTextEdit()

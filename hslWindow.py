@@ -69,7 +69,6 @@ class hslWindow(QMainWindow):
             status = cons.close()
             
             if status == True:
-                print('kill indicator')
                 self.statusbar.removeWidget(cons.indicator)
                 self.tabs.removeTab(indx)
     
@@ -341,6 +340,9 @@ class hslWindow(QMainWindow):
             
             ind = indicator()
             console.indicator = ind
+            
+            ind.iClicked.connect(console.reportRuntime)
+            
             self.statusbar.addPermanentWidget(ind)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
@@ -384,6 +386,8 @@ class hslWindow(QMainWindow):
         except dbException as e:
             log('[!] failed to open console expectedly')
             self.statusMessage('Connection error', True)
+
+            self.statusbar.removeWidget(cons.ind)
             return
         '''
         except Exception as e:
@@ -393,6 +397,7 @@ class hslWindow(QMainWindow):
         '''
         
         console.indicator = ind
+        ind.iClicked.connect(console.reportRuntime)
         
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
@@ -636,7 +641,7 @@ class hslWindow(QMainWindow):
 
         # offline console tests
         
-        if False and cfg('developmentMode'):
+        if True and cfg('developmentMode'):
         
             #tname = sqlConsole.generateTabName()
 
@@ -659,6 +664,12 @@ class hslWindow(QMainWindow):
 
             self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())
             #console.cons.setPlainText('select * from dummy;\n\nselect \n    *\n    from dummy;\n\nselect * from m_host_information;');
+
+            ind = indicator()
+            console.indicator = ind
+            self.statusbar.addPermanentWidget(ind)
+            
+            ind.iClicked.connect(console.reportRuntime)
             
             if cfg('developmentMode'): 
                 console.cons.setPlainText('''select 0 from dummy;
@@ -668,7 +679,9 @@ create procedure ...
 select * from dummy);
 end;
 
-where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59'
+where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59' -- test comment
+
+where not "NAME1" = '' and "DOKST" in ('D0', 'D2') and (1 = 2)
 
 select 1 from dummy;
 select 2 from dummy;

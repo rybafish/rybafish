@@ -1,8 +1,10 @@
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QToolTip
 
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen
 
 from PyQt5.QtCore import QSize, Qt
+
+from PyQt5.QtCore import pyqtSignal
 
 class indicator(QWidget):
     '''
@@ -22,6 +24,9 @@ class indicator(QWidget):
         'disconnected': '#FCC'
     }
 
+
+    iClicked = pyqtSignal()
+    
     def __init__(self, parent = None):
         self.active = False
         self.status = 'idle'
@@ -30,7 +35,7 @@ class indicator(QWidget):
         self.setMinimumSize(QSize(15, 15))
 
     def mousePressEvent(self, event):
-        print('click-click')
+        self.iClicked.emit()
         
     def paintEvent(self, QPaintEvent):
 
