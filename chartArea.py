@@ -1321,6 +1321,7 @@ class chartArea(QFrame):
                     
                     if reconnected == False:
                         allOk = False
+                        timer = False
                         
             # self.widget.paintLock = False
             
@@ -1480,8 +1481,9 @@ class chartArea(QFrame):
         
         log('trigger auto refresh...')
         self.reloadChart()
-        self.timer.start(1000 * self.refreshTime)
         
+        if self.timer: # need to check as it might be disabled inside reloadChart()
+            self.timer.start(1000 * self.refreshTime)
     
     def refreshChanged(self, i):
 
@@ -1523,7 +1525,6 @@ class chartArea(QFrame):
             self.timer = QTimer(self.window())
             self.timer.timeout.connect(self.refreshTimer)
             self.timer.start(1000 * self.refreshTime)
-        
         
     def scaleChanged(self, i):
         '''
@@ -1679,10 +1680,10 @@ class chartArea(QFrame):
         self.statusMessage('Reload...')
         self.repaint()
         
-        timer = None
+        timerF = None
         
         if self.timer is not None:
-            timer = True
+            timerF = True
             self.timer.stop()
         
         t0 = time.time()
@@ -1744,9 +1745,12 @@ class chartArea(QFrame):
                 reconnected = self.connectionLost(str(e))
                 
                 if reconnected == False:
+                    log('reconnected == False')
                     self.setStatus('sync', True)
                     allOk = False
-                    timer = False
+                    timerF = False
+                    self.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+                    log('timer = False 1')
 
         self.renewMaxValues()
         
@@ -1761,9 +1765,8 @@ class chartArea(QFrame):
         t1 = time.time()
         self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
         
-        if timer:
+        if timerF == True:
             self.timer.start(1000 * self.refreshTime)
-
 
         self.setStatus('idle', True)
 
