@@ -92,7 +92,7 @@ class myWidget(QWidget):
     
     delta = 0 # offset for uneven time_from values
     
-    zoomLock = False
+    zoomLock = False # also used in scrollRangeChanged
     paintLock = False
     
     gridColor = QColor('#DDD')
@@ -1733,6 +1733,8 @@ class chartArea(QFrame):
         
         self.setStatus('sync', True)
         
+        self.reloadLock = True
+        
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):
@@ -1756,11 +1758,13 @@ class chartArea(QFrame):
         
         self.widget.resizeWidget()
         
+        self.widget.update()
+
+        #autoscroll to the right
         if toTime == '': # probably we want to see the most recent data...
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
             
-        self.widget.update()
-        
+            #+ scrollRangeChanged logic as a little different mechanism works
         
         t1 = time.time()
         self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
@@ -1768,8 +1772,20 @@ class chartArea(QFrame):
         if timerF == True:
             self.timer.start(1000 * self.refreshTime)
 
+        self.reloadLock = False
         self.setStatus('idle', True)
 
+    def scrollRangeChanged (self, min, max):
+        ''' 
+            called after tab change and on scroll area resize 
+            
+            "autoscroll to the right" - also still required
+        '''
+        toTime = self.toEdit.text()
+        
+        if toTime == '' and not self.widget.zoomLock:
+            self.scrollarea.horizontalScrollBar().setValue(max)
+        
     def adjustScale(self, scale = 1):
         font = self.fromEdit.font()
         fm = QFontMetrics(font)
@@ -1893,6 +1909,8 @@ class chartArea(QFrame):
         self.scrollarea.setWidgetResizable(False)
         
         self.scrollarea.keyPressEvent = self.keyPressEventZ # -- is it legal?!
+        
+        self.scrollarea.horizontalScrollBar().rangeChanged.connect(self.scrollRangeChanged)
         
         lo.addLayout(hbar)
         lo.addWidget(self.scrollarea)
