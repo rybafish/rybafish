@@ -387,7 +387,7 @@ class hslWindow(QMainWindow):
             log('[!] failed to open console expectedly')
             self.statusMessage('Connection error', True)
 
-            self.statusbar.removeWidget(cons.ind)
+            self.statusbar.removeWidget(ind)
             return
         '''
         except Exception as e:

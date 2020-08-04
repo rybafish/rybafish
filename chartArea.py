@@ -92,7 +92,7 @@ class myWidget(QWidget):
     
     delta = 0 # offset for uneven time_from values
     
-    zoomLock = False
+    zoomLock = False # also used in scrollRangeChanged
     paintLock = False
     
     gridColor = QColor('#DDD')
@@ -1321,6 +1321,7 @@ class chartArea(QFrame):
                     
                     if reconnected == False:
                         allOk = False
+                        timer = False
                         
             # self.widget.paintLock = False
             
@@ -1480,8 +1481,9 @@ class chartArea(QFrame):
         
         log('trigger auto refresh...')
         self.reloadChart()
-        self.timer.start(1000 * self.refreshTime)
         
+        if self.timer: # need to check as it might be disabled inside reloadChart()
+            self.timer.start(1000 * self.refreshTime)
     
     def refreshChanged(self, i):
 
@@ -1523,7 +1525,6 @@ class chartArea(QFrame):
             self.timer = QTimer(self.window())
             self.timer.timeout.connect(self.refreshTimer)
             self.timer.start(1000 * self.refreshTime)
-        
         
     def scaleChanged(self, i):
         '''
@@ -1679,10 +1680,10 @@ class chartArea(QFrame):
         self.statusMessage('Reload...')
         self.repaint()
         
-        timer = None
+        timerF = None
         
         if self.timer is not None:
-            timer = True
+            timerF = True
             self.timer.stop()
         
         t0 = time.time()
@@ -1732,6 +1733,8 @@ class chartArea(QFrame):
         
         self.setStatus('sync', True)
         
+        self.reloadLock = True
+        
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):
@@ -1744,29 +1747,45 @@ class chartArea(QFrame):
                 reconnected = self.connectionLost(str(e))
                 
                 if reconnected == False:
+                    log('reconnected == False')
                     self.setStatus('sync', True)
                     allOk = False
-                    timer = False
+                    timerF = False
+                    self.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+                    log('timer = False 1')
 
         self.renewMaxValues()
         
         self.widget.resizeWidget()
         
+        self.widget.update()
+
+        #autoscroll to the right
         if toTime == '': # probably we want to see the most recent data...
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
             
-        self.widget.update()
-        
+            #+ scrollRangeChanged logic as a little different mechanism works
         
         t1 = time.time()
         self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
         
-        if timer:
+        if timerF == True:
             self.timer.start(1000 * self.refreshTime)
 
-
+        self.reloadLock = False
         self.setStatus('idle', True)
 
+    def scrollRangeChanged (self, min, max):
+        ''' 
+            called after tab change and on scroll area resize 
+            
+            "autoscroll to the right" - also still required
+        '''
+        toTime = self.toEdit.text()
+        
+        if toTime == '' and not self.widget.zoomLock:
+            self.scrollarea.horizontalScrollBar().setValue(max)
+        
     def adjustScale(self, scale = 1):
         font = self.fromEdit.font()
         fm = QFontMetrics(font)
@@ -1890,6 +1909,8 @@ class chartArea(QFrame):
         self.scrollarea.setWidgetResizable(False)
         
         self.scrollarea.keyPressEvent = self.keyPressEventZ # -- is it legal?!
+        
+        self.scrollarea.horizontalScrollBar().rangeChanged.connect(self.scrollRangeChanged)
         
         lo.addLayout(hbar)
         lo.addWidget(self.scrollarea)
