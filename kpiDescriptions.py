@@ -142,10 +142,16 @@ def decodeKPIns(t, nsName):
     
 #new styles approach starting here
 def createStyle(kpi, custom = False, sqlIdx = None):
+
     style = {}
     
     try: 
         # mandatory stuff
+        if 'subtype' in kpi:
+            style['subtype'] = kpi['subtype']
+        else:
+            style['subtype'] = None
+        
         if 'name' in kpi:
             if custom:
                 style['name'] = 'cs-' + kpi['name']
@@ -250,6 +256,12 @@ def getTimeKey(type, kpi):
         timeKey = 'time'
         
     return timeKey
+
+def getSubtype(type, kpi):
+
+    subtype = kpiStylesNN[type][kpi]['subtype']
+        
+    return subtype
         
 def nsStyle (idx):
     

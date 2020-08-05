@@ -641,7 +641,7 @@ class hslWindow(QMainWindow):
 
         # offline console tests
         
-        if True and cfg('developmentMode'):
+        if False and cfg('developmentMode'):
         
             #tname = sqlConsole.generateTabName()
 

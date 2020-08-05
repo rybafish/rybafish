@@ -5,8 +5,6 @@ import math, time, random
 
 import dpDBCustom, kpiDescriptions
 
-from kpiDescriptions import customKpi
-
 from utils import log, cfg
 
 class dataProvider:
@@ -92,6 +90,38 @@ class dataProvider:
         
         ctime = datetime.datetime.now() - datetime.timedelta(seconds= 18 * 3600)
         ctime -= datetime.timedelta(seconds= ctime.timestamp() % 3600)
+
+        if 'cs-exp_st' in kpis:
+            t0 = ctime + datetime.timedelta(seconds=(3600*8))
+            t1 = t0 + datetime.timedelta(seconds=(3600*2))
+
+            t2 = t1 + datetime.timedelta(seconds=(900))
+            t3 = t2 + datetime.timedelta(seconds=(3600*3))
+
+            t4 = t0 + datetime.timedelta(seconds=(3600*1))
+            t5 = t4 + datetime.timedelta(seconds=(3600*6))
+
+            t6 = t5 + datetime.timedelta(seconds=(600))
+            t7 = t6 + datetime.timedelta(seconds=(3600*1))
+
+            t8 = t7 + datetime.timedelta(seconds=(300))
+            t9 = t8 + datetime.timedelta(seconds=(3600 + 3600/4))
+
+            t10 = ctime + datetime.timedelta(seconds=(3600*9+1200))
+            t11 = t10 + datetime.timedelta(seconds=(3600*2+660))
+            
+            #data['time'] = None
+            
+            data['cs-exp_st'] = {}
+            data['cs-exp_st']['Entity number one'] = [[t0, t1], [t2, t3]]
+            data['cs-exp_st']['entitiy2'] = [[t4, t5], [t6, t7], [t8, t9]]
+            data['cs-exp_st']['one more'] = [[t10, t11]]
+            
+            for e in data['cs-exp_st']:
+                print('%s:'% e)
+                
+                for l in data['cs-exp_st'][e]:
+                    print ('    ', str(l[0]), '-' , str(l[1]))
 
         if False:
             data_size = round(18*3600/10)

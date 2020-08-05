@@ -84,6 +84,7 @@ class myWidget(QWidget):
     t_scale = 60*10 # integer: size of one minor grid step
     
     side_margin = 10
+    left_margin = 0 # for side labels like Gantt chart...
     top_margin = 8
     bottom_margin = 20
     step_size = 16
@@ -260,6 +261,15 @@ class myWidget(QWidget):
                 
                 scaleKpi = self.nscales[h][kpi] # short cut
                 
+                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                    scaleKpi['y_max'] = ''
+                    scaleKpi['max_label'] = ''
+                    scaleKpi['last_label'] = ''
+                    scaleKpi['label'] = ''
+                    scaleKpi['yScale'] = ''
+                    scaleKpi['unit'] = ''
+                    continue
+                
                 #log(scaleKpi)
                     
                 '''
@@ -274,8 +284,8 @@ class myWidget(QWidget):
                 
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
-                    scaleKpi['max_label'] = scaleKpi['max']
-                    scaleKpi['last_label'] = scaleKpi['last_value']
+                    scaleKpi['max_label'] = ''
+                    scaleKpi['last_label'] = ''
                     scaleKpi['label'] = '10 / 100'
                     scaleKpi['yScale'] = 100
                     scaleKpi['unit'] = '%'
@@ -341,7 +351,7 @@ class myWidget(QWidget):
                     
       
     def posToTime(self, x):
-        time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin)/self.step_size*self.t_scale - self.delta) 
+        time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin - self.left_margin)/self.step_size*self.t_scale - self.delta) 
         
         return time
 
@@ -351,7 +361,7 @@ class myWidget(QWidget):
         
         offset = (time - self.t_from).total_seconds()
 
-        pos = offset/self.t_scale*self.step_size + self.delta + self.side_margin
+        pos = offset/self.t_scale*self.step_size + self.delta + self.side_margin + self.left_margin
         
         #time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin)/self.step_size*self.t_scale - self.delta) 
         
@@ -502,7 +512,7 @@ class myWidget(QWidget):
         
         wsize = self.size()
         
-        trgt_time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin)/self.step_size*self.t_scale) - self.delta)
+        trgt_time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin - self.left_margin)/self.step_size*self.t_scale) - self.delta)
         trgt_time = trgt_time.timestamp()
         
         x_scale = self.step_size / self.t_scale
@@ -656,14 +666,14 @@ class myWidget(QWidget):
         
         pos = event.pos()
         
-        time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin)/self.step_size*self.t_scale) - self.delta)
+        time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin - self.left_margin)/self.step_size*self.t_scale) - self.delta)
         
         self.checkForHint(pos)
             
     def resizeWidget(self):
         seconds = (self.t_to - self.t_from).total_seconds()
         number_of_cells = int(seconds / self.t_scale) + 1
-        self.resize(number_of_cells * self.step_size + self.side_margin*2, self.size().height()) #dummy size
+        self.resize(number_of_cells * self.step_size + self.side_margin*2 + self.left_margin, self.size().height()) #dummy size
         
     def drawChart(self, qp, startX, stopX):
     
@@ -672,6 +682,7 @@ class myWidget(QWidget):
             scales need to be calculated/adjusted beforehand
         '''
     
+        print('[draw chart]')
         #log('simulate delay()')
         #time.sleep(2)
         
@@ -693,13 +704,17 @@ class myWidget(QWidget):
             
         raduga_i = 0
         for h in range(0, len(self.hosts)):
+        
+            #print('draw host:', self.hosts[h]['host'], self.hosts[h]['port'])
 
             if len(self.ndata[h]) == 0:
                 continue
                 
             type = hType(h, self.hosts)
             for kpi in self.nkpis[h]:
-            
+                print('draw kpi', kpi)
+                print('draw kpi, h', h)
+                
                 if kpi not in self.ndata[h]:
                     # alt-added kpis here, already in kpis but no data requested
                     continue
@@ -714,7 +729,76 @@ class myWidget(QWidget):
             
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
 
+
+                print(kpiStylesNN[type][kpi]['subtype'])
+                
+                if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
+                    gantt = True
+                else:
+                    gantt = False
+                
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)
+
+                if gantt:
+                
+                    gFont = QFont ('SansSerif', 8)
+                    qp.setFont(gFont)
+                    
+                    fm = QFontMetrics(gFont)
+                    fontHeight = fm.height()
+                    
+                    fontWidth = 0
+                    
+                    gc = self.ndata[h][kpi]
+
+                    for e in gc:
+                        width = fm.width(e)
+                        
+                        if fontWidth < width:
+                            fontWidth = width
+
+                    self.left_margin = fontWidth + 8
+
+                    x_scale = self.step_size / self.t_scale
+                
+                    for e in gc:
+                        print('%s:'% e)
+                        
+                        for l in gc[e]:
+                            print ('    ', str(l[0]), '-' , str(l[1]))
+
+                    
+                    qp.setBrush(QColor('#ACF'))
+                    
+                    y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                    
+                    print(y_scale)
+                    
+                    i = 0
+                    
+                    for entity in gc:
+                    
+                        height = 8
+                        
+                        y = i * y_scale + y_scale*0.5 - height/2 # this is the center of the gantt line
+
+                        qp.setPen(QColor('#440'))
+                        qp.drawText(8, y + fontHeight / 2, entity);
+                        
+                        qp.setPen(QColor('#44A'))
+                    
+                        for t in gc[entity]:
+
+                            x = (t[0].timestamp() - from_ts) # number of seconds
+                            x = self.side_margin + self.left_margin +  x * x_scale
+
+                            width = (t[1].timestamp() - t[0].timestamp()) * x_scale
+                        
+                            qp.drawRect(x, y, width, height)
+                        
+                        i += 1
+
+                    continue
                 
                 array_size = len(self.ndata[h][timeKey])
                 time_array = self.ndata[h][timeKey]
@@ -792,13 +876,13 @@ class myWidget(QWidget):
                         continue
                         
                     x = (time_array[i] - from_ts) # number of seconds
-                    x = self.side_margin +  x * x_scale
+                    x = self.side_margin + self.left_margin +  x * x_scale
 
                     if x < startX - drawStep or x > stopX + drawStep:
                         
                         if i + 1000 < array_size:
                             x1000 = (time_array[i+1000] - from_ts) # number of seconds
-                            x1000 = self.side_margin +  x1000 * x_scale
+                            x1000 = self.side_margin + self.left_margin +  x1000 * x_scale
                             
                             if x1000 < startX - drawStep:
                                 #fast forward
@@ -874,7 +958,7 @@ class myWidget(QWidget):
         #qp.drawLine(12786, 110, 12787, 110)
         
         qp.setPen(QColor('#888'))
-        qp.drawLine(self.side_margin, wsize.height() - self.bottom_margin - 1, wsize.width() - self.side_margin, wsize.height() - self.bottom_margin - 1)
+        qp.drawLine(self.side_margin + self.left_margin, wsize.height() - self.bottom_margin - 1, wsize.width() - self.side_margin, wsize.height() - self.bottom_margin - 1)
         
     def drawGrid(self, qp, startX, stopX):
         '''
@@ -884,6 +968,22 @@ class myWidget(QWidget):
         
         #prnt('grid %i:%i' % (startX, stopX))
         #print('grid: ', self.gridColor.getRgb())
+        
+        
+        for h in range(0, len(self.hosts)):
+            type = hType(h, self.hosts)
+            
+            for kpi in self.nkpis[h]:
+            
+                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                    print('GANTT')
+                    print('GANTT')
+                    print('GANTT')
+                    print('GANTT')
+                    
+                    self.left_margin = 100
+                    break
+
         
         t0 = time.time()
         
@@ -901,7 +1001,7 @@ class myWidget(QWidget):
             
 
         qp.setPen(QColor('#888'))
-        qp.drawRect(self.side_margin, top_margin, wsize.width()-self.side_margin*2, wsize.height()-top_margin-self.bottom_margin-1)
+        qp.drawRect(self.side_margin + self.left_margin, top_margin, wsize.width()-self.side_margin*2 - self.left_margin, wsize.height()-top_margin-self.bottom_margin-1)
 
         qp.setPen(QColor('#000'))
         qp.setFont(QFont('SansSerif', self.conf_fontSize))
@@ -920,13 +1020,13 @@ class myWidget(QWidget):
             if j == 5:
                 qp.setPen(self.gridColorMj) #50% CPU line
             
-            qp.drawLine(self.side_margin+1, y, wsize.width()-self.side_margin - 1, y)
+            qp.drawLine(self.side_margin + self.left_margin + 1, y, wsize.width()-self.side_margin - 1, y)
             
             if j == 5:
                 qp.setPen(self.gridColor)
         
         #x is in pixels
-        x = self.side_margin+self.step_size
+        x = self.side_margin + self.left_margin +self.step_size
         
         #have to align this to have proper marks
         
@@ -954,7 +1054,7 @@ class myWidget(QWidget):
                 
             qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
             
-            c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
+            c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin - self.left_margin)/self.step_size*t_scale - delta)
             
             major_line = False
             date_mark = False
@@ -1612,6 +1712,9 @@ class chartArea(QFrame):
             for kpi in scales.keys():
             
                 if kpi[:4] == 'time':
+                    continue
+                    
+                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
                     continue
                     
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)
