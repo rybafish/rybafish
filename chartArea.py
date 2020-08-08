@@ -527,6 +527,9 @@ class myWidget(QWidget):
         
             if kpi[:4] == 'time':
                 continue
+                
+            if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                print('scan for gantt!')
         
             timeKey = kpiDescriptions.getTimeKey(type, kpi)
             
@@ -682,7 +685,6 @@ class myWidget(QWidget):
             scales need to be calculated/adjusted beforehand
         '''
     
-        #print('[draw chart]')
         #log('simulate delay()')
         #time.sleep(2)
         
@@ -760,15 +762,18 @@ class myWidget(QWidget):
                     # self.left_margin = fontWidth + 8
 
                     x_scale = self.step_size / self.t_scale
-                
+
+                    '''
+                    # print gantt debug
                     for e in gc:
                         print('%s:'% e)
                         
                         for l in gc[e]:
                             print ('    ', str(l[0]), '-' , str(l[1]))
+                    '''
 
                     
-                    qp.setBrush(QColor('#ACF'))
+                    qp.setBrush(QColor('#ACF')) # bar fill color
                     
                     if len(gc) > 0:
                         y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
@@ -777,18 +782,28 @@ class myWidget(QWidget):
                     
                     i = 0
                     
+                    '''
+                    print('start/stop: ', startX, stopX)
+                    
+                    qp.setPen(QColor('#B4A')) # bar outline color
+                    qp.drawLine(startX, 100, stopX, 130)
+                    
+                    qp.drawLine(startX + 100, 200, stopX + 100, 230)
+                    '''
+                    
                     for entity in gc:
+                    
+                        # print so far startX, stopX totally ignored: bad performance
                     
                         height = 8
                         
                         y = i * y_scale + y_scale*0.5 - height/2 # this is the center of the gantt line
 
-                        qp.setPen(QColor('#440'))
+                        #ganttPen = QPen(QColor('#44A'))
+                        #ganttPen.setWidth(2)
+                        #qp.setPen(ganttPen)
                         
-                        
-                        qp.drawText(startX + self.side_margin, y + fontHeight / 2, entity);
-                        
-                        qp.setPen(QColor('#44A'))
+                        qp.setPen(QColor('#44A')) # bar outline color
                     
                         for t in gc[entity]:
 
@@ -797,7 +812,22 @@ class myWidget(QWidget):
 
                             width = (t[1].timestamp() - t[0].timestamp()) * x_scale
                         
-                            qp.drawRect(x, y, width, height)
+                            qp.drawRect(x, y + top_margin, width, height)
+
+                            '''
+                            candles
+                            qp.drawLine(x, y + top_margin, x + width, y + top_margin)
+                            qp.drawLine(x + width, y + top_margin, x + width, y + top_margin - 4)
+                            qp.drawLine(x, y + top_margin, x, y + top_margin + 4)
+                            '''
+
+
+                        if stopX - startX > 400:
+                            # qp.setBackground(QColor('red')) - does not work
+                            # otherwise drawing area too small, it won't paint full text anyway
+                            # to avoid only ugly artefacts...
+                            qp.setPen(QColor('#448')) # entity label color
+                            qp.drawText(startX + self.side_margin + fontHeight, y + top_margin + fontHeight / 2, entity);
                         
                         i += 1
 
