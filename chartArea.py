@@ -682,7 +682,7 @@ class myWidget(QWidget):
             scales need to be calculated/adjusted beforehand
         '''
     
-        print('[draw chart]')
+        #print('[draw chart]')
         #log('simulate delay()')
         #time.sleep(2)
         
@@ -712,8 +712,8 @@ class myWidget(QWidget):
                 
             type = hType(h, self.hosts)
             for kpi in self.nkpis[h]:
-                print('draw kpi', kpi)
-                print('draw kpi, h', h)
+                #print('draw kpi', kpi)
+                #print('draw kpi, h', h)
                 
                 if kpi not in self.ndata[h]:
                     # alt-added kpis here, already in kpis but no data requested
@@ -730,7 +730,7 @@ class myWidget(QWidget):
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
 
 
-                print(kpiStylesNN[type][kpi]['subtype'])
+                #print(kpiStylesNN[type][kpi]['subtype'])
                 
                 if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
                     gantt = True
@@ -750,14 +750,14 @@ class myWidget(QWidget):
                     fontWidth = 0
                     
                     gc = self.ndata[h][kpi]
-
+                    
                     for e in gc:
                         width = fm.width(e)
                         
                         if fontWidth < width:
                             fontWidth = width
 
-                    self.left_margin = fontWidth + 8
+                    # self.left_margin = fontWidth + 8
 
                     x_scale = self.step_size / self.t_scale
                 
@@ -770,9 +770,10 @@ class myWidget(QWidget):
                     
                     qp.setBrush(QColor('#ACF'))
                     
-                    y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                    if len(gc) > 0:
+                        y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
                     
-                    print(y_scale)
+                    #print(y_scale)
                     
                     i = 0
                     
@@ -783,7 +784,9 @@ class myWidget(QWidget):
                         y = i * y_scale + y_scale*0.5 - height/2 # this is the center of the gantt line
 
                         qp.setPen(QColor('#440'))
-                        qp.drawText(8, y + fontHeight / 2, entity);
+                        
+                        
+                        qp.drawText(startX + self.side_margin, y + fontHeight / 2, entity);
                         
                         qp.setPen(QColor('#44A'))
                     
@@ -859,6 +862,7 @@ class myWidget(QWidget):
                 i = -1
                 
                 #to trace drawing area uncomment:
+                #qp.drawLine(startX, 10, startX, 50)
                 '''
                 qp.drawLine(startX, 10, startX, 50)
                 qp.drawLine(startX, 50, stopX-1, 50)
@@ -976,12 +980,7 @@ class myWidget(QWidget):
             for kpi in self.nkpis[h]:
             
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
-                    print('GANTT')
-                    print('GANTT')
-                    print('GANTT')
-                    print('GANTT')
-                    
-                    self.left_margin = 100
+                    # self.left_margin = 100
                     break
 
         

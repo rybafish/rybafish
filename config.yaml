@@ -1,8 +1,12 @@
+server: {'host': 'ls80010', 'port': 30015, 'user': 'system', password: 'Abcd1234'}
+#server: {'host': '127.0.0.1', 'port': 5000, 'user': 'SAP_YAVNIK', password: 'Megalomania!999'}
 
-server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
+color-bg: '#FFF'
 
 #db keep-alive time
 keepalive: 1200
 
 #uncomment to have experimental stuff
-#experimental: True
+experimental: True
+
+logmode: duplicate

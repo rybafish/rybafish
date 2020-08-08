@@ -248,7 +248,7 @@ class dataProvider():
         else:
             type = 'service'
             
-
+            
         '''
         if self.lock:
             log('[w] getData lock set, exiting')
@@ -263,6 +263,8 @@ class dataProvider():
         params = []
     
         kpiList = self.splitKpis(type, kpiIn)
+        
+        print('split kpis: ', kpiList)
 
         if host['port'] == '':
             t = 'h'
@@ -329,9 +331,36 @@ class dataProvider():
             cols = ', '.join(kpisSql)
             
             sql = '%s %s %s %s%s %s' % (sql_pref, cols, fromTable, hfilter, tfilter, orderby)
+            
+            '''
+            print('sql_pref', sql_pref)
+            print('cols', cols)
+            print('fromTable', fromTable)
+            print('hfilter', hfilter)
+            print('tfilter', tfilter)
+            print('orderby', orderby)
+            '''
+            
+            #if gantt to be checked here
+            
+            gantt = False
+            
+            if len(kpis) == 1: #only one kpi can be in gantt data source
+                kpi = kpis[0]
+                
+                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                    
+                    tfilter_mod = tfilter.replace('time', '"START"')
+                
+                    sql = 'select entity, "START", "STOP", details %s %s%s order by "START" desc' % (fromTable, hfilter, tfilter_mod)
+                    gantt = True                    
 
             try:
-                self.getHostKpis(type, kpis, data, sql, params, kpiSrc)
+                if not gantt:
+                    self.getHostKpis(type, kpis, data, sql, params, kpiSrc)
+                else:
+                    self.getGanttData(type, kpis[0], data, sql, params, kpiSrc)
+                    
             except Exception as e:
             
                 reply = False
@@ -386,11 +415,50 @@ class dataProvider():
         
         return 
 
+    def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
+        log('======================================')
+        log('getHostKpis kpis (%s): %s' % (kpiSrc, kpi))
+        log('execute sql:\n' + sql)
+        log('params:' + ','.join(map(str,params)))
+        
+        try:
+            rows = db.execute_query(self.connection, sql, params)
+        except Exception as e:
+            log('[!] execute_query: %s' % str(e))
+            #raise dbException('Database Exception')
+            raise dbException('[db]: ' + str(e))
+            
+        log('Executed okay, %i rows', len(rows))
+        
+        data[kpi] = {}
+        
+        for r in rows:
+            print(r)
+            
+            entity = r[0]
+            start = r[1]
+            stop = r[2]
+            desc = r[3]
+            
+            print(data[kpi])
+            
+            if entity in data[kpi]:
+                print(1)
+                data[kpi][entity].append([start, stop])
+                print(2)
+            else:
+                print(3)
+                data[kpi][entity] = [[start, stop]]
+                print(4)
+            
+            
+    
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
         '''
+        log('======================================')
         log('getHostKpis kpis (%s): %s' % (kpiSrc, str(kpis)))
         log('execute sql:\n' + sql)
         log('params:' + ','.join(map(str,params)))
