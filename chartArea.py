@@ -548,15 +548,28 @@ class myWidget(QWidget):
                 height = 8 # print gantt bar height
             
                 gc = data[kpi]
-            
+
+                '''
                 y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                y_shift = y_scale/100*yr[0] * len(gc)
+                y_scale = y_scale * (yr[1] - yr[0])/100
+                '''
+
+                yr = kpiStylesNN[type][kpi]['y_range']
                 
-                gc_i = (pos.y() - y_scale*0.5 - top_margin) / y_scale
+                y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                y_shift = y_scale/100*yr[0] * len(gc)
+                y_scale = y_scale * (yr[1] - yr[0])/100
+
+
+                # y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
+                
+                gc_i = (pos.y() - y_scale*0.5 - top_margin - y_shift) / y_scale
                 
                 gc_delta = abs(round(gc_i) - gc_i)
-                
-                gc_tol = ((height/2 + tolerance/2) / y_scale)
-                
+
+                gc_tol = abs((height/2 + tolerance/2) / y_scale)
+
                 if gc_delta < gc_tol:
                     # within one of entities y, so need to check time ranges now
                     gc_i = round(gc_i)
