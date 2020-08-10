@@ -113,9 +113,9 @@ class dataProvider:
             #data['time'] = None
             
             data['cs-exp_st'] = {}
-            data['cs-exp_st']['Entity number one'] = [[t0, t1], [t2, t3]]
-            data['cs-exp_st']['entitiy2'] = [[t4, t5], [t6, t7], [t8, t9]]
-            data['cs-exp_st']['one more'] = [[t10, t11]]
+            data['cs-exp_st']['Entity number one'] = [[t0, t1, '34'], [t2, t3, 'asdf']]
+            data['cs-exp_st']['entitiy2'] = [[t4, t5, '32132'], [t6, t7, 'asdf'], [t8, t9, 'asdf\nasdlf']]
+            data['cs-exp_st']['one more'] = [[t10, t11, 'descr']]
             
             for e in data['cs-exp_st']:
                 print('%s:'% e)

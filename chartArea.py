@@ -59,6 +59,9 @@ class myWidget(QWidget):
 
     kpiPen = {} #kpi pen objects dictionary
     
+    highlightedEntity = None # gantt kpi currently highlihed
+    highlightedRange = None # gantt kpi currently highlihed
+    
     highlightedKpi = None #kpi currently highlihed
     highlightedKpiHost = None # host for currently highlihed kpi
     
@@ -498,6 +501,10 @@ class myWidget(QWidget):
                 
                 self.highlightedKpiHost = None
                 self.highlightedKpi = None
+
+                self.highlightedEntity = None
+                self.highlightedRange = None
+
                 self.setToolTip('')
                 
                 # self.update()
@@ -512,7 +519,12 @@ class myWidget(QWidget):
         
         wsize = self.size()
         
+        hst = self.hosts[host]['host']
+        if self.hosts[host]['port'] != '':
+            hst += ':'+str(self.hosts[host]['port'])
+            
         trgt_time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin - self.left_margin)/self.step_size*self.t_scale) - self.delta)
+        trgt_time_dt = trgt_time
         trgt_time = trgt_time.timestamp()
         
         x_scale = self.step_size / self.t_scale
@@ -523,13 +535,80 @@ class myWidget(QWidget):
         
         reportDelta = False
         
+        found_some = False
+        
         for kpi in kpis:
         
             if kpi[:4] == 'time':
                 continue
                 
             if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
-                print('scan for gantt!')
+                #print('scan for gantt!', kpi)
+            
+                height = 8 # print gantt bar height
+            
+                gc = data[kpi]
+            
+                y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                
+                gc_i = (pos.y() - y_scale*0.5 - top_margin) / y_scale
+                
+                gc_delta = abs(round(gc_i) - gc_i)
+                
+                gc_tol = ((height/2 + tolerance/2) / y_scale)
+                
+                if gc_delta < gc_tol:
+                    # within one of entities y, so need to check time ranges now
+                    gc_i = round(gc_i)
+                    
+                    # this is to extract the gantt entry... 
+                    # to be refactored as dictionary seems to be a bad choise...
+                    
+                    i = 0
+
+                    # print maybe it is not such a nice idea to have gantt as a dict...
+                    # we need to itterate like this to find the gc_i'th key...
+                    for entity in gc:
+                        if i >= gc_i: 
+                            break
+
+                        i += 1
+
+                    if i == gc_i: # overkill check
+                        i = 0
+                        for t in gc[entity]:
+                            #check ranges now
+                            if t[0] <= trgt_time_dt <= t[1]:
+                                
+                                #winner is:
+                                #gc[entity][i]
+                                
+                                #self.statusMessage('%s, %s.%s = %s %s at %s%s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm, deltaVal))
+                                
+                                desc = str(t[2])
+                                
+                                self.highlightedKpi = kpi
+                                self.highlightedKpiHost = host
+                                self.highlightedEntity = entity
+                                self.highlightedRange = i
+
+                                self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
+
+                                self.update()
+                                return True
+                                
+                                break
+                            i += 1
+                    else:
+                        log('[w] gantt overkill check failed!')
+             
+                continue # no regular kpi scan procedure requred
+                
+            '''
+                regular kpis scan
+            '''
+            
+            #print('scan for regular:', kpi)
         
             timeKey = kpiDescriptions.getTimeKey(type, kpi)
             
@@ -621,10 +700,6 @@ class myWidget(QWidget):
                     deltaVal = ''
 
                 self.highlightedNormVal = normVal
-                
-                hst = self.hosts[host]['host']
-                if self.hosts[host]['port'] != '':
-                    hst += ':'+str(self.hosts[host]['port'])
                     
                 tm = datetime.datetime.fromtimestamp(data[timeKey][j]).strftime('%Y-%m-%d %H:%M:%S')
                 
@@ -772,11 +847,17 @@ class myWidget(QWidget):
                             print ('    ', str(l[0]), '-' , str(l[1]))
                     '''
 
+
+                    qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
                     
-                    qp.setBrush(QColor('#ACF')) # bar fill color
+                    #print(kpiStylesNN[type][kpi])
                     
                     if len(gc) > 0:
+                        yr = kpiStylesNN[type][kpi]['y_range']
+                        
                         y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                        y_shift = y_scale/100*yr[0] * len(gc)
+                        y_scale = y_scale * (yr[1] - yr[0])/100
                     
                     #print(y_scale)
                     
@@ -797,20 +878,30 @@ class myWidget(QWidget):
                     
                         height = 8
                         
-                        y = i * y_scale + y_scale*0.5 - height/2 # this is the center of the gantt line
-
-                        #ganttPen = QPen(QColor('#44A'))
-                        #ganttPen.setWidth(2)
-                        #qp.setPen(ganttPen)
+                        y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
                         
                         qp.setPen(QColor('#44A')) # bar outline color
                     
+                        range_i = 0
                         for t in gc[entity]:
 
                             x = (t[0].timestamp() - from_ts) # number of seconds
                             x = self.side_margin + self.left_margin +  x * x_scale
 
                             width = (t[1].timestamp() - t[0].timestamp()) * x_scale
+                            
+                            
+                            #highlighting
+                            
+                            if self.highlightedKpi == kpi and self.highlightedKpiHost == h and self.highlightedEntity == entity and self.highlightedRange == range_i:
+                                ganttPen = kpiStylesNN[type][kpi]['pen']
+                                ganttPen.setWidth(2)
+                                qp.setPen(ganttPen)
+                                
+                            else:
+                                ganttPen = kpiStylesNN[type][kpi]['pen']
+                                ganttPen.setWidth(1)
+                                qp.setPen(ganttPen)
                         
                             qp.drawRect(x, y + top_margin, width, height)
 
@@ -820,13 +911,20 @@ class myWidget(QWidget):
                             qp.drawLine(x + width, y + top_margin, x + width, y + top_margin - 4)
                             qp.drawLine(x, y + top_margin, x, y + top_margin + 4)
                             '''
+                            
+                            range_i += 1
 
 
                         if stopX - startX > 400:
                             # qp.setBackground(QColor('red')) - does not work
                             # otherwise drawing area too small, it won't paint full text anyway
                             # to avoid only ugly artefacts...
-                            qp.setPen(QColor('#448')) # entity label color
+                            #qp.setPen(QColor('#448')) # entity label color
+                            
+                            clr = ganttPen.color()
+                            clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
+                            
+                            qp.setPen(clr) # entity label color
                             qp.drawText(startX + self.side_margin + fontHeight, y + top_margin + fontHeight / 2, entity);
                         
                         i += 1
