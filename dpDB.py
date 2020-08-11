@@ -425,7 +425,7 @@ class dataProvider():
             #raise dbException('Database Exception')
             raise dbException('[db]: ' + str(e))
             
-        log('Executed okay, %i rows', len(rows))
+        log('Executed okay, %i rows' % len(rows))
         
         data[kpi] = {}
         
