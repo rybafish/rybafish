@@ -548,6 +548,9 @@ class myWidget(QWidget):
                 height = 8 # print gantt bar height
             
                 gc = data[kpi]
+                
+                if len(gc) == 0:
+                    continue
 
                 '''
                 y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
@@ -910,15 +913,12 @@ class myWidget(QWidget):
                                 ganttPen = kpiStylesNN[type][kpi]['pen']
                                 
                                 clr = ganttPen.color()
-                                clr = QColor(clr.red()*0.6, clr.green()*0.0, clr.blue()*0.6)
+                                clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
                                 qp.setPen(clr)
                                 qp.drawText(x, y + top_margin - 6, t[2])
                                 
-                                ganttPen = kpiStylesNN[type][kpi]['pen']
                                 ganttPen.setWidth(2)
                                 qp.setPen(ganttPen)
-                                
-                                qp.drawText(x, y + top_margin - 6, t[2])
                                 
                             else:
                                 ganttPen = kpiStylesNN[type][kpi]['pen']
@@ -926,10 +926,13 @@ class myWidget(QWidget):
                                 qp.setPen(ganttPen)
                         
                             qp.drawRect(x, y + top_margin, width, height)
-
+                            
+                            #candles 
+                            #qp.drawLine(x, y + top_margin, x + width, y + top_margin)
+                            
                             '''
-                            candles
-                            qp.drawLine(x, y + top_margin, x + width, y + top_margin)
+                            qp.drawLine(x, y + top_margin + 4, x + width, y + top_margin - 4)
+                            
                             qp.drawLine(x + width, y + top_margin, x + width, y + top_margin - 4)
                             qp.drawLine(x, y + top_margin, x, y + top_margin + 4)
                             '''
@@ -937,7 +940,7 @@ class myWidget(QWidget):
                             range_i += 1
 
 
-                        if stopX - startX > 400:
+                        if stopX - startX > 200:
                             # qp.setBackground(QColor('red')) - does not work
                             # otherwise drawing area too small, it won't paint full text anyway
                             # to avoid only ugly artefacts...

@@ -352,7 +352,8 @@ class dataProvider():
                     
                     tfilter_mod = tfilter.replace('time', '"START"')
                 
-                    sql = 'select entity, "START", "STOP", details %s %s%s order by "START" desc' % (fromTable, hfilter, tfilter_mod)
+                    #sql = 'select entity, "START", "STOP", details %s %s%s order by entity, "START" desc' % (fromTable, hfilter, tfilter_mod)
+                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity, seconds_between("START", "STOP") desc' % (fromTable, hfilter, tfilter_mod)
                     gantt = True                    
 
             try:
@@ -416,10 +417,6 @@ class dataProvider():
         return 
 
     def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
-        log('======================================')
-        log('getHostKpis kpis (%s): %s' % (kpiSrc, kpi))
-        log('execute sql:\n' + sql)
-        log('params:' + ','.join(map(str,params)))
         
         try:
             rows = db.execute_query(self.connection, sql, params)
@@ -433,24 +430,16 @@ class dataProvider():
         data[kpi] = {}
         
         for r in rows:
-            print(r)
             
             entity = r[0]
             start = r[1]
             stop = r[2]
             desc = r[3]
             
-            print(data[kpi])
-            
             if entity in data[kpi]:
-                print(1)
-                data[kpi][entity].append([start, stop])
-                print(2)
+                data[kpi][entity].append([start, stop, desc])
             else:
-                print(3)
-                data[kpi][entity] = [[start, stop]]
-                print(4)
-            
+                data[kpi][entity] = [[start, stop, desc]]
             
     
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
@@ -458,10 +447,6 @@ class dataProvider():
             performs query to a data source for specific host.port
             also for custom metrics
         '''
-        log('======================================')
-        log('getHostKpis kpis (%s): %s' % (kpiSrc, str(kpis)))
-        log('execute sql:\n' + sql)
-        log('params:' + ','.join(map(str,params)))
 
         t0 = time.time()
         
