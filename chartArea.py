@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip
 
-from PyQt5.QtGui import QPainter, QColor, QPen, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap 
+from PyQt5.QtGui import QPainter, QColor, QPen, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap
 
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QRect
 
 import os
 import time
@@ -235,6 +235,8 @@ class myWidget(QWidget):
         '''
             align scales to normal values, prepare text labels (including max value, scale)
             for the KPIs table
+            
+            based on renewMaxValues data <-- self.widget.nscales[h]
         '''
         
         groups = []
@@ -265,10 +267,12 @@ class myWidget(QWidget):
                 scaleKpi = self.nscales[h][kpi] # short cut
                 
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                
+                    #scaleKpi['y_max'] = ''
                     scaleKpi['y_max'] = ''
-                    scaleKpi['max_label'] = ''
+                    scaleKpi['max_label'] = '%i' % (self.nscales[h][kpi]['total'])
                     scaleKpi['last_label'] = ''
-                    scaleKpi['label'] = ''
+                    scaleKpi['label'] = '%i' % (self.nscales[h][kpi]['entities'])
                     scaleKpi['yScale'] = ''
                     scaleKpi['unit'] = ''
                     continue
@@ -609,6 +613,7 @@ class myWidget(QWidget):
                                 self.highlightedRange = i
 
                                 self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
+                                log('gantt clicked %s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
 
                                 self.update()
                                 return True
@@ -906,36 +911,47 @@ class myWidget(QWidget):
 
                             width = (t[1].timestamp() - t[0].timestamp()) * x_scale
                             
+                            if self.highlightedKpi == kpi and self.highlightedKpiHost == h and self.highlightedEntity == entity and self.highlightedRange == range_i:
+                                highlight = True
+                            else:
+                                highlight = False
                             
+                            ganttPen = kpiStylesNN[type][kpi]['pen']
+                            
+                            if highlight == True:
+                                ganttPen.setWidth(2)
+                            else:
+                                ganttPen.setWidth(1)
+                            
+                            qp.setPen(ganttPen)
+                            
+                            if kpiStylesNN[type][kpi]['style'] == 'bar':
+                                qp.drawRect(x, y + top_margin, width, height)
+                            else:
+                                qp.drawLine(x, y + top_margin + 4, x + width, y + top_margin - 4)
+                                
+                                qp.drawLine(x + width, y + top_margin, x + width, y + top_margin - 4)
+                                qp.drawLine(x, y + top_margin, x, y + top_margin + 4)
+                                
+
                             #highlighting
                             
-                            if self.highlightedKpi == kpi and self.highlightedKpiHost == h and self.highlightedEntity == entity and self.highlightedRange == range_i:
+                            if highlight:
                                 ganttPen = kpiStylesNN[type][kpi]['pen']
                                 
                                 clr = ganttPen.color()
                                 clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
                                 qp.setPen(clr)
-                                qp.drawText(x, y + top_margin - 6, t[2])
+                                #qp.drawText(x, y + top_margin - 6, t[2])
+                                
+                                desc = t[2].strip()
+                                nl = desc.count('\n') + 1
+                                
+                                r = QRect (x, y + top_margin - fontHeight*nl, 500, fontHeight * nl)
+                                qp.drawText(r, Qt.AlignLeft, desc)
                                 
                                 ganttPen.setWidth(2)
                                 qp.setPen(ganttPen)
-                                
-                            else:
-                                ganttPen = kpiStylesNN[type][kpi]['pen']
-                                ganttPen.setWidth(1)
-                                qp.setPen(ganttPen)
-                        
-                            qp.drawRect(x, y + top_margin, width, height)
-                            
-                            #candles 
-                            #qp.drawLine(x, y + top_margin, x + width, y + top_margin)
-                            
-                            '''
-                            qp.drawLine(x, y + top_margin + 4, x + width, y + top_margin - 4)
-                            
-                            qp.drawLine(x + width, y + top_margin, x + width, y + top_margin - 4)
-                            qp.drawLine(x, y + top_margin, x, y + top_margin + 4)
-                            '''
                             
                             range_i += 1
 
@@ -1271,11 +1287,11 @@ class myWidget(QWidget):
                     label_width = self.font_width1
                 else:
                     label_width = self.font_width2
-                qp.drawText(x-label_width, wsize.height() - bottom_margin + self.font_height, label);
+                qp.drawText(x-label_width, wsize.height() - bottom_margin + self.font_height, label)
                 
                 if date_mark:
                     label = c_time.strftime('%Y-%m-%d')
-                    qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
+                    qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label)
                     
                 qp.setPen(self.gridColor)
         
@@ -1846,6 +1862,7 @@ class chartArea(QFrame):
             
             type = hType(h, self.widget.hosts)
 
+
             # init zero dicts for scales
             # especially important for the first run
 
@@ -1867,6 +1884,18 @@ class chartArea(QFrame):
                     continue
                     
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                
+                    eNum = 0
+                    total = 0
+                
+                    for entity in data[kpi]:
+                        total += len(data[kpi][entity])
+                        eNum += 1
+                        
+                    scales[kpi]['entities'] = eNum
+                    scales[kpi]['total'] = total
+                    # print ('%i/%i' % (eNum, total))
+                        
                     continue
                     
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)

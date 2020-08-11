@@ -219,7 +219,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 penStyle = Qt.DashLine
             elif kpi['style'] == 'dotline':
                 penStyle = Qt.DotLine
-            elif kpi['style'] == 'bar':
+            elif kpi['style'] == 'bar' or kpi['style'] == 'candle':
                 penStyle = Qt.SolidLine
             else:
                 log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])))
@@ -233,7 +233,8 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         if kpi['name'][:7] == '---#---':
             style['pen'] = '-'
         else:
-            if kpi['style'] == 'bar':
+            if kpi['style'] == 'bar' or kpi['style'] == 'candle':
+                style['style'] = kpi['style']
                 clr = QColor(color)
                 style['brush'] = clr
                 penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)

@@ -33,9 +33,14 @@ class kpiCell(QWidget):
     '''
         draws a cell with defined pen style
     '''
-    def __init__(self, pen):
+    def __init__(self, pen, brush = None, style = None):
         super().__init__()
         self.penStyle = pen
+        
+        if brush:
+            self.brushStyle = QBrush(brush)
+            
+        self.style = style
 
     def paintEvent(self, QPaintEvent):
         
@@ -45,7 +50,17 @@ class kpiCell(QWidget):
         
         qp.begin(self)
         qp.setPen(self.penStyle)
-        qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
+        
+        if self.style == 'bar':
+            qp.setBrush(self.brushStyle) # bar fill color
+            h = 8 / 2
+            qp.drawRect(4, self.size().height() / 2 - h/2, self.width() - 8, h )
+        elif self.style == 'candle':
+            qp.drawLine(4, self.size().height() / 2 + 2 , self.width() - 4, self.size().height()  / 2 - 2)
+            qp.drawLine(4, self.size().height() / 2 + 3 , 4 , self.size().height()  / 2)
+            qp.drawLine(self.width() - 4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2 - 3)
+        else:
+            qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
         qp.end()
 
 class kpiTable(QTableWidget):
@@ -220,7 +235,11 @@ class kpiTable(QTableWidget):
                 style = kpiStyles[kpiName]
                 cb.stateChanged.connect(self.checkBoxChanged)
                 self.setCellWidget(i, 0, cb)
-                self.setCellWidget(i, 2, kpiCell(style['pen'])) # kpi pen style
+                
+                if 'style' in style:
+                    self.setCellWidget(i, 2, kpiCell(style['pen'], style['brush'], style['style'])) # customized styles
+                else:
+                    self.setCellWidget(i, 2, kpiCell(style['pen'], )) # kpi pen style
                 
                 if 'disabled' in style.keys():
                     item = QTableWidgetItem(style['label'])

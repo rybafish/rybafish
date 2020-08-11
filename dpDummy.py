@@ -113,8 +113,8 @@ class dataProvider:
             #data['time'] = None
             
             data['cs-exp_st'] = {}
-            data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \n\r hash: 2392133lkwejw9872'], [t2, t3, 'asdf']]
-            data['cs-exp_st']['entitiy2'] = [[t4, t5, '32132'], [t6, t7, 'asdf'], [t8, t9, 'asdf\nasdlf']]
+            data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872'], [t2, t3, 'asdf']]
+            data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select host, '' port, min(time) min_time, max(time) max_time from m_load_history_host group by host'], [t6, t7, 'asdf'], [t8, t9, 'asdf\nasdlf']]
             data['cs-exp_st']['one more'] = [[t10, t11, 'descr']]
             
             for e in data['cs-exp_st']:
