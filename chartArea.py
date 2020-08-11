@@ -908,8 +908,17 @@ class myWidget(QWidget):
                             
                             if self.highlightedKpi == kpi and self.highlightedKpiHost == h and self.highlightedEntity == entity and self.highlightedRange == range_i:
                                 ganttPen = kpiStylesNN[type][kpi]['pen']
+                                
+                                clr = ganttPen.color()
+                                clr = QColor(clr.red()*0.6, clr.green()*0.0, clr.blue()*0.6)
+                                qp.setPen(clr)
+                                qp.drawText(x, y + top_margin - 6, t[2])
+                                
+                                ganttPen = kpiStylesNN[type][kpi]['pen']
                                 ganttPen.setWidth(2)
                                 qp.setPen(ganttPen)
+                                
+                                qp.drawText(x, y + top_margin - 6, t[2])
                                 
                             else:
                                 ganttPen = kpiStylesNN[type][kpi]['pen']
