@@ -140,6 +140,10 @@ def execute_query(connection, sql_string, params):
         cursor.execute_prepared(ps, [params])
 
         rows = cursor.fetchall()
+        
+        print('close resultset')
+        close_result(connection, cursor._resultset_id)1
+        print('done')
 
     except pyhdb.exceptions.DatabaseError as e:
         log('[!]: sql execution issue %s\n' % e)

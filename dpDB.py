@@ -52,7 +52,7 @@ class dataProvider():
             self.connection = conn
             self.server = server
             
-    def terminate(self, closeCobbection = False):
+    def terminate(self, closeConnection = False):
         if self.timer:
             self.timer.stop()
             self.timer = None
