@@ -944,7 +944,7 @@ class myWidget(QWidget):
                                 qp.setPen(clr)
                                 #qp.drawText(x, y + top_margin - 6, t[2])
                                 
-                                desc = t[2].strip()
+                                desc = t[2].strip().replace('\\n', '\n')
                                 nl = desc.count('\n') + 1
                                 
                                 r = QRect (x, y + top_margin - fontHeight*nl, 500, fontHeight * nl)
