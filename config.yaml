@@ -9,4 +9,8 @@ keepalive: 1200
 #uncomment to have experimental stuff
 experimental: True
 
+developmentMode: True
+
+lowercase-columns: True
+
 logmode: duplicate
