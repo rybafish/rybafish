@@ -46,6 +46,7 @@ class myWidget(QWidget):
     updateToTime = pyqtSignal(['QString'])
     
     zoomSignal = pyqtSignal(int, int)
+    scrollSignal = pyqtSignal(int)
     
     statusMessage_ = pyqtSignal(['QString', bool])
     
@@ -130,6 +131,8 @@ class myWidget(QWidget):
         modifiers = QApplication.keyboardModifiers()
         if modifiers == Qt.ControlModifier:
             self.zoomSignal.emit(mode, pos.x())
+        elif modifiers == Qt.ShiftModifier:
+            self.scrollSignal.emit(mode)
         
         self.zoomLock = False
         
@@ -947,7 +950,7 @@ class myWidget(QWidget):
                                 desc = t[2].strip().replace('\\n', '\n')
                                 nl = desc.count('\n') + 1
                                 
-                                r = QRect (x, y + top_margin - fontHeight*nl, 500, fontHeight * nl)
+                                r = QRect (x, y + top_margin - fontHeight*nl - 2, 500, fontHeight * nl)
                                 qp.drawText(r, Qt.AlignLeft, desc)
                                 
                                 ganttPen.setWidth(2)
@@ -1429,6 +1432,12 @@ class chartArea(QFrame):
         
         self.statusMessage('ready')
         
+
+    def scrollSignal(self, mode):
+        x = 0 - self.widget.pos().x() 
+        self.scrollarea.horizontalScrollBar().setValue(x + mode*self.widget.step_size*4)
+
+        pass
 
     def zoomSignal(self, mode, pos):
         '''
@@ -2229,6 +2238,8 @@ class chartArea(QFrame):
         self.widget.updateFromTime.connect(self.updateFromTime)
         self.widget.updateToTime.connect(self.updateToTime)
         self.widget.zoomSignal.connect(self.zoomSignal)
+        
+        self.widget.scrollSignal.connect(self.scrollSignal)
         
         # trigger upddate of scales in table?
         
