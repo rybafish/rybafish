@@ -95,7 +95,7 @@ class dataProvider:
             t0 = ctime + datetime.timedelta(seconds=(3600*8))
             t1 = t0 + datetime.timedelta(seconds=(3600*2))
 
-            t2 = t1 + datetime.timedelta(seconds=(900))
+            t2 = t1 + datetime.timedelta(seconds=(-900))
             t3 = t2 + datetime.timedelta(seconds=(3600*3))
 
             t4 = t0 + datetime.timedelta(seconds=(3600*1))
@@ -113,9 +113,9 @@ class dataProvider:
             #data['time'] = None
             
             data['cs-exp_st'] = {}
-            data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872'], [t2, t3, 'asdf']]
-            data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select host, '' port, min(time) min_time, max(time) max_time from m_load_history_host group by host'], [t6, t7, 'asdf'], [t8, t9, 'asdf\nasdlf']]
-            data['cs-exp_st']['one more'] = [[t10, t11, 'descr']]
+            data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0], [t2, t3, 'asdf', 1]]
+            data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0], [t6, t7, 'asdf', 0], [t8, t9, 'asdf\nasdlf', 0]]
+            data['cs-exp_st']['one more'] = [[t10, t11, 'descr', 0]]
             
             for e in data['cs-exp_st']:
                 print('%s:'% e)

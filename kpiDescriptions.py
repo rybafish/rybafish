@@ -233,8 +233,13 @@ def createStyle(kpi, custom = False, sqlIdx = None):
     if kpi['name'][:7] == '---#---':
         style['pen'] = '-'
     else:
-        if 'style' in kpi and (kpi['style'] == 'bar' or kpi['style'] == 'candle'):
-            style['style'] = kpi['style']
+        if 'subtype' in kpi and kpi['subtype'] == 'gantt':
+            # gantt stuff
+            if 'style' in kpi and (kpi['style'] == 'bar' or kpi['style'] == 'candle'):
+                style['style'] = kpi['style']
+            else:
+                style['style'] = 'bar'
+                
             clr = QColor(color)
             style['brush'] = clr
             penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
@@ -247,8 +252,8 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['y_range'][1] = 100 - min(100, yr[1])
             else:
                 style['y_range'] = [0, 100]
-            
         else:
+            # regular kpis
             style['pen'] = QPen(color, 1, penStyle)
 
     style['sql'] = sqlIdx
