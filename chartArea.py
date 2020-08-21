@@ -929,12 +929,12 @@ class myWidget(QWidget):
                             qp.setPen(ganttPen)
                             
                             if kpiStylesNN[type][kpi]['style'] == 'bar':
-                                qp.drawRect(x, y + top_margin, width, height)
+                                qp.drawRect(x, y + top_margin - t[3]*2, width, height)
                             else:
-                                qp.drawLine(x, y + top_margin + 4, x + width, y + top_margin - 4)
+                                qp.drawLine(x, y + top_margin + 8, x + width, y + top_margin)
                                 
-                                qp.drawLine(x + width, y + top_margin, x + width, y + top_margin - 4)
-                                qp.drawLine(x, y + top_margin, x, y + top_margin + 4)
+                                qp.drawLine(x + width, y + top_margin + 8, x + width, y + top_margin)
+                                qp.drawLine(x, y + top_margin, x, y + top_margin + 8)
                                 
 
                             #highlighting

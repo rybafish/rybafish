@@ -437,9 +437,16 @@ class dataProvider():
             desc = r[3]
             
             if entity in data[kpi]:
-                data[kpi][entity].append([start, stop, desc])
+                data[kpi][entity].append([start, stop, desc, 0])
             else:
-                data[kpi][entity] = [[start, stop, desc]]
+                last = data[kpi][entity][-1]
+                
+                if last[1] < start:
+                    shift = last[3] + 1
+                else:
+                    shift = 0
+                    
+                data[kpi][entity] = [[start, stop, desc, shift]]
             
     
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
