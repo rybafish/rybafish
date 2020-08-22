@@ -550,70 +550,44 @@ class myWidget(QWidget):
                 continue
                 
             if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
-                #print('scan for gantt!', kpi)
             
-                height = 8 # print gantt bar height
+                height = utils.cfg('ganttWidth', 8)
             
                 gc = data[kpi]
                 
                 if len(gc) == 0:
                     continue
-
-                '''
-                y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
-                y_shift = y_scale/100*yr[0] * len(gc)
-                y_scale = y_scale * (yr[1] - yr[0])/100
-                '''
-
+                    
+                i = 0
+                
                 yr = kpiStylesNN[type][kpi]['y_range']
+
+                for entity in gc:
                 
-                y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
-                y_shift = y_scale/100*yr[0] * len(gc)
-                y_scale = y_scale * (yr[1] - yr[0])/100
-
-
-                # y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
-                
-                gc_i = (pos.y() - y_scale*0.5 - top_margin - y_shift) / y_scale
-                
-                gc_delta = abs(round(gc_i) - gc_i)
-
-                gc_tol = abs((height/2 + tolerance/2) / y_scale)
-
-                if gc_delta < gc_tol:
-                    # within one of entities y, so need to check time ranges now
-                    gc_i = round(gc_i)
+                    #exactly same calculation as in drawChart:
+                    y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                    y_shift = y_scale/100*yr[0] * len(gc)
+                    y_scale = y_scale * (yr[1] - yr[0])/100
                     
-                    # this is to extract the gantt entry... 
-                    # to be refactored as dictionary seems to be a bad choise...
-                    
-                    i = 0
+                    y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
 
-                    # print maybe it is not such a nice idea to have gantt as a dict...
-                    # we need to itterate like this to find the gc_i'th key...
-                    for entity in gc:
-                        if i >= gc_i: 
-                            break
-
-                        i += 1
-
-                    if i == gc_i: # overkill check
-                        i = 0
-                        for t in gc[entity]:
-                            #check ranges now
-                            if t[0] <= trgt_time_dt <= t[1]:
-                                
-                                #winner is:
-                                #gc[entity][i]
-                                
-                                #self.statusMessage('%s, %s.%s = %s %s at %s%s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm, deltaVal))
+                    j = 0
+                    for t in gc[entity]:
+                        #check ranges first
+                        if t[0] <= trgt_time_dt <= t[1]:
+                        
+                            y0 = y + top_margin - t[3]*utils.cfg('ganttShift', 2)
+                            y1 = y0 + height
+                            
+                            #check Y second:                            
+                            if y0 <= pos.y() <= y1:
                                 
                                 desc = str(t[2])
                                 
                                 self.highlightedKpi = kpi
                                 self.highlightedKpiHost = host
                                 self.highlightedEntity = entity
-                                self.highlightedRange = i
+                                self.highlightedRange = j
 
                                 self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
                                 log('gantt clicked %s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
@@ -622,17 +596,14 @@ class myWidget(QWidget):
                                 return True
                                 
                                 break
-                            i += 1
-                    else:
-                        log('[w] gantt overkill check failed!')
+                        j += 1
+                    i += 1
              
                 continue # no regular kpi scan procedure requred
                 
             '''
                 regular kpis scan
             '''
-            
-            #print('scan for regular:', kpi)
         
             timeKey = kpiDescriptions.getTimeKey(type, kpi)
             
@@ -897,16 +868,16 @@ class myWidget(QWidget):
                     '''
                     
                     hlDesc = None
+
+                    height = kpiStylesNN[type][kpi]['width']
                     
                     for entity in gc:
                     
                         # print so far startX, stopX totally ignored: bad performance
                     
-                        height = 8
-                        
                         y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
                         
-                        qp.setPen(QColor('#44A')) # bar outline color
+                        #print('y ==> %i' % y)
                     
                         range_i = 0
                         for t in gc[entity]:
@@ -945,7 +916,9 @@ class myWidget(QWidget):
                                 hlDesc = t[2].strip().replace('\\n', '\n')
                                 nl = hlDesc.count('\n') + 1
                                 
-                                hlRect = QRect (x, y + top_margin - fontHeight*nl - 2, 500, fontHeight * nl)
+                                yShift = t[3]*utils.cfg('ganttShift', 2)
+                                
+                                hlRect = QRect (x, y + top_margin - fontHeight*nl - 2 - yShift, 500, fontHeight * nl)
                             
                             range_i += 1
 

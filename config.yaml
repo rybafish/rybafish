@@ -13,6 +13,6 @@ developmentMode: True
 
 lowercase-columns: True
 
-ganttShift: 5
+ganttShift: 1
 
 logmode: duplicate

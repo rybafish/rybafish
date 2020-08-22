@@ -235,6 +235,11 @@ def createStyle(kpi, custom = False, sqlIdx = None):
     else:
         if 'subtype' in kpi and kpi['subtype'] == 'gantt':
             # gantt stuff
+            if 'width' in kpi:
+                style['width'] = int(kpi['width'])
+            else:
+                style['width'] = 8
+            
             if 'style' in kpi and (kpi['style'] == 'bar' or kpi['style'] == 'candle'):
                 style['style'] = kpi['style']
             else:
