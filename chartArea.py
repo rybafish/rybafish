@@ -896,6 +896,8 @@ class myWidget(QWidget):
                     qp.drawLine(startX + 100, 200, stopX + 100, 230)
                     '''
                     
+                    hlDesc = None
+                    
                     for entity in gc:
                     
                         # print so far startX, stopX totally ignored: bad performance
@@ -929,7 +931,7 @@ class myWidget(QWidget):
                             qp.setPen(ganttPen)
                             
                             if kpiStylesNN[type][kpi]['style'] == 'bar':
-                                qp.drawRect(x, y + top_margin - t[3]*2, width, height)
+                                qp.drawRect(x, y + top_margin - t[3]*utils.cfg('ganttShift', 2), width, height)
                             else:
                                 qp.drawLine(x, y + top_margin + 8, x + width, y + top_margin)
                                 
@@ -938,23 +940,12 @@ class myWidget(QWidget):
                                 
 
                             #highlighting
-                            
                             if highlight:
-                                ganttPen = kpiStylesNN[type][kpi]['pen']
                                 
-                                clr = ganttPen.color()
-                                clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
-                                qp.setPen(clr)
-                                #qp.drawText(x, y + top_margin - 6, t[2])
+                                hlDesc = t[2].strip().replace('\\n', '\n')
+                                nl = hlDesc.count('\n') + 1
                                 
-                                desc = t[2].strip().replace('\\n', '\n')
-                                nl = desc.count('\n') + 1
-                                
-                                r = QRect (x, y + top_margin - fontHeight*nl - 2, 500, fontHeight * nl)
-                                qp.drawText(r, Qt.AlignLeft, desc)
-                                
-                                ganttPen.setWidth(2)
-                                qp.setPen(ganttPen)
+                                hlRect = QRect (x, y + top_margin - fontHeight*nl - 2, 500, fontHeight * nl)
                             
                             range_i += 1
 
@@ -973,6 +964,14 @@ class myWidget(QWidget):
                         
                         i += 1
 
+                        if hlDesc is not None:
+                            ganttPen = kpiStylesNN[type][kpi]['pen']
+                            
+                            clr = ganttPen.color()
+                            clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
+                            qp.setPen(clr)
+                            
+                            qp.drawText(hlRect, Qt.AlignLeft, hlDesc)
                     continue
                 
                 array_size = len(self.ndata[h][timeKey])

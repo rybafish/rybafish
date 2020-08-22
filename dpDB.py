@@ -432,7 +432,7 @@ class dataProvider():
         
         for r in rows:
             
-            entity = r[0]
+            entity = str(r[0])
             start = r[1]
             stop = r[2]
             desc = r[3]
