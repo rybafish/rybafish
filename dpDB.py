@@ -435,19 +435,22 @@ class dataProvider():
             start = r[1]
             stop = r[2]
             desc = r[3]
+               
+            print ('curr: %s - %s' % (str(start), str(stop)))
             
             if entity in data[kpi]:
                 last = data[kpi][entity][-1]
                 
-                if last[1] < start:
+                print ('last: %s - %s' % (str(last[0]), str(last[1])))
+                
+                if stop > last[0] and start < last[0]:
                     shift = last[3] + 1
                 else:
                     shift = 0
                     
-                data[kpi][entity] = [[start, stop, desc, shift]]
+                data[kpi][entity].append([start, stop, desc, shift])
             else:
-                data[kpi][entity].append([start, stop, desc, 0])
-            
+                data[kpi][entity] = [[start, stop, desc, 0]]
     
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
         '''
