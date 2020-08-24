@@ -158,6 +158,23 @@ def yesNoDialog(title, message, cancel = False):
         return False
         
     return None
+
+def msgDialog(title, message):
+    msgBox = QMessageBox()
+    msgBox.setWindowTitle(title)
+    msgBox.setText(message)
+
+    buttons = QMessageBox.Ok
+        
+    msgBox.setStandardButtons(buttons)
+    iconPath = resourcePath('ico\\favicon.ico')
+    
+    msgBox.setWindowIcon(QIcon(iconPath))
+    msgBox.setIcon(QMessageBox.Warning)
+    
+    reply = msgBox.exec_()
+    
+    return
         
 
 def GB(bytes, scale = 'GB'):
@@ -248,7 +265,7 @@ def log(s, nots = False, nonl = False):
         ts = ''
     
     if cfg('logmode') == 'screen' or cfg('logmode') == 'duplicate':
-        print(s)
+        print('[l]', s)
         
     if nonl:
         nl = ''

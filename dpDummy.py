@@ -5,7 +5,7 @@ import math, time, random
 
 import dpDBCustom, kpiDescriptions
 
-from utils import log, cfg
+from utils import log, cfg, msgDialog
 
 class dataProvider:
 
@@ -82,7 +82,10 @@ class dataProvider:
                     'to':etime
                     })
                     
-        dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        try:
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        except Exception as e:
+            msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
                     
     def getData(self, host, fromto, kpis, data):
         

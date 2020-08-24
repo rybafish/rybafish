@@ -1,5 +1,7 @@
 server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 
+logmode: 'duplicate'
+
 ##
 ## Chart related stuff here
 ##
@@ -20,7 +22,7 @@ keepalive: 1200
 # fontSize: 6
 
 ## uncomment to have experimental stuff (like sql console)
-#experimental: True
+experimental: True
 
 ##
 ## SQL Console related section

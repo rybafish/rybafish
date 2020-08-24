@@ -113,6 +113,18 @@ class myWidget(QWidget):
         
         self.initPens()
         
+    def disableDeadKPIs(self):
+        
+        for host in range(0, len(self.hosts)):
+            type = hType(host, self.hosts)
+            
+            for kpi in self.nkpis[host]:
+                if kpi not in kpiStylesNN[type]:
+                    log('[w] kpi %s is dsabled so it is removed from the list of selected KPIs for the host' % (kpi))
+                    
+                    self.nkpis[host].remove(kpi)
+        
+        
     def wheelEvent (self, event):
         if self.zoomLock:
             return
@@ -1117,10 +1129,14 @@ class myWidget(QWidget):
         #prnt('grid %i:%i' % (startX, stopX))
         #print('grid: ', self.gridColor.getRgb())
         
-        
+
         for h in range(0, len(self.hosts)):
+
+            if len(self.nkpis) == 0: # sometimes hosts filled before nkpis
+                break
+
             type = hType(h, self.hosts)
-            
+
             for kpi in self.nkpis[h]:
             
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':

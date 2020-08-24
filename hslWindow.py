@@ -30,7 +30,7 @@ from utils import resourcePath
 from utils import loadConfig
 from utils import log
 from utils import cfg
-from utils import dbException
+from utils import dbException, msgDialog
 
 import kpiDescriptions
 
@@ -166,7 +166,12 @@ class hslWindow(QMainWindow):
                 i += 1
                 
 
-        dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+        try:
+            dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+        except Exception as e:
+            self.chartArea.widget.disableDeadKPIs()
+            msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
+        
         self.chartArea.widget.initPens()
         self.chartArea.widget.update()
         
