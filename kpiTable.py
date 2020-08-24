@@ -232,6 +232,13 @@ class kpiTable(QTableWidget):
                 if kpiName in self.nkpis[host]:
                     cb.setChecked(True)
 
+                '''
+                if kpiName not in kpiStyles:
+                    # it can disappear as a result of custom KPI reload
+                    log('%s not in the list of KPI styles, removing' % (kpiName))
+                    continue 
+                '''
+                
                 style = kpiStyles[kpiName]
                 cb.stateChanged.connect(self.checkBoxChanged)
                 self.setCellWidget(i, 0, cb)

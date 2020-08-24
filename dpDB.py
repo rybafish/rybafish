@@ -437,7 +437,7 @@ class dataProvider():
             stop = r[2]
             desc = r[3]
                
-            print ('curr: %s - %s' % (str(start), str(stop)))
+            #print ('curr: %s - %s' % (str(start), str(stop)))
             
             if entity in data[kpi]:
                 last = data[kpi][entity][-1]
