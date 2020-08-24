@@ -1,18 +1,50 @@
-server: {'host': 'ls80010', 'port': 30015, 'user': 'system', password: 'Abcd1234'}
-#server: {'host': '127.0.0.1', 'port': 5000, 'user': 'SAP_YAVNIK', password: 'Megalomania!999'}
+server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 
-color-bg: '#FFF'
+##
+## Chart related stuff here
+##
 
-#db keep-alive time
+# chart keep-alives timer
 keepalive: 1200
 
-#uncomment to have experimental stuff
-experimental: True
+# force memory metrics in GB
+memoryGB: True
 
-developmentMode: True
+# enable white background
+color-bg: '#FFF'
 
-lowercase-columns: True
+# chart keep-alive timer
+keepalive: 1200
 
-ganttShift: 1
+# chart font size
+# fontSize: 6
 
-logmode: duplicate
+## uncomment to have experimental stuff (like sql console)
+#experimental: True
+
+##
+## SQL Console related section
+##
+
+## maximum result size
+#resultSize: 1000
+
+## sql console keep-alive timer
+#keepalive-cons: 1800
+
+## sql console font sizes
+#console-fontSize: 10
+#result-fontSize 10
+
+## sql console null value representation
+#nullString: '?'
+#nullStringCSV: ''
+
+## disable words highlighting
+#noWordHighlighting: True
+
+## disable parentesis highlighting
+#noBraketsHighlighting: True
+
+## light gray background for LOB columns just to be aware
+#highlightLOBs: True
