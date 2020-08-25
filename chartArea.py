@@ -113,18 +113,6 @@ class myWidget(QWidget):
         
         self.initPens()
         
-    def disableDeadKPIs(self):
-        
-        for host in range(0, len(self.hosts)):
-            type = hType(host, self.hosts)
-            
-            for kpi in self.nkpis[host]:
-                if kpi not in kpiStylesNN[type]:
-                    log('[w] kpi %s is dsabled so it is removed from the list of selected KPIs for the host' % (kpi))
-                    
-                    self.nkpis[host].remove(kpi)
-        
-        
     def wheelEvent (self, event):
         if self.zoomLock:
             return
@@ -563,7 +551,9 @@ class myWidget(QWidget):
                 
             if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
             
-                height = utils.cfg('ganttWidth', 8)
+                #height = utils.cfg('ganttWidth', 8)
+                height = kpiStylesNN[type][kpi]['width']
+                ganttShift = kpiStylesNN[type][kpi]['shift']
             
                 gc = data[kpi]
                 
@@ -588,7 +578,7 @@ class myWidget(QWidget):
                         #check ranges first
                         if t[0] <= trgt_time_dt <= t[1]:
                         
-                            y0 = y + top_margin - t[3]*utils.cfg('ganttShift', 2)
+                            y0 = y + top_margin - t[3]*ganttShift
                             y1 = y0 + height
                             
                             #check Y second:                            
@@ -882,6 +872,7 @@ class myWidget(QWidget):
                     hlDesc = None
 
                     height = kpiStylesNN[type][kpi]['width']
+                    ganttShift = kpiStylesNN[type][kpi]['shift']
                     
                     for entity in gc:
                     
@@ -914,7 +905,7 @@ class myWidget(QWidget):
                             qp.setPen(ganttPen)
                             
                             if kpiStylesNN[type][kpi]['style'] == 'bar':
-                                qp.drawRect(x, y + top_margin - t[3]*utils.cfg('ganttShift', 2), width, height)
+                                qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
                             else:
                                 qp.drawLine(x, y + top_margin + 8, x + width, y + top_margin)
                                 
@@ -928,7 +919,7 @@ class myWidget(QWidget):
                                 hlDesc = t[2].strip().replace('\\n', '\n')
                                 nl = hlDesc.count('\n') + 1
                                 
-                                yShift = t[3]*utils.cfg('ganttShift', 2)
+                                yShift = t[3]*ganttShift
                                 
                                 hlRect = QRect (x, y + top_margin - fontHeight*nl - 2 - yShift, 500, fontHeight * nl)
                             
@@ -1347,6 +1338,24 @@ class chartArea(QFrame):
     timer = None
     refreshCB = None
     
+    def disableDeadKPIs(self):
+        
+        chart = self.widget
+        
+        for host in range(0, len(chart.hosts)):
+            type = hType(host, chart.hosts)
+            
+            for kpi in chart.nkpis[host]:
+                if kpi not in kpiStylesNN[type]:
+                    log('[w] kpi %s is dsabled so it is removed from the list of selected KPIs for the host' % (kpi))
+                    
+                    chart.nkpis[host].remove(kpi)
+                    
+                    if type == 'service':
+                        self.srvcKPIs.remove(kpi)
+                    else:
+                        self.hostKPIs.remove(kpi)
+                    
     def statusMessage(self, str, repaint = False):
         if repaint: 
             self.statusMessage_.emit(str, True)

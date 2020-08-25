@@ -169,7 +169,7 @@ class hslWindow(QMainWindow):
         try:
             dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
         except Exception as e:
-            self.chartArea.widget.disableDeadKPIs()
+            self.chartArea.disableDeadKPIs()
             msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
         
         self.chartArea.widget.initPens()

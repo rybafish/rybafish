@@ -50,12 +50,11 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
     try: 
         f = open(os.path.join(path, file), 'r')
         kpiFile = safe_load(f)
-    except parser.ParserError as e:
+    #except parser.ParserError as e:
+    except Exception as e:
         log('Error loading custom KPI file %s: %s' %(os.path.join(path, file), str(e)))
         
         raise e
-        
-        return None
         
     kpis = kpiFile['kpis']
     

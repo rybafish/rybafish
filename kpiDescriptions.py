@@ -13,6 +13,15 @@ import utils
         
 from utils import log, cfg
 
+def removeDeadKPIs(kpis, type):
+
+    for kpi in kpis:
+        if kpi[:1] != '.' and kpi not in kpiStylesNN[type]:
+            print('deleting', kpi)
+            kpis.remove(kpi)
+            
+    return
+
 def generateRaduga(n):
 
     #random.seed(cfg('radugaSeed', 1))
@@ -239,6 +248,11 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['width'] = int(kpi['width'])
             else:
                 style['width'] = 8
+
+            if 'shift' in kpi:
+                style['shift'] = int(kpi['shift'])
+            else:
+                style['shift'] = 2
             
             if 'style' in kpi and (kpi['style'] == 'bar' or kpi['style'] == 'candle'):
                 style['style'] = kpi['style']
