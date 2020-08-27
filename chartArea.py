@@ -2066,12 +2066,20 @@ class chartArea(QFrame):
         self.setStatus('idle', True)
 
     def scrollRangeChanged (self, min, max):
+    
         ''' 
             called after tab change and on scroll area resize 
             
             "autoscroll to the right" - also still required
         '''
         toTime = self.toEdit.text()
+        
+        if self.widgetWidth == self.widget.width():
+            # no widget change, return
+            return
+        else:
+            self.widgetWidth = self.widget.width()
+        
         
         if toTime == '' and not self.widget.zoomLock:
             self.scrollarea.horizontalScrollBar().setValue(max)
@@ -2195,6 +2203,8 @@ class chartArea(QFrame):
             Create main chart area
         '''
         self.scrollarea = QScrollArea()
+        
+        self.widgetWidth = 1024 # last widget width to controll autoscroll
 
         self.scrollarea.setWidgetResizable(False)
         
