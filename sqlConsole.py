@@ -2332,7 +2332,8 @@ class sqlConsole(QWidget):
             # it was a DDL or something else without a result set so we just stop
             
             #logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
-            logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
+            #logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
+            logText += ', ' + utils.numberToStr(dbCursor.rowcount) + ' rows affected'
             
             self.log(logText)
             
