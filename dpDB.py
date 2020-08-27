@@ -440,14 +440,21 @@ class dataProvider():
             #print ('curr: %s - %s' % (str(start), str(stop)))
             
             if entity in data[kpi]:
+            
+                shift = 0
+                
+                for i in range(len(data[kpi]) - 1):
+                    if start < data[kpi][i]:
+                        shift += 1
+
+                '''
                 last = data[kpi][entity][-1]
-                
-                print ('last: %s - %s' % (str(last[0]), str(last[1])))
-                
+
                 if start < last[1]:
                     shift = last[3] + 1
                 else:
                     shift = 0
+                '''
                     
                 data[kpi][entity].append([start, stop, desc, shift])
             else:
