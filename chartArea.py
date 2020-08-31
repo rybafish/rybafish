@@ -551,7 +551,6 @@ class myWidget(QWidget):
                 
             if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
             
-                #height = utils.cfg('ganttWidth', 8)
                 height = kpiStylesNN[type][kpi]['width']
                 ganttShift = kpiStylesNN[type][kpi]['shift']
             
@@ -574,6 +573,9 @@ class myWidget(QWidget):
                     y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
 
                     j = 0
+                    
+                    reportRange = None
+                    
                     for t in gc[entity]:
                         #check ranges first
                         if t[0] <= trgt_time_dt <= t[1]:
@@ -583,22 +585,30 @@ class myWidget(QWidget):
                             
                             #check Y second:                            
                             if y0 <= pos.y() <= y1:
-                                
-                                desc = str(t[2])
-                                
-                                self.highlightedKpi = kpi
-                                self.highlightedKpiHost = host
-                                self.highlightedEntity = entity
-                                self.highlightedRange = j
-
-                                self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
-                                log('gantt clicked %s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
-
-                                self.update()
-                                return True
-                                
-                                break
+                            
+                                # okay, we have a match, but we need to find the highest one...
+                            
+                                if reportRange is None or reportRange < j:
+                                # if reportRange is None or gc[entity][reportRange][3] < t[3]: -- more accurate, bu it is the same, right?
+                                    reportRange = j
+                            
                         j += 1
+                        
+
+                    if reportRange is not None:
+                        desc = str(gc[entity][reportRange])
+                        
+                        self.highlightedKpi = kpi
+                        self.highlightedKpiHost = host
+                        self.highlightedEntity = entity
+                        self.highlightedRange = reportRange
+
+                        self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
+                        log('gantt clicked %s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
+
+                        self.update()
+                        return True
+                        
                     i += 1
              
                 continue # no regular kpi scan procedure requred
