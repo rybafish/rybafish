@@ -354,7 +354,7 @@ class dataProvider():
                 
                     #sql = 'select entity, "START", "STOP", details %s %s%s order by entity, "START" desc' % (fromTable, hfilter, tfilter_mod)
                     #sql = 'select entity, "START", "STOP", details %s %s%s order by entity, seconds_between("START", "STOP") desc' % (fromTable, hfilter, tfilter_mod)
-                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity, "START"' % (fromTable, hfilter, tfilter_mod)
+                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity desc, "START"' % (fromTable, hfilter, tfilter_mod)
                     gantt = True                    
 
             try:

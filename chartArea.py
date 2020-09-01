@@ -46,7 +46,7 @@ class myWidget(QWidget):
     updateToTime = pyqtSignal(['QString'])
     
     zoomSignal = pyqtSignal(int, int)
-    scrollSignal = pyqtSignal(int)
+    scrollSignal = pyqtSignal(int, float)
     
     statusMessage_ = pyqtSignal(['QString', bool])
     
@@ -129,10 +129,13 @@ class myWidget(QWidget):
             mode = -1
             
         modifiers = QApplication.keyboardModifiers()
+
         if modifiers == Qt.ControlModifier:
             self.zoomSignal.emit(mode, pos.x())
-        elif modifiers == Qt.ShiftModifier:
-            self.scrollSignal.emit(mode)
+        elif modifiers == Qt.ShiftModifier or modifiers == Qt.AltModifier:
+            self.scrollSignal.emit(mode, 0.5)
+        elif modifiers == Qt.NoModifier:
+            self.scrollSignal.emit(mode, 4)
         
         self.zoomLock = False
         
@@ -596,15 +599,35 @@ class myWidget(QWidget):
                         
 
                     if reportRange is not None:
-                        desc = str(gc[entity][reportRange])
+                        t = gc[entity][reportRange]
                         
                         self.highlightedKpi = kpi
                         self.highlightedKpiHost = host
                         self.highlightedEntity = entity
                         self.highlightedRange = reportRange
 
-                        self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
-                        log('gantt clicked %s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
+            
+                        # self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
+    
+                        t0 = t[0].time().isoformat(timespec='milliseconds')
+                        t1 = t[1].time().isoformat(timespec='milliseconds')
+
+                        '''
+                        t0 = t[0].isoformat(sep=' ', timespec='milliseconds')
+                        t1 = t[1].isoformat(sep=' ', timespec='milliseconds')
+                        '''
+
+                        '''
+                        t0 = t[0].strftime('%H:%M:%S.%f')[:-3]
+                        t1 = t[1].strftime('%H:%M:%S.%f')[:-3]                        
+                        '''
+
+                        interval = '[%s - %s]' % (t0, t1)
+                        
+                        det = '%s, %s.%s, %s: %s/%i %s' % (hst, type, kpi, entity, interval, t[3], t[2])
+                        
+                        self.statusMessage(det)
+                        log('gantt clicked %s' % (det))
 
                         self.update()
                         return True
@@ -825,7 +848,9 @@ class myWidget(QWidget):
 
                 if gantt:
                 
-                    gFont = QFont ('SansSerif', 8)
+                    #gFont = QFont ('SansSerif', 8)
+                    
+                    gFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['font'])
                     qp.setFont(gFont)
                     
                     fm = QFontMetrics(gFont)
@@ -1440,9 +1465,9 @@ class chartArea(QFrame):
         self.statusMessage('ready')
         
 
-    def scrollSignal(self, mode):
+    def scrollSignal(self, mode, size):
         x = 0 - self.widget.pos().x() 
-        self.scrollarea.horizontalScrollBar().setValue(x + mode*self.widget.step_size*4)
+        self.scrollarea.horizontalScrollBar().setValue(x + mode*self.widget.step_size*size)
 
         pass
 

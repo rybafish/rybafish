@@ -249,6 +249,11 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             else:
                 style['width'] = 8
 
+            if 'font' in kpi:
+                style['font'] = int(kpi['font'])
+            else:
+                style['font'] = 8
+
             if 'shift' in kpi:
                 style['shift'] = int(kpi['shift'])
             else:
