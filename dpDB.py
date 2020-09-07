@@ -443,27 +443,9 @@ class dataProvider():
             
                 shift = 0
 
-                print ('lets check...', len(data[kpi][entity]))
                 for i in range(len(data[kpi][entity])):
-                
-                    print(i)
-                    print(start)
-                    print(data[kpi][entity][i][1])
-                    
                     if start < data[kpi][entity][i][1]:
-                        print('shift+1')
                         shift += 1
-                    else:
-                        print('nope...')
-
-                '''
-                last = data[kpi][entity][-1]
-
-                if start < last[1]:
-                    shift = last[3] + 1
-                else:
-                    shift = 0
-                '''
                     
                 data[kpi][entity].append([start, stop, desc, shift])
             else:

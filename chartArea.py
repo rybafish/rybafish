@@ -790,6 +790,18 @@ class myWidget(QWidget):
             scales need to be calculated/adjusted beforehand
         '''
     
+        def longestStr(str):
+        
+            l = 0
+            ls = ''
+            
+            for s in str.split('\n'):
+                if l < len(s):
+                    l = len(s)
+                    ls = s
+            
+            return ls
+    
         #log('simulate delay()')
         #time.sleep(2)
         
@@ -952,11 +964,26 @@ class myWidget(QWidget):
                             if highlight:
                                 
                                 hlDesc = t[2].strip().replace('\\n', '\n')
+                                
+                                hlWidth = fm.width(longestStr(hlDesc))
+                                
+                                print('wsize', wsize)
+                                print('x', x, x + hlWidth)
+                                
+                                if x + hlWidth > wsize.width():
+                                    xOff = wsize.width() - (hlWidth + x + self.side_margin)
+                                else:
+                                    xOff = 0
+                                    
+                                    
+                                print('xOff', xOff)
+                                
+                                
                                 nl = hlDesc.count('\n') + 1
                                 
                                 yShift = t[3]*ganttShift
                                 
-                                hlRect = QRect (x, y + top_margin - fontHeight*nl - 2 - yShift, 500, fontHeight * nl)
+                                hlRect = QRect (x + xOff, y + top_margin - fontHeight*nl - 2 - yShift, 500, fontHeight * nl)
                             
                             range_i += 1
 

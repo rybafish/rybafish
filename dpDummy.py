@@ -122,7 +122,7 @@ class dataProvider:
             
             if host['port'] == '30040':
                 data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0], [t2, t3, 'asdf', 1]]
-                data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0], [t6, t7, 'asdf', 0], [t8, t9, 'asdf\nasdlf', 0]]
+                data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0], [t6, t7, 'asdf', 0], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0]]
             else:
                 data['cs-exp_st']['one more'] = [[t10, t11, 'descr', 0]]
             
