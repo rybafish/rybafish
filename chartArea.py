@@ -394,6 +394,11 @@ class myWidget(QWidget):
         saveVAPNG = cmenu.addAction("Save screen")
         copyPNG = cmenu.addAction("Copy full area")
         savePNG = cmenu.addAction("Save full area")
+        
+        if self.highlightedEntity is not None:
+            cmenu.addSeparator()
+            copyGantt = cmenu.addAction("Copy highlighted gantt details")
+            
 
         if cfg('developmentMode'):
             cmenu.addSeparator()
@@ -481,6 +486,21 @@ class myWidget(QWidget):
             
             clipboard = QApplication.clipboard()
             clipboard.setText(ts)
+            
+        if self.highlightedEntity and action == copyGantt:
+        
+            entity = self.highlightedEntity
+            kpi = self.highlightedKpi
+            host = self.highlightedKpiHost
+            range_i = self.highlightedRange
+
+            desc = self.ndata[host][kpi][entity][range_i][2]
+            
+            clipboard = QApplication.clipboard()
+            clipboard.setText(desc)
+            
+            self.statusMessage('Copied.')
+
     
     def checkForHint(self, pos):
         '''
