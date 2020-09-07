@@ -435,7 +435,7 @@ class dataProvider():
             entity = str(r[0])
             start = r[1]
             stop = r[2]
-            desc = r[3]
+            desc = str(r[3])
                
             #print ('curr: %s - %s' % (str(start), str(stop)))
             
