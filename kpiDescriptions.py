@@ -181,7 +181,10 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         if 'sqlname' in kpi:
             style['sqlname'] = kpi['sqlname']
         else:
-            return None
+            if 'subtype' in kpi and kpi['subtype'] == 'gantt':
+                style['sqlname'] = 'None'
+            else:
+                return None
             
     # optional stuff
     if 'group' in kpi:
