@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip
 
-from PyQt5.QtGui import QPainter, QColor, QPen, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap
 
 from PyQt5.QtCore import QTimer, QRect
 
@@ -102,6 +102,8 @@ class myWidget(QWidget):
     
     gridColor = QColor('#DDD')
     gridColorMj = QColor('#AAA')
+    
+    legend = None
         
     def __init__(self):
         super().__init__()
@@ -395,6 +397,13 @@ class myWidget(QWidget):
         copyPNG = cmenu.addAction("Copy full area")
         savePNG = cmenu.addAction("Save full area")
         
+        if cfg('experimental') and self.legend:
+            cmenu.addSeparator()
+            putLegend = cmenu.addAction("Remove Legend")
+        else:
+            cmenu.addSeparator()
+            putLegend = cmenu.addAction("Put Legend")
+        
         if self.highlightedEntity is not None:
             cmenu.addSeparator()
             copyGantt = cmenu.addAction("Copy highlighted gantt details")
@@ -430,6 +439,16 @@ class myWidget(QWidget):
             
             self.statusMessage('Screenshot saved as %s' % (fn))
 
+        if cfg('experimental') and action == putLegend:
+            #self.legend = not self.legend
+            
+            if self.legend is None:
+                self.legend = 'hosts'
+            else:
+                self.legend = None
+            
+            self.repaint()
+        
         if action == saveVAPNG:
             if not os.path.isdir('screens'):
                 os.mkdir('screens')
@@ -821,7 +840,108 @@ class myWidget(QWidget):
                     ls = s
             
             return ls
-    
+            
+        def drawLegend():
+        
+            lkpis = []      # kpi names to be able to skip doubles
+            lkpisl = []     # kpi labels
+            lpens = []      # pens. None = host line (no pen)
+            
+            lLen = 128
+        
+            lFont = QFont ('SansSerif', utils.cfg('legend_font', 8))
+            fm = QFontMetrics(lFont)
+
+            for h in range(0, len(self.hosts)):
+            
+                type = hType(h, self.hosts)
+                
+                if self.legend == 'hosts' and len(self.nkpis[h]) > 0:
+                    # put a host label
+                    lpens.append(None)
+                    lkpisl.append('%s:%s' % (self.hosts[h]['host'], self.hosts[h]['port']))
+            
+                for kpi in self.nkpis[h]:
+                
+                    gantt = False
+                
+                    if self.legend == 'kpis':
+                        if kpi in lkpis:
+                            #skip as already there
+                            continue
+                            
+                        if 'dUnit' in kpiStylesNN[type][kpi]:
+                            unit = ' ' + kpiStylesNN[type][kpi]['dUnit']
+                        else:
+                            unit = ''
+                            
+                        label = kpiStylesNN[type][kpi]['label'] + ': ' + self.nscales[h][kpi]['label'] + unit
+                                
+                        lkpis.append(kpi)
+                        lkpisl.append(label)
+
+                    if self.legend == 'hosts':
+
+                        if 'dUnit' in kpiStylesNN[type][kpi]:
+                            unit = ' ' + kpiStylesNN[type][kpi]['dUnit']
+
+                            label = kpiStylesNN[type][kpi]['label'] + ': ' + self.nscales[h][kpi]['label'] + unit + \
+                                ', max:' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
+                        else:
+                            # gantt?
+                            
+                            gantt = True
+
+                            label = kpiStylesNN[type][kpi]['label']
+
+                        lkpis.append(kpi)
+                        lkpisl.append(label)
+
+                    # legend width calc
+                    ll = fm.width(label)
+                    
+                    if ll > lLen:
+                        lLen = ll
+                        
+                    if gantt:
+                        lpens.append([QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]])
+                    else:
+                        lpens.append(self.kpiPen[type][kpi])
+
+            fontHeight = fm.height()
+            
+            qp.setPen(QColor('#000'))
+            qp.setBrush(QColor('#FFF'))
+            
+            qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
+            
+            i = 0
+            
+            qp.setFont(lFont)
+            for kpi in lkpisl:
+            
+                if lpens[i] is not None:
+
+                    if isinstance(lpens[i], QPen):
+                        qp.setPen(lpens[i])
+                        qp.drawLine(10 + self.side_margin + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, 10 + self.side_margin + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
+                    else:
+                        # must be gantt, so we put bar...
+                        qp.setBrush(lpens[i][0])
+                        qp.setPen(lpens[i][1])
+                        qp.drawRect(10 + self.side_margin + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 40, 4)
+                    
+                    ident = 10 + 40
+                else:
+                    ident = 4
+                
+                qp.setPen(QColor('#000'))
+                qp.drawText(10 + self.side_margin + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
+                
+                i += 1
+                        
+            
+                
         #log('simulate delay()')
         #time.sleep(2)
         
@@ -842,6 +962,9 @@ class myWidget(QWidget):
         top_margin = self.top_margin + self.y_delta
             
         raduga_i = 0
+        
+
+        
         for h in range(0, len(self.hosts)):
         
             #print('draw host:', self.hosts[h]['host'], self.hosts[h]['port'])
@@ -1192,6 +1315,10 @@ class myWidget(QWidget):
         
         qp.setPen(QColor('#888'))
         qp.drawLine(self.side_margin + self.left_margin, wsize.height() - self.bottom_margin - 1, wsize.width() - self.side_margin, wsize.height() - self.bottom_margin - 1)
+        
+        
+        if self.legend is not None:
+            drawLegend()
         
     def drawGrid(self, qp, startX, stopX):
         '''
