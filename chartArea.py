@@ -299,8 +299,8 @@ class myWidget(QWidget):
                 
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
-                    scaleKpi['max_label'] = ''
-                    scaleKpi['last_label'] = ''
+                    scaleKpi['max_label'] = str(scaleKpi['max'])
+                    scaleKpi['last_label'] = str(scaleKpi['last_value'])
                     scaleKpi['label'] = '10 / 100'
                     scaleKpi['yScale'] = 100
                     scaleKpi['unit'] = '%'
@@ -866,6 +866,11 @@ class myWidget(QWidget):
                     gantt = False
                 
                     if self.legend == 'kpis':
+                        '''
+                        
+                            D E P R E C A T E D
+                            
+                        '''
                         if kpi in lkpis:
                             #skip as already there
                             continue
@@ -882,18 +887,17 @@ class myWidget(QWidget):
 
                     if self.legend == 'hosts':
 
-                        if 'dUnit' in kpiStylesNN[type][kpi]:
-                            unit = ' ' + kpiStylesNN[type][kpi]['dUnit']
+                        if kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
+                            unit = ' ' + self.nscales[h][kpi]['unit']
 
                             label = kpiStylesNN[type][kpi]['label']
                             
                             if kpi in self.nscales[h]: #if those are scanned already
                                 label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max:' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
                         else:
-                            # gantt?
-                            
-                            # ah, this is wrong, so wrong...
-                            gantt = True
+
+                            if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                                gantt = True
 
                             label = kpiStylesNN[type][kpi]['label']
 
