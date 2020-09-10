@@ -885,11 +885,14 @@ class myWidget(QWidget):
                         if 'dUnit' in kpiStylesNN[type][kpi]:
                             unit = ' ' + kpiStylesNN[type][kpi]['dUnit']
 
-                            label = kpiStylesNN[type][kpi]['label'] + ': ' + self.nscales[h][kpi]['label'] + unit + \
-                                ', max:' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
+                            label = kpiStylesNN[type][kpi]['label']
+                            
+                            if kpi in self.nscales[h]: #if those are scanned already
+                                label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max:' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
                         else:
                             # gantt?
                             
+                            # ah, this is wrong, so wrong...
                             gantt = True
 
                             label = kpiStylesNN[type][kpi]['label']
@@ -910,7 +913,7 @@ class myWidget(QWidget):
 
             fontHeight = fm.height()
             
-            qp.setPen(QColor('#000'))
+            qp.setPen(QColor('#888'))
             qp.setBrush(QColor('#FFF'))
             
             qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
@@ -923,13 +926,16 @@ class myWidget(QWidget):
                 if lpens[i] is not None:
 
                     if isinstance(lpens[i], QPen):
+                        # ah, this is wrong, so wrong...
+                        # but for normal kpis this is just a QPen
+                        # for others (but only gantt exist?) it is s LIST (!) [QBrush, QPen]
                         qp.setPen(lpens[i])
                         qp.drawLine(10 + self.side_margin + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, 10 + self.side_margin + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
                     else:
-                        # must be gantt, so we put bar...
+                        # must be gantt, so we put a bar...
                         qp.setBrush(lpens[i][0])
                         qp.setPen(lpens[i][1])
-                        qp.drawRect(10 + self.side_margin + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 40, 4)
+                        qp.drawRect(10 + self.side_margin + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
                     
                     ident = 10 + 40
                 else:
@@ -1110,23 +1116,18 @@ class myWidget(QWidget):
                                 
                                 hlWidth = fm.width(longestStr(hlDesc))
                                 
-                                print('wsize', wsize)
-                                print('x', x, x + hlWidth)
+                                hlWidth = min(cfg('ganttLabelWidth', 500), hlWidth)
                                 
                                 if x + hlWidth > wsize.width():
-                                    xOff = wsize.width() - (hlWidth + x + self.side_margin)
+                                    xOff = wsize.width() - (hlWidth + x + self.side_margin) - 4 # 4 - right margin
                                 else:
                                     xOff = 0
                                     
-                                    
-                                print('xOff', xOff)
-                                
-                                
                                 nl = hlDesc.count('\n') + 1
                                 
                                 yShift = t[3]*ganttShift
                                 
-                                hlRect = QRect (x + xOff, y + top_margin - fontHeight*nl - 2 - yShift, 500, fontHeight * nl)
+                                hlRect = QRect (x + xOff, y + top_margin - fontHeight*nl - 2 - yShift, cfg('ganttLabelWidth', 500), fontHeight * nl)
                             
                             range_i += 1
 
