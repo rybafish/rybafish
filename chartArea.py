@@ -852,6 +852,8 @@ class myWidget(QWidget):
             lFont = QFont ('SansSerif', utils.cfg('legend_font', 8))
             fm = QFontMetrics(lFont)
 
+            raduga_i = 0
+            
             for h in range(0, len(self.hosts)):
             
                 type = hType(h, self.hosts)
@@ -868,7 +870,7 @@ class myWidget(QWidget):
                     if self.legend == 'kpis':
                         '''
                         
-                            DEPR E C A DEAD
+                            DEPR ECA DEAD
                             
                         '''
                         if kpi in lkpis:
@@ -913,14 +915,31 @@ class myWidget(QWidget):
                     if gantt:
                         lpens.append([QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]])
                     else:
-                        lpens.append(self.kpiPen[type][kpi])
+                        if utils.cfg('raduga'):
+                            lpens.append(kpiDescriptions.radugaPens[raduga_i % 32])
+                            raduga_i += 1
+                            
+                            print('raduga_i', raduga_i)
+                        else:
+                            lpens.append(self.kpiPen[type][kpi])
+
 
             fontHeight = fm.height()
             
             qp.setPen(QColor('#888'))
             qp.setBrush(QColor('#FFF'))
             
-            qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
+            #qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
+            
+            if (stopX - startX < 400):
+                return
+                
+            if startX < self.side_margin:
+                leftX = 10 + self.side_margin + startX
+            else:
+                leftX = 10 + startX
+            
+            qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
             
             i = 0
             
@@ -933,20 +952,21 @@ class myWidget(QWidget):
                         # ah, this is wrong, so wrong...
                         # but for normal kpis this is just a QPen
                         # for others (but only gantt exist?) it is s LIST (!) [QBrush, QPen]
+
                         qp.setPen(lpens[i])
-                        qp.drawLine(10 + self.side_margin + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, 10 + self.side_margin + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
+                        qp.drawLine(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, leftX + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
                     else:
                         # must be gantt, so we put a bar...
                         qp.setBrush(lpens[i][0])
                         qp.setPen(lpens[i][1])
-                        qp.drawRect(10 + self.side_margin + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
+                        qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
                     
                     ident = 10 + 40
                 else:
                     ident = 4
                 
                 qp.setPen(QColor('#000'))
-                qp.drawText(10 + self.side_margin + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
+                qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
                 
                 i += 1
                         
@@ -1136,7 +1156,10 @@ class myWidget(QWidget):
                             range_i += 1
 
 
-                        if stopX - startX > 200:
+                        if stopX - startX > 400:
+                        
+                            # only draw labels in case of significant refresh
+                        
                             # qp.setBackground(QColor('red')) - does not work
                             # otherwise drawing area too small, it won't paint full text anyway
                             # to avoid only ugly artefacts...
