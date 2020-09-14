@@ -202,6 +202,7 @@ class dataProvider():
 
         t1 = time.time()
 
+        # can crach in case of custom kpi yaml issues
         dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
 
         t2 = time.time()

@@ -868,7 +868,7 @@ class myWidget(QWidget):
                     if self.legend == 'kpis':
                         '''
                         
-                            D E P R E C A T E D
+                            DEPR E C A DEAD
                             
                         '''
                         if kpi in lkpis:
@@ -887,18 +887,18 @@ class myWidget(QWidget):
 
                     if self.legend == 'hosts':
 
-                        if kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
+                        if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                            gantt = True
+                            
+                        if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
                             unit = ' ' + self.nscales[h][kpi]['unit']
 
                             label = kpiStylesNN[type][kpi]['label']
                             
                             if kpi in self.nscales[h]: #if those are scanned already
-                                label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max:' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
+                                label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max: ' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
                         else:
-
-                            if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
-                                gantt = True
-
+                                
                             label = kpiStylesNN[type][kpi]['label']
 
                         lkpis.append(kpi)
