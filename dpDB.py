@@ -202,8 +202,12 @@ class dataProvider():
 
         t1 = time.time()
 
-        # can crach in case of custom kpi yaml issues
-        dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        try:
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        except Exception as e:
+            log('[e] error loading custom kpis')
+            log('[e] fix or delete the problemmatic yaml for proper connect')
+            raise e
 
         t2 = time.time()
         
