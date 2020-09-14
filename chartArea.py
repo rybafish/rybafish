@@ -534,6 +534,9 @@ class myWidget(QWidget):
         found = None
         
         for host in range(0, len(self.hosts)):
+        
+            if len(self.nkpis) == 0:
+                return
             
             if len(self.nkpis[host]) > 0 :
                 found = self.scanForHint(pos, host, self.nkpis[host], self.nscales[host], self.ndata[host])
@@ -566,6 +569,7 @@ class myWidget(QWidget):
     def scanForHint(self, pos, host, kpis, scales, data):
         tolerance = 2 # number of pixels of allowed miss
         
+        print('scan for hint << ')
         wsize = self.size()
         
         hst = self.hosts[host]['host']
