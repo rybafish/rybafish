@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip
 
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap, QRegion
 
-from PyQt5.QtCore import QTimer, QRect
+from PyQt5.QtCore import QTimer, QRect, QSize
 
 import os
 import time
@@ -104,6 +104,11 @@ class myWidget(QWidget):
     gridColorMj = QColor('#AAA')
     
     legend = None
+    legendRegion = None
+    legendHeight = None
+    legendWidth = None
+    
+    legendRender = None # flag used only to copy the legend
         
     def __init__(self):
         super().__init__()
@@ -396,13 +401,17 @@ class myWidget(QWidget):
         saveVAPNG = cmenu.addAction("Save screen")
         copyPNG = cmenu.addAction("Copy full area")
         savePNG = cmenu.addAction("Save full area")
+
+        copyLegend = None
         
         if cfg('experimental') and self.legend:
             cmenu.addSeparator()
+            copyLegend = cmenu.addAction("Copy Legend to clipboard")
             putLegend = cmenu.addAction("Remove Legend")
+
         else:
             cmenu.addSeparator()
-            putLegend = cmenu.addAction("Put Legend")
+            putLegend = cmenu.addAction("Add Legend")
         
         if self.highlightedEntity is not None:
             cmenu.addSeparator()
@@ -419,6 +428,9 @@ class myWidget(QWidget):
         pos = event.pos()
 
         time = self.posToTime(pos.x())
+        
+        if action is None:
+            return
         
         if cfg('developmentMode') and action == fakeDisconnection:
             log('dp.fakeDisconnect = True')
@@ -438,7 +450,20 @@ class myWidget(QWidget):
             pixmap.save(fn)
             
             self.statusMessage('Screenshot saved as %s' % (fn))
-
+        
+        if cfg('experimental') and action == copyLegend:
+            log('Creating a legend copy')
+            
+            pixmap = QPixmap(QSize(self.legendWidth + 1, self.legendHeight + 1))
+            
+            self.legendRender = True
+            self.render(pixmap, sourceRegion = self.legendRegion)
+            self.legendRender = False
+            
+            QApplication.clipboard().setPixmap(pixmap)
+            
+            self.statusMessage('Legend bitmap copied to the clipboard')
+        
         if cfg('experimental') and action == putLegend:
             #self.legend = not self.legend
             
@@ -569,7 +594,6 @@ class myWidget(QWidget):
     def scanForHint(self, pos, host, kpis, scales, data):
         tolerance = 2 # number of pixels of allowed miss
         
-        print('scan for hint << ')
         wsize = self.size()
         
         hst = self.hosts[host]['host']
@@ -826,6 +850,150 @@ class myWidget(QWidget):
         number_of_cells = int(seconds / self.t_scale) + 1
         self.resize(number_of_cells * self.step_size + self.side_margin*2 + self.left_margin, self.size().height()) #dummy size
         
+    def drawLegend(self, qp, startX, stopX):
+    
+        lkpis = []      # kpi names to be able to skip doubles
+        lkpisl = []     # kpi labels
+        lpens = []      # pens. None = host line (no pen)
+        
+        lLen = 128
+    
+        lFont = QFont ('SansSerif', utils.cfg('legend_font', 8))
+        fm = QFontMetrics(lFont)
+
+        raduga_i = 0
+        
+        for h in range(0, len(self.hosts)):
+        
+            type = hType(h, self.hosts)
+            
+            if self.legend == 'hosts' and len(self.nkpis[h]) > 0:
+                # put a host label
+                lpens.append(None)
+                lkpisl.append('%s:%s' % (self.hosts[h]['host'], self.hosts[h]['port']))
+        
+            for kpi in self.nkpis[h]:
+            
+                gantt = False
+            
+                if self.legend == 'kpis':
+                    '''
+                    
+                        DEPR ECA DEAD
+                        
+                    '''
+                    if kpi in lkpis:
+                        #skip as already there
+                        continue
+                        
+                    if 'dUnit' in kpiStylesNN[type][kpi]:
+                        unit = ' ' + kpiStylesNN[type][kpi]['dUnit']
+                    else:
+                        unit = ''
+                        
+                    label = kpiStylesNN[type][kpi]['label'] + ': ' + self.nscales[h][kpi]['label'] + unit
+                            
+                    lkpis.append(kpi)
+                    lkpisl.append(label)
+
+                if self.legend == 'hosts':
+
+                    if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                        gantt = True
+                        
+                    if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
+                        unit = ' ' + self.nscales[h][kpi]['unit']
+
+                        label = kpiStylesNN[type][kpi]['label']
+                        
+                        if kpi in self.nscales[h]: #if those are scanned already
+                            label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max: ' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
+                    else:
+                            
+                        label = kpiStylesNN[type][kpi]['label']
+
+                    lkpis.append(kpi)
+                    lkpisl.append(label)
+
+                # legend width calc
+                ll = fm.width(label)
+                
+                if ll > lLen:
+                    lLen = ll
+                    
+                if gantt:
+                    lpens.append([QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]])
+                else:
+                    if utils.cfg('raduga'):
+                        lpens.append(kpiDescriptions.radugaPens[raduga_i % 32])
+                        raduga_i += 1
+                        
+                    else:
+                        lpens.append(self.kpiPen[type][kpi])
+
+
+        fontHeight = fm.height()
+        
+        qp.setPen(QColor('#888'))
+        qp.setBrush(QColor('#FFF'))
+        
+        #qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
+        
+        if self.legendRender == False and (stopX - startX < 400):
+            return
+        
+        if self.legendRender == True:
+            #this is only a legend copy call
+            leftX = 10 + self.side_margin
+            
+        else:
+            if startX < self.side_margin:
+                leftX = 10 + self.side_margin + startX
+            else:
+                leftX = 10 + startX
+        
+        
+        self.legendHeight = fontHeight * len(lkpisl)+8
+        self.legendWidth = lLen + 58
+
+        qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth, self.legendHeight)
+        
+        # this if for Copy Legend action
+        # so call for render will be with startX = 0, so we fake leftX
+        
+        #print('drawlegend, startX - leftX', startX, leftX)
+        
+        self.legendRegion = QRegion(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth + 1, self.legendHeight + 1)
+        
+        i = 0
+        
+        qp.setFont(lFont)
+        for kpi in lkpisl:
+        
+            if lpens[i] is not None:
+
+                if isinstance(lpens[i], QPen):
+                    # ah, this is wrong, so wrong...
+                    # but for normal kpis this is just a QPen
+                    # for others (but only gantt exist?) it is s LIST (!) [QBrush, QPen]
+
+                    qp.setPen(lpens[i])
+                    qp.drawLine(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, leftX + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
+                else:
+                    # must be gantt, so we put a bar...
+                    qp.setBrush(lpens[i][0])
+                    qp.setPen(lpens[i][1])
+                    qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
+                
+                ident = 10 + 40
+            else:
+                ident = 4
+            
+            qp.setPen(QColor('#000'))
+            qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
+            
+            i += 1
+                    
     def drawChart(self, qp, startX, stopX):
     
         '''
@@ -844,137 +1012,6 @@ class myWidget(QWidget):
                     ls = s
             
             return ls
-            
-        def drawLegend():
-        
-            lkpis = []      # kpi names to be able to skip doubles
-            lkpisl = []     # kpi labels
-            lpens = []      # pens. None = host line (no pen)
-            
-            lLen = 128
-        
-            lFont = QFont ('SansSerif', utils.cfg('legend_font', 8))
-            fm = QFontMetrics(lFont)
-
-            raduga_i = 0
-            
-            for h in range(0, len(self.hosts)):
-            
-                type = hType(h, self.hosts)
-                
-                if self.legend == 'hosts' and len(self.nkpis[h]) > 0:
-                    # put a host label
-                    lpens.append(None)
-                    lkpisl.append('%s:%s' % (self.hosts[h]['host'], self.hosts[h]['port']))
-            
-                for kpi in self.nkpis[h]:
-                
-                    gantt = False
-                
-                    if self.legend == 'kpis':
-                        '''
-                        
-                            DEPR ECA DEAD
-                            
-                        '''
-                        if kpi in lkpis:
-                            #skip as already there
-                            continue
-                            
-                        if 'dUnit' in kpiStylesNN[type][kpi]:
-                            unit = ' ' + kpiStylesNN[type][kpi]['dUnit']
-                        else:
-                            unit = ''
-                            
-                        label = kpiStylesNN[type][kpi]['label'] + ': ' + self.nscales[h][kpi]['label'] + unit
-                                
-                        lkpis.append(kpi)
-                        lkpisl.append(label)
-
-                    if self.legend == 'hosts':
-
-                        if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
-                            gantt = True
-                            
-                        if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
-                            unit = ' ' + self.nscales[h][kpi]['unit']
-
-                            label = kpiStylesNN[type][kpi]['label']
-                            
-                            if kpi in self.nscales[h]: #if those are scanned already
-                                label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max: ' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
-                        else:
-                                
-                            label = kpiStylesNN[type][kpi]['label']
-
-                        lkpis.append(kpi)
-                        lkpisl.append(label)
-
-                    # legend width calc
-                    ll = fm.width(label)
-                    
-                    if ll > lLen:
-                        lLen = ll
-                        
-                    if gantt:
-                        lpens.append([QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]])
-                    else:
-                        if utils.cfg('raduga'):
-                            lpens.append(kpiDescriptions.radugaPens[raduga_i % 32])
-                            raduga_i += 1
-                            
-                            print('raduga_i', raduga_i)
-                        else:
-                            lpens.append(self.kpiPen[type][kpi])
-
-
-            fontHeight = fm.height()
-            
-            qp.setPen(QColor('#888'))
-            qp.setBrush(QColor('#FFF'))
-            
-            #qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
-            
-            if (stopX - startX < 400):
-                return
-                
-            if startX < self.side_margin:
-                leftX = 10 + self.side_margin + startX
-            else:
-                leftX = 10 + startX
-            
-            qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
-            
-            i = 0
-            
-            qp.setFont(lFont)
-            for kpi in lkpisl:
-            
-                if lpens[i] is not None:
-
-                    if isinstance(lpens[i], QPen):
-                        # ah, this is wrong, so wrong...
-                        # but for normal kpis this is just a QPen
-                        # for others (but only gantt exist?) it is s LIST (!) [QBrush, QPen]
-
-                        qp.setPen(lpens[i])
-                        qp.drawLine(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, leftX + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
-                    else:
-                        # must be gantt, so we put a bar...
-                        qp.setBrush(lpens[i][0])
-                        qp.setPen(lpens[i][1])
-                        qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
-                    
-                    ident = 10 + 40
-                else:
-                    ident = 4
-                
-                qp.setPen(QColor('#000'))
-                qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
-                
-                i += 1
-                        
-            
                 
         #log('simulate delay()')
         #time.sleep(2)
@@ -1350,7 +1387,7 @@ class myWidget(QWidget):
         
         
         if self.legend is not None:
-            drawLegend()
+            self.drawLegend(qp, startX, stopX)
         
     def drawGrid(self, qp, startX, stopX):
         '''

@@ -255,8 +255,25 @@ class hslWindow(QMainWindow):
                     except:
                         log('wrong keepalive setting: %s' % (cfg('keepalive')))
                                 
+            except dbException as e:
+                log('Connect or init error:')
+                if hasattr(e, 'message'):
+                    log(e.message)
+                else:
+                    log(e)
+                    
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle('Connection error')
+                msgBox.setText('Connection failed: %s ' % (str(e)))
+                iconPath = resourcePath('ico\\favicon.ico')
+                msgBox.setWindowIcon(QIcon(iconPath))
+                msgBox.setIcon(QMessageBox.Warning)
+                msgBox.exec_()
+                
+                self.statusMessage('', False)
+
             except Exception as e:
-                log('undefined connect or init error:')
+                log('Init exception not related to DB')
                 log(str(e))
 
                 msgBox = QMessageBox()
