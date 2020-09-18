@@ -1616,6 +1616,10 @@ class chartArea(QFrame):
     timer = None
     refreshCB = None
     
+    #last refresh time range
+    fromTime = None
+    toTime = None
+    
     def disableDeadKPIs(self):
         
         chart = self.widget
@@ -2275,6 +2279,10 @@ class chartArea(QFrame):
         #time.sleep(2)
         fromTime = self.fromEdit.text()
         toTime = self.toEdit.text()
+
+        #backup for ESC
+        self.fromTime = fromTime
+        self.toTime = toTime
         
         if fromTime[:1] == '-' and toTime == '':
             try:
@@ -2383,6 +2391,20 @@ class chartArea(QFrame):
 
         self.fromEdit.setFixedWidth(fromtoWidth);
         self.toEdit.setFixedWidth(fromtoWidth);
+        
+    def fromEditKeyPress(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.fromEdit.setText(self.fromTime)
+            self.fromEdit.setStyleSheet("color: black;")
+        else:            
+            QLineEdit.keyPressEvent(self.fromEdit, event)
+
+    def toEditKeyPress(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.toEdit.setText(self.toTime)
+            self.toEdit.setStyleSheet("color: black;")
+        else:            
+            QLineEdit.keyPressEvent(self.toEdit, event)
 
     def __init__(self):
         
@@ -2468,7 +2490,9 @@ class chartArea(QFrame):
         reloadBtn.clicked.connect(self.reloadChart)
         
         self.fromEdit.returnPressed.connect(self.reloadChart)
+        self.fromEdit.keyPressEvent = self.fromEditKeyPress
         self.toEdit.returnPressed.connect(self.reloadChart)
+        self.toEdit.keyPressEvent = self.toEditKeyPress
         
         hbar.addWidget(self.scaleCB)
         hbar.addStretch(10)
