@@ -172,6 +172,10 @@ class kpiTable(QTableWidget):
         
         if len(self.hosts) == 0:
             return
+
+        if len(self.nkpis) == 0:
+            log('[w] refill kips list is empty, return')
+            return
         
         self.silentMode = True
         

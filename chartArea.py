@@ -1620,6 +1620,10 @@ class chartArea(QFrame):
         
         chart = self.widget
         
+        if len(chart.nkpis) == 0:
+            log('[w] disableDeadKPIs: no kpis at all, exit')
+            return
+        
         for host in range(0, len(chart.hosts)):
             type = hType(host, chart.hosts)
             
@@ -1660,23 +1664,40 @@ class chartArea(QFrame):
             super().keyPressEvent(event)
 
     def cleanup(self):
+        log('cleanup call...')
+        print('01')
+        
         for host in range(len(self.widget.hosts)):
-            for kpi in self.widget.nkpis[host]:
-                #print('the same code in checkbocks callback - make a function')
-                self.widget.nkpis[host].remove(kpi) # kpis is a list
-                
-                if kpi in self.widget.ndata[host]:
-                    #might be empty for alt-added
-                    del(self.widget.ndata[host][kpi]) # ndata is a dict
+            print('02')
+
+            if len(self.widget.nkpis) > 0:
+                for kpi in self.widget.nkpis[host]:
+                    print('03')
+                    #print('the same code in checkbocks callback - make a function')
+                    self.widget.nkpis[host].remove(kpi) # kpis is a list
+                    
+                    if kpi in self.widget.ndata[host]:
+                        #might be empty for alt-added
+                        del(self.widget.ndata[host][kpi]) # ndata is a dict
+            else:
+                log('[w] kpis list is empty')
+                        
+            print('04')
 
             # this part not required in checkbocks callback ')
-            self.widget.nscales[host].clear() # this one is missing in in checkbocks callback 
-                                              # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
-            self.widget.ndata[host].clear()
+            
+            if len(self.widget.nscales)> 0:
+                self.widget.nscales[host].clear() # this one is missing in in checkbocks callback 
+                                                  # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
+            if len(self.widget.ndata)> 0:
+                self.widget.ndata[host].clear()
+            
+            print('05')
             
         self.widget.nscales.clear()
         self.widget.ndata.clear()
-        self.widget.nkpis.clear()
+        
+        log('cleanup complete')
         
     def initDP(self):
         '''
@@ -1684,17 +1705,27 @@ class chartArea(QFrame):
             to be called right after self.chartArea.dp = new dp
         '''
 
+        print(1)
         self.cleanup()
             
+        print(2)
+
         self.widget.ndata.clear()
+
+        print(3)
         
         self.widget.hosts.clear()
         self.widget.nkpis.clear()
+
+        print(4)
         
         self.widget.update()
         
+        
         self.hostKPIs.clear()
         self.srvcKPIs.clear()
+        
+        print(10)
         
         self.statusMessage('Connected, init basic info...')
         self.repaint()

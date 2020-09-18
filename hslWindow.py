@@ -235,12 +235,16 @@ class hslWindow(QMainWindow):
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
                 self.chartArea.setStatus('idle')
                 
+                print('hsl 1')
+                
                 self.chartArea.initDP()
+                
+                print('hsl 2')
                 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
                     self.chartArea.reloadChart()
-
+                    
                 propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
                 
                 self.tabs.setTabText(0, propStr)
