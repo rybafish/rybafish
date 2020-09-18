@@ -963,7 +963,7 @@ class myWidget(QWidget):
         
         #print('drawlegend, startX - leftX', startX, leftX)
         
-        self.legendRegion = QRegion(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth + 1, self.legendHeight + 1)
+        self.legendRegion = QRegion(10 + self.side_margin, 10 + self.top_margin + self.y_delta, self.legendWidth + 1, self.legendHeight + 1)
         
         i = 0
         
@@ -1665,14 +1665,11 @@ class chartArea(QFrame):
 
     def cleanup(self):
         log('cleanup call...')
-        print('01')
         
         for host in range(len(self.widget.hosts)):
-            print('02')
 
             if len(self.widget.nkpis) > 0:
                 for kpi in self.widget.nkpis[host]:
-                    print('03')
                     #print('the same code in checkbocks callback - make a function')
                     self.widget.nkpis[host].remove(kpi) # kpis is a list
                     
@@ -1681,8 +1678,6 @@ class chartArea(QFrame):
                         del(self.widget.ndata[host][kpi]) # ndata is a dict
             else:
                 log('[w] kpis list is empty')
-                        
-            print('04')
 
             # this part not required in checkbocks callback ')
             
@@ -1691,8 +1686,6 @@ class chartArea(QFrame):
                                                   # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
             if len(self.widget.ndata)> 0:
                 self.widget.ndata[host].clear()
-            
-            print('05')
             
         self.widget.nscales.clear()
         self.widget.ndata.clear()
@@ -1705,27 +1698,17 @@ class chartArea(QFrame):
             to be called right after self.chartArea.dp = new dp
         '''
 
-        print(1)
         self.cleanup()
             
-        print(2)
-
         self.widget.ndata.clear()
 
-        print(3)
-        
         self.widget.hosts.clear()
         self.widget.nkpis.clear()
 
-        print(4)
-        
         self.widget.update()
-        
         
         self.hostKPIs.clear()
         self.srvcKPIs.clear()
-        
-        print(10)
         
         self.statusMessage('Connected, init basic info...')
         self.repaint()

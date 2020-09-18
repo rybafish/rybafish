@@ -268,8 +268,6 @@ class dataProvider():
         params = []
     
         kpiList = self.splitKpis(type, kpiIn)
-        
-        print('split kpis: ', kpiList)
 
         if host['port'] == '':
             t = 'h'
