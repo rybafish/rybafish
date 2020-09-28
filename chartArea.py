@@ -1148,6 +1148,10 @@ class myWidget(QWidget):
 
                             x = (t[0].timestamp() - from_ts) # number of seconds
                             x = self.side_margin + self.left_margin +  x * x_scale
+                            
+                            if t[1] is None or t[0] is None:
+                                log('[w] null instead of timestamp, skip', str(t))
+                                continue
 
                             width = (t[1].timestamp() - t[0].timestamp()) * x_scale
                             
