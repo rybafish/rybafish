@@ -1497,7 +1497,10 @@ class myWidget(QWidget):
             min_scale = None
             hrs_scale = None
             
-            if t_scale == 10:
+            if t_scale == 1:
+                sec_scale = 10
+                hrs_scale = 60*1
+            elif t_scale == 10:
                 sec_scale = 60
                 hrs_scale = 60*5
             elif t_scale == 60:
@@ -2439,6 +2442,9 @@ class chartArea(QFrame):
         
         self.scaleCB = QComboBox()
         
+        if cfg('experimental'):
+            self.scaleCB.addItem('1 second')
+            
         self.scaleCB.addItem('10 seconds')
         self.scaleCB.addItem('1 minute')
         self.scaleCB.addItem('5 minutes')
