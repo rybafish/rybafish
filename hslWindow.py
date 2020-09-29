@@ -358,7 +358,7 @@ class hslWindow(QMainWindow):
                 console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
             except:
                 self.statusMessage('Failed', True)
-                self.log('[!] error creating console for the file')
+                log('[!] error creating console for the file')
                 return
                 
             
