@@ -1,8 +1,0 @@
-
-server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
-
-#db keep-alive time
-keepalive: 1200
-
-#uncomment to have experimental stuff
-#experimental: True

@@ -1,4 +1,4 @@
-from yaml import safe_load, YAMLError
+from yaml import safe_load, YAMLError, parser
 
 #move to descr ------->
 # from PyQt5.QtGui import QPen, QColor 
@@ -10,6 +10,7 @@ import os
 from utils import log
 
 from kpiDescriptions import createStyle, customSql, kpiGroup
+#from kpiDescriptions import createStyle, customSql, kpiGroup
 
 grouplist = {}
 
@@ -49,9 +50,11 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
     try: 
         f = open(os.path.join(path, file), 'r')
         kpiFile = safe_load(f)
-    except:
-        log('Error loading custom KPI file %s' %(os.path.join(path, file)))
-        return None
+    #except parser.ParserError as e:
+    except Exception as e:
+        log('Error loading custom KPI file %s: %s' %(os.path.join(path, file), str(e)))
+        
+        raise e
         
     kpis = kpiFile['kpis']
     

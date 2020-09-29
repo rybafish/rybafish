@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip
 
-from PyQt5.QtGui import QPainter, QColor, QPen, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap 
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap, QRegion
 
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QRect, QSize
 
 import os
 import time
@@ -46,6 +46,7 @@ class myWidget(QWidget):
     updateToTime = pyqtSignal(['QString'])
     
     zoomSignal = pyqtSignal(int, int)
+    scrollSignal = pyqtSignal(int, float)
     
     statusMessage_ = pyqtSignal(['QString', bool])
     
@@ -58,6 +59,9 @@ class myWidget(QWidget):
     nkpis = [] #list of kpis to be drawn per host < new one
 
     kpiPen = {} #kpi pen objects dictionary
+    
+    highlightedEntity = None # gantt kpi currently highlihed
+    highlightedRange = None # gantt kpi currently highlihed
     
     highlightedKpi = None #kpi currently highlihed
     highlightedKpiHost = None # host for currently highlihed kpi
@@ -84,6 +88,7 @@ class myWidget(QWidget):
     t_scale = 60*10 # integer: size of one minor grid step
     
     side_margin = 10
+    left_margin = 0 # for side labels like Gantt chart...
     top_margin = 8
     bottom_margin = 20
     step_size = 16
@@ -97,6 +102,13 @@ class myWidget(QWidget):
     
     gridColor = QColor('#DDD')
     gridColorMj = QColor('#AAA')
+    
+    legend = None
+    legendRegion = None
+    legendHeight = None
+    legendWidth = None
+    
+    legendRender = None # flag used only to copy the legend
         
     def __init__(self):
         super().__init__()
@@ -124,8 +136,13 @@ class myWidget(QWidget):
             mode = -1
             
         modifiers = QApplication.keyboardModifiers()
+
         if modifiers == Qt.ControlModifier:
             self.zoomSignal.emit(mode, pos.x())
+        elif modifiers == Qt.ShiftModifier or modifiers == Qt.AltModifier:
+            self.scrollSignal.emit(mode, 0.5)
+        elif modifiers == Qt.NoModifier:
+            self.scrollSignal.emit(mode, 4)
         
         self.zoomLock = False
         
@@ -231,6 +248,8 @@ class myWidget(QWidget):
         '''
             align scales to normal values, prepare text labels (including max value, scale)
             for the KPIs table
+            
+            based on renewMaxValues data <-- self.widget.nscales[h]
         '''
         
         groups = []
@@ -260,6 +279,17 @@ class myWidget(QWidget):
                 
                 scaleKpi = self.nscales[h][kpi] # short cut
                 
+                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                
+                    #scaleKpi['y_max'] = ''
+                    scaleKpi['y_max'] = ''
+                    scaleKpi['max_label'] = '%i' % (self.nscales[h][kpi]['total'])
+                    scaleKpi['last_label'] = ''
+                    scaleKpi['label'] = '%i' % (self.nscales[h][kpi]['entities'])
+                    scaleKpi['yScale'] = ''
+                    scaleKpi['unit'] = ''
+                    continue
+                
                 #log(scaleKpi)
                     
                 '''
@@ -274,8 +304,8 @@ class myWidget(QWidget):
                 
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
-                    scaleKpi['max_label'] = scaleKpi['max']
-                    scaleKpi['last_label'] = scaleKpi['last_value']
+                    scaleKpi['max_label'] = str(scaleKpi['max'])
+                    scaleKpi['last_label'] = str(scaleKpi['last_value'])
                     scaleKpi['label'] = '10 / 100'
                     scaleKpi['yScale'] = 100
                     scaleKpi['unit'] = '%'
@@ -341,7 +371,7 @@ class myWidget(QWidget):
                     
       
     def posToTime(self, x):
-        time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin)/self.step_size*self.t_scale - self.delta) 
+        time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin - self.left_margin)/self.step_size*self.t_scale - self.delta) 
         
         return time
 
@@ -351,7 +381,7 @@ class myWidget(QWidget):
         
         offset = (time - self.t_from).total_seconds()
 
-        pos = offset/self.t_scale*self.step_size + self.delta + self.side_margin
+        pos = offset/self.t_scale*self.step_size + self.delta + self.side_margin + self.left_margin
         
         #time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin)/self.step_size*self.t_scale - self.delta) 
         
@@ -372,6 +402,22 @@ class myWidget(QWidget):
         copyPNG = cmenu.addAction("Copy full area")
         savePNG = cmenu.addAction("Save full area")
 
+        copyLegend = None
+        
+        if cfg('experimental') and self.legend:
+            cmenu.addSeparator()
+            copyLegend = cmenu.addAction("Copy Legend to clipboard")
+            putLegend = cmenu.addAction("Remove Legend")
+
+        else:
+            cmenu.addSeparator()
+            putLegend = cmenu.addAction("Add Legend")
+        
+        if self.highlightedEntity is not None:
+            cmenu.addSeparator()
+            copyGantt = cmenu.addAction("Copy highlighted gantt details")
+            
+
         if cfg('developmentMode'):
             cmenu.addSeparator()
             fakeDisconnection = cmenu.addAction("fake disconnection")
@@ -382,6 +428,9 @@ class myWidget(QWidget):
         pos = event.pos()
 
         time = self.posToTime(pos.x())
+        
+        if action is None:
+            return
         
         if cfg('developmentMode') and action == fakeDisconnection:
             log('dp.fakeDisconnect = True')
@@ -401,7 +450,30 @@ class myWidget(QWidget):
             pixmap.save(fn)
             
             self.statusMessage('Screenshot saved as %s' % (fn))
-
+        
+        if cfg('experimental') and action == copyLegend:
+            log('Creating a legend copy')
+            
+            pixmap = QPixmap(QSize(self.legendWidth + 1, self.legendHeight + 1))
+            
+            self.legendRender = True
+            self.render(pixmap, sourceRegion = self.legendRegion)
+            self.legendRender = False
+            
+            QApplication.clipboard().setPixmap(pixmap)
+            
+            self.statusMessage('Legend bitmap copied to the clipboard')
+        
+        if cfg('experimental') and action == putLegend:
+            #self.legend = not self.legend
+            
+            if self.legend is None:
+                self.legend = 'hosts'
+            else:
+                self.legend = None
+            
+            self.repaint()
+        
         if action == saveVAPNG:
             if not os.path.isdir('screens'):
                 os.mkdir('screens')
@@ -458,6 +530,21 @@ class myWidget(QWidget):
             
             clipboard = QApplication.clipboard()
             clipboard.setText(ts)
+            
+        if self.highlightedEntity and action == copyGantt:
+        
+            entity = self.highlightedEntity
+            kpi = self.highlightedKpi
+            host = self.highlightedKpiHost
+            range_i = self.highlightedRange
+
+            desc = self.ndata[host][kpi][entity][range_i][2]
+            
+            clipboard = QApplication.clipboard()
+            clipboard.setText(desc)
+            
+            self.statusMessage('Copied.')
+
     
     def checkForHint(self, pos):
         '''
@@ -472,6 +559,9 @@ class myWidget(QWidget):
         found = None
         
         for host in range(0, len(self.hosts)):
+        
+            if len(self.nkpis) == 0:
+                return
             
             if len(self.nkpis[host]) > 0 :
                 found = self.scanForHint(pos, host, self.nkpis[host], self.nscales[host], self.ndata[host])
@@ -488,6 +578,10 @@ class myWidget(QWidget):
                 
                 self.highlightedKpiHost = None
                 self.highlightedKpi = None
+
+                self.highlightedEntity = None
+                self.highlightedRange = None
+
                 self.setToolTip('')
                 
                 # self.update()
@@ -502,7 +596,12 @@ class myWidget(QWidget):
         
         wsize = self.size()
         
-        trgt_time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin)/self.step_size*self.t_scale) - self.delta)
+        hst = self.hosts[host]['host']
+        if self.hosts[host]['port'] != '':
+            hst += ':'+str(self.hosts[host]['port'])
+            
+        trgt_time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin - self.left_margin)/self.step_size*self.t_scale) - self.delta)
+        trgt_time_dt = trgt_time
         trgt_time = trgt_time.timestamp()
         
         x_scale = self.step_size / self.t_scale
@@ -513,10 +612,100 @@ class myWidget(QWidget):
         
         reportDelta = False
         
+        found_some = False
+        
         for kpi in kpis:
         
             if kpi[:4] == 'time':
                 continue
+                
+            if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+            
+                height = kpiStylesNN[type][kpi]['width']
+                ganttShift = kpiStylesNN[type][kpi]['shift']
+            
+                gc = data[kpi]
+                
+                if len(gc) == 0:
+                    continue
+                    
+                i = 0
+                
+                yr = kpiStylesNN[type][kpi]['y_range']
+
+                for entity in gc:
+                
+                    #exactly same calculation as in drawChart:
+                    y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                    y_shift = y_scale/100*yr[0] * len(gc)
+                    y_scale = y_scale * (yr[1] - yr[0])/100
+                    
+                    y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
+
+                    j = 0
+                    
+                    reportRange = None
+                    
+                    for t in gc[entity]:
+                        #check ranges first
+                        if t[0] <= trgt_time_dt <= t[1]:
+                        
+                            y0 = y + top_margin - t[3]*ganttShift
+                            y1 = y0 + height
+                            
+                            #check Y second:                            
+                            if y0 <= pos.y() <= y1:
+                            
+                                # okay, we have a match, but we need to find the highest one...
+                            
+                                if reportRange is None or reportRange < j:
+                                # if reportRange is None or gc[entity][reportRange][3] < t[3]: -- more accurate, bu it is the same, right?
+                                    reportRange = j
+                            
+                        j += 1
+                        
+
+                    if reportRange is not None:
+                        t = gc[entity][reportRange]
+                        
+                        self.highlightedKpi = kpi
+                        self.highlightedKpiHost = host
+                        self.highlightedEntity = entity
+                        self.highlightedRange = reportRange
+
+            
+                        # self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
+    
+                        t0 = t[0].time().isoformat(timespec='milliseconds')
+                        t1 = t[1].time().isoformat(timespec='milliseconds')
+
+                        '''
+                        t0 = t[0].isoformat(sep=' ', timespec='milliseconds')
+                        t1 = t[1].isoformat(sep=' ', timespec='milliseconds')
+                        '''
+
+                        '''
+                        t0 = t[0].strftime('%H:%M:%S.%f')[:-3]
+                        t1 = t[1].strftime('%H:%M:%S.%f')[:-3]                        
+                        '''
+
+                        interval = '[%s - %s]' % (t0, t1)
+                        
+                        det = '%s, %s.%s, %s: %s/%i %s' % (hst, type, kpi, entity, interval, t[3], t[2])
+                        
+                        self.statusMessage(det)
+                        log('gantt clicked %s' % (det))
+
+                        self.update()
+                        return True
+                        
+                    i += 1
+             
+                continue # no regular kpi scan procedure requred
+                
+            '''
+                regular kpis scan
+            '''
         
             timeKey = kpiDescriptions.getTimeKey(type, kpi)
             
@@ -608,10 +797,6 @@ class myWidget(QWidget):
                     deltaVal = ''
 
                 self.highlightedNormVal = normVal
-                
-                hst = self.hosts[host]['host']
-                if self.hosts[host]['port'] != '':
-                    hst += ':'+str(self.hosts[host]['port'])
                     
                 tm = datetime.datetime.fromtimestamp(data[timeKey][j]).strftime('%Y-%m-%d %H:%M:%S')
                 
@@ -656,15 +841,159 @@ class myWidget(QWidget):
         
         pos = event.pos()
         
-        time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin)/self.step_size*self.t_scale) - self.delta)
+        time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin - self.left_margin)/self.step_size*self.t_scale) - self.delta)
         
         self.checkForHint(pos)
             
     def resizeWidget(self):
         seconds = (self.t_to - self.t_from).total_seconds()
         number_of_cells = int(seconds / self.t_scale) + 1
-        self.resize(number_of_cells * self.step_size + self.side_margin*2, self.size().height()) #dummy size
+        self.resize(number_of_cells * self.step_size + self.side_margin*2 + self.left_margin, self.size().height()) #dummy size
         
+    def drawLegend(self, qp, startX, stopX):
+    
+        lkpis = []      # kpi names to be able to skip doubles
+        lkpisl = []     # kpi labels
+        lpens = []      # pens. None = host line (no pen)
+        
+        lLen = 128
+    
+        lFont = QFont ('SansSerif', utils.cfg('legend_font', 8))
+        fm = QFontMetrics(lFont)
+
+        raduga_i = 0
+        
+        for h in range(0, len(self.hosts)):
+        
+            type = hType(h, self.hosts)
+            
+            if self.legend == 'hosts' and len(self.nkpis[h]) > 0:
+                # put a host label
+                lpens.append(None)
+                lkpisl.append('%s:%s' % (self.hosts[h]['host'], self.hosts[h]['port']))
+        
+            for kpi in self.nkpis[h]:
+            
+                gantt = False
+            
+                if self.legend == 'kpis':
+                    '''
+                    
+                        DEPR ECA DEAD
+                        
+                    '''
+                    if kpi in lkpis:
+                        #skip as already there
+                        continue
+                        
+                    if 'dUnit' in kpiStylesNN[type][kpi]:
+                        unit = ' ' + kpiStylesNN[type][kpi]['dUnit']
+                    else:
+                        unit = ''
+                        
+                    label = kpiStylesNN[type][kpi]['label'] + ': ' + self.nscales[h][kpi]['label'] + unit
+                            
+                    lkpis.append(kpi)
+                    lkpisl.append(label)
+
+                if self.legend == 'hosts':
+
+                    if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                        gantt = True
+                        
+                    if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
+                        unit = ' ' + self.nscales[h][kpi]['unit']
+
+                        label = kpiStylesNN[type][kpi]['label']
+                        
+                        if kpi in self.nscales[h]: #if those are scanned already
+                            label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max: ' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
+                    else:
+                            
+                        label = kpiStylesNN[type][kpi]['label']
+
+                    lkpis.append(kpi)
+                    lkpisl.append(label)
+
+                # legend width calc
+                ll = fm.width(label)
+                
+                if ll > lLen:
+                    lLen = ll
+                    
+                if gantt:
+                    lpens.append([QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]])
+                else:
+                    if utils.cfg('raduga'):
+                        lpens.append(kpiDescriptions.radugaPens[raduga_i % 32])
+                        raduga_i += 1
+                        
+                    else:
+                        lpens.append(self.kpiPen[type][kpi])
+
+
+        fontHeight = fm.height()
+        
+        qp.setPen(QColor('#888'))
+        qp.setBrush(QColor('#FFF'))
+        
+        #qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
+        
+        if self.legendRender == False and (stopX - startX < 400):
+            return
+        
+        if self.legendRender == True:
+            #this is only a legend copy call
+            leftX = 10 + self.side_margin
+            
+        else:
+            if startX < self.side_margin:
+                leftX = 10 + self.side_margin + startX
+            else:
+                leftX = 10 + startX
+        
+        
+        self.legendHeight = fontHeight * len(lkpisl)+8
+        self.legendWidth = lLen + 58
+
+        qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth, self.legendHeight)
+        
+        # this if for Copy Legend action
+        # so call for render will be with startX = 0, so we fake leftX
+        
+        #print('drawlegend, startX - leftX', startX, leftX)
+        
+        self.legendRegion = QRegion(10 + self.side_margin, 10 + self.top_margin + self.y_delta, self.legendWidth + 1, self.legendHeight + 1)
+        
+        i = 0
+        
+        qp.setFont(lFont)
+        for kpi in lkpisl:
+        
+            if lpens[i] is not None:
+
+                if isinstance(lpens[i], QPen):
+                    # ah, this is wrong, so wrong...
+                    # but for normal kpis this is just a QPen
+                    # for others (but only gantt exist?) it is s LIST (!) [QBrush, QPen]
+
+                    qp.setPen(lpens[i])
+                    qp.drawLine(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, leftX + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
+                else:
+                    # must be gantt, so we put a bar...
+                    qp.setBrush(lpens[i][0])
+                    qp.setPen(lpens[i][1])
+                    qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
+                
+                ident = 10 + 40
+            else:
+                ident = 4
+            
+            qp.setPen(QColor('#000'))
+            qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
+            
+            i += 1
+                    
     def drawChart(self, qp, startX, stopX):
     
         '''
@@ -672,6 +1001,18 @@ class myWidget(QWidget):
             scales need to be calculated/adjusted beforehand
         '''
     
+        def longestStr(str):
+        
+            l = 0
+            ls = ''
+            
+            for s in str.split('\n'):
+                if l < len(s):
+                    l = len(s)
+                    ls = s
+            
+            return ls
+                
         #log('simulate delay()')
         #time.sleep(2)
         
@@ -692,14 +1033,21 @@ class myWidget(QWidget):
         top_margin = self.top_margin + self.y_delta
             
         raduga_i = 0
+        
+
+        
         for h in range(0, len(self.hosts)):
+        
+            #print('draw host:', self.hosts[h]['host'], self.hosts[h]['port'])
 
             if len(self.ndata[h]) == 0:
                 continue
                 
             type = hType(h, self.hosts)
             for kpi in self.nkpis[h]:
-            
+                #print('draw kpi', kpi)
+                #print('draw kpi, h', h)
+                
                 if kpi not in self.ndata[h]:
                     # alt-added kpis here, already in kpis but no data requested
                     continue
@@ -714,7 +1062,171 @@ class myWidget(QWidget):
             
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
 
+
+                #print(kpiStylesNN[type][kpi]['subtype'])
+                
+                if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
+                    gantt = True
+                else:
+                    gantt = False
+                
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)
+
+                if gantt:
+                
+                    #gFont = QFont ('SansSerif', 8)
+                    
+                    gFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['font'])
+                    qp.setFont(gFont)
+                    
+                    fm = QFontMetrics(gFont)
+                    fontHeight = fm.height()
+                    
+                    fontWidth = 0
+                    
+                    gc = self.ndata[h][kpi]
+                    
+                    for e in gc:
+                        width = fm.width(e)
+                        
+                        if fontWidth < width:
+                            fontWidth = width
+
+                    # self.left_margin = fontWidth + 8
+
+                    x_scale = self.step_size / self.t_scale
+
+                    '''
+                    # print gantt debug
+                    for e in gc:
+                        print('%s:'% e)
+                        
+                        for l in gc[e]:
+                            print ('    ', str(l[0]), '-' , str(l[1]))
+                    '''
+
+
+                    qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
+                    
+                    #print(kpiStylesNN[type][kpi])
+                    
+                    if len(gc) > 0:
+                        yr = kpiStylesNN[type][kpi]['y_range']
+                        
+                        y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                        y_shift = y_scale/100*yr[0] * len(gc)
+                        y_scale = y_scale * (yr[1] - yr[0])/100
+                    
+                    #print(y_scale)
+                    
+                    i = 0
+                    
+                    '''
+                    print('start/stop: ', startX, stopX)
+                    
+                    qp.setPen(QColor('#B4A')) # bar outline color
+                    qp.drawLine(startX, 100, stopX, 130)
+                    
+                    qp.drawLine(startX + 100, 200, stopX + 100, 230)
+                    '''
+                    
+                    hlDesc = None
+
+                    height = kpiStylesNN[type][kpi]['width']
+                    ganttShift = kpiStylesNN[type][kpi]['shift']
+                    
+                    for entity in gc:
+                    
+                        # print so far startX, stopX totally ignored: bad performance
+                    
+                        y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
+                        
+                        #print('y ==> %i' % y)
+                    
+                        range_i = 0
+                        for t in gc[entity]:
+
+                            x = (t[0].timestamp() - from_ts) # number of seconds
+                            x = self.side_margin + self.left_margin +  x * x_scale
+                            
+                            if t[1] is None or t[0] is None:
+                                log('[w] null instead of timestamp, skip', str(t))
+                                continue
+
+                            width = (t[1].timestamp() - t[0].timestamp()) * x_scale
+                            
+                            if self.highlightedKpi == kpi and self.highlightedKpiHost == h and self.highlightedEntity == entity and self.highlightedRange == range_i:
+                                highlight = True
+                            else:
+                                highlight = False
+                            
+                            ganttPen = kpiStylesNN[type][kpi]['pen']
+                            
+                            if highlight == True:
+                                ganttPen.setWidth(2)
+                            else:
+                                ganttPen.setWidth(1)
+                            
+                            qp.setPen(ganttPen)
+                            
+                            if kpiStylesNN[type][kpi]['style'] == 'bar':
+                                qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
+                            else:
+                                qp.drawLine(x, y + top_margin + 8, x + width, y + top_margin)
+                                
+                                qp.drawLine(x + width, y + top_margin + 8, x + width, y + top_margin)
+                                qp.drawLine(x, y + top_margin, x, y + top_margin + 8)
+                                
+
+                            #highlighting
+                            if highlight:
+                                
+                                hlDesc = t[2].strip().replace('\\n', '\n')
+                                
+                                hlWidth = fm.width(longestStr(hlDesc))
+                                
+                                hlWidth = min(cfg('ganttLabelWidth', 500), hlWidth)
+                                
+                                if x + hlWidth > wsize.width():
+                                    xOff = wsize.width() - (hlWidth + x + self.side_margin) - 4 # 4 - right margin
+                                else:
+                                    xOff = 0
+                                    
+                                nl = hlDesc.count('\n') + 1
+                                
+                                yShift = t[3]*ganttShift
+                                
+                                hlRect = QRect (x + xOff, y + top_margin - fontHeight*nl - 2 - yShift, cfg('ganttLabelWidth', 500), fontHeight * nl)
+                            
+                            range_i += 1
+
+
+                        if stopX - startX > 400:
+                        
+                            # only draw labels in case of significant refresh
+                        
+                            # qp.setBackground(QColor('red')) - does not work
+                            # otherwise drawing area too small, it won't paint full text anyway
+                            # to avoid only ugly artefacts...
+                            #qp.setPen(QColor('#448')) # entity label color
+                            
+                            clr = ganttPen.color()
+                            clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
+                            
+                            qp.setPen(clr) # entity label color
+                            qp.drawText(startX + self.side_margin + fontHeight, y + top_margin + fontHeight / 2, entity);
+                        
+                        i += 1
+
+                        if hlDesc is not None:
+                            ganttPen = kpiStylesNN[type][kpi]['pen']
+                            
+                            clr = ganttPen.color()
+                            clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
+                            qp.setPen(clr)
+                            
+                            qp.drawText(hlRect, Qt.AlignLeft, hlDesc)
+                    continue
                 
                 array_size = len(self.ndata[h][timeKey])
                 time_array = self.ndata[h][timeKey]
@@ -775,6 +1287,7 @@ class myWidget(QWidget):
                 i = -1
                 
                 #to trace drawing area uncomment:
+                #qp.drawLine(startX, 10, startX, 50)
                 '''
                 qp.drawLine(startX, 10, startX, 50)
                 qp.drawLine(startX, 50, stopX-1, 50)
@@ -792,13 +1305,13 @@ class myWidget(QWidget):
                         continue
                         
                     x = (time_array[i] - from_ts) # number of seconds
-                    x = self.side_margin +  x * x_scale
+                    x = self.side_margin + self.left_margin +  x * x_scale
 
                     if x < startX - drawStep or x > stopX + drawStep:
                         
                         if i + 1000 < array_size:
                             x1000 = (time_array[i+1000] - from_ts) # number of seconds
-                            x1000 = self.side_margin +  x1000 * x_scale
+                            x1000 = self.side_margin + self.left_margin +  x1000 * x_scale
                             
                             if x1000 < startX - drawStep:
                                 #fast forward
@@ -874,7 +1387,11 @@ class myWidget(QWidget):
         #qp.drawLine(12786, 110, 12787, 110)
         
         qp.setPen(QColor('#888'))
-        qp.drawLine(self.side_margin, wsize.height() - self.bottom_margin - 1, wsize.width() - self.side_margin, wsize.height() - self.bottom_margin - 1)
+        qp.drawLine(self.side_margin + self.left_margin, wsize.height() - self.bottom_margin - 1, wsize.width() - self.side_margin, wsize.height() - self.bottom_margin - 1)
+        
+        
+        if self.legend is not None:
+            self.drawLegend(qp, startX, stopX)
         
     def drawGrid(self, qp, startX, stopX):
         '''
@@ -884,6 +1401,21 @@ class myWidget(QWidget):
         
         #prnt('grid %i:%i' % (startX, stopX))
         #print('grid: ', self.gridColor.getRgb())
+        
+
+        for h in range(0, len(self.hosts)):
+
+            if len(self.nkpis) == 0: # sometimes hosts filled before nkpis
+                break
+
+            type = hType(h, self.hosts)
+
+            for kpi in self.nkpis[h]:
+            
+                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                    # self.left_margin = 100
+                    break
+
         
         t0 = time.time()
         
@@ -901,7 +1433,7 @@ class myWidget(QWidget):
             
 
         qp.setPen(QColor('#888'))
-        qp.drawRect(self.side_margin, top_margin, wsize.width()-self.side_margin*2, wsize.height()-top_margin-self.bottom_margin-1)
+        qp.drawRect(self.side_margin + self.left_margin, top_margin, wsize.width()-self.side_margin*2 - self.left_margin, wsize.height()-top_margin-self.bottom_margin-1)
 
         qp.setPen(QColor('#000'))
         qp.setFont(QFont('SansSerif', self.conf_fontSize))
@@ -920,13 +1452,13 @@ class myWidget(QWidget):
             if j == 5:
                 qp.setPen(self.gridColorMj) #50% CPU line
             
-            qp.drawLine(self.side_margin+1, y, wsize.width()-self.side_margin - 1, y)
+            qp.drawLine(self.side_margin + self.left_margin + 1, y, wsize.width()-self.side_margin - 1, y)
             
             if j == 5:
                 qp.setPen(self.gridColor)
         
         #x is in pixels
-        x = self.side_margin+self.step_size
+        x = self.side_margin + self.left_margin +self.step_size
         
         #have to align this to have proper marks
         
@@ -954,7 +1486,7 @@ class myWidget(QWidget):
                 
             qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
             
-            c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin)/self.step_size*t_scale - delta)
+            c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin - self.left_margin)/self.step_size*t_scale - delta)
             
             major_line = False
             date_mark = False
@@ -969,7 +1501,10 @@ class myWidget(QWidget):
             min_scale = None
             hrs_scale = None
             
-            if t_scale == 10:
+            if t_scale == 1:
+                sec_scale = 10
+                hrs_scale = 60*1
+            elif t_scale == 10:
                 sec_scale = 60
                 hrs_scale = 60*5
             elif t_scale == 60:
@@ -1019,11 +1554,11 @@ class myWidget(QWidget):
                     label_width = self.font_width1
                 else:
                     label_width = self.font_width2
-                qp.drawText(x-label_width, wsize.height() - bottom_margin + self.font_height, label);
+                qp.drawText(x-label_width, wsize.height() - bottom_margin + self.font_height, label)
                 
                 if date_mark:
                     label = c_time.strftime('%Y-%m-%d')
-                    qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label);
+                    qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label)
                     
                 qp.setPen(self.gridColor)
         
@@ -1088,6 +1623,32 @@ class chartArea(QFrame):
     timer = None
     refreshCB = None
     
+    #last refresh time range
+    fromTime = None
+    toTime = None
+    
+    def disableDeadKPIs(self):
+        
+        chart = self.widget
+        
+        if len(chart.nkpis) == 0:
+            log('[w] disableDeadKPIs: no kpis at all, exit')
+            return
+        
+        for host in range(0, len(chart.hosts)):
+            type = hType(host, chart.hosts)
+            
+            for kpi in chart.nkpis[host]:
+                if kpi not in kpiStylesNN[type]:
+                    log('[w] kpi %s is dsabled so it is removed from the list of selected KPIs for the host' % (kpi))
+                    
+                    chart.nkpis[host].remove(kpi)
+                    
+                    if type == 'service':
+                        self.srvcKPIs.remove(kpi)
+                    else:
+                        self.hostKPIs.remove(kpi)
+                    
     def statusMessage(self, str, repaint = False):
         if repaint: 
             self.statusMessage_.emit(str, True)
@@ -1114,23 +1675,33 @@ class chartArea(QFrame):
             super().keyPressEvent(event)
 
     def cleanup(self):
+        log('cleanup call...')
+        
         for host in range(len(self.widget.hosts)):
-            for kpi in self.widget.nkpis[host]:
-                #print('the same code in checkbocks callback - make a function')
-                self.widget.nkpis[host].remove(kpi) # kpis is a list
-                
-                if kpi in self.widget.ndata[host]:
-                    #might be empty for alt-added
-                    del(self.widget.ndata[host][kpi]) # ndata is a dict
+
+            if len(self.widget.nkpis) > 0:
+                for kpi in self.widget.nkpis[host]:
+                    #print('the same code in checkbocks callback - make a function')
+                    self.widget.nkpis[host].remove(kpi) # kpis is a list
+                    
+                    if kpi in self.widget.ndata[host]:
+                        #might be empty for alt-added
+                        del(self.widget.ndata[host][kpi]) # ndata is a dict
+            else:
+                log('[w] kpis list is empty')
 
             # this part not required in checkbocks callback ')
-            self.widget.nscales[host].clear() # this one is missing in in checkbocks callback 
-                                              # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
-            self.widget.ndata[host].clear()
+            
+            if len(self.widget.nscales)> 0:
+                self.widget.nscales[host].clear() # this one is missing in in checkbocks callback 
+                                                  # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
+            if len(self.widget.ndata)> 0:
+                self.widget.ndata[host].clear()
             
         self.widget.nscales.clear()
         self.widget.ndata.clear()
-        self.widget.nkpis.clear()
+        
+        log('cleanup complete')
         
     def initDP(self):
         '''
@@ -1141,10 +1712,10 @@ class chartArea(QFrame):
         self.cleanup()
             
         self.widget.ndata.clear()
-        
+
         self.widget.hosts.clear()
         self.widget.nkpis.clear()
-        
+
         self.widget.update()
         
         self.hostKPIs.clear()
@@ -1161,6 +1732,12 @@ class chartArea(QFrame):
         
         self.statusMessage('ready')
         
+
+    def scrollSignal(self, mode, size):
+        x = 0 - self.widget.pos().x() 
+        self.scrollarea.horizontalScrollBar().setValue(x + mode*self.widget.step_size*size)
+
+        pass
 
     def zoomSignal(self, mode, pos):
         '''
@@ -1594,6 +2171,7 @@ class chartArea(QFrame):
             
             type = hType(h, self.widget.hosts)
 
+
             # init zero dicts for scales
             # especially important for the first run
 
@@ -1612,6 +2190,21 @@ class chartArea(QFrame):
             for kpi in scales.keys():
             
                 if kpi[:4] == 'time':
+                    continue
+                    
+                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                
+                    eNum = 0
+                    total = 0
+                
+                    for entity in data[kpi]:
+                        total += len(data[kpi][entity])
+                        eNum += 1
+                        
+                    scales[kpi]['entities'] = eNum
+                    scales[kpi]['total'] = total
+                    # print ('%i/%i' % (eNum, total))
+                        
                     continue
                     
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)
@@ -1693,6 +2286,10 @@ class chartArea(QFrame):
         #time.sleep(2)
         fromTime = self.fromEdit.text()
         toTime = self.toEdit.text()
+
+        #backup for ESC
+        self.fromTime = fromTime
+        self.toTime = toTime
         
         if fromTime[:1] == '-' and toTime == '':
             try:
@@ -1776,12 +2373,20 @@ class chartArea(QFrame):
         self.setStatus('idle', True)
 
     def scrollRangeChanged (self, min, max):
+    
         ''' 
             called after tab change and on scroll area resize 
             
             "autoscroll to the right" - also still required
         '''
         toTime = self.toEdit.text()
+        
+        if self.widgetWidth == self.widget.width():
+            # no widget change, return
+            return
+        else:
+            self.widgetWidth = self.widget.width()
+        
         
         if toTime == '' and not self.widget.zoomLock:
             self.scrollarea.horizontalScrollBar().setValue(max)
@@ -1793,6 +2398,20 @@ class chartArea(QFrame):
 
         self.fromEdit.setFixedWidth(fromtoWidth);
         self.toEdit.setFixedWidth(fromtoWidth);
+        
+    def fromEditKeyPress(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.fromEdit.setText(self.fromTime)
+            self.fromEdit.setStyleSheet("color: black;")
+        else:            
+            QLineEdit.keyPressEvent(self.fromEdit, event)
+
+    def toEditKeyPress(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.toEdit.setText(self.toTime)
+            self.toEdit.setStyleSheet("color: black;")
+        else:            
+            QLineEdit.keyPressEvent(self.toEdit, event)
 
     def __init__(self):
         
@@ -1827,6 +2446,9 @@ class chartArea(QFrame):
         
         self.scaleCB = QComboBox()
         
+        if cfg('experimental'):
+            self.scaleCB.addItem('1 second')
+            
         self.scaleCB.addItem('10 seconds')
         self.scaleCB.addItem('1 minute')
         self.scaleCB.addItem('5 minutes')
@@ -1878,7 +2500,9 @@ class chartArea(QFrame):
         reloadBtn.clicked.connect(self.reloadChart)
         
         self.fromEdit.returnPressed.connect(self.reloadChart)
+        self.fromEdit.keyPressEvent = self.fromEditKeyPress
         self.toEdit.returnPressed.connect(self.reloadChart)
+        self.toEdit.keyPressEvent = self.toEditKeyPress
         
         hbar.addWidget(self.scaleCB)
         hbar.addStretch(10)
@@ -1905,6 +2529,8 @@ class chartArea(QFrame):
             Create main chart area
         '''
         self.scrollarea = QScrollArea()
+        
+        self.widgetWidth = 1024 # last widget width to controll autoscroll
 
         self.scrollarea.setWidgetResizable(False)
         
@@ -1945,6 +2571,8 @@ class chartArea(QFrame):
         self.widget.updateFromTime.connect(self.updateFromTime)
         self.widget.updateToTime.connect(self.updateToTime)
         self.widget.zoomSignal.connect(self.zoomSignal)
+        
+        self.widget.scrollSignal.connect(self.scrollSignal)
         
         # trigger upddate of scales in table?
         

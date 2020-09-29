@@ -1010,33 +1010,16 @@ class resultSet(QTableWidget):
     def contextMenuEvent(self, event):
         def normalize_header(header):
             if header.isupper() and header[0].isalpha():
-                h = header
+                if cfg('lowercase-columns', False):
+                    h = header.lower()
+                else:
+                    h = header
             else:
                 h = '"%s"' % (header)
                 
-            return h            
-       
-        cmenu = QMenu(self)
-
-        copyColumnName = cmenu.addAction('Copy Column Name(s)')
-        copyTableScreen = cmenu.addAction('Take a Screenshot')
-        
-        cmenu.addSeparator()
-        copyFilter = cmenu.addAction('Generate Filter Condition')
-        
-        action = cmenu.exec_(self.mapToGlobal(event.pos()))
-
-        i = self.currentColumn()
-
-        '''
-        if action == copyColumnName:
-            clipboard = QApplication.clipboard()
-            clipboard.setText(self.cols[i][0])
-        '''
-        
-        if action == copyColumnName:
-            clipboard = QApplication.clipboard()
+            return h
             
+        def prepareColumns():
             headers = []
             headers_norm = []
             
@@ -1053,6 +1036,40 @@ class resultSet(QTableWidget):
                 
             for h in headers:
                 headers_norm.append(normalize_header(h))
+                
+            return headers_norm
+            
+       
+        cmenu = QMenu(self)
+
+        copyColumnName = cmenu.addAction('Copy Column Name(s)')
+        copyTableScreen = cmenu.addAction('Take a Screenshot')
+        
+        cmenu.addSeparator()
+        insertColumnName = cmenu.addAction('Insert Column Name(s)')
+        copyFilter = cmenu.addAction('Generate Filter Condition')
+        
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
+
+        i = self.currentColumn()
+
+        '''
+        if action == copyColumnName:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(self.cols[i][0])
+        '''
+        
+        if action == insertColumnName:
+            headers_norm = prepareColumns()
+                
+            names = ', '.join(headers_norm)
+            
+            self.insertText.emit(names)
+            
+        if action == copyColumnName:
+            clipboard = QApplication.clipboard()
+            
+            headers_norm = prepareColumns()
                 
             names = ', '.join(headers_norm)
 
@@ -1076,7 +1093,7 @@ class resultSet(QTableWidget):
                     
             filter = ' and '.join(values)
 
-            self.insertText.emit(' ' + filter)
+            self.insertText.emit(filter)
             
             #QApplication.clipboard().setText(filter)
             
@@ -2315,7 +2332,8 @@ class sqlConsole(QWidget):
             # it was a DDL or something else without a result set so we just stop
             
             #logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
-            logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
+            #logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
+            logText += ', ' + utils.numberToStr(dbCursor.rowcount) + ' rows affected'
             
             self.log(logText)
             

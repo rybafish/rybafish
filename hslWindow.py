@@ -30,7 +30,7 @@ from utils import resourcePath
 from utils import loadConfig
 from utils import log
 from utils import cfg
-from utils import dbException
+from utils import dbException, msgDialog
 
 import kpiDescriptions
 
@@ -144,16 +144,34 @@ class hslWindow(QMainWindow):
                         self.chartArea.srvcKPIs.remove(kpiName)
         
         # del host custom groups
-        for i in range(len(self.chartArea.hostKPIs)):
+        kpis_len = len(self.chartArea.hostKPIs)
+        i = 0
+        
+        while i < kpis_len:
             if self.chartArea.hostKPIs[i][:1] == '.' and (i == len(self.chartArea.hostKPIs) - 1 or self.chartArea.hostKPIs[i+1][:1] == '.'):
                 del(self.chartArea.hostKPIs[i])
+                kpis_len -= 1
+            else:
+                i += 1
 
         # del service custom groups
-        for i in range(len(self.chartArea.srvcKPIs)):
+        kpis_len = len(self.chartArea.srvcKPIs)
+        i = 0
+        
+        while i < kpis_len:
             if self.chartArea.srvcKPIs[i][:1] == '.' and (i == len(self.chartArea.srvcKPIs) - 1 or self.chartArea.srvcKPIs[i+1][:1] == '.'):
                 del(self.chartArea.srvcKPIs[i])
+                kpis_len -= 1
+            else:
+                i += 1
+                
 
-        dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+        try:
+            dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+        except Exception as e:
+            self.chartArea.disableDeadKPIs()
+            msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
+        
         self.chartArea.widget.initPens()
         self.chartArea.widget.update()
         
@@ -222,7 +240,7 @@ class hslWindow(QMainWindow):
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
                     self.chartArea.reloadChart()
-
+                    
                 propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
                 
                 self.tabs.setTabText(0, propStr)
@@ -238,7 +256,7 @@ class hslWindow(QMainWindow):
                         log('wrong keepalive setting: %s' % (cfg('keepalive')))
                                 
             except dbException as e:
-                log('connect or init error:')
+                log('Connect or init error:')
                 if hasattr(e, 'message'):
                     log(e.message)
                 else:
@@ -253,7 +271,20 @@ class hslWindow(QMainWindow):
                 msgBox.exec_()
                 
                 self.statusMessage('', False)
-                # raise(e)
+
+            except Exception as e:
+                log('Init exception not related to DB')
+                log(str(e))
+
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle('Error')
+                msgBox.setText('Init failed: %s \n\nSee more deteails in the log file.' % (str(e)))
+                iconPath = resourcePath('ico\\favicon.ico')
+                msgBox.setWindowIcon(QIcon(iconPath))
+                msgBox.setIcon(QMessageBox.Warning)
+                msgBox.exec_()
+                
+                self.statusMessage('', False)
                     
         else:
             # cancel or parsing error
@@ -327,7 +358,7 @@ class hslWindow(QMainWindow):
                 console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
             except:
                 self.statusMessage('Failed', True)
-                self.log('[!] error creating console for the file')
+                log('[!] error creating console for the file')
                 return
                 
             
@@ -641,7 +672,7 @@ class hslWindow(QMainWindow):
 
         # offline console tests
         
-        if True and cfg('developmentMode'):
+        if cfg('developmentMode'):
         
             #tname = sqlConsole.generateTabName()
 

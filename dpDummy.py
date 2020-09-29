@@ -5,9 +5,7 @@ import math, time, random
 
 import dpDBCustom, kpiDescriptions
 
-from kpiDescriptions import customKpi
-
-from utils import log, cfg
+from utils import log, cfg, msgDialog
 
 class dataProvider:
 
@@ -34,8 +32,8 @@ class dataProvider:
             'type':         'service',
             'name':         'indexserverMemUsed',
             'group':        'mem',
-            'sUnit':        'Byte/sample',
-            'dUnit':        'MB/sec',
+            'sUnit':        'Byte',
+            'dUnit':        'MB',
             'label':        'Memory used',
             'description':  'Service Memory Usage',
             'color':        '#0D0',
@@ -84,7 +82,13 @@ class dataProvider:
                     'to':etime
                     })
                     
-        dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        try:
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+        except Exception as e:
+            kpiDescriptions.removeDeadKPIs(srvcKPIs, 'service')
+            kpiDescriptions.removeDeadKPIs(hostKPIs, 'host')
+
+            msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
                     
     def getData(self, host, fromto, kpis, data):
         
@@ -92,6 +96,41 @@ class dataProvider:
         
         ctime = datetime.datetime.now() - datetime.timedelta(seconds= 18 * 3600)
         ctime -= datetime.timedelta(seconds= ctime.timestamp() % 3600)
+
+        if 'cs-exp_st' in kpis:
+            t0 = ctime + datetime.timedelta(seconds=(3600*8))
+            t1 = t0 + datetime.timedelta(seconds=(3600*2))
+
+            t2 = t1 + datetime.timedelta(seconds=(-900))
+            t3 = t2 + datetime.timedelta(seconds=(3600*3))
+
+            t4 = t0 + datetime.timedelta(seconds=(3600*1))
+            t5 = t4 + datetime.timedelta(seconds=(3600*6))
+
+            t6 = t5 + datetime.timedelta(seconds=(600))
+            t7 = t6 + datetime.timedelta(seconds=(3600*1))
+
+            t8 = t7 + datetime.timedelta(seconds=(300))
+            t9 = t8 + datetime.timedelta(seconds=(3600 + 3600/4))
+
+            t10 = ctime + datetime.timedelta(seconds=(3600*9+1200))
+            t11 = t10 + datetime.timedelta(seconds=(3600*2+660))
+            
+            #data['time'] = None
+            
+            data['cs-exp_st'] = {}
+            
+            if host['port'] == '30040':
+                data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0], [t2, t3, 'asdf', 1]]
+                data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0], [t6, t7, 'asdf', 0], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0]]
+            else:
+                data['cs-exp_st']['one more'] = [[t10, t11, 'descdfksdjflasdjf;laksdjf;alkd fa;lsdkfj a;lsdfj a;lsdkfj asdl;kfj as;ldfa; sldkfj asdl;kjf a;ldfjas; ldkfj sdlkfjsd ljsld fsldkfjs ldfsdlk fjsdlkfj lasdkfj a;djfa;sdlfjk ;alsdfkj;lk ;r', 0]]
+            
+            for e in data['cs-exp_st']:
+                print('%s:'% e)
+                
+                for l in data['cs-exp_st'][e]:
+                    print ('    ', str(l[0]), '-' , str(l[1]))
 
         if False:
             data_size = round(18*3600/10)

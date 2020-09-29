@@ -13,6 +13,15 @@ import utils
         
 from utils import log, cfg
 
+def removeDeadKPIs(kpis, type):
+
+    for kpi in kpis:
+        if kpi[:1] != '.' and kpi not in kpiStylesNN[type]:
+            print('deleting', kpi)
+            kpis.remove(kpi)
+            
+    return
+
 def generateRaduga(n):
 
     #random.seed(cfg('radugaSeed', 1))
@@ -142,98 +151,147 @@ def decodeKPIns(t, nsName):
     
 #new styles approach starting here
 def createStyle(kpi, custom = False, sqlIdx = None):
+
     style = {}
     
-    try: 
-        # mandatory stuff
-        if 'name' in kpi:
-            if custom:
-                style['name'] = 'cs-' + kpi['name']
-            else:
-                style['name'] = kpi['name']
-        else:
-            return None
-            
-        if 'type' in kpi:
-            if kpi['type'] == 'service':
-                style['type'] = 's'
-            else:
-                style['type'] = 'h'
-        else:
-            return None
-            
+    #try: 
+    # mandatory stuff
+    if 'subtype' in kpi:
+        style['subtype'] = kpi['subtype']
+    else:
+        style['subtype'] = None
+    
+    if 'name' in kpi:
         if custom:
-            if 'sqlname' in kpi:
-                style['sqlname'] = kpi['sqlname']
+            style['name'] = 'cs-' + kpi['name']
+        else:
+            style['name'] = kpi['name']
+    else:
+        return None
+        
+    if 'type' in kpi:
+        if kpi['type'] == 'service':
+            style['type'] = 's'
+        else:
+            style['type'] = 'h'
+    else:
+        return None
+        
+    if custom:
+        if 'sqlname' in kpi:
+            style['sqlname'] = kpi['sqlname']
+        else:
+            if 'subtype' in kpi and kpi['subtype'] == 'gantt':
+                style['sqlname'] = 'None'
             else:
                 return None
-                
-        # optional stuff
-        if 'group' in kpi:
-            style['group'] = kpi['group']
-        else:
-            style['group'] = ''
             
-        if 'description' in kpi:
-            style['desc'] = kpi['description']
-        else:
-            style['desc'] = ''
-
-        if 'label' in kpi:
-            style['label'] = kpi['label']
-        else:
-            style['label'] = ''
-
-        if 'sUnit' in kpi and 'dUnit' in kpi:
-            sUnit = kpi['sUnit'].split('/')
-            dUnit = kpi['dUnit'].split('/')
-            
-            if len(sUnit) > 1 and len(dUnit) > 1 and sUnit[1] == 'sample' and dUnit[1] == 'sec':
-                style['sUnit'] = sUnit[0]
-                style['dUnit'] = dUnit[0]
-                style['perSample'] = True
-            else:
-                style['sUnit'] = kpi['sUnit']
-                style['dUnit'] = kpi['dUnit']
-        else:
-            style['sUnit'] = '-'
-
-        #create pen
-        if 'color' in kpi:
-            color = QColor(kpi['color'])
-        else:
-            color = QColor('#DDD')
-            
-        if 'style' in kpi and kpi['style'] != '':
-            if kpi['style'] == 'solid':
-                penStyle = Qt.SolidLine
-            elif kpi['style'] == 'dotted':
-                penStyle = Qt.DotLine
-            elif kpi['style'] == 'dashed':
-                penStyle = Qt.DashLine
-            elif kpi['style'] == 'dotline':
-                penStyle = Qt.DotLine
-            else:
-                log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])))
-                penStyle = Qt.DashDotDotLine
-        else:
-            if style['type'] == 'h':
-                penStyle = Qt.DashLine
-            else:
-                penStyle = Qt.SolidLine
+    # optional stuff
+    if 'group' in kpi:
+        style['group'] = kpi['group']
+    else:
+        style['group'] = ''
         
-        if kpi['name'][:7] == '---#---':
-            style['pen'] = '-'
+    if 'description' in kpi:
+        style['desc'] = kpi['description']
+    else:
+        style['desc'] = ''
+
+    if 'label' in kpi:
+        style['label'] = kpi['label']
+    else:
+        style['label'] = ''
+
+    if 'sUnit' in kpi and 'dUnit' in kpi:
+        sUnit = kpi['sUnit'].split('/')
+        dUnit = kpi['dUnit'].split('/')
+        
+        if len(sUnit) > 1 and len(dUnit) > 1 and sUnit[1] == 'sample' and dUnit[1] == 'sec':
+            style['sUnit'] = sUnit[0]
+            style['dUnit'] = dUnit[0]
+            style['perSample'] = True
         else:
+            style['sUnit'] = kpi['sUnit']
+            style['dUnit'] = kpi['dUnit']
+    else:
+        style['sUnit'] = '-'
+
+    #create pen
+    if 'color' in kpi:
+        color = QColor(kpi['color'])
+    else:
+        color = QColor('#DDD')
+        
+    if 'style' in kpi and kpi['style'] != '':
+        if kpi['style'] == 'solid':
+            penStyle = Qt.SolidLine
+        elif kpi['style'] == 'dotted':
+            penStyle = Qt.DotLine
+        elif kpi['style'] == 'dashed':
+            penStyle = Qt.DashLine
+        elif kpi['style'] == 'dotline':
+            penStyle = Qt.DotLine
+        elif kpi['style'] == 'bar' or kpi['style'] == 'candle':
+            penStyle = Qt.SolidLine
+        else:
+            log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])))
+            penStyle = Qt.DashDotDotLine
+    else:
+        if style['type'] == 'h':
+            penStyle = Qt.DashLine
+        else:
+            penStyle = Qt.SolidLine
+    
+    if kpi['name'][:7] == '---#---':
+        style['pen'] = '-'
+    else:
+        if 'subtype' in kpi and kpi['subtype'] == 'gantt':
+            # gantt stuff
+            if 'width' in kpi:
+                style['width'] = int(kpi['width'])
+            else:
+                style['width'] = 8
+
+            if 'font' in kpi:
+                style['font'] = int(kpi['font'])
+            else:
+                style['font'] = 8
+
+            if 'shift' in kpi:
+                style['shift'] = int(kpi['shift'])
+            else:
+                style['shift'] = 2
+            
+            if 'style' in kpi and (kpi['style'] == 'bar' or kpi['style'] == 'candle'):
+                style['style'] = kpi['style']
+            else:
+                style['style'] = 'bar'
+                
+            clr = QColor(color)
+            style['brush'] = clr
+            penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+            style['pen'] = QPen(penColor, 1, penStyle)
+            
+            if 'y_range' in kpi and kpi['y_range'] != '':
+                yr = kpi['y_range']
+                style['y_range'] = [None]*2
+                style['y_range'][0] = 100 - max(0, yr[0])
+                style['y_range'][1] = 100 - min(100, yr[1])
+            else:
+                style['y_range'] = [0, 100]
+        else:
+            # regular kpis
             style['pen'] = QPen(color, 1, penStyle)
 
-        style['sql'] = sqlIdx
-        
+    style['sql'] = sqlIdx
+    '''
     except Exception as e:
         log(str(kpi))
+        log(style)
         log('Error creating a style: %s' % str(e))
         
         return None
+    '''
     return style
     
 def customKpi (kpi):
@@ -250,6 +308,12 @@ def getTimeKey(type, kpi):
         timeKey = 'time'
         
     return timeKey
+
+def getSubtype(type, kpi):
+
+    subtype = kpiStylesNN[type][kpi]['subtype']
+        
+    return subtype
         
 def nsStyle (idx):
     
