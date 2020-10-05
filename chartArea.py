@@ -2055,7 +2055,7 @@ class chartArea(QFrame):
 
     def refreshTimer(self):
         self.timer.stop()
-        #print('also stop keep alive timer here ((it will be kinda refreshed in get_data renewKeepAlive))')
+        #print('also stop keep-alive timer here ((it will be kinda refreshed in get_data renewKeepAlive))')
         
         log('trigger auto refresh...')
         self.reloadChart()

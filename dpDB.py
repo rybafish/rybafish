@@ -102,14 +102,14 @@ class dataProvider():
             return
 
         try:
-            log('chart keep alive... ', False, True)
+            log('chart keep-alive... ', False, True)
             
             t0 = time.time()
             db.execute_query(self.connection, 'select * from dummy', [])
             
             if hasattr(self, 'fakeDisconnect'):
-                print ('generate an exception...')
-                print (10/0)
+                log ('generate an exception...')
+                log (10/0)
             
             t1 = time.time()
             log('ok: %s ms' % (str(round(t1-t0, 3))), True)
