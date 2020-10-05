@@ -452,6 +452,9 @@ class myWidget(QWidget):
             self.statusMessage('Screenshot saved as %s' % (fn))
         
         if action == copyLegend:
+            if not self.legendWidth:
+                return
+                
             log('Creating a legend copy')
             
             pixmap = QPixmap(QSize(self.legendWidth + 1, self.legendHeight + 1))
