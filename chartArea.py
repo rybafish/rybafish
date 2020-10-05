@@ -108,7 +108,7 @@ class myWidget(QWidget):
     legendHeight = None
     legendWidth = None
     
-    legendRender = None # flag used only to copy the legend
+    legendRender = False # flag used only to copy the legend
         
     def __init__(self):
         super().__init__()
@@ -939,6 +939,7 @@ class myWidget(QWidget):
         
         #qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
         
+        #print('legendRender, stopX, startX: a', self.legendRender, stopX, startX)
         if self.legendRender == False and (stopX - startX < 400):
             return
         
