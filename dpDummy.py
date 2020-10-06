@@ -62,7 +62,7 @@ class dataProvider:
         etime = datetime.datetime.now()
         
         hosts.append({
-                    'host':'dummy1',
+                    'host':'dummy1-dummy1',
                     'port':'',
                     'from':stime,
                     'to':etime
