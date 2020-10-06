@@ -590,7 +590,7 @@ class hslWindow(QMainWindow):
         
         actionsMenu = menubar.addMenu('&Actions')
         
-        if cfg('experimental'): # issue #255
+        if cfg('experimental'):
             # fileMenu.addAction(aboutAct) -- print not sure why its here
 
             fontAct = QAction('&Adjust Fonts', self)
@@ -599,11 +599,11 @@ class hslWindow(QMainWindow):
             
             actionsMenu.addAction(fontAct)
             
-        # issue #255
-        reloadConfigAct = QAction('Reload &Config', self)
-        reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions')
-        reloadConfigAct.triggered.connect(self.menuReloadConfig)
-        actionsMenu.addAction(reloadConfigAct)
+            # issue #255
+            reloadConfigAct = QAction('Reload &Config', self)
+            reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions')
+            reloadConfigAct.triggered.connect(self.menuReloadConfig)
+            actionsMenu.addAction(reloadConfigAct)
 
         reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
         reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
