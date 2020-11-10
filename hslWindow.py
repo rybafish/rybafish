@@ -30,6 +30,7 @@ from utils import resourcePath
 from utils import loadConfig
 from utils import log
 from utils import cfg
+from utils import Layout
 from utils import dbException, msgDialog
 
 import kpiDescriptions
@@ -111,6 +112,15 @@ class hslWindow(QMainWindow):
         event = QEvent(QEvent.Clipboard)
         QApplication.sendEvent(clipboard, event)
         
+    def dumpLayout(self):
+        self.layout.lo['pos'] = [self.pos().x(), self.pos().y()]
+        self.layout.lo['size'] = [self.size().width(), self.size().height()]
+        
+        self.layout.lo['mainSplitter'] = self.mainSplitter.sizes()
+
+        self.layout.dump()
+        
+        
     def menuQuit(self):
         for i in range(self.tabs.count() -1, 0, -1):
             w = self.tabs.widget(i)
@@ -123,6 +133,8 @@ class hslWindow(QMainWindow):
                 
                 if status == False:
                     return
+
+        self.dumpLayout()
                     
         self.close()
 
@@ -471,6 +483,8 @@ class hslWindow(QMainWindow):
         
     def initUI(self):
     
+        self.layout = Layout()
+        
         # bottom left frame (hosts)
         hostsArea = QFrame(self)
         self.hostTable = hostsTable.hostsTable()
@@ -507,24 +521,28 @@ class hslWindow(QMainWindow):
         # self.tabs.currentChanged.connect(self.tabChanged)
         
         # main window splitter
-        mainSplitter = QSplitter(Qt.Vertical)
+        self.mainSplitter = QSplitter(Qt.Vertical)
         
         kpisWidget = QWidget()
         lo = QVBoxLayout(kpisWidget)
         lo.addWidget(kpiSplitter)
         
-        mainSplitter.addWidget(self.chartArea)
-        mainSplitter.addWidget(kpisWidget)
-        mainSplitter.setSizes([300, 90])
+        self.mainSplitter.addWidget(self.chartArea)
+        self.mainSplitter.addWidget(kpisWidget)
         
-        mainSplitter.setAutoFillBackground(True)
+        if self.layout['mainSplitter']:
+            self.mainSplitter.setSizes(self.layout['mainSplitter'])
+        else:
+            self.mainSplitter.setSizes([300, 90])
+        
+        self.mainSplitter.setAutoFillBackground(True)
 
         # central widget
         #self.setCentralWidget(mainSplitter)
         
         kpisWidget.autoFillBackground = True
         
-        self.tabs.addTab(mainSplitter, 'Chart')
+        self.tabs.addTab(self.mainSplitter, 'Chart')
         
         self.setCentralWidget(self.tabs)
         
@@ -633,7 +651,14 @@ class hslWindow(QMainWindow):
         helpMenu.addAction(aboutAct)
 
         # finalization
-        self.setGeometry(200, 200, 1400, 800)
+        
+        if self.layout['pos'] and self.layout['size']:
+            pos = self.layout['pos']
+            size = self.layout['size']
+            self.setGeometry(pos[0] + 8, pos[1] + 31, size[0], size[1])
+        else:
+            self.setGeometry(200, 200, 1400, 800)
+        
         self.setWindowTitle('RybaFish Charts')
         
         self.setWindowIcon(QIcon(iconPath))

@@ -35,6 +35,9 @@ pip-delete-this-directory.txt
 # avoid updating the config
 config.yaml
 
+# avoid updating the layout
+layout.yaml
+
 # log file 
 .log
 

@@ -36,6 +36,41 @@ def timePrint():
 
     print('timers: ', ', '.join(s))
 
+class Layout():
+    
+    lo = {}
+    
+    def __init__ (self):
+
+        try: 
+            f = open('layout.yaml', 'r')
+            self.lo = safe_load(f)
+        except:
+            log('no layout, using defaults')
+            
+            self.lo['pos'] = None
+            self.lo['size'] = [1400, 800]
+            
+    def __getitem__(self, name):
+        if name in self.lo:
+            return self.lo[name]
+        else:
+            return None
+
+    def __setitem__(self, name, value):
+        self.lo[name] = value
+        
+    def dump(self):
+        try: 
+            f = open('layout.yaml', 'w')
+            dump(self.lo, f)
+            f.close()
+        except:
+            log('layout dump issue')
+            
+            return False
+        
+
 class dbException(Exception):
 
     CONN = 1
