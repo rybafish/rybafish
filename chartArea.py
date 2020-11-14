@@ -1703,7 +1703,7 @@ class chartArea(QFrame):
         
         log('cleanup complete')
         
-    def initDP(self):
+    def initDP(self, kpis = None):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
@@ -1727,11 +1727,25 @@ class chartArea(QFrame):
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
         self.widget.allocate(len(self.widget.hosts))
         self.widget.initPens()
+        
+        if kpis:
+            for i in range(len(self.widget.hosts)):
+                host = self.widget.hosts[i]
+                hst = '%s:%s' % (host['host'], host['port'])
+                
+                if hst in kpis:
+                    if hst[-1] == ':':
+                        kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
+                    else:
+                        kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
+                    
+                    self.widget.nkpis[i] = kpis_n
+
+            self.reloadChart()
 
         self.hostsUpdated.emit()
         
         self.statusMessage('ready')
-        
 
     def scrollSignal(self, mode, size):
         x = 0 - self.widget.pos().x() 

@@ -113,10 +113,25 @@ class hslWindow(QMainWindow):
         QApplication.sendEvent(clipboard, event)
         
     def dumpLayout(self):
+    
+        kpis = {}
+        for i in range(len(self.chartArea.widget.hosts)):
+            host = self.chartArea.widget.hosts[i]
+            hst = '%s:%s' % (host['host'], host['port'])
+            
+            if self.chartArea.widget.nkpis[i]:
+                kpis[hst] = self.chartArea.widget.nkpis[i]
+            
+            
+    
+    
+        self.layout.lo['kpis'] = kpis
+        
         self.layout.lo['pos'] = [self.pos().x(), self.pos().y()]
         self.layout.lo['size'] = [self.size().width(), self.size().height()]
         
         self.layout.lo['mainSplitter'] = self.mainSplitter.sizes()
+        self.layout.lo['kpiSplitter'] = self.kpiSplitter.sizes()
 
         self.layout.dump()
         
@@ -134,7 +149,8 @@ class hslWindow(QMainWindow):
                 if status == False:
                     return
 
-        self.dumpLayout()
+        if cfg('layout'):
+            self.dumpLayout()
                     
         self.close()
 
@@ -223,7 +239,7 @@ class hslWindow(QMainWindow):
         
     def menuDummy(self):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
-        self.chartArea.initDP()
+        self.chartArea.initDP(self.layout['kpis'])
         
     def menuConfig(self):
         
@@ -246,8 +262,11 @@ class hslWindow(QMainWindow):
                 self.chartArea.setStatus('sync', True)
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
                 self.chartArea.setStatus('idle')
-                
-                self.chartArea.initDP()
+        
+                if cfg('saveKPIs'):
+                    self.chartArea.initDP(self.layout['kpis'])
+                else:
+                    self.chartArea.initDP()
                 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
@@ -463,7 +482,11 @@ class hslWindow(QMainWindow):
         log(fname[0])
         
         self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
-        self.chartArea.initDP()
+        
+        if cfg('saveKPIs'):
+            self.chartArea.initDP(self.layout['kpis'])
+        else:
+            self.chartArea.initDP()
         
         '''
         log('But I dont work...')
@@ -482,8 +505,12 @@ class hslWindow(QMainWindow):
         self.tabs.setTabText(0, str)
         
     def initUI(self):
-    
-        self.layout = Layout()
+
+        if cfg('layout') == True:
+            self.layout = Layout(True)
+        else:
+            self.layout = Layout()
+            
         
         # bottom left frame (hosts)
         hostsArea = QFrame(self)
@@ -510,10 +537,10 @@ class hslWindow(QMainWindow):
         kpisTable.nkpis = self.chartArea.widget.nkpis
         
         # bottm part left+right
-        kpiSplitter = QSplitter(Qt.Horizontal)
-        kpiSplitter.addWidget(self.hostTable)
-        kpiSplitter.addWidget(kpisTable)
-        kpiSplitter.setSizes([200, 380])
+        self.kpiSplitter = QSplitter(Qt.Horizontal)
+        self.kpiSplitter.addWidget(self.hostTable)
+        self.kpiSplitter.addWidget(kpisTable)
+        self.kpiSplitter.setSizes([200, 380])
         
         
         self.tabs = QTabWidget()
@@ -525,7 +552,7 @@ class hslWindow(QMainWindow):
         
         kpisWidget = QWidget()
         lo = QVBoxLayout(kpisWidget)
-        lo.addWidget(kpiSplitter)
+        lo.addWidget(self.kpiSplitter)
         
         self.mainSplitter.addWidget(self.chartArea)
         self.mainSplitter.addWidget(kpisWidget)
@@ -534,6 +561,11 @@ class hslWindow(QMainWindow):
             self.mainSplitter.setSizes(self.layout['mainSplitter'])
         else:
             self.mainSplitter.setSizes([300, 90])
+
+        if self.layout['kpiSplitter']:
+            self.kpiSplitter.setSizes(self.layout['kpiSplitter'])
+        else:
+            self.kpiSplitter.setSizes([200, 380])
         
         self.mainSplitter.setAutoFillBackground(True)
 

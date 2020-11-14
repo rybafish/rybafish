@@ -40,7 +40,10 @@ class Layout():
     
     lo = {}
     
-    def __init__ (self):
+    def __init__ (self, mode = False):
+
+        if mode == False:
+            return
 
         try: 
             f = open('layout.yaml', 'r')
