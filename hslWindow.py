@@ -149,7 +149,7 @@ class hslWindow(QMainWindow):
                 if status == False:
                     return
 
-        if cfg('layout'):
+        if cfg('saveLayout'):
             self.dumpLayout()
                     
         self.close()
@@ -239,7 +239,11 @@ class hslWindow(QMainWindow):
         
     def menuDummy(self):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
-        self.chartArea.initDP(self.layout['kpis'])
+
+        if cfg('saveKPIs'):
+            self.chartArea.initDP(self.layout['kpis'])
+        else:
+            self.chartArea.initDP()
         
     def menuConfig(self):
         
@@ -483,10 +487,7 @@ class hslWindow(QMainWindow):
         
         self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
         
-        if cfg('saveKPIs'):
-            self.chartArea.initDP(self.layout['kpis'])
-        else:
-            self.chartArea.initDP()
+        self.chartArea.initDP()
         
         '''
         log('But I dont work...')
@@ -506,7 +507,7 @@ class hslWindow(QMainWindow):
         
     def initUI(self):
 
-        if cfg('layout') == True:
+        if cfg('saveLayout') == True:
             self.layout = Layout(True)
         else:
             self.layout = Layout()

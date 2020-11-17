@@ -10,6 +10,9 @@ dist/
 #local backup dir
 bkp/
 
+#exclude pyhdb folder
+pyhdb/
+
 # PyInstaller
 *.manifest
 *.spec
