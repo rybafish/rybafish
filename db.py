@@ -1,7 +1,7 @@
 import pyhdb
 import time
 
-
+from utils import cfg
 
 #### low-level pyhdb magic requred because of missing implementation of CLOSERESULTSET  ####
 
@@ -37,43 +37,17 @@ largeSql = False
 
 def create_connection (server, dbProperties = None):
 
-    global largeSql
-
     t0 = time.time()
     try: 
-        if largeSql:
-            old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
-            old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
-            pyhdb.protocol.constants.MAX_MESSAGE_SIZE = 2**19
-            pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
-            
-            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
-            connection.large_sql = True
-            largeSql = False
-            
-            old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
-            old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
-        else:
-            # normal connection
-            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
-            connection.large_sql = False
-            largeSql = False
-            
+        # normal connection
+        connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+        connection.large_sql = False
         
     except Exception as e:
 #    except pyhdb.exceptions.DatabaseError as e:
         log('[!]: connection failed: %s\n' % e)
         connection = None
         raise dbException(str(e))
-    
-    '''
-    print('MAX_MESSAGE_SIZE: ', pyhdb.protocol.constants.MAX_MESSAGE_SIZE)
-    print('MAX_SEGMENT_SIZE: ', pyhdb.protocol.constants.MAX_SEGMENT_SIZE)
-
-    print('[DEFAULT_CONNECTION_OPTIONS]')
-    for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
-        print(k, pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])
-    '''
 
     t1 = time.time()
 
@@ -100,6 +74,49 @@ def create_connection (server, dbProperties = None):
     t2 = time.time()
     
     log('(re)connect/properties: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
+    
+    return connection
+
+def console_connection (server, dbProperties = None, data_format_version2 = False):
+
+    global largeSql
+    
+    if cfg('experimental'):
+        longdate = cfg('longdate', False)
+    else:
+        longdate = False
+
+    t0 = time.time()
+    
+    try: 
+        if largeSql:
+            old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
+            old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
+            pyhdb.protocol.constants.MAX_MESSAGE_SIZE = 2**19
+            pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
+            
+            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
+            connection.large_sql = True
+            largeSql = False
+            
+            old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
+            old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
+        else:
+            # normal connection
+            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
+            connection.large_sql = False
+            largeSql = False
+            
+        
+    except Exception as e:
+#    except pyhdb.exceptions.DatabaseError as e:
+        log('[!]: connection failed: %s\n' % e)
+        connection = None
+        raise dbException(str(e))
+
+    t1 = time.time()
+    
+    log('sql (re)connect: %s' % (str(round(t1-t0, 3))))
     
     return connection
 

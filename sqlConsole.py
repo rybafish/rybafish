@@ -67,7 +67,7 @@ class sqlWorker(QObject):
             db.largeSql = True
             
             try: 
-                cons.conn = db.create_connection(cons.config)
+                cons.conn = db.console_connection(cons.config)
             except dbException as e:
                 err = str(e)
                 #
@@ -1512,7 +1512,7 @@ class sqlConsole(QWidget):
         
         try: 
             log('starting console connection')
-            self.conn = db.create_connection(config)
+            self.conn = db.console_connection(config)
             self.config = config
         except dbException as e:
             log('[!] failed!')
@@ -1736,7 +1736,7 @@ class sqlConsole(QWidget):
             self.sqlRunning = False
             self.stQueue.clear()
 
-            self.conn = db.create_connection(self.config)                
+            self.conn = db.console_connection(self.config)                
             self.log('Connected')
             
         except dbException as e:
@@ -1754,7 +1754,7 @@ class sqlConsole(QWidget):
     def reconnect(self):
             
         try: 
-            conn = db.create_connection(self.config)
+            conn = db.console_connection(self.config)
         except Exception as e:
             raise e
         
@@ -1851,7 +1851,7 @@ class sqlConsole(QWidget):
         except dbException as e:
             log('Trigger autoreconnect...')
             try:
-                conn = db.create_connection(self.config)
+                conn = db.console_connection(self.config)
                 if conn is not None:
                     self.conn = conn
                     log('Connection restored automatically')
