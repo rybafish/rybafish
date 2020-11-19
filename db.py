@@ -355,7 +355,7 @@ def ifRAWType(t):
         return False
 
 def ifTSType(t):
-    if t == type_codes.TIMESTAMP:
+    if t in (type_codes.TIMESTAMP, type_codes.LONGDATE):
         return True
     else:
         return False

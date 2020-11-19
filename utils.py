@@ -83,6 +83,18 @@ class dbException(Exception):
         self.type = type
         super().__init__(message, type)
     
+def timestampToStr(ts, trimZeroes = True):
+
+    if trimZeroes:
+        if ts.microsecond:
+            s = ts.strftime('%Y-%m-%d %H:%M:%S.%f').rstrip('0')
+        else:
+            s = ts.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        s = ts.strftime('%Y-%m-%d %H:%M:%S.%f')
+        
+    return s
+
 def numberToStr(num, d = 0, fix = True):
 
     global localeCfg

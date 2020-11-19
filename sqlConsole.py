@@ -1363,7 +1363,8 @@ class resultSet(QTableWidget):
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                 
                 elif db.ifTSType(cols[c][1]):
-                    val = val.isoformat(' ', timespec='milliseconds') 
+                    #val = val.isoformat(' ', timespec='milliseconds') 
+                    val = utils.timestampToStr(val)
                     item = QTableWidgetItem(val)
                 else:
                     val = str(val)
@@ -1912,11 +1913,11 @@ class sqlConsole(QWidget):
         row0 = []
     
         cols = [
-            ['Name',11],
-            ['STATEMENT_ID',26],
-            ['7CONNECTION_ID',3],
-            ['/USER_NAME',5],
-            ['dontknow',16]
+            ['Name', 11],
+            ['STATEMENT_ID', 26],
+            ['7CONNECTION_ID', 3],
+            ['/USER_NAME', 5],
+            ['dontknow', 61]     # 16 - old timestamp (millisec), 61 - longdate
         ]
 
         ''''
@@ -1926,10 +1927,14 @@ class sqlConsole(QWidget):
         ['Timestamp',16]
         '''
         
+        dt1 = datetime.datetime.strptime('2001-01-10 11:23:07.123456', '%Y-%m-%d %H:%M:%S.%f')
+        dt2 = datetime.datetime.strptime('2001-01-10 11:23:07.12300', '%Y-%m-%d %H:%M:%S.%f')
+        dt3 = datetime.datetime.strptime('2001-01-10 11:23:07', '%Y-%m-%d %H:%M:%S')
+        
         rows = [
-                ['name 1','select * from dummy fake blob 1', 1024, 1/12500, datetime.datetime.now()],
-                ['name 2','select * from \r\n dummy blob 2', 22254, 2/3, datetime.datetime.now()],
-                ['name 3','select 1/16 from dummy blob 3', 654654, 1/16, datetime.datetime.now()],
+                ['name 1','select * from dummy fake blob 1', 1024, 1/12500, dt1],
+                ['name 2','select * from \r\n dummy blob 2', 22254, 2/3, dt2],
+                ['name 3','select 1/16 from dummy blob 3', 654654, 1/16, dt3],
                 ['name 4','''select 10000 from dummy blob 3 
                 
                 and too many 
