@@ -1088,6 +1088,8 @@ class resultSet(QTableWidget):
 
                 if db.ifNumericType(self.cols[c][1]):
                     values.append('%s = %s' % (normalize_header(cname), value))
+                elif db.ifTSType(self.cols[c][1]):
+                    values.append('%s = \'%s\'' % (normalize_header(cname), utils.timestampToStr(value)))
                 else:
                     values.append('%s = \'%s\'' % (normalize_header(cname), str(value)))
                     
@@ -1177,7 +1179,8 @@ class resultSet(QTableWidget):
                 elif db.ifRAWType(vType):
                     values.append(val.hex())
                 elif db.ifTSType(vType):
-                    values.append(val.isoformat(' ', timespec='milliseconds'))
+                    #values.append(val.isoformat(' ', timespec='milliseconds'))
+                    values.append(utils.timestampToStr(val))
                 else:
                     values.append(str(val))
                 
@@ -1261,7 +1264,8 @@ class resultSet(QTableWidget):
                                     elif db.ifRAWType(vType):
                                         values.append(value.hex())
                                     elif db.ifTSType(vType):
-                                        values.append(value.isoformat(' ', timespec='milliseconds'))
+                                        #values.append(value.isoformat(' ', timespec='milliseconds'))
+                                        values.append(utils.timestampToStr(value))
                                     else:
                                         values.append(str(value))
                                         
