@@ -124,14 +124,17 @@ class hslWindow(QMainWindow):
             
             
     
-    
-        self.layout.lo['kpis'] = kpis
+        if kpis:
+            self.layout.lo['kpis'] = kpis
         
         self.layout.lo['pos'] = [self.pos().x(), self.pos().y()]
         self.layout.lo['size'] = [self.size().width(), self.size().height()]
         
         self.layout.lo['mainSplitter'] = self.mainSplitter.sizes()
         self.layout.lo['kpiSplitter'] = self.kpiSplitter.sizes()
+
+
+        print(self.pos().x(), self.pos().y())
 
         self.layout.dump()
         
@@ -684,11 +687,19 @@ class hslWindow(QMainWindow):
         helpMenu.addAction(aboutAct)
 
         # finalization
+        print()
+        print('screen number', QApplication.desktop().screenNumber())
+        print('available geometry:', QApplication.desktop().availableGeometry())
+        print('screen geometry:', QApplication.desktop().screenGeometry())
+        
         
         if self.layout['pos'] and self.layout['size']:
             pos = self.layout['pos']
             size = self.layout['size']
-            self.setGeometry(pos[0] + 8, pos[1] + 31, size[0], size[1])
+            #self.setGeometry(pos[0] + 8, pos[1] + 31, size[0], size[1])
+            #self.setGeometry(pos[0], pos[1], size[0], size[1])
+            self.move(pos[0], pos[1])
+            self.resize(size[0], size[1])
         else:
             self.setGeometry(200, 200, 1400, 800)
         
