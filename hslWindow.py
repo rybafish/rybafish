@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt, QUrl, QEvent
+from PyQt5.QtCore import Qt, QUrl, QEvent, QRect
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -134,7 +134,7 @@ class hslWindow(QMainWindow):
         self.layout.lo['kpiSplitter'] = self.kpiSplitter.sizes()
 
 
-        print(self.pos().x(), self.pos().y())
+        # print(self.pos().x(), self.pos().y())
 
         self.layout.dump()
         
@@ -701,19 +701,28 @@ class hslWindow(QMainWindow):
             
         helpMenu.addAction(aboutAct)
 
-        # finalization
-        print()
-        print('screen number', QApplication.desktop().screenNumber())
-        print('number of screens', QApplication.desktop().screenCount())
-        print('available geometry:', QApplication.desktop().availableGeometry())
-        print('screen geometry:', QApplication.desktop().screenGeometry())
-        
-        
+        # finalization        
+
         if self.layout['pos'] and self.layout['size']:
             pos = self.layout['pos']
             size = self.layout['size']
+            
+            #print('screen number', QApplication.desktop().screenNumber())
+            #print('number of screens', QApplication.desktop().screenCount())
+            #print('available geometry:', QApplication.desktop().availableGeometry())
+            #print('screen geometry:', QApplication.desktop().screenGeometry())
+            
+            r = QRect(pos[0], pos[1], size[0], size[1])
+
+            if QApplication.desktop().screenCount() == 1:
+                # only when just one screen is available...
+                if not QApplication.desktop().screenGeometry().contains(r) and not cfg('dontAutodetectScreen'):
+                    #the window will not be visible so jump to the main screen:
+                    (pos[0], pos[1]) = (100, 50)
+            
             #self.setGeometry(pos[0] + 8, pos[1] + 31, size[0], size[1])
             #self.setGeometry(pos[0], pos[1], size[0], size[1])
+            
             self.move(pos[0], pos[1])
             self.resize(size[0], size[1])
         else:
