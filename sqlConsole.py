@@ -2313,6 +2313,13 @@ class sqlConsole(QWidget):
                 self.indicator.status = 'error'
             else:
                 self.indicator.status = 'disconnected'
+                
+                log('console connection lost')
+                
+                self.connectionLost()
+                #answer = utils.yesNoDialog('Connectioni lost', 'Connection to the server lost, reconnect?' cancelPossible)
+                #if answer == True:
+
 
             self.indicator.repaint()
             
