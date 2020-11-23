@@ -263,6 +263,19 @@ class hslWindow(QMainWindow):
         if ok and conf['ok']:
         
             try:
+
+                # need to disconnect open consoles first...
+                self.statusMessage('Disconnecing open consoles...', False)
+                
+                for i in range(self.tabs.count()):
+                
+                    w = self.tabs.widget(i)
+                
+                    if isinstance(w, sqlConsole.sqlConsole):
+                        log('closing connection...')
+                        w.disconnectDB()
+                        log('disconnected...')
+
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
@@ -689,6 +702,7 @@ class hslWindow(QMainWindow):
         # finalization
         print()
         print('screen number', QApplication.desktop().screenNumber())
+        print('number of screens', QApplication.desktop().screenCount())
         print('available geometry:', QApplication.desktop().availableGeometry())
         print('screen geometry:', QApplication.desktop().screenGeometry())
         
