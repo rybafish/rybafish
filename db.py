@@ -373,7 +373,7 @@ def ifDecimalType(t):
         return False
 
 def ifLOBType(t):
-    if t in (type_codes.CLOB, type_codes.NCLOB, type_codes.BLOB):
+    if t in (type_codes.CLOB, type_codes.NCLOB, type_codes.BLOB, type_codes.TEXT):
         return True
     else:
         return False

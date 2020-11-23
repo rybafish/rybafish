@@ -274,6 +274,8 @@ class hslWindow(QMainWindow):
                     if isinstance(w, sqlConsole.sqlConsole):
                         log('closing connection...')
                         w.disconnectDB()
+                        w.indicator.status = 'disconnected'
+                        w.indicator.repaint()
                         log('disconnected...')
 
                 self.statusMessage('Connecting...', False)
