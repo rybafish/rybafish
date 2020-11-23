@@ -2278,6 +2278,8 @@ class sqlConsole(QWidget):
                     self.log('Reconnecting to %s:%s...' % (self.config['host'], str(self.config['port'])))
                     self.reconnect()
                     self.log('Connection restored')
+                    self.indicator.status = 'idle'
+                    self.indicator.repaint()
                 except Exception as e:
                     log('Reconnect failed: %s' % e)
                     self.log('Reconnect failed: %s' % str(e))
