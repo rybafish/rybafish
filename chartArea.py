@@ -404,7 +404,7 @@ class myWidget(QWidget):
 
         copyLegend = None
         
-        if cfg('experimental') and self.legend:
+        if self.legend:
             cmenu.addSeparator()
             copyLegend = cmenu.addAction("Copy Legend to clipboard")
             putLegend = cmenu.addAction("Remove Legend")
@@ -451,7 +451,7 @@ class myWidget(QWidget):
             
             self.statusMessage('Screenshot saved as %s' % (fn))
         
-        if cfg('experimental') and action == copyLegend:
+        if action == copyLegend:
             log('Creating a legend copy')
             
             pixmap = QPixmap(QSize(self.legendWidth + 1, self.legendHeight + 1))
@@ -464,7 +464,7 @@ class myWidget(QWidget):
             
             self.statusMessage('Legend bitmap copied to the clipboard')
         
-        if cfg('experimental') and action == putLegend:
+        if action == putLegend:
             #self.legend = not self.legend
             
             if self.legend is None:
