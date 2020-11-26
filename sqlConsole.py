@@ -210,6 +210,8 @@ class console(QPlainTextEdit):
         cursor.clearSelection()
         self.setTextCursor(cursor)
         cursor.insertText(str)
+        
+        self.setFocus()
 
     def __init__(self):
         self.lock = False
