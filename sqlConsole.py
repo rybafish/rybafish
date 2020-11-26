@@ -62,7 +62,7 @@ class sqlWorker(QObject):
         
         if len(sql) >= 2**17 and cons.conn.large_sql != True:
             log('reconnecting to hangle large SQL')
-            print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
+            #print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
             
             db.largeSql = True
             
@@ -1887,6 +1887,8 @@ class sqlConsole(QWidget):
             self.logArea.appendHtml('<font color = "red">%s</font>' % text);
         else:
             self.logArea.appendPlainText(text)
+            
+        self.logArea.verticalScrollBar().setValue(self.logArea.verticalScrollBar().maximum())
         
     def dummyResultTable2(self, n):
         row0 = []
@@ -2303,14 +2305,11 @@ class sqlConsole(QWidget):
         self.indicator.repaint()
 
         if self.wrkException is not None:
-            print('Exception')
             self.log(self.wrkException, True)
             
             #self.thread.quit()
             #self.sqlRunning = False
 
-            print(self.conn)
-            
             if self.conn is not None:
                 self.indicator.status = 'error'
             else:
