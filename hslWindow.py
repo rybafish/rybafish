@@ -125,14 +125,26 @@ class hslWindow(QMainWindow):
             
     
         if kpis:
-            self.layout.lo['kpis'] = kpis
+            self.layout['kpis'] = kpis
         
-        self.layout.lo['pos'] = [self.pos().x(), self.pos().y()]
-        self.layout.lo['size'] = [self.size().width(), self.size().height()]
+        self.layout['pos'] = [self.pos().x(), self.pos().y()]
+        self.layout['size'] = [self.size().width(), self.size().height()]
         
-        self.layout.lo['mainSplitter'] = self.mainSplitter.sizes()
-        self.layout.lo['kpiSplitter'] = self.kpiSplitter.sizes()
+        self.layout['mainSplitter'] = self.mainSplitter.sizes()
+        self.layout['kpiSplitter'] = self.kpiSplitter.sizes()
 
+
+        hostTableWidth = []
+        KPIsTableWidth = []
+        
+        for i in range(self.hostTable.columnCount()):
+            hostTableWidth.append(self.hostTable.columnWidth(i))
+
+        for i in range(self.kpisTable.columnCount()):
+            KPIsTableWidth.append(self.kpisTable.columnWidth(i))
+
+        self.layout['hostTableWidth'] = hostTableWidth
+        self.layout['KPIsTableWidth'] = KPIsTableWidth
 
         # print(self.pos().x(), self.pos().y())
 
@@ -585,6 +597,23 @@ class hslWindow(QMainWindow):
             self.kpiSplitter.setSizes(self.layout['kpiSplitter'])
         else:
             self.kpiSplitter.setSizes([200, 380])
+            
+            
+        if self.layout['hostTableWidth']:
+            hostTableWidth = self.layout['hostTableWidth']
+        
+            for i in range(self.hostTable.columnCount()):
+                if i > len(hostTableWidth) - 1:
+                    break
+                self.hostTable.setColumnWidth(i, hostTableWidth[i])
+
+        if self.layout['KPIsTableWidth']:
+            KPIsTableWidth = self.layout['KPIsTableWidth']
+        
+            for i in range(self.kpisTable.columnCount()):
+                if i > len(KPIsTableWidth) - 1:
+                    break
+                self.kpisTable.setColumnWidth(i, KPIsTableWidth[i])
         
         self.mainSplitter.setAutoFillBackground(True)
 
