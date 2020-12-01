@@ -313,6 +313,14 @@ class hslWindow(QMainWindow):
                 self.chartArea.setStatus('sync', True)
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
                 self.chartArea.setStatus('idle')
+
+
+                for i in range(self.tabs.count()):
+                
+                    w = self.tabs.widget(i)
+                
+                    if isinstance(w, sqlConsole.sqlConsole):
+                        w.config = conf
         
                 if cfg('saveKPIs', True):
                     self.chartArea.initDP(self.layout['kpis'])
