@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QSize
 
 from PyQt5.QtCore import QObject, QThread
 
-import time
+import time, sys
 
 import db
 
@@ -175,6 +175,10 @@ class sqlWorker(QObject):
         #print('4 <-- main thread method <-- ')
 
 def generateTabName():
+
+    '''
+        not used actually 01.12.20
+    '''
     
     base = 'sql'
     i = 0
@@ -186,6 +190,7 @@ def generateTabName():
             fname = 'sql'
             
         print('checking ', fname)
+        
         if not os.path.isfile(fname+'.sqbkp'):
             return fname
             
@@ -1544,23 +1549,54 @@ class sqlConsole(QWidget):
             self.nameChanged.emit(self.tabname + ' *')
     
     def delayBackup(self):
+        '''
+            self.backup is a full path to a backup file
+            
+            if it's empty - it'll be generated as first step
+            if the file already exists - the file will be owerritten
+        '''
     
         if self.unsavedChanges == False:
             return
     
-        if self.fileName is not None:
-            filename = self.fileName + '.sqbkp'
-            self.backup = filename
-        else:
-            filename = self.tabname + '.sqbkp'
-            self.backup = filename
+        if not self.backup:
+            if self.fileName is not None:
+                path, file = os.path.split(self.fileName)
+                
+                file, ext = os.path.splitext(file)
             
+                filename = file + '.sqbkp'
+            else:
+                filename = self.tabname + '.sqbkp'
+
+            print ('filename:', filename)
+
+            script = sys.argv[0]
+            path, file = os.path.split(script)
+            
+            bkpFile = os.path.join(path, 'bkp', filename)
+            
+            self.backup = bkpFile
+            
+            print(bkpFile)
+
+            bkpPath = os.path.join(path, 'bkp')
+            
+            if not os.path.isdir(bkpPath):
+                print('mkdir', bkpPath)
+                os.mkdir(bkpPath)
+            
+        filename = self.backup
         fnsecure = filename
+    
+        # print(filename) # C:/home/dug/delme.sql.sqbkp
+        # print(os.path.basename(filename)) #delme.sql.sqbkp
 
         # apparently filename is with normal slashes, but getcwd with backslashes on windows, :facepalm:
         cwd = os.getcwd()
         cwd = cwd.replace('\\','/') 
         
+        #remove potentially private info from the trace
         fnsecure = filename.replace(cwd, '..')
     
         try:
@@ -1627,6 +1663,7 @@ class sqlConsole(QWidget):
                     try:
                         log('delete backup: %s' % self.backup)
                         os.remove(self.backup)
+                        self.backup = None
                     except:
                         log('delete backup faileld, passing')
                         # whatever...
@@ -1637,37 +1674,60 @@ class sqlConsole(QWidget):
         except Exception as e:
             self.log ('Error: ' + str(e), True)
     
-    def openFile(self, filename = None):
-    
-        if filename is None:
+    def openFile(self, filename = None, backup = None):
+
+        log('openFile', filename, backup)
+
+        if filename is None and backup is None:
             fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
             filename = fname[0]
 
         if filename == '':
             return
+
+        self.fileName = filename
+        self.backup = backup
         
+        self.unsavedChanges = False
+        
+        if filename is None:
+            filename = backup
+            self.unsavedChanges = True
+
+        if filename is not None and backup is not None:
+            filename = backup           # we open backed up copy
+            #self.fileName = filename    # but link to the original
+            self.unsavedChanges = True
+            
         try:
             with open(filename, 'r') as f:
                 data = f.read()
                 f.close()
         except Exception as e:
             log ('Error: ' + str(e), True)
+            self.log ('Error: opening %s / %s' % (self.fileName, self.backup), True)
             self.log ('Error: ' + str(e), True)
             
+            return
             
         basename = os.path.basename(filename)
         self.tabname = basename.split('.')[0]
+        
+        if self.unsavedChanges:
+            self.tabname += ' *'
         
         ext = basename.split('.')[1]
         
         self.cons.setPlainText(data)
         
+        '''
         if ext == 'sqbkp':
             pass
         else:
             self.fileName = filename
-
-        self.unsavedChanges = False
+            self.backup = backup
+            
+        '''
 
         self.nameChanged.emit(self.tabname)
     
@@ -1675,7 +1735,7 @@ class sqlConsole(QWidget):
     
         log('closing sql console...')
         
-        if self.unsavedChanges:
+        if self.unsavedChanges and cancelPossible is not None:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible)
             
             if answer is None: #cancel button

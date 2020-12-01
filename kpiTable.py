@@ -142,6 +142,8 @@ class kpiTable(QTableWidget):
         
         self.setScale.emit(self.host, self.kpiNames[item.row()], newScale)
         
+        #self.setFont(QFont('SansSerif', 8, QFont.Bold))
+        
     def loadScales(self):
         # for kpi in scales: log(kpi)
         pass

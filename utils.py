@@ -282,10 +282,15 @@ def loadConfig():
 
     global config
     
+    script = sys.argv[0]
+    path, file = os.path.split(script)
+    
+    cfgFile = os.path.join(path, 'config.yaml')
+
     config.clear()
 
     try: 
-        f = open('config.yaml', 'r')
+        f = open(cfgFile, 'r')
         config = safe_load(f)
     except:
         log('no config file? <-')

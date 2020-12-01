@@ -35,8 +35,7 @@ from utils import dbException, msgDialog
 
 import kpiDescriptions
 
-import sys
-
+import sys, os
 
 import time
 
@@ -50,7 +49,7 @@ class hslWindow(QMainWindow):
     def __init__(self):
     
         self.sqlTabCounter = 0 #static tab counter
-        
+
         self.tabs = None
     
         super().__init__()
@@ -121,8 +120,6 @@ class hslWindow(QMainWindow):
             
             if self.chartArea.widget.nkpis[i]:
                 kpis[hst] = self.chartArea.widget.nkpis[i]
-            
-            
     
         if kpis:
             self.layout['kpis'] = kpis
@@ -148,10 +145,29 @@ class hslWindow(QMainWindow):
 
         # print(self.pos().x(), self.pos().y())
 
+        print('prepare tabs for dump layout and exit')
+        
+        tabs = []
+        
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            
+            if isinstance(w, sqlConsole.sqlConsole):
+                w.delayBackup()
+                print(w.tabname, w.fileName, w.backup)
+                tabs.append([w.fileName, w.backup])
+                w.close(None) # can not abort (and dont need to any more!)
+
+                self.tabs.removeTab(i)
+
+        tabs.reverse()
+        self.layout['tabs'] = tabs
         self.layout.dump()
         
         
     def menuQuit(self):
+    
+        '''
         for i in range(self.tabs.count() -1, 0, -1):
             w = self.tabs.widget(i)
             if isinstance(w, sqlConsole.sqlConsole):
@@ -163,6 +179,7 @@ class hslWindow(QMainWindow):
                 
                 if status == False:
                     return
+        '''
 
         if cfg('saveLayout', True):
             self.dumpLayout()
@@ -760,6 +777,33 @@ class hslWindow(QMainWindow):
         self.setWindowTitle('RybaFish Charts')
         
         self.setWindowIcon(QIcon(iconPath))
+        
+        if self.layout['tabs']:
+            for t in self.layout['tabs']:
+                if len(t) != 2:
+                    continue
+                    
+                print('[tabs] ', t[0], t[1])
+                
+                console = sqlConsole.sqlConsole(self, None, '?')
+
+                console.nameChanged.connect(self.changeActiveTabName)
+                console.cons.closeSignal.connect(self.closeTab)
+
+                self.tabs.addTab(console, console.tabname)
+                
+                ind = indicator()
+                console.indicator = ind
+                
+                ind.iClicked.connect(console.reportRuntime)
+                
+                self.statusbar.addPermanentWidget(ind)
+                
+                self.tabs.setCurrentIndex(self.tabs.count() - 1)
+                
+                print(console.tabname)
+                console.openFile(t[0], t[1])
+                print(console.tabname)
         
         self.show()
 
