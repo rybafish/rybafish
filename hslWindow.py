@@ -68,6 +68,7 @@ class hslWindow(QMainWindow):
 
             status = cons.close()
             
+            print('status-->', status)
             if status == True:
                 self.statusbar.removeWidget(cons.indicator)
                 self.tabs.removeTab(indx)
@@ -154,14 +155,22 @@ class hslWindow(QMainWindow):
             
             if isinstance(w, sqlConsole.sqlConsole):
                 w.delayBackup()
-                print(w.tabname, w.fileName, w.backup)
-                tabs.append([w.fileName, w.backup])
+                
+                if w.fileName is not None or w.backup is not None:
+                    tabs.append([w.fileName, w.backup])
+                    
                 w.close(None) # can not abort (and dont need to any more!)
 
                 self.tabs.removeTab(i)
 
         tabs.reverse()
-        self.layout['tabs'] = tabs
+                
+        if len(tabs) > 0:
+            self.layout['tabs'] = tabs
+        else:
+            if 'tabs' in self.layout.lo:
+                self.layout.lo.pop('tabs')
+            
         self.layout.dump()
         
         
@@ -415,6 +424,7 @@ class hslWindow(QMainWindow):
     def menuOpen(self):
         '''
             so much duplicate code with menuSqlConsole
+            and with dumpLayout!
         '''
         fname = QFileDialog.getOpenFileNames(self, 'Open file', '','*.sql')
         
@@ -490,15 +500,37 @@ class hslWindow(QMainWindow):
         
         log('menuSQLConsole...')
         
-        #idx = self.tabs.count()
-        self.sqlTabCounter += 1
-        idx = self.sqlTabCounter
+        noname = True
         
-        if idx > 1:
-            tname = 'sql' + str(idx)
-        else:
-            tname = 'sql'
+        print('ok go')
+        while noname:
+            self.sqlTabCounter += 1
+            idx = self.sqlTabCounter
+            
+            if idx > 1:
+                tname = 'sql' + str(idx)
+            else:
+                tname = 'sql'
+                
+            print ('-->', idx, tname)
+                
+            for i in range(self.tabs.count() -1, 0, -1):
 
+                w = self.tabs.widget(i)
+                
+                if isinstance(w, sqlConsole.sqlConsole):
+                
+                    print('--------  ', i, w.tabname, tname)
+                
+                    if w.tabname == tname or w.tabname == tname + ' *': # so not nice...
+                        print('match')
+                        break
+            else:
+                print('false! stop?')
+                noname = False
+                
+        print('here')
+                    
         # console = sqlConsole.sqlConsole(self, conf, tname) # self = window
 
         try:
@@ -809,9 +841,10 @@ class hslWindow(QMainWindow):
                 
                 self.tabs.setCurrentIndex(self.tabs.count() - 1)
                 
-                print(console.tabname)
-                console.openFile(t[0], t[1])
-                print(console.tabname)
+                if t[0] is not None or t[1] is not None:
+                    # such a tub should not ever be saved (this call will just open fileOpen dialog), anyway... 
+                    # should we even create such a tab?
+                    console.openFile(t[0], t[1])
         
         self.show()
 

@@ -1508,14 +1508,21 @@ class sqlConsole(QWidget):
         super().__init__()
         self.initUI()
         
+        
         if tabname is not None:
             self.tabname = tabname
+        else:
+            self.tabname = '!ERROR!'
+            
+            '''
+            # old logic (before layouts), 2020-12-02
             
             if os.path.isfile(tabname+'.sqbkp'):
                 #looks we had a backup?
                 self.openFile(tabname+'.sqbkp')
                 
                 self.unsavedChanges = True
+            '''
 
         self.cons.textChanged.connect(self.textChangedS)
         
@@ -2043,7 +2050,7 @@ class sqlConsole(QWidget):
         
     def executeSelection(self, mode):
     
-        if self.config is None or self.conn is None:
+        if self.config is None:
             self.log('No connection')
             return
     
