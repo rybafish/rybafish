@@ -2042,6 +2042,11 @@ class sqlConsole(QWidget):
         self.executeStatement(result.statement, result, True)
         
     def executeSelection(self, mode):
+    
+        if self.config is None or self.conn is None:
+            self.log('No connection')
+            return
+    
         if mode == 'normal':
             self.executeSelectionParse()
         elif mode == 'no parsing':
