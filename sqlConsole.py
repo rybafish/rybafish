@@ -1547,6 +1547,8 @@ class sqlConsole(QWidget):
 
     def textChangedS(self):
         
+        print('--> changed, ', self.unsavedChanges)
+        
         if self.unsavedChanges == False: #and self.fileName is not None:
             if self.cons.toPlainText() == '':
                 return
@@ -1683,7 +1685,7 @@ class sqlConsole(QWidget):
     
     def openFile(self, filename = None, backup = None):
 
-        log('openFile', filename, backup)
+        log('openFile: %s, %s' % (filename, backup))
 
         if filename is None and backup is None:
             fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
@@ -1695,16 +1697,11 @@ class sqlConsole(QWidget):
         self.fileName = filename
         self.backup = backup
         
-        self.unsavedChanges = False
-        
         if filename is None:
             filename = backup
-            self.unsavedChanges = True
 
         if filename is not None and backup is not None:
             filename = backup           # we open backed up copy
-            #self.fileName = filename    # but link to the original
-            self.unsavedChanges = True
             
         try:
             with open(filename, 'r') as f:
@@ -1720,13 +1717,25 @@ class sqlConsole(QWidget):
         basename = os.path.basename(filename)
         self.tabname = basename.split('.')[0]
         
-        if self.unsavedChanges:
-            self.tabname += ' *'
-        
         ext = basename.split('.')[1]
         
         self.cons.setPlainText(data)
+
+        self.unsavedChanges = False
+
+        if filename is None:
+            self.unsavedChanges = True
+            print('self.unsavedChanges = True 1')
+
+        if filename is not None and backup is not None:
+            self.unsavedChanges = True
+            print('self.unsavedChanges = True 2')
+
+        if self.unsavedChanges:
+            self.tabname += ' *'
         
+        print('self.unsavedChanges = ', self.unsavedChanges)
+            
         '''
         if ext == 'sqbkp':
             pass
