@@ -845,6 +845,8 @@ class hslWindow(QMainWindow):
                     # such a tub should not ever be saved (this call will just open fileOpen dialog), anyway... 
                     # should we even create such a tab?
                     console.openFile(t[0], t[1])
+                    
+        self.tabs.setCurrentIndex(0)
         
         self.show()
 
