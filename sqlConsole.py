@@ -1735,6 +1735,9 @@ class sqlConsole(QWidget):
         '''
 
         self.nameChanged.emit(self.tabname)
+        
+        self.setFocus()
+        print('focus')
     
     def close(self, cancelPossible = True):
     
@@ -2568,3 +2571,5 @@ class sqlConsole(QWidget):
         # self.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
         self.cons.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
         #console = QPlainTextEdit()
+        
+        self.cons.setFocus()

@@ -48,6 +48,8 @@ class hslWindow(QMainWindow):
 
     def __init__(self):
     
+        self.layoutDumped = False
+    
         self.sqlTabCounter = 0 #static tab counter
 
         self.tabs = None
@@ -118,6 +120,11 @@ class hslWindow(QMainWindow):
         
     def dumpLayout(self):
     
+        if self.layoutDumped:
+            return
+            
+        self.layoutDumped = True
+    
         kpis = {}
         for i in range(len(self.chartArea.widget.hosts)):
             host = self.chartArea.widget.hosts[i]
@@ -152,6 +159,8 @@ class hslWindow(QMainWindow):
         
         tabs = []
         
+        self.layout['currentTab'] = self.tabs.currentIndex()
+        
         if cfg('saveOpenTabs', True):
             for i in range(self.tabs.count() -1, 0, -1):
                 w = self.tabs.widget(i)
@@ -160,7 +169,8 @@ class hslWindow(QMainWindow):
                     w.delayBackup()
                     
                     if w.fileName is not None or w.backup is not None:
-                        tabs.append([w.fileName, w.backup])
+                        pos = w.cons.textCursor().position()
+                        tabs.append([w.fileName, w.backup, pos])
                         
                     w.close(None) # can not abort (and dont need to any more!)
 
@@ -823,11 +833,9 @@ class hslWindow(QMainWindow):
         
         if cfg('saveOpenTabs', True) and self.layout['tabs']:
             for t in self.layout['tabs']:
-                if len(t) != 2:
+                if len(t) != 3:
                     continue
                     
-                print('[tabs] ', t[0], t[1])
-                
                 console = sqlConsole.sqlConsole(self, None, '?')
 
                 console.nameChanged.connect(self.changeActiveTabName)
@@ -849,7 +857,25 @@ class hslWindow(QMainWindow):
                     # should we even create such a tab?
                     console.openFile(t[0], t[1])
                     
-        self.tabs.setCurrentIndex(0)
+                    pos = t[2]
+                    
+                    if isinstance(pos, int):
+                        cursor = console.cons.textCursor()
+                        cursor.setPosition(pos, cursor.MoveAnchor)
+                        console.cons.setTextCursor(cursor)
+                        
+            indx = self.layout['currentTab']
+            
+            if isinstance(indx, int):
+                self.tabs.setCurrentIndex(indx)
+
+                w = self.tabs.widget(indx)
+                
+                if isinstance(w, sqlConsole.sqlConsole):
+                    w.cons.setFocus()
+                
+            else:
+                self.tabs.setCurrentIndex(0)
         
         self.show()
 
