@@ -99,7 +99,10 @@ class hslWindow(QMainWindow):
         
     def closeEvent(self, event):
         log('Exiting...')
-        
+
+        if cfg('saveLayout', True):
+            self.dumpLayout()
+        '''
         for i in range(self.tabs.count() -1, 0, -1):
 
             w = self.tabs.widget(i)
@@ -111,6 +114,7 @@ class hslWindow(QMainWindow):
         clipboard = QApplication.clipboard()
         event = QEvent(QEvent.Clipboard)
         QApplication.sendEvent(clipboard, event)
+        '''
         
     def dumpLayout(self):
     
@@ -145,31 +149,30 @@ class hslWindow(QMainWindow):
         self.layout['KPIsTableWidth'] = KPIsTableWidth
 
         # print(self.pos().x(), self.pos().y())
-
-        print('prepare tabs for dump layout and exit')
         
         tabs = []
         
-        for i in range(self.tabs.count() -1, 0, -1):
-            w = self.tabs.widget(i)
-            
-            if isinstance(w, sqlConsole.sqlConsole):
-                w.delayBackup()
+        if cfg('saveOpenTabs', True):
+            for i in range(self.tabs.count() -1, 0, -1):
+                w = self.tabs.widget(i)
                 
-                if w.fileName is not None or w.backup is not None:
-                    tabs.append([w.fileName, w.backup])
+                if isinstance(w, sqlConsole.sqlConsole):
+                    w.delayBackup()
                     
-                w.close(None) # can not abort (and dont need to any more!)
+                    if w.fileName is not None or w.backup is not None:
+                        tabs.append([w.fileName, w.backup])
+                        
+                    w.close(None) # can not abort (and dont need to any more!)
 
-                self.tabs.removeTab(i)
+                    self.tabs.removeTab(i)
 
-        tabs.reverse()
-                
-        if len(tabs) > 0:
-            self.layout['tabs'] = tabs
-        else:
-            if 'tabs' in self.layout.lo:
-                self.layout.lo.pop('tabs')
+            tabs.reverse()
+                    
+            if len(tabs) > 0:
+                self.layout['tabs'] = tabs
+            else:
+                if 'tabs' in self.layout.lo:
+                    self.layout.lo.pop('tabs')
             
         self.layout.dump()
         
@@ -818,7 +821,7 @@ class hslWindow(QMainWindow):
         
         self.setWindowIcon(QIcon(iconPath))
         
-        if self.layout['tabs']:
+        if cfg('saveOpenTabs', True) and self.layout['tabs']:
             for t in self.layout['tabs']:
                 if len(t) != 2:
                     continue
@@ -842,7 +845,7 @@ class hslWindow(QMainWindow):
                 self.tabs.setCurrentIndex(self.tabs.count() - 1)
                 
                 if t[0] is not None or t[1] is not None:
-                    # such a tub should not ever be saved (this call will just open fileOpen dialog), anyway... 
+                    # such a tab should not ever be saved (this call will just open fileOpen dialog), anyway... 
                     # should we even create such a tab?
                     console.openFile(t[0], t[1])
                     

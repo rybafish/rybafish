@@ -51,3 +51,4 @@ keepalive: 1200
 
 #saveLayout: True
 #saveKPIs: True
+#saveOpenTabs: True

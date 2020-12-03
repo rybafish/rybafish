@@ -1547,8 +1547,6 @@ class sqlConsole(QWidget):
 
     def textChangedS(self):
         
-        print('--> changed, ', self.unsavedChanges)
-        
         if self.unsavedChanges == False: #and self.fileName is not None:
             if self.cons.toPlainText() == '':
                 return
@@ -1578,8 +1576,6 @@ class sqlConsole(QWidget):
             else:
                 filename = self.tabname + '.sqbkp'
 
-            print ('filename:', filename)
-
             script = sys.argv[0]
             path, file = os.path.split(script)
             
@@ -1587,12 +1583,9 @@ class sqlConsole(QWidget):
             
             self.backup = bkpFile
             
-            print(bkpFile)
-
             bkpPath = os.path.join(path, 'bkp')
             
             if not os.path.isdir(bkpPath):
-                print('mkdir', bkpPath)
                 os.mkdir(bkpPath)
             
         filename = self.backup
@@ -1725,16 +1718,12 @@ class sqlConsole(QWidget):
 
         if filename is None:
             self.unsavedChanges = True
-            print('self.unsavedChanges = True 1')
 
         if filename is not None and backup is not None:
             self.unsavedChanges = True
-            print('self.unsavedChanges = True 2')
 
         if self.unsavedChanges:
             self.tabname += ' *'
-        
-        print('self.unsavedChanges = ', self.unsavedChanges)
             
         '''
         if ext == 'sqbkp':
