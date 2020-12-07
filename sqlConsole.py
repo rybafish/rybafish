@@ -1504,6 +1504,8 @@ class sqlConsole(QWidget):
     
         self.results = [] #list of resultsets
         self.resultTabs = None # tabs widget
+        
+        self.noBackup = False
 
         super().__init__()
         self.initUI()
@@ -1562,6 +1564,9 @@ class sqlConsole(QWidget):
             if it's empty - it'll be generated as first step
             if the file already exists - the file will be owerritten
         '''
+        
+        if self.noBackup:
+            return
     
         if self.unsavedChanges == False:
             return
@@ -1737,7 +1742,6 @@ class sqlConsole(QWidget):
         self.nameChanged.emit(self.tabname)
         
         self.setFocus()
-        print('focus')
     
     def close(self, cancelPossible = True):
     
@@ -2335,7 +2339,7 @@ class sqlConsole(QWidget):
             very synchronous call, it holds controll until connection status resolved
         '''
         
-        print('Connection Lost...')
+        log('Connection Lost...')
         
         msgBox = QMessageBox()
         msgBox.setWindowTitle('Connection lost')
