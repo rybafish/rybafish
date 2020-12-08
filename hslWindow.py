@@ -174,7 +174,10 @@ class hslWindow(QMainWindow):
                     if w.fileName is not None or w.backup is not None:
                         pos = w.cons.textCursor().position()
                         
-                        bkp = os.path.abspath(w.backup)
+                        if w.backup:
+                            bkp = os.path.abspath(w.backup)
+                        else:
+                            bkp = None
                         
                         tabs.append([w.fileName, bkp, pos])
                         

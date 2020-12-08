@@ -1839,7 +1839,7 @@ class chartArea(QFrame):
         '''
         self.statusMessage('Connection error (%s)' % err_str, True)
         
-        msgBox = QMessageBox()
+        msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Connection lost')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)

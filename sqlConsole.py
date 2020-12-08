@@ -1557,6 +1557,35 @@ class sqlConsole(QWidget):
             self.unsavedChanges = True
                 
             self.nameChanged.emit(self.tabname + ' *')
+
+            print('here')
+            
+            msgBox = QMessageBox(self)
+            msgBox.setWindowTitle('Connection lost')
+            msgBox.setText('Connection failed, reconnect?')
+            msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
+            msgBox.setDefaultButton(QMessageBox.Yes)
+            iconPath = resourcePath('ico\\favicon.ico')
+            msgBox.setWindowIcon(QIcon(iconPath))
+            msgBox.setIcon(QMessageBox.Warning)
+            
+            '''
+            sz = self.parentWidget().size()
+
+            pos = self.mapToGlobal(self.pos())
+            
+            print(sz)
+            print(pos.x(), pos.y())
+            
+            x = pos.x() + sz.width()/2
+            y = pos.y() + sz.height()/2
+            
+            print(msgBox.size())
+            
+            #msgBox.move(x, y)
+            '''
+            
+            reply = msgBox.exec_()
     
     def delayBackup(self):
         '''
@@ -2342,7 +2371,7 @@ class sqlConsole(QWidget):
         
         log('Connection Lost...')
         
-        msgBox = QMessageBox()
+        msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Connection lost')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
