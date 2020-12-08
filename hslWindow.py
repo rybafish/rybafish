@@ -173,7 +173,10 @@ class hslWindow(QMainWindow):
                     
                     if w.fileName is not None or w.backup is not None:
                         pos = w.cons.textCursor().position()
-                        tabs.append([w.fileName, w.backup, pos])
+                        
+                        bkp = os.path.abspath(w.backup)
+                        
+                        tabs.append([w.fileName, bkp, pos])
                         
                     w.close(None) # can not abort (and dont need to any more!)
 

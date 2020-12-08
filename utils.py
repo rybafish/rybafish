@@ -34,8 +34,6 @@ def timePrint():
     for i in range(1, len(timers)):
         s.append('%s:%s' % (timers[i][1], str(round(timers[i][0]-timers[i-1][0], 3))))
 
-    print('timers: ', ', '.join(s))
-
 class Layout():
     
     lo = {}
@@ -45,8 +43,13 @@ class Layout():
         if mode == False:
             return
 
+        script = sys.argv[0]
+        path, file = os.path.split(script)
+        
+        fname = os.path.join(path, 'layout.yaml')
+
         try: 
-            f = open('layout.yaml', 'r')
+            f = open(fname, 'r')
             self.lo = safe_load(f)
         except:
             log('no layout, using defaults')

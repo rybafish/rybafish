@@ -1597,8 +1597,8 @@ class sqlConsole(QWidget):
         filename = self.backup
         fnsecure = filename
     
-        # print(filename) # C:/home/dug/delme.sql.sqbkp
-        # print(os.path.basename(filename)) #delme.sql.sqbkp
+        #print(filename) # C:/home/dug/delme.sql.sqbkp
+        #print(os.path.basename(filename)) #delme.sql.sqbkp
 
         # apparently filename is with normal slashes, but getcwd with backslashes on windows, :facepalm:
         cwd = os.getcwd()
