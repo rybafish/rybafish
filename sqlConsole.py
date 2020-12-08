@@ -155,7 +155,8 @@ class sqlWorker(QObject):
                 result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
             else:
                 result_str = 'None'
-            print('saving the resultset id: %s' % result_str)
+                
+            log('saving the resultset id: %s' % result_str)
 
             if result.cols is not None:
                 for c in result.cols:

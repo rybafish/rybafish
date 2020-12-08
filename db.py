@@ -20,9 +20,6 @@ message_types.CLOSERESULTSET = 69 # SAP HANA SQL Command Network Protocol Refere
 #### low-level pyhdb magic requred because of missing implementation of CLOSERESULTSET  ####
 
 
-for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
-    print(k, pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])
-
 from datetime import datetime
 
 import kpiDescriptions
@@ -32,6 +29,13 @@ import sys
 
 from utils import log, cfg
 from utils import dbException
+
+logline = 'db configuration:'
+
+for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
+    logline +=('    %s = %s\n' % (k, str(pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])))
+    
+log(logline)
 
 largeSql = False
 
