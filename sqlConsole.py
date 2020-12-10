@@ -1558,17 +1558,6 @@ class sqlConsole(QWidget):
                 
             self.nameChanged.emit(self.tabname + ' *')
 
-            print('here')
-            
-            msgBox = QMessageBox(self)
-            msgBox.setWindowTitle('Connection lost')
-            msgBox.setText('Connection failed, reconnect?')
-            msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
-            msgBox.setDefaultButton(QMessageBox.Yes)
-            iconPath = resourcePath('ico\\favicon.ico')
-            msgBox.setWindowIcon(QIcon(iconPath))
-            msgBox.setIcon(QMessageBox.Warning)
-            
             '''
             sz = self.parentWidget().size()
 
@@ -1584,8 +1573,6 @@ class sqlConsole(QWidget):
             
             #msgBox.move(x, y)
             '''
-            
-            reply = msgBox.exec_()
     
     def delayBackup(self):
         '''
@@ -2383,6 +2370,9 @@ class sqlConsole(QWidget):
         reply = None
         
         while reply != QMessageBox.No and self.conn is None:
+            self.indicator.status = 'sync'
+            self.indicator.repaint()
+            
             reply = msgBox.exec_()
             if reply == QMessageBox.Yes:
                 try:
@@ -2392,6 +2382,9 @@ class sqlConsole(QWidget):
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
                 except Exception as e:
+                    self.indicator.status = 'disconnected'
+                    self.indicator.repaint()
+                    
                     log('Reconnect failed: %s' % e)
                     self.log('Reconnect failed: %s' % str(e))
 
