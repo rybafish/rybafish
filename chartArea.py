@@ -2298,8 +2298,8 @@ class chartArea(QFrame):
         log('  hosts:', str(self.widget.hosts))
         
         #time.sleep(2)
-        fromTime = self.fromEdit.text()
-        toTime = self.toEdit.text()
+        fromTime = self.fromEdit.text().strip()
+        toTime = self.toEdit.text().strip()
 
         #backup for ESC
         self.fromTime = fromTime
@@ -2318,7 +2318,14 @@ class chartArea(QFrame):
                 return
         else:
             try:
-                self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
+                
+                if len(fromTime) == 10:
+                    self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d')
+                    
+                    self.fromEdit.setText(fromTime + ' 00:00:00')
+                else:
+                    self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
+                    
                 self.fromEdit.setStyleSheet("color: black;")
                 
                 if self.fromEdit.hasFocus() or self.toEdit.hasFocus():
@@ -2332,7 +2339,13 @@ class chartArea(QFrame):
             self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
         else:
             try:
-                self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+                if len(toTime) == 10:
+                    self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d')
+                    
+                    self.toEdit.setText(toTime + ' 00:00:00')
+                else:
+                    self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+                    
                 self.toEdit.setStyleSheet("color: black;")
             except:
                 self.statusMessage('datetime syntax error')
