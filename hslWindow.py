@@ -498,6 +498,8 @@ class hslWindow(QMainWindow):
 
             self.tabs.addTab(console, console.tabname)
             
+            console.selfRaise.connect(self.raiseTab)
+            
             ind = indicator()
             console.indicator = ind
             
@@ -577,6 +579,8 @@ class hslWindow(QMainWindow):
         console.cons.closeSignal.connect(self.closeTab)
         self.tabs.addTab(console, tname)
         
+        console.selfRaise.connect(self.raiseTab)
+        
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
         if console.unsavedChanges:
@@ -614,6 +618,15 @@ class hslWindow(QMainWindow):
             msgBox.exec_()
         '''
         
+    def raiseTab(self, tab):
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            
+            if w is tab:
+                self.tabs.setCurrentIndex(i)
+                break
+    
+    
     def setTabName(self, str):
         self.tabs.setTabText(0, str)
         
@@ -721,6 +734,9 @@ class hslWindow(QMainWindow):
         kpisWidget.autoFillBackground = True
         
         self.tabs.addTab(self.mainSplitter, 'Chart')
+        
+        self.chartArea.selfRaise.connect(self.raiseTab)
+        ind.iClicked.connect(self.chartArea.indicatorSignal)
         
         self.setCentralWidget(self.tabs)
         
@@ -874,6 +890,7 @@ class hslWindow(QMainWindow):
                 ind = indicator()
                 console.indicator = ind
                 
+                console.selfRaise.connect(self.raiseTab)
                 ind.iClicked.connect(console.reportRuntime)
                 
                 self.statusbar.addPermanentWidget(ind)
@@ -958,6 +975,9 @@ class hslWindow(QMainWindow):
             from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
             self.tabs.addTab(console, tname)
+            
+            console.selfRaise.connect(self.raiseTab)
+            
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
             self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())

@@ -1464,6 +1464,7 @@ class logArea(QPlainTextEdit):
 class sqlConsole(QWidget):
 
     nameChanged = pyqtSignal(['QString'])
+    selfRaise = pyqtSignal(object)
 
     def __init__(self, window, config, tabname = None):
     
@@ -2552,6 +2553,9 @@ class sqlConsole(QWidget):
         super().keyPressEvent(event)
         
     def reportRuntime(self):
+    
+        self.selfRaise.emit(self)
+    
         t0 = self.t0
         t1 = time.time()
         

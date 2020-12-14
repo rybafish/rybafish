@@ -7,13 +7,6 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtCore import pyqtSignal
 
 class indicator(QWidget):
-    '''
-    styles = {
-        'idle': '#888',
-        'running': '#8C8',
-        'render': '#8F8'
-    }
-    '''
 
     styles = {
         'idle': '#CCC',

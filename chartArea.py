@@ -1611,6 +1611,8 @@ class chartArea(QFrame):
     hostsUpdated = pyqtSignal()
     scalesUpdated = pyqtSignal()
     
+    selfRaise = pyqtSignal(object)
+    
     connection = None # db connection
     
     hostKPIs = [] # list of available host KPIS, sql names
@@ -1626,6 +1628,9 @@ class chartArea(QFrame):
     #last refresh time range
     fromTime = None
     toTime = None
+    
+    def indicatorSignal(self):
+        self.selfRaise.emit(self.parentWidget())
     
     def disableDeadKPIs(self):
         
