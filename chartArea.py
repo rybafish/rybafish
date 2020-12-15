@@ -1937,7 +1937,7 @@ class chartArea(QFrame):
         
             if modifiers == Qt.ControlModifier:
                 for hst in range(0, len(self.widget.hosts)):
-                    if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
+                    if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] == host_d['port']):
                         
                         if cfg('loglevel', 3) > 3:
                             log('unclick, %s, %s:' % (str(hst), kpi))
@@ -1989,7 +1989,8 @@ class chartArea(QFrame):
                     for hst in range(0, len(self.widget.hosts)):
                         kpis[hst] = self.widget.nkpis[hst].copy() #otherwise it might be empty --> key error later in get_data
 
-                        if self.widget.hosts[hst]['port'] != '' and kpi not in self.widget.nkpis[hst]:
+                        print(self.widget.hosts[hst]['port'], host_d['port'])
+                        if self.widget.hosts[hst]['port'] == host_d['port'] and kpi not in self.widget.nkpis[hst]:
                             #self.widget.nkpis[hst].append(kpi)
                             kpis[hst] = self.widget.nkpis[hst] + [kpi]
             else:
