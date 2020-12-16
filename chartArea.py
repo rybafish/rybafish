@@ -1989,7 +1989,6 @@ class chartArea(QFrame):
                     for hst in range(0, len(self.widget.hosts)):
                         kpis[hst] = self.widget.nkpis[hst].copy() #otherwise it might be empty --> key error later in get_data
 
-                        print(self.widget.hosts[hst]['port'], host_d['port'])
                         if self.widget.hosts[hst]['port'] == host_d['port'] and kpi not in self.widget.nkpis[hst]:
                             #self.widget.nkpis[hst].append(kpi)
                             kpis[hst] = self.widget.nkpis[hst] + [kpi]
@@ -2010,15 +2009,16 @@ class chartArea(QFrame):
                         try:
                             t0 = time.time()
                             for hst in range(0, len(self.widget.hosts)):
-                                t1 = time.time()
                                 if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
                                     # self.dp.getData(self.widget.hosts[hst], fromto, self.widget.nkpis[hst], self.widget.ndata[hst])
-                                    self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst])
                                     
-                                    self.widget.nkpis[hst] = kpis[hst]
-                                    
-                                    t2 = time.time()
-                                    self.statusMessage('%s:%s %s added, %s s' % (self.widget.hosts[hst]['host'], self.widget.hosts[hst]['port'], kpi, str(round(t2-t0, 3))), True)
+                                    if len(kpis[hst]) > 0:
+                                        t1 = time.time()
+                                        self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst])
+                                        self.widget.nkpis[hst] = kpis[hst]
+                                        
+                                        t2 = time.time()
+                                        self.statusMessage('%s:%s %s added, %s s' % (self.widget.hosts[hst]['host'], self.widget.hosts[hst]['port'], kpi, str(round(t2-t1, 3))), True)
                                     
                             self.statusMessage('All hosts %s added, %s s' % (kpi, str(round(t2-t0, 3))))
                             allOk = True

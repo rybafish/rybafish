@@ -41,6 +41,9 @@ config.yaml
 # avoid updating the layout
 layout.yaml
 
+#and any yamls
+*.yaml
+
 # log file 
 .log
 
