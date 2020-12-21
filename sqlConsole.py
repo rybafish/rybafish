@@ -424,6 +424,7 @@ class console(QPlainTextEdit):
             menuTest = cmenu.addAction('Test menu')
             createDummyTable = cmenu.addAction('Generate test result')
             createClearResults = cmenu.addAction('Clear results')
+            generateCrash = cmenu.addAction('Crash now!')
 
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -432,6 +433,10 @@ class console(QPlainTextEdit):
                 self._parent.closeResults()
                 self._parent.dummyResultTable2(200 * 1000)
 
+            if action == generateCrash:
+                log('Im going to crash!!')
+                log('Im going to crash: %i' % (1/0))
+                
             if action == createClearResults:
                 self._parent.closeResults()
 

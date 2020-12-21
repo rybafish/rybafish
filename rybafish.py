@@ -66,6 +66,14 @@ class ExceptionHandler(QtCore.QObject):
                 if isinstance(w, sqlConsole.sqlConsole):
                     w.delayBackup()
 
+        try:
+            if utils.cfg('saveLayout', True):
+                ryba.dumpLayout()
+        except Exception as e:
+            log('[!] Exception during exception handler: %s' % str(e))
+            details += '\n[!] Exception during exception handler:\n'
+            details += str(e)
+
         msgBox = QMessageBox()
         msgBox.setWindowTitle('Fatal error')
         msgBox.setText('Unhandled exception occured. Check the log file for details.')
