@@ -808,13 +808,13 @@ class hslWindow(QMainWindow):
             fontAct = QAction('&Adjust Fonts', self)
             fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
             fontAct.triggered.connect(self.menuFont)
-
-            reloadConfigAct = QAction('Reload &Config', self)
-            reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions')
-            reloadConfigAct.triggered.connect(self.menuReloadConfig)
             
             actionsMenu.addAction(fontAct)
             
+            # issue #255
+            reloadConfigAct = QAction('Reload &Config', self)
+            reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions')
+            reloadConfigAct.triggered.connect(self.menuReloadConfig)
             actionsMenu.addAction(reloadConfigAct)
 
         reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)

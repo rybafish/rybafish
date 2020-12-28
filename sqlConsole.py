@@ -1929,7 +1929,7 @@ class sqlConsole(QWidget):
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)
-        log('keep alive timer')
+        log('keep-alive timer')
         self.timer.timeout.connect(self.keepAlive)
         self.timer.start(1000 * keepalive)
         
@@ -1944,7 +1944,7 @@ class sqlConsole(QWidget):
             return
 
         try:
-            log('console keep alive... ', False, True)
+            log('console keep-alive... ', False, True)
             
             t0 = time.time()
             db.execute_query(self.conn, 'select * from dummy', [])

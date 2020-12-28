@@ -108,7 +108,7 @@ class myWidget(QWidget):
     legendHeight = None
     legendWidth = None
     
-    legendRender = None # flag used only to copy the legend
+    legendRender = False # flag used only to copy the legend
         
     def __init__(self):
         super().__init__()
@@ -452,6 +452,9 @@ class myWidget(QWidget):
             self.statusMessage('Screenshot saved as %s' % (fn))
         
         if action == copyLegend:
+            if not self.legendWidth:
+                return
+
             log('Creating a legend copy')
             
             pixmap = QPixmap(QSize(self.legendWidth + 1, self.legendHeight + 1))
@@ -939,6 +942,7 @@ class myWidget(QWidget):
         
         #qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
         
+        #print('legendRender, stopX, startX: a', self.legendRender, stopX, startX)
         if self.legendRender == False and (stopX - startX < 400):
             return
         
@@ -2074,7 +2078,7 @@ class chartArea(QFrame):
 
     def refreshTimer(self):
         self.timer.stop()
-        #print('also stop keep alive timer here ((it will be kinda refreshed in get_data renewKeepAlive))')
+        #print('also stop keep-alive timer here ((it will be kinda refreshed in get_data renewKeepAlive))')
         
         log('trigger auto refresh...')
         self.reloadChart()

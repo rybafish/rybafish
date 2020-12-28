@@ -47,6 +47,8 @@ class hostsTable(QTableWidget):
             
             i+=1
             
+        self.resizeColumnsToContents();
+        
         self.hostChanged.emit(0) # does work
             
     def initTable(self):

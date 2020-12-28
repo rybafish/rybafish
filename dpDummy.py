@@ -123,8 +123,11 @@ class dataProvider:
             if host['port'] == '30040' and host['host'] == 'dummy1':
                 data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0], [t2, t3, 'asdf', 1]]
                 data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0], [t6, t7, 'asdf', 0], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0]]
+            if host['port'] == '30040' and host['host'] == 'dummy1':
+                data['cs-exp_st']['SASCHA'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0], [t2, t3, 'asdf', 1]]
+                data['cs-exp_st']['LUCIA'] = [[t4, t5, 'select...', 0], [t6, t7, 'asdf', 0], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0]]
             else:
-                data['cs-exp_st']['one more'] = [[t10, t11, 'descdfksdjflasdjf;laksdjf;alkd fa;lsdkfj a;lsdfj a;lsdkfj asdl;kfj as;ldfa; sldkfj asdl;kjf a;ldfjas; ldkfj sdlkfjsd ljsld fsldkfjs ldfsdlk fjsdlkfj lasdkfj a;djfa;sdlfjk ;alsdfkj;lk ;r', 0]]
+                data['cs-exp_st']['RAYMOND'] = [[t10, t11, 'select * from ExpensiveView', 0]]
             
             for e in data['cs-exp_st']:
                 print('%s:'% e)
