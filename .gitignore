@@ -10,6 +10,9 @@ dist/
 #local backup dir
 bkp/
 
+#exclude pyhdb folder
+pyhdb/
+
 # PyInstaller
 *.manifest
 *.spec
@@ -34,6 +37,12 @@ pip-delete-this-directory.txt
 
 # avoid updating the config
 config.yaml
+
+# avoid updating the layout
+layout.yaml
+
+#and any yamls
+*.yaml
 
 # log file 
 .log

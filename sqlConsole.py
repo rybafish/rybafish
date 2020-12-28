@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QSize
 
 from PyQt5.QtCore import QObject, QThread
 
-import time
+import time, sys
 
 import db
 
@@ -62,12 +62,12 @@ class sqlWorker(QObject):
         
         if len(sql) >= 2**17 and cons.conn.large_sql != True:
             log('reconnecting to hangle large SQL')
-            print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
+            #print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
             
             db.largeSql = True
             
             try: 
-                cons.conn = db.create_connection(cons.config)
+                cons.conn = db.console_connection(cons.config)
             except dbException as e:
                 err = str(e)
                 #
@@ -155,7 +155,8 @@ class sqlWorker(QObject):
                 result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
             else:
                 result_str = 'None'
-            print('saving the resultset id: %s' % result_str)
+                
+            log('saving the resultset id: %s' % result_str)
 
             if result.cols is not None:
                 for c in result.cols:
@@ -175,6 +176,10 @@ class sqlWorker(QObject):
         #print('4 <-- main thread method <-- ')
 
 def generateTabName():
+
+    '''
+        not used actually 01.12.20
+    '''
     
     base = 'sql'
     i = 0
@@ -186,6 +191,7 @@ def generateTabName():
             fname = 'sql'
             
         print('checking ', fname)
+        
         if not os.path.isfile(fname+'.sqbkp'):
             return fname
             
@@ -210,6 +216,8 @@ class console(QPlainTextEdit):
         cursor.clearSelection()
         self.setTextCursor(cursor)
         cursor.insertText(str)
+        
+        self.setFocus()
 
     def __init__(self):
         self.lock = False
@@ -416,6 +424,7 @@ class console(QPlainTextEdit):
             menuTest = cmenu.addAction('Test menu')
             createDummyTable = cmenu.addAction('Generate test result')
             createClearResults = cmenu.addAction('Clear results')
+            generateCrash = cmenu.addAction('Crash now!')
 
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -424,6 +433,10 @@ class console(QPlainTextEdit):
                 self._parent.closeResults()
                 self._parent.dummyResultTable2(200 * 1000)
 
+            if action == generateCrash:
+                log('Im going to crash!!')
+                log('Im going to crash: %i' % (1/0))
+                
             if action == createClearResults:
                 self._parent.closeResults()
 
@@ -1088,6 +1101,8 @@ class resultSet(QTableWidget):
 
                 if db.ifNumericType(self.cols[c][1]):
                     values.append('%s = %s' % (normalize_header(cname), value))
+                elif db.ifTSType(self.cols[c][1]):
+                    values.append('%s = \'%s\'' % (normalize_header(cname), utils.timestampToStr(value)))
                 else:
                     values.append('%s = \'%s\'' % (normalize_header(cname), str(value)))
                     
@@ -1177,7 +1192,8 @@ class resultSet(QTableWidget):
                 elif db.ifRAWType(vType):
                     values.append(val.hex())
                 elif db.ifTSType(vType):
-                    values.append(val.isoformat(' ', timespec='milliseconds'))
+                    #values.append(val.isoformat(' ', timespec='milliseconds'))
+                    values.append(utils.timestampToStr(val))
                 else:
                     values.append(str(val))
                 
@@ -1261,7 +1277,8 @@ class resultSet(QTableWidget):
                                     elif db.ifRAWType(vType):
                                         values.append(value.hex())
                                     elif db.ifTSType(vType):
-                                        values.append(value.isoformat(' ', timespec='milliseconds'))
+                                        #values.append(value.isoformat(' ', timespec='milliseconds'))
+                                        values.append(utils.timestampToStr(value))
                                     else:
                                         values.append(str(value))
                                         
@@ -1363,7 +1380,8 @@ class resultSet(QTableWidget):
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                 
                 elif db.ifTSType(cols[c][1]):
-                    val = val.isoformat(' ', timespec='milliseconds') 
+                    #val = val.isoformat(' ', timespec='milliseconds') 
+                    val = utils.timestampToStr(val)
                     item = QTableWidgetItem(val)
                 else:
                     val = str(val)
@@ -1451,6 +1469,7 @@ class logArea(QPlainTextEdit):
 class sqlConsole(QWidget):
 
     nameChanged = pyqtSignal(['QString'])
+    selfRaise = pyqtSignal(object)
 
     def __init__(self, window, config, tabname = None):
     
@@ -1492,18 +1511,27 @@ class sqlConsole(QWidget):
     
         self.results = [] #list of resultsets
         self.resultTabs = None # tabs widget
+        
+        self.noBackup = False
 
         super().__init__()
         self.initUI()
         
+        
         if tabname is not None:
             self.tabname = tabname
+        else:
+            self.tabname = '!ERROR!'
+            
+            '''
+            # old logic (before layouts), 2020-12-02
             
             if os.path.isfile(tabname+'.sqbkp'):
                 #looks we had a backup?
                 self.openFile(tabname+'.sqbkp')
                 
                 self.unsavedChanges = True
+            '''
 
         self.cons.textChanged.connect(self.textChangedS)
         
@@ -1512,7 +1540,7 @@ class sqlConsole(QWidget):
         
         try: 
             log('starting console connection')
-            self.conn = db.create_connection(config)
+            self.conn = db.console_connection(config)
             self.config = config
         except dbException as e:
             log('[!] failed!')
@@ -1535,25 +1563,70 @@ class sqlConsole(QWidget):
             self.unsavedChanges = True
                 
             self.nameChanged.emit(self.tabname + ' *')
+
+            '''
+            sz = self.parentWidget().size()
+
+            pos = self.mapToGlobal(self.pos())
+            
+            print(sz)
+            print(pos.x(), pos.y())
+            
+            x = pos.x() + sz.width()/2
+            y = pos.y() + sz.height()/2
+            
+            print(msgBox.size())
+            
+            #msgBox.move(x, y)
+            '''
     
     def delayBackup(self):
+        '''
+            self.backup is a full path to a backup file
+            
+            if it's empty - it'll be generated as first step
+            if the file already exists - the file will be owerritten
+        '''
+        
+        if self.noBackup:
+            return
     
         if self.unsavedChanges == False:
             return
     
-        if self.fileName is not None:
-            filename = self.fileName + '.sqbkp'
-            self.backup = filename
-        else:
-            filename = self.tabname + '.sqbkp'
-            self.backup = filename
+        if not self.backup:
+            if self.fileName is not None:
+                path, file = os.path.split(self.fileName)
+                
+                file, ext = os.path.splitext(file)
             
+                filename = file + '.sqbkp'
+            else:
+                filename = self.tabname + '.sqbkp'
+
+            script = sys.argv[0]
+            path, file = os.path.split(script)
+            
+            bkpFile = os.path.join(path, 'bkp', filename)
+            
+            self.backup = bkpFile
+            
+            bkpPath = os.path.join(path, 'bkp')
+            
+            if not os.path.isdir(bkpPath):
+                os.mkdir(bkpPath)
+            
+        filename = self.backup
         fnsecure = filename
+    
+        #print(filename) # C:/home/dug/delme.sql.sqbkp
+        #print(os.path.basename(filename)) #delme.sql.sqbkp
 
         # apparently filename is with normal slashes, but getcwd with backslashes on windows, :facepalm:
         cwd = os.getcwd()
         cwd = cwd.replace('\\','/') 
         
+        #remove potentially private info from the trace
         fnsecure = filename.replace(cwd, '..')
     
         try:
@@ -1620,6 +1693,7 @@ class sqlConsole(QWidget):
                     try:
                         log('delete backup: %s' % self.backup)
                         os.remove(self.backup)
+                        self.backup = None
                     except:
                         log('delete backup faileld, passing')
                         # whatever...
@@ -1630,23 +1704,36 @@ class sqlConsole(QWidget):
         except Exception as e:
             self.log ('Error: ' + str(e), True)
     
-    def openFile(self, filename = None):
-    
-        if filename is None:
+    def openFile(self, filename = None, backup = None):
+
+        log('openFile: %s, %s' % (filename, backup))
+
+        if filename is None and backup is None:
             fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
             filename = fname[0]
 
         if filename == '':
             return
+
+        self.fileName = filename
+        self.backup = backup
         
+        if filename is None:
+            filename = backup
+
+        if filename is not None and backup is not None:
+            filename = backup           # we open backed up copy
+            
         try:
             with open(filename, 'r') as f:
                 data = f.read()
                 f.close()
         except Exception as e:
             log ('Error: ' + str(e), True)
+            self.log ('Error: opening %s / %s' % (self.fileName, self.backup), True)
             self.log ('Error: ' + str(e), True)
             
+            return
             
         basename = os.path.basename(filename)
         self.tabname = basename.split('.')[0]
@@ -1654,21 +1741,36 @@ class sqlConsole(QWidget):
         ext = basename.split('.')[1]
         
         self.cons.setPlainText(data)
-        
+
+        self.unsavedChanges = False
+
+        if filename is None:
+            self.unsavedChanges = True
+
+        if filename is not None and backup is not None:
+            self.unsavedChanges = True
+
+        if self.unsavedChanges:
+            self.tabname += ' *'
+            
+        '''
         if ext == 'sqbkp':
             pass
         else:
             self.fileName = filename
-
-        self.unsavedChanges = False
+            self.backup = backup
+            
+        '''
 
         self.nameChanged.emit(self.tabname)
+        
+        self.setFocus()
     
     def close(self, cancelPossible = True):
     
         log('closing sql console...')
         
-        if self.unsavedChanges:
+        if self.unsavedChanges and cancelPossible is not None:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible)
             
             if answer is None: #cancel button
@@ -1736,7 +1838,7 @@ class sqlConsole(QWidget):
             self.sqlRunning = False
             self.stQueue.clear()
 
-            self.conn = db.create_connection(self.config)                
+            self.conn = db.console_connection(self.config)                
             self.log('Connected')
             
         except dbException as e:
@@ -1754,7 +1856,7 @@ class sqlConsole(QWidget):
     def reconnect(self):
             
         try: 
-            conn = db.create_connection(self.config)
+            conn = db.console_connection(self.config)
         except Exception as e:
             raise e
         
@@ -1851,7 +1953,7 @@ class sqlConsole(QWidget):
         except dbException as e:
             log('Trigger autoreconnect...')
             try:
-                conn = db.create_connection(self.config)
+                conn = db.console_connection(self.config)
                 if conn is not None:
                     self.conn = conn
                     log('Connection restored automatically')
@@ -1882,6 +1984,8 @@ class sqlConsole(QWidget):
             self.logArea.appendHtml('<font color = "red">%s</font>' % text);
         else:
             self.logArea.appendPlainText(text)
+            
+        self.logArea.verticalScrollBar().setValue(self.logArea.verticalScrollBar().maximum())
         
     def dummyResultTable2(self, n):
         row0 = []
@@ -1912,11 +2016,11 @@ class sqlConsole(QWidget):
         row0 = []
     
         cols = [
-            ['Name',11],
-            ['STATEMENT_ID',26],
-            ['7CONNECTION_ID',3],
-            ['/USER_NAME',5],
-            ['dontknow',16]
+            ['Name', 11],
+            ['STATEMENT_ID', 26],
+            ['7CONNECTION_ID', 3],
+            ['/USER_NAME', 5],
+            ['dontknow', 61]     # 16 - old timestamp (millisec), 61 - longdate
         ]
 
         ''''
@@ -1926,10 +2030,14 @@ class sqlConsole(QWidget):
         ['Timestamp',16]
         '''
         
+        dt1 = datetime.datetime.strptime('2001-01-10 11:23:07.123456', '%Y-%m-%d %H:%M:%S.%f')
+        dt2 = datetime.datetime.strptime('2001-01-10 11:23:07.12300', '%Y-%m-%d %H:%M:%S.%f')
+        dt3 = datetime.datetime.strptime('2001-01-10 11:23:07', '%Y-%m-%d %H:%M:%S')
+        
         rows = [
-                ['name 1','select * from dummy fake blob 1', 1024, 1/12500, datetime.datetime.now()],
-                ['name 2','select * from \r\n dummy blob 2', 22254, 2/3, datetime.datetime.now()],
-                ['name 3','select 1/16 from dummy blob 3', 654654, 1/16, datetime.datetime.now()],
+                ['name 1','select * from dummy fake blob 1', 1024, 1/12500, dt1],
+                ['name 2','select * from \r\n dummy blob 2', 22254, 2/3, dt2],
+                ['name 3','select 1/16 from dummy blob 3', 654654, 1/16, dt3],
                 ['name 4','''select 10000 from dummy blob 3 
                 
                 and too many 
@@ -1969,6 +2077,11 @@ class sqlConsole(QWidget):
         self.executeStatement(result.statement, result, True)
         
     def executeSelection(self, mode):
+    
+        if self.config is None:
+            self.log('No connection')
+            return
+    
         if mode == 'normal':
             self.executeSelectionParse()
         elif mode == 'no parsing':
@@ -2249,9 +2362,9 @@ class sqlConsole(QWidget):
             very synchronous call, it holds controll until connection status resolved
         '''
         
-        print('Connection Lost...')
+        log('Connection Lost...')
         
-        msgBox = QMessageBox()
+        msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Connection lost')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
@@ -2263,13 +2376,21 @@ class sqlConsole(QWidget):
         reply = None
         
         while reply != QMessageBox.No and self.conn is None:
+            self.indicator.status = 'sync'
+            self.indicator.repaint()
+            
             reply = msgBox.exec_()
             if reply == QMessageBox.Yes:
                 try:
                     self.log('Reconnecting to %s:%s...' % (self.config['host'], str(self.config['port'])))
                     self.reconnect()
                     self.log('Connection restored')
+                    self.indicator.status = 'idle'
+                    self.indicator.repaint()
                 except Exception as e:
+                    self.indicator.status = 'disconnected'
+                    self.indicator.repaint()
+                    
                     log('Reconnect failed: %s' % e)
                     self.log('Reconnect failed: %s' % str(e))
 
@@ -2292,18 +2413,22 @@ class sqlConsole(QWidget):
         self.indicator.repaint()
 
         if self.wrkException is not None:
-            print('Exception')
             self.log(self.wrkException, True)
             
             #self.thread.quit()
             #self.sqlRunning = False
 
-            print(self.conn)
-            
             if self.conn is not None:
                 self.indicator.status = 'error'
             else:
                 self.indicator.status = 'disconnected'
+                
+                log('console connection lost')
+                
+                self.connectionLost()
+                #answer = utils.yesNoDialog('Connectioni lost', 'Connection to the server lost, reconnect?' cancelPossible)
+                #if answer == True:
+
 
             self.indicator.repaint()
             
@@ -2433,6 +2558,9 @@ class sqlConsole(QWidget):
         super().keyPressEvent(event)
         
     def reportRuntime(self):
+    
+        self.selfRaise.emit(self)
+    
         t0 = self.t0
         t1 = time.time()
         
@@ -2479,3 +2607,5 @@ class sqlConsole(QWidget):
         # self.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
         self.cons.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
         #console = QPlainTextEdit()
+        
+        self.cons.setFocus()

@@ -34,7 +34,48 @@ def timePrint():
     for i in range(1, len(timers)):
         s.append('%s:%s' % (timers[i][1], str(round(timers[i][0]-timers[i-1][0], 3))))
 
-    print('timers: ', ', '.join(s))
+class Layout():
+    
+    lo = {}
+    
+    def __init__ (self, mode = False):
+
+        if mode == False:
+            return
+
+        script = sys.argv[0]
+        path, file = os.path.split(script)
+        
+        fname = os.path.join(path, 'layout.yaml')
+
+        try: 
+            f = open(fname, 'r')
+            self.lo = safe_load(f)
+        except:
+            log('no layout, using defaults')
+            
+            self.lo['pos'] = None
+            self.lo['size'] = [1400, 800]
+            
+    def __getitem__(self, name):
+        if name in self.lo:
+            return self.lo[name]
+        else:
+            return None
+
+    def __setitem__(self, name, value):
+        self.lo[name] = value
+        
+    def dump(self):
+        try: 
+            f = open('layout.yaml', 'w')
+            dump(self.lo, f)
+            f.close()
+        except:
+            log('layout dump issue')
+            
+            return False
+        
 
 class dbException(Exception):
 
@@ -45,6 +86,18 @@ class dbException(Exception):
         self.type = type
         super().__init__(message, type)
     
+def timestampToStr(ts, trimZeroes = True):
+
+    if trimZeroes:
+        if ts.microsecond:
+            s = ts.strftime('%Y-%m-%d %H:%M:%S.%f').rstrip('0')
+        else:
+            s = ts.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        s = ts.strftime('%Y-%m-%d %H:%M:%S.%f')
+        
+    return s
+
 def numberToStr(num, d = 0, fix = True):
 
     global localeCfg
@@ -232,10 +285,15 @@ def loadConfig():
 
     global config
     
+    script = sys.argv[0]
+    path, file = os.path.split(script)
+    
+    cfgFile = os.path.join(path, 'config.yaml')
+
     config.clear()
 
     try: 
-        f = open('config.yaml', 'r')
+        f = open(cfgFile, 'r')
         config = safe_load(f)
     except:
         log('no config file? <-')

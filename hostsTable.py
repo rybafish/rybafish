@@ -73,6 +73,8 @@ class hostsTable(QTableWidget):
         
         self.setHorizontalHeaderLabels(['', 'host', 'port', 'from', 'to'])
         
+        self.horizontalHeader().setMinimumSectionSize(8)
+        
         self.setColumnWidth(0, 1)  # checkbox
         self.setColumnWidth(1, 80) # host
         self.setColumnWidth(2, 40) # port

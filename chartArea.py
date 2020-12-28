@@ -454,7 +454,7 @@ class myWidget(QWidget):
         if action == copyLegend:
             if not self.legendWidth:
                 return
-                
+
             log('Creating a legend copy')
             
             pixmap = QPixmap(QSize(self.legendWidth + 1, self.legendHeight + 1))
@@ -1615,6 +1615,8 @@ class chartArea(QFrame):
     hostsUpdated = pyqtSignal()
     scalesUpdated = pyqtSignal()
     
+    selfRaise = pyqtSignal(object)
+    
     connection = None # db connection
     
     hostKPIs = [] # list of available host KPIS, sql names
@@ -1630,6 +1632,9 @@ class chartArea(QFrame):
     #last refresh time range
     fromTime = None
     toTime = None
+    
+    def indicatorSignal(self):
+        self.selfRaise.emit(self.parentWidget())
     
     def disableDeadKPIs(self):
         
@@ -1707,7 +1712,7 @@ class chartArea(QFrame):
         
         log('cleanup complete')
         
-    def initDP(self):
+    def initDP(self, kpis = None):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
@@ -1731,11 +1736,25 @@ class chartArea(QFrame):
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
         self.widget.allocate(len(self.widget.hosts))
         self.widget.initPens()
+        
+        if kpis:
+            for i in range(len(self.widget.hosts)):
+                host = self.widget.hosts[i]
+                hst = '%s:%s' % (host['host'], host['port'])
+                
+                if hst in kpis:
+                    if hst[-1] == ':':
+                        kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
+                    else:
+                        kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
+                    
+                    self.widget.nkpis[i] = kpis_n
+
+            self.reloadChart()
 
         self.hostsUpdated.emit()
         
         self.statusMessage('ready')
-        
 
     def scrollSignal(self, mode, size):
         x = 0 - self.widget.pos().x() 
@@ -1829,7 +1848,7 @@ class chartArea(QFrame):
         '''
         self.statusMessage('Connection error (%s)' % err_str, True)
         
-        msgBox = QMessageBox()
+        msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Connection lost')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
@@ -1922,7 +1941,7 @@ class chartArea(QFrame):
         
             if modifiers == Qt.ControlModifier:
                 for hst in range(0, len(self.widget.hosts)):
-                    if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
+                    if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] == host_d['port']):
                         
                         if cfg('loglevel', 3) > 3:
                             log('unclick, %s, %s:' % (str(hst), kpi))
@@ -1974,7 +1993,7 @@ class chartArea(QFrame):
                     for hst in range(0, len(self.widget.hosts)):
                         kpis[hst] = self.widget.nkpis[hst].copy() #otherwise it might be empty --> key error later in get_data
 
-                        if self.widget.hosts[hst]['port'] != '' and kpi not in self.widget.nkpis[hst]:
+                        if self.widget.hosts[hst]['port'] == host_d['port'] and kpi not in self.widget.nkpis[hst]:
                             #self.widget.nkpis[hst].append(kpi)
                             kpis[hst] = self.widget.nkpis[hst] + [kpi]
             else:
@@ -1994,15 +2013,16 @@ class chartArea(QFrame):
                         try:
                             t0 = time.time()
                             for hst in range(0, len(self.widget.hosts)):
-                                t1 = time.time()
                                 if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
                                     # self.dp.getData(self.widget.hosts[hst], fromto, self.widget.nkpis[hst], self.widget.ndata[hst])
-                                    self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst])
                                     
-                                    self.widget.nkpis[hst] = kpis[hst]
-                                    
-                                    t2 = time.time()
-                                    self.statusMessage('%s:%s %s added, %s s' % (self.widget.hosts[hst]['host'], self.widget.hosts[hst]['port'], kpi, str(round(t2-t0, 3))), True)
+                                    if len(kpis[hst]) > 0:
+                                        t1 = time.time()
+                                        self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst])
+                                        self.widget.nkpis[hst] = kpis[hst]
+                                        
+                                        t2 = time.time()
+                                        self.statusMessage('%s:%s %s added, %s s' % (self.widget.hosts[hst]['host'], self.widget.hosts[hst]['port'], kpi, str(round(t2-t1, 3))), True)
                                     
                             self.statusMessage('All hosts %s added, %s s' % (kpi, str(round(t2-t0, 3))))
                             allOk = True
@@ -2288,8 +2308,8 @@ class chartArea(QFrame):
         log('  hosts:', str(self.widget.hosts))
         
         #time.sleep(2)
-        fromTime = self.fromEdit.text()
-        toTime = self.toEdit.text()
+        fromTime = self.fromEdit.text().strip()
+        toTime = self.toEdit.text().strip()
 
         #backup for ESC
         self.fromTime = fromTime
@@ -2308,7 +2328,14 @@ class chartArea(QFrame):
                 return
         else:
             try:
-                self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
+                
+                if len(fromTime) == 10:
+                    self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d')
+                    
+                    self.fromEdit.setText(fromTime + ' 00:00:00')
+                else:
+                    self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
+                    
                 self.fromEdit.setStyleSheet("color: black;")
                 
                 if self.fromEdit.hasFocus() or self.toEdit.hasFocus():
@@ -2322,7 +2349,13 @@ class chartArea(QFrame):
             self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
         else:
             try:
-                self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+                if len(toTime) == 10:
+                    self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d')
+                    
+                    self.toEdit.setText(toTime + ' 00:00:00')
+                else:
+                    self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+                    
                 self.toEdit.setStyleSheet("color: black;")
             except:
                 self.statusMessage('datetime syntax error')

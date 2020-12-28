@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt, QUrl, QEvent
+from PyQt5.QtCore import Qt, QUrl, QEvent, QRect
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -30,12 +30,14 @@ from utils import resourcePath
 from utils import loadConfig
 from utils import log
 from utils import cfg
+from utils import Layout
 from utils import dbException, msgDialog
+
+import utils
 
 import kpiDescriptions
 
-import sys
-
+import sys, os
 
 import time
 
@@ -48,8 +50,10 @@ class hslWindow(QMainWindow):
 
     def __init__(self):
     
+        self.layoutDumped = False
+    
         self.sqlTabCounter = 0 #static tab counter
-        
+
         self.tabs = None
     
         super().__init__()
@@ -98,7 +102,10 @@ class hslWindow(QMainWindow):
         
     def closeEvent(self, event):
         log('Exiting...')
-        
+
+        if cfg('saveLayout', True):
+            self.dumpLayout()
+        '''
         for i in range(self.tabs.count() -1, 0, -1):
 
             w = self.tabs.widget(i)
@@ -110,8 +117,91 @@ class hslWindow(QMainWindow):
         clipboard = QApplication.clipboard()
         event = QEvent(QEvent.Clipboard)
         QApplication.sendEvent(clipboard, event)
+        '''
+        
+    def dumpLayout(self):
+    
+        if self.layoutDumped:
+            return
+            
+        if self.layout is None:
+            return
+            
+        self.layoutDumped = True
+    
+        kpis = {}
+        for i in range(len(self.chartArea.widget.hosts)):
+            host = self.chartArea.widget.hosts[i]
+            hst = '%s:%s' % (host['host'], host['port'])
+            
+            if self.chartArea.widget.nkpis[i]:
+                kpis[hst] = self.chartArea.widget.nkpis[i]
+    
+        if kpis:
+            self.layout['kpis'] = kpis
+        
+        self.layout['pos'] = [self.pos().x(), self.pos().y()]
+        self.layout['size'] = [self.size().width(), self.size().height()]
+        
+        self.layout['mainSplitter'] = self.mainSplitter.sizes()
+        self.layout['kpiSplitter'] = self.kpiSplitter.sizes()
+
+        hostTableWidth = []
+        KPIsTableWidth = []
+        
+        for i in range(self.hostTable.columnCount()):
+            hostTableWidth.append(self.hostTable.columnWidth(i))
+
+        for i in range(self.kpisTable.columnCount()):
+            KPIsTableWidth.append(self.kpisTable.columnWidth(i))
+
+        self.layout['hostTableWidth'] = hostTableWidth
+        self.layout['KPIsTableWidth'] = KPIsTableWidth
+
+        # print(self.pos().x(), self.pos().y())
+        
+        tabs = []
+        
+        self.layout['currentTab'] = self.tabs.currentIndex()
+        
+        if cfg('saveOpenTabs', True):
+            for i in range(self.tabs.count() -1, 0, -1):
+                w = self.tabs.widget(i)
+                
+                if isinstance(w, sqlConsole.sqlConsole):
+                    w.delayBackup()
+                    
+                    if w.fileName is not None or w.backup is not None:
+                        pos = w.cons.textCursor().position()
+                        
+                        if w.backup:
+                            bkp = os.path.abspath(w.backup)
+                        else:
+                            bkp = None
+                        
+                        tabs.append([w.fileName, bkp, pos])
+                        
+                    w.close(None) # can not abort (and dont need to any more!)
+
+                    self.tabs.removeTab(i)
+
+            tabs.reverse()
+                    
+            if len(tabs) > 0:
+                self.layout['tabs'] = tabs
+            else:
+                if 'tabs' in self.layout.lo:
+                    self.layout.lo.pop('tabs')
+                
+        if 'running' in self.layout.lo:
+            self.layout.lo.pop('running')
+           
+        self.layout.dump()
+        
         
     def menuQuit(self):
+    
+        '''
         for i in range(self.tabs.count() -1, 0, -1):
             w = self.tabs.widget(i)
             if isinstance(w, sqlConsole.sqlConsole):
@@ -123,6 +213,10 @@ class hslWindow(QMainWindow):
                 
                 if status == False:
                     return
+        '''
+        
+        if cfg('saveLayout', True):
+            self.dumpLayout()
                     
         self.close()
 
@@ -211,7 +305,11 @@ class hslWindow(QMainWindow):
         
     def menuDummy(self):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
-        self.chartArea.initDP()
+
+        if cfg('saveKPIs', True):
+            self.chartArea.initDP(self.layout['kpis'])
+        else:
+            self.chartArea.initDP()
         
     def menuConfig(self):
         
@@ -228,14 +326,44 @@ class hslWindow(QMainWindow):
         if ok and conf['ok']:
         
             try:
+
+                # need to disconnect open consoles first...
+                self.statusMessage('Disconnecing open consoles...', False)
+                
+                for i in range(self.tabs.count()):
+                
+                    w = self.tabs.widget(i)
+                
+                    if isinstance(w, sqlConsole.sqlConsole):
+                        log('closing connection...')
+                        w.disconnectDB()
+                        w.indicator.status = 'disconnected'
+                        w.indicator.repaint()
+                        log('disconnected...')
+
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
                 self.chartArea.setStatus('sync', True)
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
                 self.chartArea.setStatus('idle')
+
+
+                for i in range(self.tabs.count()):
                 
-                self.chartArea.initDP()
+                    w = self.tabs.widget(i)
+                
+                    if isinstance(w, sqlConsole.sqlConsole):
+                        w.config = conf
+        
+                if cfg('saveKPIs', True):
+                    if self.layout and 'kpis' in self.layout.lo:
+                        self.chartArea.initDP(self.layout['kpis'])
+                    else:
+                        self.chartArea.initDP()
+                        
+                else:
+                    self.chartArea.initDP()
                 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
@@ -325,6 +453,7 @@ class hslWindow(QMainWindow):
     def menuOpen(self):
         '''
             so much duplicate code with menuSqlConsole
+            and with dumpLayout!
         '''
         fname = QFileDialog.getOpenFileNames(self, 'Open file', '','*.sql')
         
@@ -351,7 +480,7 @@ class hslWindow(QMainWindow):
                 continue
                 
             conf = self.connectionConf
-               
+            
             self.statusMessage('Connecting console...', True)
             
             try:
@@ -369,6 +498,8 @@ class hslWindow(QMainWindow):
 
             self.tabs.addTab(console, console.tabname)
             
+            console.selfRaise.connect(self.raiseTab)
+            
             ind = indicator()
             console.indicator = ind
             
@@ -379,6 +510,10 @@ class hslWindow(QMainWindow):
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
             
             console.openFile(filename)
+
+            if self.layout == None:
+                # no backups to avoid conflicts...
+                console.noBackup = True
 
     #def populateConsoleTab(self):
 
@@ -400,15 +535,25 @@ class hslWindow(QMainWindow):
         
         log('menuSQLConsole...')
         
-        #idx = self.tabs.count()
-        self.sqlTabCounter += 1
-        idx = self.sqlTabCounter
+        noname = True
         
-        if idx > 1:
-            tname = 'sql' + str(idx)
-        else:
-            tname = 'sql'
-
+        while noname:
+            self.sqlTabCounter += 1
+            idx = self.sqlTabCounter
+            
+            if idx > 1:
+                tname = 'sql' + str(idx)
+            else:
+                tname = 'sql'
+                
+            for i in range(self.tabs.count() -1, 0, -1):
+                w = self.tabs.widget(i)
+                if isinstance(w, sqlConsole.sqlConsole):
+                    if w.tabname == tname or w.tabname == tname + ' *': # so not nice...
+                        break
+            else:
+                noname = False
+                
         # console = sqlConsole.sqlConsole(self, conf, tname) # self = window
 
         try:
@@ -434,12 +579,18 @@ class hslWindow(QMainWindow):
         console.cons.closeSignal.connect(self.closeTab)
         self.tabs.addTab(console, tname)
         
+        console.selfRaise.connect(self.raiseTab)
+        
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
         if console.unsavedChanges:
             # if autoloaded from backup
             # cannot be triggered from inside as signal not connected on __init__
             self.changeActiveTabName(console.tabname + ' *')
+        
+        if self.layout == None:
+            # no backups to avoid conflicts...
+            console.noBackup = True
         
         self.statusMessage('', False)
         console.indicator.status = 'idle'
@@ -451,6 +602,7 @@ class hslWindow(QMainWindow):
         log(fname[0])
         
         self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
+        
         self.chartArea.initDP()
         
         '''
@@ -466,11 +618,37 @@ class hslWindow(QMainWindow):
             msgBox.exec_()
         '''
         
+    def raiseTab(self, tab):
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            
+            if w is tab:
+                self.tabs.setCurrentIndex(i)
+                break
+    
+    
     def setTabName(self, str):
         self.tabs.setTabText(0, str)
         
     def initUI(self):
-    
+
+        if cfg('saveLayout', True):
+            self.layout = Layout(True)
+            
+            if self.layout['running']:
+                answer = utils.yesNoDialog('Warning', 'Another RybaFish is already runing. All the layout, backup and autosave fatures will be disabled.\n\nIf this message repeated without other RybaFish running - delete layout.yaml\n\nExit now?')
+                
+                if answer == True or answer is None:
+                    exit(0)
+                
+                self.layout = None
+            else:
+                self.layout['running'] = True
+                self.layout.dump()
+        else:
+            self.layout = Layout()
+            
+        
         # bottom left frame (hosts)
         hostsArea = QFrame(self)
         self.hostTable = hostsTable.hostsTable()
@@ -496,10 +674,10 @@ class hslWindow(QMainWindow):
         kpisTable.nkpis = self.chartArea.widget.nkpis
         
         # bottm part left+right
-        kpiSplitter = QSplitter(Qt.Horizontal)
-        kpiSplitter.addWidget(self.hostTable)
-        kpiSplitter.addWidget(kpisTable)
-        kpiSplitter.setSizes([200, 380])
+        self.kpiSplitter = QSplitter(Qt.Horizontal)
+        self.kpiSplitter.addWidget(self.hostTable)
+        self.kpiSplitter.addWidget(kpisTable)
+        self.kpiSplitter.setSizes([200, 380])
         
         
         self.tabs = QTabWidget()
@@ -507,24 +685,58 @@ class hslWindow(QMainWindow):
         # self.tabs.currentChanged.connect(self.tabChanged)
         
         # main window splitter
-        mainSplitter = QSplitter(Qt.Vertical)
+        self.mainSplitter = QSplitter(Qt.Vertical)
         
         kpisWidget = QWidget()
         lo = QVBoxLayout(kpisWidget)
-        lo.addWidget(kpiSplitter)
+        lo.addWidget(self.kpiSplitter)
         
-        mainSplitter.addWidget(self.chartArea)
-        mainSplitter.addWidget(kpisWidget)
-        mainSplitter.setSizes([300, 90])
+        self.mainSplitter.addWidget(self.chartArea)
+        self.mainSplitter.addWidget(kpisWidget)
         
-        mainSplitter.setAutoFillBackground(True)
+        if self.layout is not None:
+            if self.layout['mainSplitter']:
+                self.mainSplitter.setSizes(self.layout['mainSplitter'])
+            else:
+                self.mainSplitter.setSizes([300, 90])
+
+            if self.layout['kpiSplitter']:
+                self.kpiSplitter.setSizes(self.layout['kpiSplitter'])
+            else:
+                self.kpiSplitter.setSizes([200, 380])
+            
+            
+            if self.layout['hostTableWidth']:
+                hostTableWidth = self.layout['hostTableWidth']
+            
+                for i in range(self.hostTable.columnCount()):
+                    if i > len(hostTableWidth) - 1:
+                        break
+                    self.hostTable.setColumnWidth(i, hostTableWidth[i])
+
+            if self.layout['KPIsTableWidth']:
+                KPIsTableWidth = self.layout['KPIsTableWidth']
+            
+                for i in range(self.kpisTable.columnCount()):
+                    if i > len(KPIsTableWidth) - 1:
+                        break
+                    self.kpisTable.setColumnWidth(i, KPIsTableWidth[i])
+        else:
+            self.mainSplitter.setSizes([300, 90])
+            self.kpiSplitter.setSizes([200, 380])
+            
+        
+        self.mainSplitter.setAutoFillBackground(True)
 
         # central widget
         #self.setCentralWidget(mainSplitter)
         
         kpisWidget.autoFillBackground = True
         
-        self.tabs.addTab(mainSplitter, 'Chart')
+        self.tabs.addTab(self.mainSplitter, 'Chart')
+        
+        self.chartArea.selfRaise.connect(self.raiseTab)
+        ind.iClicked.connect(self.chartArea.indicatorSignal)
         
         self.setCentralWidget(self.tabs)
         
@@ -632,11 +844,83 @@ class hslWindow(QMainWindow):
             
         helpMenu.addAction(aboutAct)
 
-        # finalization
-        self.setGeometry(200, 200, 1400, 800)
+        # finalization        
+
+        if self.layout is not None and self.layout['pos'] and self.layout['size']:
+            pos = self.layout['pos']
+            size = self.layout['size']
+            
+            #print('screen number', QApplication.desktop().screenNumber())
+            #print('number of screens', QApplication.desktop().screenCount())
+            #print('available geometry:', QApplication.desktop().availableGeometry())
+            #print('screen geometry:', QApplication.desktop().screenGeometry())
+            
+            r = QRect(pos[0], pos[1], size[0], size[1])
+
+            if QApplication.desktop().screenCount() == 1:
+                # only when just one screen is available...
+                if not QApplication.desktop().screenGeometry().contains(r) and not cfg('dontAutodetectScreen'):
+                    #the window will not be visible so jump to the main screen:
+                    (pos[0], pos[1]) = (100, 50)
+            
+            #self.setGeometry(pos[0] + 8, pos[1] + 31, size[0], size[1])
+            #self.setGeometry(pos[0], pos[1], size[0], size[1])
+            
+            self.move(pos[0], pos[1])
+            self.resize(size[0], size[1])
+        else:
+            self.setGeometry(200, 200, 1400, 800)
+        
         self.setWindowTitle('RybaFish Charts')
         
         self.setWindowIcon(QIcon(iconPath))
+        
+        if cfg('saveOpenTabs', True) and self.layout is not None and self.layout['tabs']:
+            for t in self.layout['tabs']:
+                if len(t) != 3:
+                    continue
+                    
+                console = sqlConsole.sqlConsole(self, None, '?')
+
+                console.nameChanged.connect(self.changeActiveTabName)
+                console.cons.closeSignal.connect(self.closeTab)
+
+                self.tabs.addTab(console, console.tabname)
+                
+                ind = indicator()
+                console.indicator = ind
+                
+                console.selfRaise.connect(self.raiseTab)
+                ind.iClicked.connect(console.reportRuntime)
+                
+                self.statusbar.addPermanentWidget(ind)
+                
+                self.tabs.setCurrentIndex(self.tabs.count() - 1)
+                
+                if t[0] is not None or t[1] is not None:
+                    # such a tab should not ever be saved (this call will just open fileOpen dialog), anyway... 
+                    # should we even create such a tab?
+                    console.openFile(t[0], t[1])
+                    
+                    pos = t[2]
+                    
+                    if isinstance(pos, int):
+                        cursor = console.cons.textCursor()
+                        cursor.setPosition(pos, cursor.MoveAnchor)
+                        console.cons.setTextCursor(cursor)
+                        
+            indx = self.layout['currentTab']
+            
+            if isinstance(indx, int):
+                self.tabs.setCurrentIndex(indx)
+
+                w = self.tabs.widget(indx)
+                
+                if isinstance(w, sqlConsole.sqlConsole):
+                    w.cons.setFocus()
+                
+            else:
+                self.tabs.setCurrentIndex(0)
         
         self.show()
 
@@ -691,6 +975,9 @@ class hslWindow(QMainWindow):
             from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
             self.tabs.addTab(console, tname)
+            
+            console.selfRaise.connect(self.raiseTab)
+            
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
             self.SQLSyntax = SQLSyntaxHighlighter(console.cons.document())

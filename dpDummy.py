@@ -76,8 +76,8 @@ class dataProvider:
                     })
                     
         hosts.append({
-                    'host':'dummy1',
-                    'port':'30041',
+                    'host':'dummy2',
+                    'port':'30040',
                     'from':stime,
                     'to':etime
                     })
@@ -120,7 +120,10 @@ class dataProvider:
             
             data['cs-exp_st'] = {}
             
-            if host['port'] == '30040':
+            if host['port'] == '30040' and host['host'] == 'dummy1':
+                data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0], [t2, t3, 'asdf', 1]]
+                data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0], [t6, t7, 'asdf', 0], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0]]
+            if host['port'] == '30040' and host['host'] == 'dummy1':
                 data['cs-exp_st']['SASCHA'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0], [t2, t3, 'asdf', 1]]
                 data['cs-exp_st']['LUCIA'] = [[t4, t5, 'select...', 0], [t6, t7, 'asdf', 0], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0]]
             else:
@@ -163,7 +166,7 @@ class dataProvider:
             if host['port'] == '':
                 data['cpu'][i] = round(50.0 + 50.0*math.sin(i/100))
             else:
-                if host['port'] == '30040':
+                if host['port'] == '30040' and host['host'] == 'dummy1':
                     #dataset1[i] = round(40.0 + 40.0*math.sin(i/100))
                     
                     if i % 5 > random.randint(0, 80):
