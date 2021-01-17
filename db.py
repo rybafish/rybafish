@@ -149,6 +149,9 @@ def execute_query(connection, sql_string, params):
 
     # prepare the statement...
 
+    if cfg('loglevel') >= 5:
+        log('[SQL]: %s' % sql_string)
+
     try:
         cursor = connection.cursor()
         
@@ -168,7 +171,7 @@ def execute_query(connection, sql_string, params):
         ps = cursor.get_prepared_statement(psid)
 
         cursor.execute_prepared(ps, [params])
-
+        
         rows = cursor.fetchall()
         
         close_result(connection, cursor._resultset_id)
@@ -209,6 +212,9 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     cursor = cursor_mod(connection)
 
     # prepare the statement...
+    
+    if cfg('loglevel') >= 5:
+        log('[SQL]: %s' % sql_string)
 
     try:
         psid = cursor.prepare(sql_string)

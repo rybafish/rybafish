@@ -57,7 +57,7 @@ class sqlWorker(QObject):
 
         cons.wrkException = None
     
-        if cfg('loglevel', 3) > 3:
+        if 3 <= cfg('loglevel', 3) < 5:
             log('console execute: [%s]' % (sql))
         
         if len(sql) >= 2**17 and cons.conn.large_sql != True:
