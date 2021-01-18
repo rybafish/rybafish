@@ -241,24 +241,28 @@ def execute_query_desc(connection, sql_string, params, resultSize):
         cursor.execute_prepared(ps, [params])
 
         if cursor._function_code == function_codes.DDL:
-            rows = None
+            rows_list = None
         else:
-            rows = cursor.fetchmany(resultSize)
+            rows_list = []
+        
+            for i in range(len(cursor.description_list)):
+                rows = cursor.fetchmany(resultSize, i)
+                
+                rows_list.append(rows)
             
             cursor.close()
-
-        # rows = cursor.fetchmany(resultSize)
 
     except pyhdb.exceptions.DatabaseError as e:
         log('[!]: sql execution issue %s\n' % e)
         raise dbException(str(e))
     except Exception as e:
-        log('[E] unexpected error: %s' % str(e))
+        log('[E] unexpected DB error: %s' % str(e))
         raise dbException(str(e))
 
-    columns = cursor.description
+    #columns = cursor.description
+    columns_list = cursor.description_list
 
-    return rows, columns, cursor
+    return rows_list, columns_list, cursor
     
 def get_data(connection, kpis, times, data):
     '''

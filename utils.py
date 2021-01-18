@@ -9,12 +9,23 @@ from decimal import Decimal
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
+from binascii import hexlify
+
 logmode = 'file'
 config = {}
 
 timers = []
 
 localeCfg = None
+
+def hextostr(value):
+    if value:
+        value_str = hexlify(bytearray(value)).decode('ascii')
+    else:
+        value_str = 'None'
+        
+    return(value_str)
+
 
 def timerStart():
     timers.clear()

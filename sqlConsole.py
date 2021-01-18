@@ -16,20 +16,17 @@ import db
 
 import utils
 from utils import cfg
+from utils import dbException, log
+from utils import resourcePath
 
 import re
 
 import lobDialog, searchDialog
-from utils import dbException, log
 
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 import datetime
-import binascii
 import os
-
-
-from utils import resourcePath
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -113,9 +110,17 @@ class sqlWorker(QObject):
             txtSub = txtSub.replace('\t', ' ')
             
             #print('start sql')
-            result.rows, result.cols, dbCursor = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
-            #print('sql finished')
+            self.rows_list, self.cols_list, dbCursor = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+            self.resultset_id_list = dbCursor._resultset_id_list
             
+            result.explicitLimit = explicitLimit
+            result.resultSizeLimit = resultSizeLimit          
+            
+            #no special treatment for the first resultset anymore
+            #result.rows, result.cols = self.rows_list[0], self.cols_list[0]
+            #_resultset_id = dbCursor._resultset_id_list[0]
+            #print('sql finished')
+
             self.dbCursor = dbCursor
             
         except dbException as e:
@@ -147,16 +152,16 @@ class sqlWorker(QObject):
         else:
             resultSize = -1
 
+        # all the rest moved to post-processing in SQLFinished call back
+        # as part of it resultset-dependent
+        '''
+            
+            
         if cons.wrkException is None:
-            result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
+            result._resultset_id = _resultset_id   #requred for detach (in case of detach)
             result.detached = False
             
-            if dbCursor._resultset_id:
-                result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
-            else:
-                result_str = 'None'
-                
-            log('saving the resultset id: %s' % result_str)
+            log('saving the resultset id: %s' % utils.hextostr(_resultset_id))
 
             if result.cols is not None:
                 for c in result.cols:
@@ -166,10 +171,10 @@ class sqlWorker(QObject):
                         break
                     
             if result.LOBs == False and (not explicitLimit and resultSize == resultSizeLimit):
-                log('detaching due to possible SUSPENDED')
+                log('detaching due to possible SUSPENDED because of unfinished fetch')
                 result.detach()
+        '''
 
-        #print('1 <-- self.finished.emit()')
         self.finished.emit()
         #time.sleep(0.5)
         
@@ -976,6 +981,11 @@ class resultSet(QTableWidget):
         
         self.headers = [] # column names
         
+        
+        # overriden in case of select top xxxx
+        self.explicitLimit = False 
+        self.resultSizeLimit = cfg('resultSize', 1000)
+        
         super().__init__()
         
         verticalHeader = self.verticalHeader()
@@ -1136,10 +1146,7 @@ class resultSet(QTableWidget):
             log('[!] attempted to detach resultset with no _resultset_id')
             return
             
-        if self._resultset_id:
-            result_str = binascii.hexlify(bytearray(self._resultset_id)).decode('ascii')
-        else:
-            result_str = 'None'
+        result_str = utils.hextostr(self._resultset_id)
         
         if self._connection is None:
             return
@@ -1166,10 +1173,10 @@ class resultSet(QTableWidget):
         self.detach()
         
     def triggerDetachTimer(self, window):
-        log('Setting detach timer')
+        log('Setting detach timer for %s' % (utils.hextostr(self._resultset_id)))
         self.detachTimer = QTimer(window)
         self.detachTimer.timeout.connect(self.detachCB)
-        self.detachTimer.start(1000 * 300)
+        self.detachTimer.start(1000 * cfg('detachTimeout', 300))
     
     def csvRow(self, r):
         
@@ -2411,7 +2418,7 @@ class sqlConsole(QWidget):
         
         self.indicator.status = 'render'
         self.indicator.repaint()
-
+        
         if self.wrkException is not None:
             self.log(self.wrkException, True)
             
@@ -2441,8 +2448,8 @@ class sqlConsole(QWidget):
         
         dbCursor = self.sqlWorker.dbCursor
         
-        rows = result.rows
-        cols = result.cols
+        if cfg('loglevel') >= 3:
+            log ('Number of resultsets: %i' % len(dbCursor.description_list))
 
         t0 = self.t0
         t1 = time.time()
@@ -2452,8 +2459,12 @@ class sqlConsole(QWidget):
         #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
 
         logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
+        
+        rows_list = self.sqlWorker.rows_list
+        cols_list = self.sqlWorker.cols_list
+        resultset_id_list = self.sqlWorker.resultset_id_list
 
-        if rows is None or cols is None:
+        if rows_list is None or cols_list is None:
             # it was a DDL or something else without a result set so we just stop
             
             #logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
@@ -2465,19 +2476,50 @@ class sqlConsole(QWidget):
             result.clear()
             return
 
-        resultSize = len(rows)
+        for i in range(len(cols_list)):
+            
+            #print('result:', i)
+            
+            if i > 0:
+                result = self.newResult(self.conn, result.statement)
+                
+            result.rows = rows_list[i]
+            result.cols = cols_list[i]
+            result._resultset_id = resultset_id_list[i]
+                
+            rows = rows_list[i]
+        
+            resultSize = len(rows_list[i])
 
-        if result.LOBs:
-            result.triggerDetachTimer(self)
+            # copied from statementExecute (same code still there!)
+            result.detached = False
+            
+            if result.cols is not None:
+                for c in result.cols:
+                    if db.ifLOBType(c[1]):
+                        result.LOBs = True
+                        
+                        #print('LOBS!', utils.hextostr(result._resultset_id))
+                        
+                        break
+                        
+                        
+            if result.LOBs == False and (not result.explicitLimit and resultSize == result.resultSizeLimit):
+                log('detaching due to possible SUSPENDED because of unfinished fetch')
+                result.detach()
+                        
 
-        lobs = ', +LOBs' if result.LOBs else ''
+            if result.LOBs:
+                result.triggerDetachTimer(self)
 
-        logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
-        if resultSize == cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
+            lobs = ', +LOBs' if result.LOBs else ''
 
-        self.log(logText)
+            logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
+            if resultSize == cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
 
-        result.populate(refreshMode)
+            self.log(logText)
+
+            result.populate(refreshMode)
 
         self.indicator.status = 'idle'
         self.indicator.repaint()

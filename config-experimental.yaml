@@ -50,3 +50,6 @@ highlightLOBs: True
 
 ## disable parentesis highlighting
 #noBraketsHighlighting: True
+
+#detach timer for resultsets with LOBs
+#detachTimeout: 30
