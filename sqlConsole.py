@@ -54,7 +54,7 @@ class sqlWorker(QObject):
 
         cons.wrkException = None
     
-        if 3 <= cfg('loglevel', 3) < 5:
+        if 3 < cfg('loglevel', 3) < 5:
             log('console execute: [%s]' % (sql))
         
         if len(sql) >= 2**17 and cons.conn.large_sql != True:
@@ -2448,7 +2448,7 @@ class sqlConsole(QWidget):
         
         dbCursor = self.sqlWorker.dbCursor
         
-        if cfg('loglevel') >= 3:
+        if cfg('loglevel', 3) >= 3:
             log ('Number of resultsets: %i' % len(dbCursor.description_list))
 
         t0 = self.t0

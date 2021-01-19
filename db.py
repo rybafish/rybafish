@@ -149,7 +149,7 @@ def execute_query(connection, sql_string, params):
 
     # prepare the statement...
 
-    if cfg('loglevel') >= 5:
+    if cfg('loglevel', 3) >= 5:
         log('[SQL]: %s' % sql_string)
 
     try:
@@ -213,7 +213,7 @@ def execute_query_desc(connection, sql_string, params, resultSize):
 
     # prepare the statement...
     
-    if cfg('loglevel') >= 5:
+    if cfg('loglevel', 3) >= 5:
         log('[SQL]: %s' % sql_string)
 
     try:
