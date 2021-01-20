@@ -100,8 +100,10 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
             pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
             
             if longdate:
+                log('largesql console with longdates')
                 connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
             else:
+                log('largesql console without longdates')
                 connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
                 
             connection.large_sql = True
@@ -113,8 +115,10 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
             # normal connection
 
             if longdate:
+                log('console with longdates')
                 connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
             else:
+                log('console without longdates')
                 connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
 
             connection.large_sql = False
