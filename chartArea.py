@@ -1629,6 +1629,9 @@ class chartArea(QFrame):
     timer = None
     refreshCB = None
     
+    lastReloadTime = None #reload timer
+    lastHostTime = None #one host timer
+    
     #last refresh time range
     fromTime = None
     toTime = None
@@ -1898,7 +1901,13 @@ class chartArea(QFrame):
             # self.widget.paintLock = True
             
             self.setStatus('sync')
-            self.statusMessage('Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi), True)
+            
+            sm = 'Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi)
+            
+            if self.lastHostTime is not None and self.lastHostTime > 1:
+                sm += ' (last one-host request took: %s)' % str(round(self.lastHostTime, 3))
+            
+            self.statusMessage(sm, True)
 
             timer = False
             
@@ -1915,6 +1924,7 @@ class chartArea(QFrame):
                     allOk = True
                     
                     t1 = time.time()
+                    self.lastHostTime = t1-t0
                     self.statusMessage('%s added, %s s' % (kpi, str(round(t1-t0, 3))), True)
                 except utils.dbException as e:
                     reconnected = self.connectionLost(str(e))
@@ -2022,8 +2032,10 @@ class chartArea(QFrame):
                                         self.widget.nkpis[hst] = kpis[hst]
                                         
                                         t2 = time.time()
+                                        
                                         self.statusMessage('%s:%s %s added, %s s' % (self.widget.hosts[hst]['host'], self.widget.hosts[hst]['port'], kpi, str(round(t2-t1, 3))), True)
                                     
+                            self.lastReloadTime = t2-t0
                             self.statusMessage('All hosts %s added, %s s' % (kpi, str(round(t2-t0, 3))))
                             allOk = True
                         except utils.dbException as e:
@@ -2294,7 +2306,13 @@ class chartArea(QFrame):
         self.scalesUpdated.emit()
 
     def reloadChart(self):
-        self.statusMessage('Reload...')
+
+        if self.lastReloadTime is not None and self.lastReloadTime > 3:
+            sm = 'Reload... (last reload request took: %s)' % str(round(self.lastReloadTime, 3))
+        else:
+            sm = 'Reload...'
+            
+        self.statusMessage(sm, True)
         self.repaint()
         
         timerF = None
@@ -2401,6 +2419,7 @@ class chartArea(QFrame):
             #+ scrollRangeChanged logic as a little different mechanism works
         
         t1 = time.time()
+        self.lastReloadTime = t1-t0
         self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
         
         if timerF == True:
