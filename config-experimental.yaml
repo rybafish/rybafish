@@ -53,3 +53,6 @@ highlightLOBs: True
 
 #detach timer for resultsets with LOBs
 #detachTimeout: 30
+
+#lowercase column named for "Generate Filter" and "Insert Column Names" features
+#lowercase-columns: False

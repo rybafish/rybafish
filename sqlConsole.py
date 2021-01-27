@@ -2521,6 +2521,20 @@ class sqlConsole(QWidget):
 
             result.populate(refreshMode)
 
+
+        log('clearing lists: %i' % len(cols_list))
+        
+        for i in range(len(cols_list)):
+        
+            log('rows %i:%i' % (i, len(rows_list[0])))
+            del rows_list[0]
+
+            log('cols %i:%i' % (i, len(cols_list[0])))
+            del cols_list[0]
+            
+        #del rows_list
+        #del cols_list
+
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
