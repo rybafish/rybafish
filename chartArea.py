@@ -1949,9 +1949,14 @@ class chartArea(QFrame):
         
         if kpi in self.widget.nkpis[host]:
         
-            if modifiers == Qt.ControlModifier:
+            if modifiers & Qt.ControlModifier:
                 for hst in range(0, len(self.widget.hosts)):
-                    if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] == host_d['port']):
+                    
+                    # okay this is a confusing one:
+                    # on Control+click we by default only "unckick" the kpi for all the hosts, same port
+                    # but if the Shift also pressed - we ignore port and unclick bloody everything
+                    
+                    if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and (modifiers & Qt.ShiftModifier or self.widget.hosts[hst]['port'] == host_d['port'])):
                         
                         if cfg('loglevel', 3) > 3:
                             log('unclick, %s, %s:' % (str(hst), kpi))
@@ -1986,7 +1991,10 @@ class chartArea(QFrame):
         else:
             fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
             
-            if modifiers == Qt.ControlModifier:
+            if modifiers & Qt.ControlModifier:
+                # okay this is a confusing one:
+                # on Control+click we by default only add the kpi for all the hosts, _same port_
+                # BUT if Shift also pressed - we ignore the port and add bloody everything
                 kpis = {}
                 if host_d['port'] == '':
                     
@@ -2003,7 +2011,7 @@ class chartArea(QFrame):
                     for hst in range(0, len(self.widget.hosts)):
                         kpis[hst] = self.widget.nkpis[hst].copy() #otherwise it might be empty --> key error later in get_data
 
-                        if self.widget.hosts[hst]['port'] == host_d['port'] and kpi not in self.widget.nkpis[hst]:
+                        if (modifiers & Qt.ShiftModifier or self.widget.hosts[hst]['port'] == host_d['port']) and kpi not in self.widget.nkpis[hst]:
                             #self.widget.nkpis[hst].append(kpi)
                             kpis[hst] = self.widget.nkpis[hst] + [kpi]
             else:
@@ -2014,17 +2022,18 @@ class chartArea(QFrame):
                 #pass
                 self.widget.nkpis[host] = kpis
             else:
-                if modifiers == Qt.ControlModifier:
+                if modifiers & Qt.ControlModifier:
+                    #list of kpis formed above, here we actually request
                     self.statusMessage('Request all/%s...' % (kpi), True)
                     t0 = time.time()
 
                     self.setStatus('sync', True)
                     while allOk is None:
                         try:
-                            t0 = time.time()
+                            t2 = t0 = time.time()
+                            
                             for hst in range(0, len(self.widget.hosts)):
-                                if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
-                                    # self.dp.getData(self.widget.hosts[hst], fromto, self.widget.nkpis[hst], self.widget.ndata[hst])
+                                if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):  # doesnt look right 27.01.2021
                                     
                                     if len(kpis[hst]) > 0:
                                         t1 = time.time()
