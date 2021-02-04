@@ -184,6 +184,10 @@ class QPlainTextEditLN(QWidget):
 
     class LineNumberArea(QWidget):
         def __init__(self, edit):
+
+            #redraw lock
+            self.locked = False
+            
             super().__init__()
             
 
@@ -219,6 +223,11 @@ class QPlainTextEditLN(QWidget):
             self.repaint()
 
         def paintEvent(self, QPaintEvent):
+        
+            if self.locked:
+                return
+                
+            self.locked  = True
 
             self.lines = self.edit.document().blockCount()
 
@@ -260,7 +269,9 @@ class QPlainTextEditLN(QWidget):
                 
                 block = block.next()
             
-            qp.end()    
+            qp.end()
+            
+            self.locked  = False
 
     def __init__(self, parent):
         super().__init__(parent)

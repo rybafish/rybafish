@@ -692,7 +692,6 @@ class console(QPlainTextEditLN):
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
-            print('execute')
             self.executionTriggered.emit('normal')
             
             '''
@@ -740,10 +739,6 @@ class console(QPlainTextEditLN):
             if self.braketsHighlighted:
                 self.clearHighlighting()
                 
-            # print explisit call of the normal processing? this looks real weird
-            # shouldnt it be just super().keyPressEvent(event) instead?
-            # may be if I inherited QPlainTextEdit...
-            #QPlainTextEdit.keyPressEvent(self.cons, event)
             super().keyPressEvent(event)
 
     def clearHighlighting(self):
