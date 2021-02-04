@@ -15,6 +15,8 @@ import time, sys
 import db
 
 import utils
+from QPlainTextEditLN import QPlainTextEditLN
+
 from utils import cfg
 from utils import dbException, log
 from utils import resourcePath
@@ -203,7 +205,8 @@ def generateTabName():
         i += 1
 
 
-class console(QPlainTextEdit):
+class console(QPlainTextEditLN):
+#class console(QPlainTextEdit):
     
     executionTriggered = pyqtSignal(['QString'])
     
@@ -224,7 +227,7 @@ class console(QPlainTextEdit):
         
         self.setFocus()
 
-    def __init__(self):
+    def __init__(self, parent):
         self.lock = False
         
         self.haveHighlighrs = False
@@ -237,7 +240,7 @@ class console(QPlainTextEdit):
 
         self.lastSearch = ''    #for searchDialog
         
-        super().__init__()
+        super().__init__(parent)
 
         fontSize = utils.cfg('console-fontSize', 10)
         
@@ -494,6 +497,9 @@ class console(QPlainTextEdit):
             if st >= 0:
                 select(st, st+len(str))
         
+    # the stuff moved to QPlainTextEditLN because I am stupid and lazy.
+    
+    '''
     def duplicateLine (self):
         cursor = self.textCursor()
         
@@ -509,49 +515,6 @@ class console(QPlainTextEdit):
             cursor.clearSelection()
             cursor.insertText(txt)
 
-    def moveLine(self, direction):
-
-        cursor = self.textCursor()
-        pos = cursor.position()
-        
-        lineFrom = self.document().findBlock(pos)
-
-        startPos = lineFrom.position()
-        endPos = startPos + len(lineFrom.text())
-
-        if direction == 'down':
-            lineTo = self.document().findBlock(endPos + 1)
-        else:
-            lineTo = self.document().findBlock(startPos - 1)
-
-        cursor.beginEditBlock() #deal with unso/redo
-        # select original line
-        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
-        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
-        
-        textMove = cursor.selectedText()
-        
-        # replace it by text from the new location
-        cursor.insertText(lineTo.text())
-
-        # now put moving text in place
-        startPos = lineTo.position()
-        endPos = startPos + len(lineTo.text())
-
-        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
-        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
-
-        cursor.insertText(textMove)
-        
-        cursor.endEditBlock() #deal with unso/redo
-        
-        self.repaint()
-        
-        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
-        cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
-        
-        self.setTextCursor(cursor)
-        
     def tabKey(self):
         
         cursor = self.textCursor()
@@ -677,43 +640,94 @@ class console(QPlainTextEdit):
         self.setTextCursor(cursor)
         
         cursor.endEditBlock() 
+    '''
+    
+    def moveLine(self, direction):
+
+        cursor = self.textCursor()
+        pos = cursor.position()
+        
+        lineFrom = self.document().findBlock(pos)
+
+        startPos = lineFrom.position()
+        endPos = startPos + len(lineFrom.text())
+
+        if direction == 'down':
+            lineTo = self.document().findBlock(endPos + 1)
+        else:
+            lineTo = self.document().findBlock(startPos - 1)
+
+        cursor.beginEditBlock() #deal with unso/redo
+        # select original line
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+        
+        textMove = cursor.selectedText()
+        
+        # replace it by text from the new location
+        cursor.insertText(lineTo.text())
+
+        # now put moving text in place
+        startPos = lineTo.position()
+        endPos = startPos + len(lineTo.text())
+
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+
+        cursor.insertText(textMove)
+        
+        cursor.endEditBlock() #deal with unso/redo
+        
+        self.repaint()
+        
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
+        
+        self.setTextCursor(cursor)
     
     def keyPressEvent (self, event):
+    
+        #print('console keypress')
         
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
+            print('execute')
             self.executionTriggered.emit('normal')
+            
+            '''
+            
+            all this moved to QPlainTextEdit
+            
+            elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
+                self.duplicateLine()
 
-        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
-            self.duplicateLine()
+            elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Down:
+                self.moveLine('down')
 
-        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Down:
-            self.moveLine('down')
+            elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Up:
+                self.moveLine('up')
 
-        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Up:
-            self.moveLine('up')
+            elif event.key() == Qt.Key_Backtab and not (modifiers & Qt.ControlModifier):
+                self.shiftTabKey()
 
-        elif event.key() == Qt.Key_Backtab and not (modifiers & Qt.ControlModifier):
-            self.shiftTabKey()
-
-        elif event.key() == Qt.Key_Tab and not (modifiers & Qt.ControlModifier):
-            self.tabKey()
-            
-        elif modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier and event.key() == Qt.Key_U:
-            cursor = self.textCursor()
-            
-            txt = cursor.selectedText()
-            
-            cursor.insertText(txt.upper())
-            
-        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_U:
-            cursor = self.textCursor()
-            
-            txt = cursor.selectedText()
-            
-            cursor.insertText(txt.lower())
-            
+            elif event.key() == Qt.Key_Tab and not (modifiers & Qt.ControlModifier):
+                self.tabKey()
+                
+            elif modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier and event.key() == Qt.Key_U:
+                cursor = self.textCursor()
+                
+                txt = cursor.selectedText()
+                
+                cursor.insertText(txt.upper())
+                
+            elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_U:
+                cursor = self.textCursor()
+                
+                txt = cursor.selectedText()
+                
+                cursor.insertText(txt.lower())
+            '''
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_F:
                 search = searchDialog.searchDialog(self.lastSearch)
                 
@@ -1652,6 +1666,8 @@ class sqlConsole(QWidget):
             log('[!]' + str(e))
             
     def keyPressEvent(self, event):
+    
+        #print('sql keypress')
    
         modifiers = QApplication.keyboardModifiers()
 
@@ -2633,7 +2649,7 @@ class sqlConsole(QWidget):
         hbar = QHBoxLayout()
         
         #self.cons = QPlainTextEdit()
-        self.cons = console()
+        self.cons = console(self)
         
         self.cons._parent = self
         
