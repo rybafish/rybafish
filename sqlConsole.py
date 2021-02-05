@@ -237,6 +237,9 @@ class console(QPlainTextEditLN):
         #self.braketsHighlightedPos = []
         
         self.modifiedLayouts = []
+        
+        self.manualSelection = False
+        self.manualSelectionPos = []
 
         self.lastSearch = ''    #for searchDialog
         
@@ -427,7 +430,7 @@ class console(QPlainTextEditLN):
         menuConnect = cmenu.addAction('(re)connecto to the DB')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
 
-        if cfg('developmentMode'):
+        if cfg('dev'):
             cmenu.addSeparator()
             menuTest = cmenu.addAction('Test menu')
             createDummyTable = cmenu.addAction('Generate test result')
@@ -436,7 +439,7 @@ class console(QPlainTextEditLN):
 
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
-        if cfg('developmentMode'):
+        if cfg('dev'):
             if action == createDummyTable:
                 self._parent.closeResults()
                 self._parent.dummyResultTable2(200 * 1000)
@@ -465,7 +468,7 @@ class console(QPlainTextEditLN):
             self.saveFileSignal.emit()
         elif action == menuClose:
             self.closeSignal.emit()
-        elif cfg('developmentMode') and action == menuTest:
+        elif cfg('dev') and action == menuTest:
             cursor = self.textCursor()
             cursor.removeSelectedText()
             cursor.insertText('123')
@@ -763,6 +766,23 @@ class console(QPlainTextEditLN):
             self.haveHighlighrs = False
 
     def cursorPositionChangedSignal(self):
+    
+        if self.manualSelection:
+            print('need to clear', self.manualSelectionPos)
+            
+            start = self.manualSelectionPos[0]
+            stop = self.manualSelectionPos[1]
+            
+            cursor = QTextCursor(self.document())
+
+            format = cursor.charFormat()
+            format.setBackground(QColor('white'))
+        
+            cursor.setPosition(start,QTextCursor.MoveAnchor)
+            cursor.setPosition(stop,QTextCursor.KeepAnchor)
+            
+            cursor.setCharFormat(format)
+
     
         if cfg('noBraketsHighlighting'):
             return
@@ -1529,7 +1549,7 @@ class sqlConsole(QWidget):
         self.resultTabs = None # tabs widget
         
         self.noBackup = False
-
+        
         super().__init__()
         self.initUI()
         
@@ -1676,6 +1696,12 @@ class sqlConsole(QWidget):
             self.spliter.setSizes(self.splitterSizes)
             
             self.splitterSizes = backTo
+
+        '''
+        elif event.key() == Qt.Key_F11:
+            #self.manualSelect(23, 42)
+        '''
+            
                 
         super().keyPressEvent(event)
 
@@ -2096,7 +2122,7 @@ class sqlConsole(QWidget):
         
     def executeSelection(self, mode):
     
-        if self.config is None:
+        if not cfg('dev') and self.config is None:
             self.log('No connection')
             return
     
@@ -2123,6 +2149,58 @@ class sqlConsole(QWidget):
         result = self.newResult(self.conn, statement)
         self.executeStatement(statement, result)
         
+    def manualSelect(self, start, stop):
+        charFmt = QTextCharFormat()
+        charFmt.setBackground(QColor('#8CF'))
+        
+        print('manualSelect %i - %i' % (start, stop))
+
+        block = tbStart = self.cons.document().findBlock(start)
+        tbEnd = self.cons.document().findBlock(stop)
+        
+        fromTB = block.blockNumber()
+        toTB = tbEnd.blockNumber()
+        
+        curTB = fromTB
+        
+        while curTB <= toTB:
+        
+            #print('block, pos:', curTB, block.position())
+            
+            if block == tbStart:
+                delta = start - block.position()
+            else:
+                delta = 0
+
+            if block == tbEnd:
+                lenght = stop - block.position() - delta
+            else:
+                lenght = block.length()
+            
+            #print('print range: ', delta, lenght)
+            
+            lo = block.layout()
+            
+            r = lo.FormatRange()
+            
+            r.start = delta
+            r.length = lenght
+            
+            r.format = charFmt
+            
+            af = lo.additionalFormats()
+
+            lo.setAdditionalFormats(af + [r])
+            
+            block = block.next()
+            curTB = block.blockNumber()
+            
+            
+        self.cons.manualSelection = True
+        self.cons.manualSelectionPos  = [start, stop]
+            
+        self.cons.viewport().repaint()
+            
     def executeSelectionParse(self):
     
         txt = ''
@@ -2171,15 +2249,16 @@ class sqlConsole(QWidget):
                 return True
             else:
                 return False
-                
+        
         def selectSingle(start, stop):
+            self.manualSelect(start, stop)
             
-            cursor = QTextCursor(self.cons.document())
+            #cursor = QTextCursor(self.cons.document())
 
-            cursor.setPosition(start,QTextCursor.MoveAnchor)
-            cursor.setPosition(stop,QTextCursor.KeepAnchor)
+            #cursor.setPosition(start,QTextCursor.MoveAnchor)
+            #cursor.setPosition(stop,QTextCursor.KeepAnchor)
             
-            self.cons.setTextCursor(cursor)
+            #self.cons.setTextCursor(cursor)
         
         def statementDetected(start, stop):
 
@@ -2216,6 +2295,8 @@ class sqlConsole(QWidget):
                 cursorPos = self.cons.textCursor().position()
             else:
                 cursorPos = None
+                
+        #print('ran from: ', cursorPos)
         
         str = ''
         
@@ -2270,8 +2351,9 @@ class sqlConsole(QWidget):
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
                     if F9 and (start <= cursorPos <= stop) and (start < stop):
-                        #print('start <= cursorPos <= stop:', start, cursorPos, stop)
-                        selectSingle(start, stop)
+                        print('start <= cursorPos <= stop:', start, cursorPos, stop)
+                        print('warning! selectSingle used to be here, but removed 05.02.2021')
+                        #selectSingle(start, stop)
                         break
                     else:
                         if not F9:
@@ -2357,7 +2439,12 @@ class sqlConsole(QWidget):
             else:
                 #empty string selected
                 pass
-            
+                
+        #move the cursor to initial position
+        #cursor = console.cons.textCursor()
+        #print('exiting, move to', cursorPos)
+        #cursor.setPosition(cursorPos, cursor.MoveAnchor)
+        #self.cons.setTextCursor(cursor)
 
         return
         
