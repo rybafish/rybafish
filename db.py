@@ -161,7 +161,7 @@ def execute_query(connection, sql_string, params):
         
         psid = cursor.prepare(sql_string)
     except pyhdb.exceptions.DatabaseError as e:
-        log('[!] SQL Error: %s' % sql_string)
+        log('[!] SQL Error: %s' % sql_string[0:256])
         log('[!] SQL Error: %s' % (e))
         
         raise dbException(str(e))
