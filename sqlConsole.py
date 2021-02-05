@@ -2357,7 +2357,6 @@ class sqlConsole(QWidget):
             else:
                 #empty string selected
                 pass
-            
 
         return
         
