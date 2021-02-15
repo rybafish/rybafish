@@ -13,6 +13,12 @@ class QPlainTextEditLN(QWidget):
             #font = QFont ('Consolas')
             #self.setFont(font)
 
+        '''
+        def contextMenuEvent (self, event):
+            print('bebebe')
+            #super().contextMenuEvent(event)
+        '''
+        
         def duplicateLine (self):
             cursor = self.textCursor()
             
@@ -304,6 +310,8 @@ class QPlainTextEditLN(QWidget):
 
         self.setFont = self.edit.setFont
         self.setStyleSheet = self.edit.setStyleSheet
+        
+        self.edit.contextMenuEvent = self.contextMenuEvent # not sure why this works but it does.
         
         self.insertFromMimeData = self.edit.insertFromMimeData
         
