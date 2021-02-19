@@ -316,14 +316,23 @@ class QPlainTextEditLN(QWidget):
         self.insertFromMimeData = self.edit.insertFromMimeData
         
         #self.keyPressEvent = self.edit.keyPressEvent
+        
+        self.locked = False
     
     def redrawLines(self, rect, dy):
         if rect.width() < 20:
             return
+        
+        if self.locked: #prevent refresh on top of refresh
+            return 
             
+        self.locked = True
+        
         self.lineNumbers.repaint()
+        
+        self.locked = False
 
-    def paintEvent(self, QPaintEvent):
+    def paintEventZZ(self, QPaintEvent):
         qp = QPainter()
         super().paintEvent(QPaintEvent)
         qp.begin(self)
