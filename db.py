@@ -99,7 +99,13 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
             pyhdb.protocol.constants.MAX_MESSAGE_SIZE = 2**19
             pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
             
-            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
+            if longdate:
+                log('largesql console with longdates')
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
+            else:
+                log('largesql console without longdates')
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                
             connection.large_sql = True
             largeSql = False
             
@@ -107,7 +113,14 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
             old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
         else:
             # normal connection
-            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
+
+            if longdate:
+                log('console with longdates')
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
+            else:
+                log('console without longdates')
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+
             connection.large_sql = False
             largeSql = False
             
@@ -140,12 +153,15 @@ def execute_query(connection, sql_string, params):
 
     # prepare the statement...
 
+    if cfg('loglevel', 3) >= 5:
+        log('[SQL]: %s' % sql_string)
+
     try:
         cursor = connection.cursor()
         
         psid = cursor.prepare(sql_string)
     except pyhdb.exceptions.DatabaseError as e:
-        log('[!] SQL Error: %s' % sql_string)
+        log('[!] SQL Error: %s' % sql_string[0:256])
         log('[!] SQL Error: %s' % (e))
         
         raise dbException(str(e))
@@ -159,7 +175,7 @@ def execute_query(connection, sql_string, params):
         ps = cursor.get_prepared_statement(psid)
 
         cursor.execute_prepared(ps, [params])
-
+        
         rows = cursor.fetchall()
         
         close_result(connection, cursor._resultset_id)
@@ -200,6 +216,9 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     cursor = cursor_mod(connection)
 
     # prepare the statement...
+    
+    if cfg('loglevel', 3) >= 5:
+        log('[SQL]: %s' % sql_string)
 
     try:
         psid = cursor.prepare(sql_string)
@@ -226,24 +245,28 @@ def execute_query_desc(connection, sql_string, params, resultSize):
         cursor.execute_prepared(ps, [params])
 
         if cursor._function_code == function_codes.DDL:
-            rows = None
+            rows_list = None
         else:
-            rows = cursor.fetchmany(resultSize)
+            rows_list = []
+        
+            for i in range(len(cursor.description_list)):
+                rows = cursor.fetchmany(resultSize, i)
+                
+                rows_list.append(rows)
             
             cursor.close()
-
-        # rows = cursor.fetchmany(resultSize)
 
     except pyhdb.exceptions.DatabaseError as e:
         log('[!]: sql execution issue %s\n' % e)
         raise dbException(str(e))
     except Exception as e:
-        log('[E] unexpected error: %s' % str(e))
+        log('[E] unexpected DB error: %s' % str(e))
         raise dbException(str(e))
 
-    columns = cursor.description
+    #columns = cursor.description
+    columns_list = cursor.description_list
 
-    return rows, columns, cursor
+    return rows_list, columns_list, cursor
     
 def get_data(connection, kpis, times, data):
     '''

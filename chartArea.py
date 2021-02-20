@@ -1629,6 +1629,9 @@ class chartArea(QFrame):
     timer = None
     refreshCB = None
     
+    lastReloadTime = None #reload timer
+    lastHostTime = None #one host timer
+    
     #last refresh time range
     fromTime = None
     toTime = None
@@ -1898,7 +1901,13 @@ class chartArea(QFrame):
             # self.widget.paintLock = True
             
             self.setStatus('sync')
-            self.statusMessage('Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi), True)
+            
+            sm = 'Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi)
+            
+            if self.lastHostTime is not None and self.lastHostTime > 1:
+                sm += ' (last one-host request took: %s)' % str(round(self.lastHostTime, 3))
+            
+            self.statusMessage(sm, True)
 
             timer = False
             
@@ -1915,6 +1924,7 @@ class chartArea(QFrame):
                     allOk = True
                     
                     t1 = time.time()
+                    self.lastHostTime = t1-t0
                     self.statusMessage('%s added, %s s' % (kpi, str(round(t1-t0, 3))), True)
                 except utils.dbException as e:
                     reconnected = self.connectionLost(str(e))
@@ -1939,9 +1949,14 @@ class chartArea(QFrame):
         
         if kpi in self.widget.nkpis[host]:
         
-            if modifiers == Qt.ControlModifier:
+            if modifiers & Qt.ControlModifier:
                 for hst in range(0, len(self.widget.hosts)):
-                    if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] == host_d['port']):
+                    
+                    # okay this is a confusing one:
+                    # on Control+click we by default only "unckick" the kpi for all the hosts, same port
+                    # but if the Shift also pressed - we ignore port and unclick bloody everything
+                    
+                    if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and (modifiers & Qt.ShiftModifier or self.widget.hosts[hst]['port'] == host_d['port'])):
                         
                         if cfg('loglevel', 3) > 3:
                             log('unclick, %s, %s:' % (str(hst), kpi))
@@ -1976,7 +1991,10 @@ class chartArea(QFrame):
         else:
             fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
             
-            if modifiers == Qt.ControlModifier:
+            if modifiers & Qt.ControlModifier:
+                # okay this is a confusing one:
+                # on Control+click we by default only add the kpi for all the hosts, _same port_
+                # BUT if Shift also pressed - we ignore the port and add bloody everything
                 kpis = {}
                 if host_d['port'] == '':
                     
@@ -1993,7 +2011,7 @@ class chartArea(QFrame):
                     for hst in range(0, len(self.widget.hosts)):
                         kpis[hst] = self.widget.nkpis[hst].copy() #otherwise it might be empty --> key error later in get_data
 
-                        if self.widget.hosts[hst]['port'] == host_d['port'] and kpi not in self.widget.nkpis[hst]:
+                        if (modifiers & Qt.ShiftModifier or self.widget.hosts[hst]['port'] == host_d['port']) and kpi not in self.widget.nkpis[hst]:
                             #self.widget.nkpis[hst].append(kpi)
                             kpis[hst] = self.widget.nkpis[hst] + [kpi]
             else:
@@ -2004,17 +2022,18 @@ class chartArea(QFrame):
                 #pass
                 self.widget.nkpis[host] = kpis
             else:
-                if modifiers == Qt.ControlModifier:
+                if modifiers & Qt.ControlModifier:
+                    #list of kpis formed above, here we actually request
                     self.statusMessage('Request all/%s...' % (kpi), True)
                     t0 = time.time()
 
                     self.setStatus('sync', True)
                     while allOk is None:
                         try:
-                            t0 = time.time()
+                            t2 = t0 = time.time()
+                            
                             for hst in range(0, len(self.widget.hosts)):
-                                if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):
-                                    # self.dp.getData(self.widget.hosts[hst], fromto, self.widget.nkpis[hst], self.widget.ndata[hst])
+                                if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):  # doesnt look right 27.01.2021
                                     
                                     if len(kpis[hst]) > 0:
                                         t1 = time.time()
@@ -2022,8 +2041,10 @@ class chartArea(QFrame):
                                         self.widget.nkpis[hst] = kpis[hst]
                                         
                                         t2 = time.time()
+                                        
                                         self.statusMessage('%s:%s %s added, %s s' % (self.widget.hosts[hst]['host'], self.widget.hosts[hst]['port'], kpi, str(round(t2-t1, 3))), True)
                                     
+                            self.lastReloadTime = t2-t0
                             self.statusMessage('All hosts %s added, %s s' % (kpi, str(round(t2-t0, 3))))
                             allOk = True
                         except utils.dbException as e:
@@ -2294,7 +2315,13 @@ class chartArea(QFrame):
         self.scalesUpdated.emit()
 
     def reloadChart(self):
-        self.statusMessage('Reload...')
+
+        if self.lastReloadTime is not None and self.lastReloadTime > 3:
+            sm = 'Reload... (last reload request took: %s)' % str(round(self.lastReloadTime, 3))
+        else:
+            sm = 'Reload...'
+            
+        self.statusMessage(sm, True)
         self.repaint()
         
         timerF = None
@@ -2401,6 +2428,7 @@ class chartArea(QFrame):
             #+ scrollRangeChanged logic as a little different mechanism works
         
         t1 = time.time()
+        self.lastReloadTime = t1-t0
         self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
         
         if timerF == True:

@@ -52,3 +52,6 @@ keepalive: 1200
 #saveLayout: True
 #saveKPIs: True
 #saveOpenTabs: True
+
+#lowercase column named for "Generate Filter" and "Insert Column Names" features
+#lowercase-columns: False

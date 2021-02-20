@@ -15,21 +15,20 @@ import time, sys
 import db
 
 import utils
+from QPlainTextEditLN import QPlainTextEditLN
+
 from utils import cfg
+from utils import dbException, log
+from utils import resourcePath
 
 import re
 
 import lobDialog, searchDialog
-from utils import dbException, log
 
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 import datetime
-import binascii
 import os
-
-
-from utils import resourcePath
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -57,7 +56,7 @@ class sqlWorker(QObject):
 
         cons.wrkException = None
     
-        if cfg('loglevel', 3) > 3:
+        if 3 < cfg('loglevel', 3) < 5:
             log('console execute: [%s]' % (sql))
         
         if len(sql) >= 2**17 and cons.conn.large_sql != True:
@@ -113,9 +112,17 @@ class sqlWorker(QObject):
             txtSub = txtSub.replace('\t', ' ')
             
             #print('start sql')
-            result.rows, result.cols, dbCursor = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
-            #print('sql finished')
+            self.rows_list, self.cols_list, dbCursor = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+            self.resultset_id_list = dbCursor._resultset_id_list
             
+            result.explicitLimit = explicitLimit
+            result.resultSizeLimit = resultSizeLimit          
+            
+            #no special treatment for the first resultset anymore
+            #result.rows, result.cols = self.rows_list[0], self.cols_list[0]
+            #_resultset_id = dbCursor._resultset_id_list[0]
+            #print('sql finished')
+
             self.dbCursor = dbCursor
             
         except dbException as e:
@@ -147,16 +154,16 @@ class sqlWorker(QObject):
         else:
             resultSize = -1
 
+        # all the rest moved to post-processing in SQLFinished call back
+        # as part of it resultset-dependent
+        '''
+            
+            
         if cons.wrkException is None:
-            result._resultset_id = dbCursor._resultset_id   #requred for detach (in case of detach)
+            result._resultset_id = _resultset_id   #requred for detach (in case of detach)
             result.detached = False
             
-            if dbCursor._resultset_id:
-                result_str = binascii.hexlify(bytearray(dbCursor._resultset_id)).decode('ascii')
-            else:
-                result_str = 'None'
-                
-            log('saving the resultset id: %s' % result_str)
+            log('saving the resultset id: %s' % utils.hextostr(_resultset_id))
 
             if result.cols is not None:
                 for c in result.cols:
@@ -166,10 +173,10 @@ class sqlWorker(QObject):
                         break
                     
             if result.LOBs == False and (not explicitLimit and resultSize == resultSizeLimit):
-                log('detaching due to possible SUSPENDED')
+                log('detaching due to possible SUSPENDED because of unfinished fetch')
                 result.detach()
+        '''
 
-        #print('1 <-- self.finished.emit()')
         self.finished.emit()
         #time.sleep(0.5)
         
@@ -198,7 +205,8 @@ def generateTabName():
         i += 1
 
 
-class console(QPlainTextEdit):
+class console(QPlainTextEditLN):
+#class console(QPlainTextEdit):
     
     executionTriggered = pyqtSignal(['QString'])
     
@@ -219,7 +227,7 @@ class console(QPlainTextEdit):
         
         self.setFocus()
 
-    def __init__(self):
+    def __init__(self, parent):
         self.lock = False
         
         self.haveHighlighrs = False
@@ -229,10 +237,13 @@ class console(QPlainTextEdit):
         #self.braketsHighlightedPos = []
         
         self.modifiedLayouts = []
+        
+        self.manualSelection = False
+        self.manualSelectionPos = []
 
         self.lastSearch = ''    #for searchDialog
         
-        super().__init__()
+        super().__init__(parent)
 
         fontSize = utils.cfg('console-fontSize', 10)
         
@@ -419,7 +430,7 @@ class console(QPlainTextEdit):
         menuConnect = cmenu.addAction('(re)connecto to the DB')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
 
-        if cfg('developmentMode'):
+        if cfg('dev'):
             cmenu.addSeparator()
             menuTest = cmenu.addAction('Test menu')
             createDummyTable = cmenu.addAction('Generate test result')
@@ -428,7 +439,7 @@ class console(QPlainTextEdit):
 
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
-        if cfg('developmentMode'):
+        if cfg('dev'):
             if action == createDummyTable:
                 self._parent.closeResults()
                 self._parent.dummyResultTable2(200 * 1000)
@@ -457,7 +468,7 @@ class console(QPlainTextEdit):
             self.saveFileSignal.emit()
         elif action == menuClose:
             self.closeSignal.emit()
-        elif cfg('developmentMode') and action == menuTest:
+        elif cfg('dev') and action == menuTest:
             cursor = self.textCursor()
             cursor.removeSelectedText()
             cursor.insertText('123')
@@ -489,6 +500,9 @@ class console(QPlainTextEdit):
             if st >= 0:
                 select(st, st+len(str))
         
+    # the stuff moved to QPlainTextEditLN because I am stupid and lazy.
+    
+    '''
     def duplicateLine (self):
         cursor = self.textCursor()
         
@@ -504,49 +518,6 @@ class console(QPlainTextEdit):
             cursor.clearSelection()
             cursor.insertText(txt)
 
-    def moveLine(self, direction):
-
-        cursor = self.textCursor()
-        pos = cursor.position()
-        
-        lineFrom = self.document().findBlock(pos)
-
-        startPos = lineFrom.position()
-        endPos = startPos + len(lineFrom.text())
-
-        if direction == 'down':
-            lineTo = self.document().findBlock(endPos + 1)
-        else:
-            lineTo = self.document().findBlock(startPos - 1)
-
-        cursor.beginEditBlock() #deal with unso/redo
-        # select original line
-        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
-        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
-        
-        textMove = cursor.selectedText()
-        
-        # replace it by text from the new location
-        cursor.insertText(lineTo.text())
-
-        # now put moving text in place
-        startPos = lineTo.position()
-        endPos = startPos + len(lineTo.text())
-
-        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
-        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
-
-        cursor.insertText(textMove)
-        
-        cursor.endEditBlock() #deal with unso/redo
-        
-        self.repaint()
-        
-        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
-        cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
-        
-        self.setTextCursor(cursor)
-        
     def tabKey(self):
         
         cursor = self.textCursor()
@@ -672,43 +643,93 @@ class console(QPlainTextEdit):
         self.setTextCursor(cursor)
         
         cursor.endEditBlock() 
+    '''
+    
+    def moveLine(self, direction):
+
+        cursor = self.textCursor()
+        pos = cursor.position()
+        
+        lineFrom = self.document().findBlock(pos)
+
+        startPos = lineFrom.position()
+        endPos = startPos + len(lineFrom.text())
+
+        if direction == 'down':
+            lineTo = self.document().findBlock(endPos + 1)
+        else:
+            lineTo = self.document().findBlock(startPos - 1)
+
+        cursor.beginEditBlock() #deal with unso/redo
+        # select original line
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+        
+        textMove = cursor.selectedText()
+        
+        # replace it by text from the new location
+        cursor.insertText(lineTo.text())
+
+        # now put moving text in place
+        startPos = lineTo.position()
+        endPos = startPos + len(lineTo.text())
+
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+
+        cursor.insertText(textMove)
+        
+        cursor.endEditBlock() #deal with unso/redo
+        
+        self.repaint()
+        
+        cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+        cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
+        
+        self.setTextCursor(cursor)
     
     def keyPressEvent (self, event):
+    
+        #print('console keypress')
         
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
             self.executionTriggered.emit('normal')
+            
+            '''
+            
+            all this moved to QPlainTextEdit
+            
+            elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
+                self.duplicateLine()
 
-        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
-            self.duplicateLine()
+            elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Down:
+                self.moveLine('down')
 
-        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Down:
-            self.moveLine('down')
+            elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Up:
+                self.moveLine('up')
 
-        elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Up:
-            self.moveLine('up')
+            elif event.key() == Qt.Key_Backtab and not (modifiers & Qt.ControlModifier):
+                self.shiftTabKey()
 
-        elif event.key() == Qt.Key_Backtab and not (modifiers & Qt.ControlModifier):
-            self.shiftTabKey()
-
-        elif event.key() == Qt.Key_Tab and not (modifiers & Qt.ControlModifier):
-            self.tabKey()
-            
-        elif modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier and event.key() == Qt.Key_U:
-            cursor = self.textCursor()
-            
-            txt = cursor.selectedText()
-            
-            cursor.insertText(txt.upper())
-            
-        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_U:
-            cursor = self.textCursor()
-            
-            txt = cursor.selectedText()
-            
-            cursor.insertText(txt.lower())
-            
+            elif event.key() == Qt.Key_Tab and not (modifiers & Qt.ControlModifier):
+                self.tabKey()
+                
+            elif modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier and event.key() == Qt.Key_U:
+                cursor = self.textCursor()
+                
+                txt = cursor.selectedText()
+                
+                cursor.insertText(txt.upper())
+                
+            elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_U:
+                cursor = self.textCursor()
+                
+                txt = cursor.selectedText()
+                
+                cursor.insertText(txt.lower())
+            '''
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_F:
                 search = searchDialog.searchDialog(self.lastSearch)
                 
@@ -721,10 +742,6 @@ class console(QPlainTextEdit):
             if self.braketsHighlighted:
                 self.clearHighlighting()
                 
-            # print explisit call of the normal processing? this looks real weird
-            # shouldnt it be just super().keyPressEvent(event) instead?
-            # may be if I inherited QPlainTextEdit...
-            #QPlainTextEdit.keyPressEvent(self.cons, event)
             super().keyPressEvent(event)
 
     def clearHighlighting(self):
@@ -749,6 +766,25 @@ class console(QPlainTextEdit):
             self.haveHighlighrs = False
 
     def cursorPositionChangedSignal(self):
+    
+        if self.manualSelection:
+            #print('need to clear', self.manualSelectionPos)
+            
+            start = self.manualSelectionPos[0]
+            stop = self.manualSelectionPos[1]
+            
+            cursor = QTextCursor(self.document())
+
+            format = cursor.charFormat()
+            format.setBackground(QColor('white'))
+        
+            cursor.setPosition(start,QTextCursor.MoveAnchor)
+            cursor.setPosition(stop,QTextCursor.KeepAnchor)
+            
+            cursor.setCharFormat(format)
+            
+            self.manualSelection = False
+
     
         if cfg('noBraketsHighlighting'):
             return
@@ -976,6 +1012,11 @@ class resultSet(QTableWidget):
         
         self.headers = [] # column names
         
+        
+        # overriden in case of select top xxxx
+        self.explicitLimit = False 
+        self.resultSizeLimit = cfg('resultSize', 1000)
+        
         super().__init__()
         
         verticalHeader = self.verticalHeader()
@@ -1136,10 +1177,7 @@ class resultSet(QTableWidget):
             log('[!] attempted to detach resultset with no _resultset_id')
             return
             
-        if self._resultset_id:
-            result_str = binascii.hexlify(bytearray(self._resultset_id)).decode('ascii')
-        else:
-            result_str = 'None'
+        result_str = utils.hextostr(self._resultset_id)
         
         if self._connection is None:
             return
@@ -1166,10 +1204,10 @@ class resultSet(QTableWidget):
         self.detach()
         
     def triggerDetachTimer(self, window):
-        log('Setting detach timer')
+        log('Setting detach timer for %s' % (utils.hextostr(self._resultset_id)))
         self.detachTimer = QTimer(window)
         self.detachTimer.timeout.connect(self.detachCB)
-        self.detachTimer.start(1000 * 300)
+        self.detachTimer.start(1000 * cfg('detachTimeout', 300))
     
     def csvRow(self, r):
         
@@ -1513,7 +1551,7 @@ class sqlConsole(QWidget):
         self.resultTabs = None # tabs widget
         
         self.noBackup = False
-
+        
         super().__init__()
         self.initUI()
         
@@ -1645,6 +1683,8 @@ class sqlConsole(QWidget):
             log('[!]' + str(e))
             
     def keyPressEvent(self, event):
+    
+        #print('sql keypress')
    
         modifiers = QApplication.keyboardModifiers()
 
@@ -1658,6 +1698,12 @@ class sqlConsole(QWidget):
             self.spliter.setSizes(self.splitterSizes)
             
             self.splitterSizes = backTo
+
+        '''
+        elif event.key() == Qt.Key_F11:
+            #self.manualSelect(23, 42)
+        '''
+            
                 
         super().keyPressEvent(event)
 
@@ -2078,7 +2124,7 @@ class sqlConsole(QWidget):
         
     def executeSelection(self, mode):
     
-        if self.config is None:
+        if not cfg('dev') and self.config is None:
             self.log('No connection')
             return
     
@@ -2105,6 +2151,58 @@ class sqlConsole(QWidget):
         result = self.newResult(self.conn, statement)
         self.executeStatement(statement, result)
         
+    def manualSelect(self, start, stop):
+        charFmt = QTextCharFormat()
+        charFmt.setBackground(QColor('#8CF'))
+        
+        #print('manualSelect %i - %i' % (start, stop))
+
+        block = tbStart = self.cons.document().findBlock(start)
+        tbEnd = self.cons.document().findBlock(stop)
+        
+        fromTB = block.blockNumber()
+        toTB = tbEnd.blockNumber()
+        
+        curTB = fromTB
+        
+        while curTB <= toTB and block.isValid():
+        
+            #print('block, pos:', curTB, block.position())
+            
+            if block == tbStart:
+                delta = start - block.position()
+            else:
+                delta = 0
+
+            if block == tbEnd:
+                lenght = stop - block.position() - delta
+            else:
+                lenght = block.length()
+            
+            #print('print range: ', delta, lenght)
+            
+            lo = block.layout()
+            
+            r = lo.FormatRange()
+            
+            r.start = delta
+            r.length = lenght
+            
+            r.format = charFmt
+            
+            af = lo.additionalFormats()
+
+            lo.setAdditionalFormats(af + [r])
+            
+            block = block.next()
+            curTB = block.blockNumber()
+            
+            
+        self.cons.manualSelection = True
+        self.cons.manualSelectionPos  = [start, stop]
+            
+        self.cons.viewport().repaint()
+            
     def executeSelectionParse(self):
     
         txt = ''
@@ -2153,15 +2251,16 @@ class sqlConsole(QWidget):
                 return True
             else:
                 return False
-                
+        
         def selectSingle(start, stop):
+            self.manualSelect(start, stop)
             
-            cursor = QTextCursor(self.cons.document())
+            #cursor = QTextCursor(self.cons.document())
 
-            cursor.setPosition(start,QTextCursor.MoveAnchor)
-            cursor.setPosition(stop,QTextCursor.KeepAnchor)
+            #cursor.setPosition(start,QTextCursor.MoveAnchor)
+            #cursor.setPosition(stop,QTextCursor.KeepAnchor)
             
-            self.cons.setTextCursor(cursor)
+            #self.cons.setTextCursor(cursor)
         
         def statementDetected(start, stop):
 
@@ -2198,6 +2297,8 @@ class sqlConsole(QWidget):
                 cursorPos = self.cons.textCursor().position()
             else:
                 cursorPos = None
+                
+        #print('ran from: ', cursorPos)
         
         str = ''
         
@@ -2252,8 +2353,9 @@ class sqlConsole(QWidget):
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
                     if F9 and (start <= cursorPos <= stop) and (start < stop):
-                        #print('start <= cursorPos <= stop:', start, cursorPos, stop)
-                        selectSingle(start, stop)
+                        print('start <= cursorPos <= stop:', start, cursorPos, stop)
+                        print('warning! selectSingle used to be here, but removed 05.02.2021')
+                        #selectSingle(start, stop)
                         break
                     else:
                         if not F9:
@@ -2339,7 +2441,12 @@ class sqlConsole(QWidget):
             else:
                 #empty string selected
                 pass
-            
+                
+        #move the cursor to initial position
+        #cursor = console.cons.textCursor()
+        #print('exiting, move to', cursorPos)
+        #cursor.setPosition(cursorPos, cursor.MoveAnchor)
+        #self.cons.setTextCursor(cursor)
 
         return
         
@@ -2411,7 +2518,7 @@ class sqlConsole(QWidget):
         
         self.indicator.status = 'render'
         self.indicator.repaint()
-
+        
         if self.wrkException is not None:
             self.log(self.wrkException, True)
             
@@ -2441,8 +2548,8 @@ class sqlConsole(QWidget):
         
         dbCursor = self.sqlWorker.dbCursor
         
-        rows = result.rows
-        cols = result.cols
+        if cfg('loglevel', 3) >= 3:
+            log ('Number of resultsets: %i' % len(dbCursor.description_list))
 
         t0 = self.t0
         t1 = time.time()
@@ -2452,8 +2559,12 @@ class sqlConsole(QWidget):
         #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
 
         logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
+        
+        rows_list = self.sqlWorker.rows_list
+        cols_list = self.sqlWorker.cols_list
+        resultset_id_list = self.sqlWorker.resultset_id_list
 
-        if rows is None or cols is None:
+        if rows_list is None or cols_list is None:
             # it was a DDL or something else without a result set so we just stop
             
             #logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
@@ -2465,19 +2576,64 @@ class sqlConsole(QWidget):
             result.clear()
             return
 
-        resultSize = len(rows)
+        for i in range(len(cols_list)):
+            
+            #print('result:', i)
+            
+            if i > 0:
+                result = self.newResult(self.conn, result.statement)
+                
+            result.rows = rows_list[i]
+            result.cols = cols_list[i]
+            result._resultset_id = resultset_id_list[i]
+                
+            rows = rows_list[i]
+        
+            resultSize = len(rows_list[i])
 
-        if result.LOBs:
-            result.triggerDetachTimer(self)
+            # copied from statementExecute (same code still there!)
+            result.detached = False
+            
+            if result.cols is not None:
+                for c in result.cols:
+                    if db.ifLOBType(c[1]):
+                        result.LOBs = True
+                        
+                        #print('LOBS!', utils.hextostr(result._resultset_id))
+                        
+                        break
+                        
+                        
+            if result.LOBs == False and (not result.explicitLimit and resultSize == result.resultSizeLimit):
+                log('detaching due to possible SUSPENDED because of unfinished fetch')
+                result.detach()
+                        
 
-        lobs = ', +LOBs' if result.LOBs else ''
+            if result.LOBs:
+                result.triggerDetachTimer(self)
 
-        logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
-        if resultSize == cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
+            lobs = ', +LOBs' if result.LOBs else ''
 
-        self.log(logText)
+            logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
+            if resultSize == cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
 
-        result.populate(refreshMode)
+            self.log(logText)
+
+            result.populate(refreshMode)
+
+
+        log('clearing lists: %i' % len(cols_list))
+        
+        for i in range(len(cols_list)):
+        
+            log('rows %i:%i' % (i, len(rows_list[0])))
+            del rows_list[0]
+
+            log('cols %i:%i' % (i, len(cols_list[0])))
+            del cols_list[0]
+            
+        #del rows_list
+        #del cols_list
 
         self.indicator.status = 'idle'
         self.indicator.repaint()
@@ -2577,7 +2733,7 @@ class sqlConsole(QWidget):
         hbar = QHBoxLayout()
         
         #self.cons = QPlainTextEdit()
-        self.cons = console()
+        self.cons = console(self)
         
         self.cons._parent = self
         

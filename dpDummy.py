@@ -76,8 +76,8 @@ class dataProvider:
                     })
                     
         hosts.append({
-                    'host':'dummy2',
-                    'port':'30040',
+                    'host':'dummy1',
+                    'port':'30041',
                     'from':stime,
                     'to':etime
                     })
@@ -92,7 +92,7 @@ class dataProvider:
                     
     def getData(self, host, fromto, kpis, data):
         
-        #time.sleep(1.7)
+        #time.sleep(0.1)
         
         ctime = datetime.datetime.now() - datetime.timedelta(seconds= 18 * 3600)
         ctime -= datetime.timedelta(seconds= ctime.timestamp() % 3600)
