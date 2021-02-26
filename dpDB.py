@@ -59,7 +59,7 @@ class dataProvider():
             self.timerkeepalive = None
 
         if self.connection and closeConnection:
-            log('closing conection')
+            log('closing connection')
             close_connection(self.connection)
             self.connection = None
             log('closed')
@@ -102,7 +102,7 @@ class dataProvider():
             return
 
         try:
-            log('chart keep-alive... ', False, True)
+            log('chart keep-alive... ', 3, False, True)
             
             t0 = time.time()
             db.execute_query(self.connection, 'select * from dummy', [])
@@ -112,7 +112,7 @@ class dataProvider():
                 log (10/0)
             
             t1 = time.time()
-            log('ok: %s ms' % (str(round(t1-t0, 3))), True)
+            log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
         except dbException as e:
             log('Trigger autoreconnect...')
             try:

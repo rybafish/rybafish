@@ -334,7 +334,7 @@ class hslWindow(QMainWindow):
                 
                     w = self.tabs.widget(i)
                 
-                    if isinstance(w, sqlConsole.sqlConsole):
+                    if isinstance(w, sqlConsole.sqlConsole) and w.conn is not None:
                         log('closing connection...')
                         w.disconnectDB()
                         w.indicator.status = 'disconnected'

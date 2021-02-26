@@ -1363,7 +1363,6 @@ class resultSet(QTableWidget):
         
         #fill the result table
         for r in range(len(rows)):
-                
             for c in range(len(row0)):
                 
                 val = rows[r][c]
@@ -1452,7 +1451,12 @@ class resultSet(QTableWidget):
             else:
                 if self.rows[i][j] is not None:
                     
+                    print('read lob >>>')
+                    print(type(self.rows[i][j]))
+                    
                     value = self.rows[i][j].read()
+                    
+                    print(' <<< read lob')
                     
                     if db.ifBLOBType(self.cols[j][1]):
                         blob = str(value.decode("utf-8", errors="ignore"))
@@ -1775,7 +1779,7 @@ class sqlConsole(QWidget):
                 data = f.read()
                 f.close()
         except Exception as e:
-            log ('Error: ' + str(e), True)
+            log ('Error: ' + str(e), 1, True)
             self.log ('Error: opening %s / %s' % (self.fileName, self.backup), True)
             self.log ('Error: ' + str(e), True)
             
@@ -1990,12 +1994,12 @@ class sqlConsole(QWidget):
             return
 
         try:
-            log('console keep-alive... ', False, True)
+            log('console keep-alive... ', 3, False, True)
             
             t0 = time.time()
             db.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
-            log('ok: %s ms' % (str(round(t1-t0, 3))), True)
+            log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
         except dbException as e:
             log('Trigger autoreconnect...')
             try:
@@ -2005,7 +2009,7 @@ class sqlConsole(QWidget):
                     log('Connection restored automatically')
                 else:
                     log('Some connection issue, give up')
-                    self.log('Some connection issue, give up', True)
+                    self.log('Some connection issue, give up', 1, True)
                     self.conn = None
             except:
                 log('Connection lost, give up')
@@ -2353,8 +2357,8 @@ class sqlConsole(QWidget):
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
                     if F9 and (start <= cursorPos <= stop) and (start < stop):
-                        print('start <= cursorPos <= stop:', start, cursorPos, stop)
-                        print('warning! selectSingle used to be here, but removed 05.02.2021')
+                        #print('start <= cursorPos <= stop:', start, cursorPos, stop)
+                        #print('warning! selectSingle used to be here, but removed 05.02.2021')
                         #selectSingle(start, stop)
                         break
                     else:
@@ -2548,8 +2552,7 @@ class sqlConsole(QWidget):
         
         dbCursor = self.sqlWorker.dbCursor
         
-        if cfg('loglevel', 3) >= 3:
-            log ('Number of resultsets: %i' % len(dbCursor.description_list))
+        log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
 
         t0 = self.t0
         t1 = time.time()
@@ -2575,6 +2578,10 @@ class sqlConsole(QWidget):
             
             result.clear()
             return
+            
+        #print('cols:', cols_list)
+        #print('rows:', rows_list)
+        #print('resultset id list', resultset_id_list)
 
         for i in range(len(cols_list)):
             
@@ -2585,7 +2592,15 @@ class sqlConsole(QWidget):
                 
             result.rows = rows_list[i]
             result.cols = cols_list[i]
-            result._resultset_id = resultset_id_list[i]
+            
+            #print(result.cols)
+            #print(result.cols[0])
+            #print(result.cols[0][2])
+            
+            if result.cols[0][2] == 'SCALAR':
+                result._resultset_id = None
+            else:
+                result._resultset_id = resultset_id_list[i]
                 
             rows = rows_list[i]
         
@@ -2622,14 +2637,12 @@ class sqlConsole(QWidget):
             result.populate(refreshMode)
 
 
-        log('clearing lists: %i' % len(cols_list))
+        log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
         
         for i in range(len(cols_list)):
-        
-            log('rows %i:%i' % (i, len(rows_list[0])))
+            #log('rows %i:%i' % (i, len(rows_list[0])))
             del rows_list[0]
-
-            log('cols %i:%i' % (i, len(cols_list[0])))
+            #log('cols %i:%i' % (i, len(cols_list[0])))
             del cols_list[0]
             
         #del rows_list

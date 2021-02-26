@@ -323,11 +323,14 @@ def cfg(param, default = None):
     else:
         return default
         
-def log(s, nots = False, nonl = False):
+def log(s, loglevel = 3, nots = False, nonl = False):
     '''
         log the stuff one way or another...
     '''
     
+    if cfg('loglevel', 3) < loglevel:
+        return
+
     if not nots:
         ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' '
     else:

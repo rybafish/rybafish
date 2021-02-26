@@ -2331,8 +2331,8 @@ class chartArea(QFrame):
             self.timer.stop()
         
         t0 = time.time()
-        log('  reloadChart()')
-        log('  hosts:', str(self.widget.hosts))
+        log('  reloadChart()', 5)
+        log('  hosts: %s' % str(self.widget.hosts), 5)
         
         #time.sleep(2)
         fromTime = self.fromEdit.text().strip()
