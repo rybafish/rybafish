@@ -33,7 +33,7 @@ logline = 'db configuration:'
 for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
     logline +=('    %s = %s\n' % (k, str(pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])))
     
-log(logline)
+log(logline, 4)
 
 largeSql = False
 
@@ -245,10 +245,10 @@ def execute_query_desc(connection, sql_string, params, resultSize):
         scalarOutput = True
         for p in metadata:
             # p - ParameterMetadata object
-            log('Okay, Scalar output parameter: [%s]' % (str(p)))
+            log('Okay, Scalar output parameter: [%s]' % (str(p)), 3)
             
             if(ifLOBType(p.datatype)):
-                params.append('') # don't even ask...
+                params.append('') # don't even ask... PyHDB...
             else:
                 params.append(None)
         

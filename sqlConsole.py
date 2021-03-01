@@ -645,6 +645,7 @@ class console(QPlainTextEditLN):
         cursor.endEditBlock() 
     '''
     
+    '''
     def moveLine(self, direction):
 
         cursor = self.textCursor()
@@ -687,6 +688,7 @@ class console(QPlainTextEditLN):
         cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
         
         self.setTextCursor(cursor)
+    '''
     
     def keyPressEvent (self, event):
     
@@ -1204,10 +1206,12 @@ class resultSet(QTableWidget):
         self.detach()
         
     def triggerDetachTimer(self, window):
-        log('Setting detach timer for %s' % (utils.hextostr(self._resultset_id)))
+        dtimer = cfg('detachTimeout', 300)
+        
+        log('Setting detach timer for %s %i sec' % (utils.hextostr(self._resultset_id), dtimer))
         self.detachTimer = QTimer(window)
         self.detachTimer.timeout.connect(self.detachCB)
-        self.detachTimer.start(1000 * cfg('detachTimeout', 300))
+        self.detachTimer.start(1000 * dtimer)
     
     def csvRow(self, r):
         
@@ -1450,13 +1454,7 @@ class resultSet(QTableWidget):
                     blob = str(self.rows[i][j])
             else:
                 if self.rows[i][j] is not None:
-                    
-                    print('read lob >>>')
-                    print(type(self.rows[i][j]))
-                    
                     value = self.rows[i][j].read()
-                    
-                    print(' <<< read lob')
                     
                     if db.ifBLOBType(self.cols[j][1]):
                         blob = str(value.decode("utf-8", errors="ignore"))
@@ -2559,8 +2557,6 @@ class sqlConsole(QWidget):
         
         self.t0 = None
 
-        #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
-
         logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
         
         rows_list = self.sqlWorker.rows_list
@@ -2632,10 +2628,9 @@ class sqlConsole(QWidget):
             logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
             if resultSize == cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
 
-            self.log(logText)
-
             result.populate(refreshMode)
-
+            
+        self.log(logText)
 
         log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
         
