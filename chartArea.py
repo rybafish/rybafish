@@ -415,7 +415,8 @@ class myWidget(QWidget):
         
         if self.highlightedEntity is not None:
             cmenu.addSeparator()
-            copyGantt = cmenu.addAction("Copy highlighted gantt details")
+            copyGanttEntity = cmenu.addAction("Copy highlighted gantt entity")
+            copyGanttDetails = cmenu.addAction("Copy highlighted gantt details")
             
 
         if cfg('developmentMode'):
@@ -534,7 +535,7 @@ class myWidget(QWidget):
             clipboard = QApplication.clipboard()
             clipboard.setText(ts)
             
-        if self.highlightedEntity and action == copyGantt:
+        if self.highlightedEntity and action == copyGanttDetails:
         
             entity = self.highlightedEntity
             kpi = self.highlightedKpi
@@ -543,8 +544,17 @@ class myWidget(QWidget):
 
             desc = self.ndata[host][kpi][entity][range_i][2]
             
+            desc = desc.replace('\\n', '\n')
+            
             clipboard = QApplication.clipboard()
             clipboard.setText(desc)
+            
+            self.statusMessage('Copied.')
+            
+        if self.highlightedEntity and action == copyGanttEntity:
+            
+            clipboard = QApplication.clipboard()
+            clipboard.setText(self.highlightedEntity)
             
             self.statusMessage('Copied.')
 
