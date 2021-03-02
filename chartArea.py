@@ -112,6 +112,8 @@ class myWidget(QWidget):
     
     hideGanttLabels = False # do not render gantt entitiy names
     gotGantt = False # True if there is any gantt on the chart (screen window only)
+    
+    timeScale = ''
         
     def __init__(self):
         super().__init__()
@@ -568,7 +570,7 @@ class myWidget(QWidget):
             
             self.statusMessage('Copied.')
 
-        if action == toggleGanttLabels:
+        if self.gotGantt and action == toggleGanttLabels:
             if self.hideGanttLabels:
                 self.hideGanttLabels = False
             else:
@@ -894,6 +896,8 @@ class myWidget(QWidget):
 
         raduga_i = 0
         
+        drawTimeScale = cfg('legendTimeScale', True)
+        
         for h in range(0, len(self.hosts)):
         
             type = hType(h, self.hosts)
@@ -985,7 +989,11 @@ class myWidget(QWidget):
                 leftX = 10 + startX
         
         
-        self.legendHeight = fontHeight * len(lkpisl)+8
+        if drawTimeScale:
+            self.legendHeight = fontHeight * (len(lkpisl) + 1)+8 + 4
+        else:
+            self.legendHeight = fontHeight * (len(lkpisl))+8
+            
         self.legendWidth = lLen + 58
 
         qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth, self.legendHeight)
@@ -1025,6 +1033,9 @@ class myWidget(QWidget):
             qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
             
             i += 1
+            
+        if drawTimeScale:
+            qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
                     
     def drawChart(self, qp, startX, stopX):
     
@@ -2209,6 +2220,8 @@ class chartArea(QFrame):
         self.widget.t_scale = n * scale
         
         #recalculate x-size and adjust
+        self.widget.timeScale = txtValue
+        
         self.widget.resizeWidget()
         
         # force move it to the end
@@ -2679,6 +2692,8 @@ class chartArea(QFrame):
 
         self.reloadChart()
         self.widget.resizeWidget()
+        
+        self.widget.timeScale = self.scaleCB.currentText()
         
         self.scrollarea.setWidget(self.widget)
         

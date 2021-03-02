@@ -22,6 +22,9 @@ keepalive: 1200
 # chart font size
 # fontSize: 6
 
+# uncomment to disable time scale on chart legend
+# legendTimeScale: False
+
 ## uncomment to have experimental stuff (like sql console)
 #experimental: True
 
