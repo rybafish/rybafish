@@ -140,7 +140,8 @@ class hslWindow(QMainWindow):
         if kpis:
             self.layout['kpis'] = kpis
         else:
-            del self.layout.lo['kpis']
+            if 'kpis' in self.layout.lo:
+                del self.layout.lo['kpis']
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]

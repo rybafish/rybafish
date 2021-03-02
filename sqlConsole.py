@@ -1471,6 +1471,26 @@ class resultSet(QTableWidget):
         lob.exec_()
 
         return False
+
+    def wheelEvent (self, event):
+    
+        p = event.angleDelta()
+        
+        if p.y() < 0:
+            mode = 1
+        else:
+            mode = -1
+            
+        modifiers = QApplication.keyboardModifiers()
+        
+        if modifiers == Qt.ShiftModifier:
+            #x = 0 - self.pos().x() 
+            x = self.horizontalScrollBar().value()
+            
+            step = self.horizontalScrollBar().singleStep() * 2 #pageStep()
+            self.horizontalScrollBar().setValue(x + mode * step)
+        else:
+            super().wheelEvent(event)
         
 class logArea(QPlainTextEdit):
     def __init__(self):
