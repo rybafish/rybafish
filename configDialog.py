@@ -16,6 +16,7 @@ class Config(QDialog):
     
     def __init__(self, conf, parent = None):
         #super().__init__(parent)
+        
         super(Config, self).__init__(parent)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         self.initUI()
@@ -32,8 +33,9 @@ class Config(QDialog):
             pass
         
     @staticmethod
-    def getConfig(parent = None):
-        cf = Config(parent)
+    def getConfig(config, parent = None):
+    
+        cf = Config(config, parent)
         result = cf.exec_()
         
         hostport = cf.hostportEdit.text()
