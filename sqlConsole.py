@@ -459,6 +459,7 @@ class console(QPlainTextEditLN):
         if action == menuExecLR:
             self.executionTriggered.emit('leave results')
         elif action == menuDisconnect:
+            print('disconnectSignal')
             self.disconnectSignal.emit()
         elif action == menuConnect:
             self.connectSignal.emit()
@@ -1593,6 +1594,9 @@ class sqlConsole(QWidget):
 
         self.cons.textChanged.connect(self.textChangedS)
         
+        self.cons.connectSignal.connect(self.connectDB)
+        self.cons.disconnectSignal.connect(self.disconnectDB)
+
         if config is None:
             return
         
@@ -1608,9 +1612,6 @@ class sqlConsole(QWidget):
         if cfg('keepalive-cons'):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
-            
-        self.cons.connectSignal.connect(self.connectDB)
-        self.cons.disconnectSignal.connect(self.disconnectDB)
 
     def textChangedS(self):
         
@@ -1857,6 +1858,8 @@ class sqlConsole(QWidget):
         self.closeResults()
 
         try: 
+            self.stopKeepAlive()
+            
             if self.conn is not None:
                 db.close_connection(self.conn)
         except dbException as e:
@@ -1874,20 +1877,29 @@ class sqlConsole(QWidget):
         return True
             
     def disconnectDB(self):
+    
+        print('disconnectDB')
+    
         try: 
             if self.conn is not None:
                 db.close_connection(self.conn)
+                
+                self.stopKeepAlive()
                 self.conn = None
                 self.log('\nDisconnected')
                 
         except dbException as e:
             log('close() db exception: '+ str(e))
             self.log('close() db exception: '+ str(e), True)
+            
+            self.stopKeepAlive()
             self.conn = None # ?
             return
         except Exception as e:
             log('close() exception: '+ str(e))
             self.log('close() exception: '+ str(e), True)
+            
+            self.stopKeepAlive()
             self.conn = None # ?
             return
         
@@ -1898,6 +1910,8 @@ class sqlConsole(QWidget):
 
             if self.conn is not None:
                 db.close_connection(self.conn)
+                
+                self.stopKeepAlive()
                 self.conn = None
                 self.log('\nDisconnected')
 
@@ -1906,6 +1920,10 @@ class sqlConsole(QWidget):
 
             self.conn = db.console_connection(self.config)                
             self.log('Connected')
+
+            if cfg('keepalive-cons') and self.timer is None:
+                keepalive = int(cfg('keepalive-cons'))
+                self.enableKeepAlive(self, keepalive)
             
         except dbException as e:
             log('close() db exception: '+ str(e))
@@ -1992,13 +2010,19 @@ class sqlConsole(QWidget):
         self.results.clear()
             
     def enableKeepAlive(self, window, keepalive):
-        log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
+        log('Setting up console keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)
-        log('keep-alive timer')
         self.timer.timeout.connect(self.keepAlive)
         self.timer.start(1000 * keepalive)
         
+    def stopKeepAlive(self):
+    
+        if self.timer is not None:
+            self.timer.stop()
+            self.timer = None
+            log('keep-alives stopped (%s)' % self.tabname)
+    
     def renewKeepAlive(self):
         if self.timer is not None:
             self.timer.stop()
@@ -2026,6 +2050,7 @@ class sqlConsole(QWidget):
                 else:
                     log('Some connection issue, give up')
                     self.log('Some connection issue, give up', 1, True)
+                    self.stopKeepAlive()
                     self.conn = None
             except:
                 log('Connection lost, give up')
@@ -2034,12 +2059,15 @@ class sqlConsole(QWidget):
                 self.indicator.repaint()
                 self.log('Connection lost, give up', True)
                 # print disable the timer?
+                self.stopKeepAlive()
                 self.conn = None
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
             log('[!] %s' % str(e))
             self.log('[!] unexpected exception, disable the connection', True)
-            
+
+            self.stopKeepAlive()
+
             self.conn = None
             self.indicator.status = 'disconnected'
             self.indicator.repaint()
@@ -2489,7 +2517,7 @@ class sqlConsole(QWidget):
             very synchronous call, it holds controll until connection status resolved
         '''
         
-        log('Connection Lost...')
+        log('Connection Lost ...')
         
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Connection lost')
@@ -2514,6 +2542,13 @@ class sqlConsole(QWidget):
                     self.log('Connection restored')
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
+                    
+                    if cfg('keepalive-cons') and self.timer is None:
+                        keepalive = int(cfg('keepalive-cons'))
+                        self.enableKeepAlive(self, keepalive)
+                    else:
+                        self.renewKeepAlive() 
+                        
                 except Exception as e:
                     self.indicator.status = 'disconnected'
                     self.indicator.repaint()

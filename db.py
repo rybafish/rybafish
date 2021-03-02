@@ -113,10 +113,10 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
             # normal connection
 
             if longdate:
-                log('console with longdates')
+                log('console connection with longdates')
                 connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
             else:
-                log('console without longdates')
+                log('console connection without longdates')
                 connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
 
             connection.large_sql = False
