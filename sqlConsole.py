@@ -1153,8 +1153,6 @@ class resultSet(QTableWidget):
 
             self.insertText.emit(filter)
             
-            #QApplication.clipboard().setText(filter)
-            
         if action == copyTableScreen:
             w = self.verticalHeader().width() + self.horizontalHeader().length() + 1
             h = self.verticalHeader().length() + self.horizontalHeader().height() + 1

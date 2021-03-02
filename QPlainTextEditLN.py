@@ -364,6 +364,8 @@ class QPlainTextEditLN(QWidget):
         
         self.insertFromMimeData = self.edit.insertFromMimeData
         
+        self.setFocus = self.edit.setFocus
+        
         #self.keyPressEvent = self.edit.keyPressEvent
         
         self.locked = False
