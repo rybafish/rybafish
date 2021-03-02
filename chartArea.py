@@ -109,6 +109,9 @@ class myWidget(QWidget):
     legendWidth = None
     
     legendRender = False # flag used only to copy the legend
+    
+    hideGanttLabels = False # do not render gantt entitiy names
+    gotGantt = False # True if there is any gantt on the chart (screen window only)
         
     def __init__(self):
         super().__init__()
@@ -413,8 +416,15 @@ class myWidget(QWidget):
             cmenu.addSeparator()
             putLegend = cmenu.addAction("Add Legend")
         
-        if self.highlightedEntity is not None:
+        if self.gotGantt:
             cmenu.addSeparator()
+            
+            if self.hideGanttLabels:
+                toggleGanttLabels = cmenu.addAction("Show Gantt Labels")
+            else:
+                toggleGanttLabels = cmenu.addAction("Hide Gantt Labels")
+        
+        if self.highlightedEntity is not None:
             copyGanttEntity = cmenu.addAction("Copy highlighted gantt entity")
             copyGanttDetails = cmenu.addAction("Copy highlighted gantt details")
             
@@ -557,6 +567,14 @@ class myWidget(QWidget):
             clipboard.setText(self.highlightedEntity)
             
             self.statusMessage('Copied.')
+
+        if action == toggleGanttLabels:
+            if self.hideGanttLabels:
+                self.hideGanttLabels = False
+            else:
+                self.hideGanttLabels = True
+                
+            self.repaint()
 
     
     def checkForHint(self, pos):
@@ -1049,6 +1067,7 @@ class myWidget(QWidget):
         raduga_i = 0
         
 
+        self.gotGantt = False
         
         for h in range(0, len(self.hosts)):
         
@@ -1081,6 +1100,7 @@ class myWidget(QWidget):
                 
                 if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
                     gantt = True
+                    self.gotGantt = True
                 else:
                     gantt = False
                 
@@ -1215,7 +1235,7 @@ class myWidget(QWidget):
                             range_i += 1
 
 
-                        if stopX - startX > 400:
+                        if stopX - startX > 400 and not self.hideGanttLabels:
                         
                             # only draw labels in case of significant refresh
                         
