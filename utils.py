@@ -343,7 +343,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         nl = ''
     else:
         nl = '\n'
-        
+    
     if cfg('logmode') != 'screen':
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
