@@ -347,6 +347,13 @@ def clarifyGroups():
             'waiting_sql_executor_count',
             'total_sql_executor_count']
 
+    thread_kpis_ns = ['indexserverthreads',
+            'waitingthreads',
+            'totalthreads',
+            'activesqlexecutors',
+            'waitingsqlexecutors',
+            'totalsqlexecutors']
+
     def update_hardcoded(kpis, kpiList, grp):
         for kpi in kpis:
             if kpis[kpi]['name'] in kpiList:
@@ -370,22 +377,34 @@ def clarifyGroups():
                 if kpiStylesNN[h][kpi]['group'] == grpIdx:
                     kpiStylesNN[h][kpi]['dUnit'] = dUnit
         
-
     for h in kpiStylesNN:
+    
         if 'cpu' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['cpu']['group'], 'cpu')
-            
+
         if 'memory_used' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['memory_used']['group'], 'mem')
             
-            if cfg('memoryGB'):
-                updateDunit('mem', 'GB')
+
+        # those two for dpTrace as it is based on ns KPI names
+        if 'cpuused' in kpiStylesNN[h]:
+            update(kpiStylesNN[h]['cpuused']['group'], 'cpu')
+
+        if 'memoryused' in kpiStylesNN[h]:
+            update(kpiStylesNN[h]['memoryused']['group'], 'mem')
+
+        if cfg('memoryGB'):
+            updateDunit('mem', 'GB')
             
+            
+        # enforce threads scaling
         if thread_kpis[0] in kpiStylesNN[h]:
             update_hardcoded(kpiStylesNN[h], thread_kpis, 33)
 
         if 'active_thread_count' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['active_thread_count']['group'], 'thr')
+            
+        # same for ns... to be done later
         
 
 def groups():
@@ -447,3 +466,48 @@ def denormalize (kpi, value):
         return nValue
     else:
         return value
+        
+def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
+    '''
+        Same interface to be reused for DB trace
+        
+        Output:
+            hostKPIs, srvcKPIs are filled with the respective KPIs lists
+            
+            kpiStylesNN - GLOBAL <--- list of KPIs...
+    '''
+    
+    for kpi in rows:
+    
+        if kpi[1].lower() == 'm_load_history_host':
+            type = 'host'
+        else:
+            type = 'service'
+    
+        if kpi[1] == '': #hierarchy nodes
+            if len(kpi[0]) == 1:
+                continue # top level hierarchy node (Host/Service)
+            else:
+                # Normal hierarchy node
+                kpiName = '.' + kpi[4]
+        else:
+            kpiName = kpi[2].lower()
+            kpiDummy = {
+                    'hierarchy':    kpi[0],
+                    'type':         type,
+                    'name':         kpiName,
+                    'group':        kpi[3],
+                    'label':        kpi[4],
+                    'description':  kpi[5],
+                    'sUnit':        kpi[6],
+                    'dUnit':        kpi[7],
+                    'color':        kpi[8],
+                    'style':        nsStyle(kpi[9])
+                }
+            
+            kpiStylesNN[type][kpiName] = createStyle(kpiDummy)
+                    
+        if kpi[1].lower() == 'm_load_history_host':
+            hostKPIs.append(kpiName)
+        else:
+            srvcKPIs.append(kpiName)

@@ -12,11 +12,11 @@ from utils import log
 
 class lobDialog(QDialog):
 
-    def __init__(self, lob):
+    def __init__(self, lob, parent):
     
         #QtGui.QDialog(None, QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint)
         #super().__init__(None, Qt.WindowSystemMenuHint | Qt.WindowTitleHint)
-        super().__init__()
+        super().__init__(parent)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         
         self.initUI(lob)

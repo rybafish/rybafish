@@ -134,11 +134,9 @@ class dataProvider():
             log('[!] %s' % str(e))
             self.connection = None
         
-            
+        
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
     
-        # kpis_sql = 'select view_name, column_name, display_line_color, display_line_style from m_load_history_info order by display_hierarchy'
-        #kpis_sql = 'select view_name, column_name from m_load_history_info order by display_hierarchy'
         kpis_sql = sql.kpis_info
 
         if not self.connection:
@@ -165,40 +163,7 @@ class dataProvider():
 
         rows = db.execute_query(self.connection, kpis_sql, [])
         
-        for kpi in rows:
-        
-            if kpi[1].lower() == 'm_load_history_host':
-                type = 'host'
-            else:
-                type = 'service'
-        
-            if kpi[1] == '': #hierarchy nodes
-                if len(kpi[0]) == 1:
-                    continue # top level hierarchy node (Host/Service)
-                else:
-                    # Normal hierarchy node
-                    kpiName = '.' + kpi[4]
-            else:
-                kpiName = kpi[2].lower()
-                kpiDummy = {
-                        'hierarchy':    kpi[0],
-                        'type':         type,
-                        'name':         kpiName,
-                        'group':        kpi[3],
-                        'label':        kpi[4],
-                        'description':  kpi[5],
-                        'sUnit':        kpi[6],
-                        'dUnit':        kpi[7],
-                        'color':        kpi[8],
-                        'style':        kpiDescriptions.nsStyle(kpi[9])
-                    }
-                
-                kpiStylesNN[type][kpiName] = kpiDescriptions.createStyle(kpiDummy)
-                        
-            if kpi[1].lower() == 'm_load_history_host':
-                hostKPIs.append(kpiName)
-            else:
-                srvcKPIs.append(kpiName)
+        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
 
         t1 = time.time()
 

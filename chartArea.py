@@ -1756,7 +1756,7 @@ class chartArea(QFrame):
         
         log('cleanup complete')
         
-    def initDP(self, kpis = None):
+    def initDP(self, kpis = None, message = None):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
@@ -1774,7 +1774,11 @@ class chartArea(QFrame):
         self.hostKPIs.clear()
         self.srvcKPIs.clear()
         
-        self.statusMessage('Connected, init basic info...')
+        if message:
+            self.statusMessage(message)
+        else:
+            self.statusMessage('Connected, init basic info...')
+            
         self.repaint()
         
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)

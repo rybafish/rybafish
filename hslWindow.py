@@ -23,6 +23,8 @@ import dpDummy
 import dpDB
 import sqlConsole
 
+import datetime
+
 from indicator import indicator
 
 from utils import resourcePath
@@ -365,6 +367,13 @@ class hslWindow(QMainWindow):
                     else:
                         self.chartArea.initDP()
                         
+                    starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
+                    starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
+                    
+                    self.chartArea.fromEdit.setText(starttime.strftime('%Y-%m-%d %H:%M:%S'))
+                    self.chartArea.toEdit.setText('')
+                        
+                        
                 else:
                     self.chartArea.initDP()
                 
@@ -604,22 +613,19 @@ class hslWindow(QMainWindow):
         fname = QFileDialog.getOpenFileNames(self, 'Import...',  None, 'Nameserver trace files (*.trc)')
         log(fname[0])
         
-        self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
         
-        self.chartArea.initDP()
-        
-        '''
-        log('But I dont work...')
-
         if len(fname[0]) > 0:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle('Import')
-            msgBox.setText('Not implemented yet')
-            iconPath = resourcePath('ico\\favicon.ico')
-            msgBox.setWindowIcon(QIcon(iconPath))
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.exec_()
-        '''
+            self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
+            
+            self.chartArea.initDP(message = 'Parsing the trace file, may take a minute or so...')
+
+            toTime = self.chartArea.widget.hosts[0]['to']
+            fromTime = toTime - datetime.timedelta(hours = 10)
+            
+            self.chartArea.toEdit.setText(toTime.strftime('%Y-%m-%d %H:%M:%S'))
+            self.chartArea.fromEdit.setText(fromTime.strftime('%Y-%m-%d %H:%M:%S'))
+            
+            self.chartArea.reloadChart()
         
     def raiseTab(self, tab):
         for i in range(self.tabs.count()):
@@ -766,7 +772,7 @@ class hslWindow(QMainWindow):
         configAct.triggered.connect(self.menuConfig)
 
 
-        if cfg('developmentMode'):
+        if cfg('experimental'):
             importAct = QAction('&Import', self)
             importAct.setShortcut('Ctrl+I')
             importAct.setStatusTip('Import nameserver.trc')
@@ -792,14 +798,11 @@ class hslWindow(QMainWindow):
         fileMenu.addAction(configAct)
 
         if cfg('experimental'):
-            #fileMenu.addAction(importAct)
+            fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
             fileMenu.addAction(sqlConsAct)
             fileMenu.addAction(openAct)
             fileMenu.addAction(saveAct)
-
-        if cfg('developmentMode'):
-            fileMenu.addAction(importAct)
 
         fileMenu.addAction(exitAct)
         
