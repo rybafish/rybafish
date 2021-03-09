@@ -11,29 +11,6 @@ import kpis
 
 from utils import log
 
-kpiDummyS = {
-    'hierarchy':    '1',
-    'type':         'service',
-    'name':         'indexserverMemUsed',
-    'group':        0,
-    'color':        '#666',
-    'style':        'solid'
-}
-
-kpiDummyH = {
-    'hierarchy':    '1',
-    'type':         'host',
-    'name':         'indexserverMemUsed',
-    'group':        'mem',
-    'sUnit':        'Byte',
-    'dUnit':        'MB',
-    'label':        'Memory used',
-    'description':  'Service Memory Usage',
-    'color':        '#0D0',
-    'style':        'solid'
-}
-
-
 def getKPI(kName):
 
     for k in kpis.mapKPIs:
@@ -173,16 +150,6 @@ class dataProvider:
                 
             kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
             
-            '''
-            for kpi in titles:
-                if kpi in self.supportedKPIs:
-                    kpiDescriptions.kpiStylesNN['service'][kpi] = kpiDescriptions.createStyle(kpiDummyS)
-                    
-                    kpiDescriptions.kpiStylesNN['service'][kpi]['label'] = kpi
-                    kpiDescriptions.kpiStylesNN['service'][kpi]['desc'] = 'generated style'
-                    srvcKPIs.append(kpi)
-            '''
-
             t1 = time.time()
             
             log('lines per port: %i' % trace_lines)

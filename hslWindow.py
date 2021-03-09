@@ -617,7 +617,7 @@ class hslWindow(QMainWindow):
         if len(fname[0]) > 0:
             self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
             
-            self.chartArea.initDP(message = 'Parsing the trace file, may take a minute or so...')
+            self.chartArea.initDP(message = 'Parsing the trace file, will take a minute or so...')
 
             toTime = self.chartArea.widget.hosts[0]['to']
             fromTime = toTime - datetime.timedelta(hours = 10)
