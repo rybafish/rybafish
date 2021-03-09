@@ -214,8 +214,7 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     
     # prepare the statement...
     
-    if cfg('loglevel', 3) >= 5:
-        log('[SQL]: %s' % sql_string)
+    log('[SQL]: %s' % sql_string, 5)
 
     try:
         psid = cursor.prepare(sql_string)

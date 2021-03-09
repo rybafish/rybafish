@@ -55,18 +55,27 @@ class sqlWorker(QObject):
         cons = self.cons # cons - sqlConsole class itself, not just a console...
 
         cons.wrkException = None
-    
-        if 3 < cfg('loglevel', 3) < 5:
-            log('console execute: [%s]' % (sql))
         
+        if cons.conn is None:
+            #cons.log('Error: No connection')
+            cons.wrkException = 'no db connection'
+            self.finished.emit()
+            return
+
         if len(sql) >= 2**17 and cons.conn.large_sql != True:
-            log('reconnecting to hangle large SQL')
+            log('reconnecting to handle large SQL')
             #print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
             
             db.largeSql = True
             
             try: 
                 cons.conn = db.console_connection(cons.config)
+
+                rows = db.execute_query(cons.conn, "select connection_id from m_connections where own = 'TRUE'", [])
+                
+                if len(rows):
+                    self.cons.connection_id = rows[0][0]
+                    
             except dbException as e:
                 err = str(e)
                 #
@@ -78,12 +87,6 @@ class sqlWorker(QObject):
                 self.finished.emit()
                 return
                 
-        if cons.conn is None:
-            #cons.log('Error: No connection')
-            cons.wrkException = 'no db connection'
-            self.finished.emit()
-            return
-            
         #execute the query
         
         try:
@@ -220,6 +223,7 @@ class console(QPlainTextEditLN):
     
     connectSignal = pyqtSignal()
     disconnectSignal = pyqtSignal()
+    abortSignal = pyqtSignal()
     
     def insertTextS(self, str):
         cursor = self.textCursor()
@@ -430,6 +434,7 @@ class console(QPlainTextEditLN):
         cmenu.addSeparator()
         menuDisconnect = cmenu.addAction('Disconnect from the DB')
         menuConnect = cmenu.addAction('(re)connecto to the DB')
+        menuAbort = cmenu.addAction('Generate cancel session sql')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
 
         if cfg('dev'):
@@ -461,8 +466,9 @@ class console(QPlainTextEditLN):
         if action == menuExecLR:
             self.executionTriggered.emit('leave results')
         elif action == menuDisconnect:
-            print('disconnectSignal')
             self.disconnectSignal.emit()
+        elif action == menuAbort:
+            self.abortSignal.emit()
         elif action == menuConnect:
             self.connectSignal.emit()
         elif action == menuOpenFile:
@@ -1600,6 +1606,7 @@ class sqlConsole(QWidget):
         
         self.cons.connectSignal.connect(self.connectDB)
         self.cons.disconnectSignal.connect(self.disconnectDB)
+        self.cons.abortSignal.connect(self.cancelSession)
 
         if config is None:
             return
@@ -1891,10 +1898,11 @@ class sqlConsole(QWidget):
         
         return True
             
+    def cancelSession(self):
+        self.log("\nNOTE: the SQL needs to be executed manually from the other SQL console:\nalter system cancel session '%s'" % (str(self.connection_id)))
+        
     def disconnectDB(self):
-    
-        print('disconnectDB')
-    
+
         try: 
             if self.conn is not None:
                 db.close_connection(self.conn)
