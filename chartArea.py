@@ -404,8 +404,8 @@ class myWidget(QWidget):
         cmenu.addSeparator()
         copyVAPNG = cmenu.addAction("Copy screen")
         saveVAPNG = cmenu.addAction("Save screen")
-        copyPNG = cmenu.addAction("Copy full area")
-        savePNG = cmenu.addAction("Save full area")
+        copyPNG = cmenu.addAction("Copy chart area")
+        savePNG = cmenu.addAction("Save chart area")
 
         copyLegend = None
         

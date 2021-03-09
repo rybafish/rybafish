@@ -404,7 +404,12 @@ def clarifyGroups():
         if 'active_thread_count' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['active_thread_count']['group'], 'thr')
             
-        # same for ns... to be done later
+        # now the same for ns... 
+        if thread_kpis_ns[0] in kpiStylesNN[h]:
+            update_hardcoded(kpiStylesNN[h], thread_kpis_ns, 33)
+
+        if 'indexserverthreads' in kpiStylesNN[h]:
+            update(kpiStylesNN[h]['indexserverthreads']['group'], 'thr')
         
 
 def groups():
