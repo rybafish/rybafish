@@ -645,12 +645,16 @@ class hslWindow(QMainWindow):
             self.layout = Layout(True)
             
             if self.layout['running']:
-                answer = utils.yesNoDialog('Warning', 'Another RybaFish is already runing. All the layout, backup and autosave fatures will be disabled.\n\nIf this message repeated without other RybaFish running - delete layout.yaml\n\nExit now?')
+                answer = utils.yesNoDialog('Warning', 'Another RybaFish is already running, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
+                #answer = utils.yesNoDialog('Warning', 'RybaFish is already running or crashed last time, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 
                 if answer == True or answer is None:
                     exit(0)
                 
-                self.layout = None
+                if answer == 'ignore':
+                    log('Ignoring the layout')
+                else:
+                    self.layout = None
             else:
                 self.layout['running'] = True
                 self.layout.dump()

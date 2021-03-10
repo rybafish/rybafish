@@ -75,6 +75,7 @@ class sqlWorker(QObject):
                 
                 if len(rows):
                     self.cons.connection_id = rows[0][0]
+                    log('connection open, id: %s' % self.cons.connection_id)
                     
             except dbException as e:
                 err = str(e)
@@ -154,10 +155,17 @@ class sqlWorker(QObject):
                 log('connectionLost() used to be here, but now no UI possible from the thread')
                 #cons.connectionLost()
                 
+                
+        '''
+        
+        seems to be a leftover of old resulset treatment
+        this is to detach results reached resultset limit
+        
         if result.rows:
             resultSize = len(result.rows)
         else:
             resultSize = -1
+        '''
 
         # all the rest moved to post-processing in SQLFinished call back
         # as part of it resultset-dependent

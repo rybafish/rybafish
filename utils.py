@@ -196,13 +196,15 @@ def formatTime(t):
     
     return s
 
-def yesNoDialog(title, message, cancel = False):
+def yesNoDialog(title, message, cancel = False, ignore = False):
     msgBox = QMessageBox()
     msgBox.setWindowTitle(title)
     msgBox.setText(message)
 
     if cancel == True:
         buttons = QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+    elif ignore:
+        buttons = QMessageBox.Yes | QMessageBox.No | QMessageBox.Ignore
     else:
         buttons = QMessageBox.Yes | QMessageBox.No
         
@@ -218,6 +220,8 @@ def yesNoDialog(title, message, cancel = False):
 
     if reply == QMessageBox.Yes:
         return True
+    elif reply == QMessageBox.Ignore:
+        return 'ignore'
     elif reply == QMessageBox.No:
         return False
         

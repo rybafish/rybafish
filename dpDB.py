@@ -412,7 +412,8 @@ class dataProvider():
                 shift = 0
 
                 for i in range(len(data[kpi][entity])):
-                    if start < data[kpi][entity][i][1]:
+                    #if start < data[kpi][entity][i][1]:
+                    if start < data[kpi][entity][i][1] and shift == data[kpi][entity][i][3]:
                         shift += 1
                     
                 data[kpi][entity].append([start, stop, desc, shift])

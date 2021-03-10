@@ -282,10 +282,14 @@ def execute_query_desc(connection, sql_string, params, resultSize):
                 
                 rows_list.append(rows)
         
-            log('columns_list (with scalar!)  ----> %s' % str(columns_list), 5)
+                log('scalar detected... is it truth? does it harm', 5)
+                log('columns_list (with scalar!)  ----> %s' % str(columns_list), 5)
+                
             
             for clmn in columns_list:
-                log('--> %s' % str(clmn), 5)
+                #log('--> %s' % str(clmn), 5)
+                #log('--> %s' % str(clmn), 5)
+                pass
             
             log('results to fetch: %i' % len(cursor.description_list), 5)
             
