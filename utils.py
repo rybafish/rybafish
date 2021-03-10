@@ -4,6 +4,8 @@ from PyQt5.QtGui import QIcon
 
 from datetime import datetime
 
+import os
+
 import locale
 from decimal import Decimal
 
@@ -361,3 +363,17 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         
         f.close()
         
+def securePath(filename, backslash = False):
+
+    if filename is None:
+        return None
+    # apparently filename is with normal slashes, but getcwd with backslashes on windows, :facepalm:
+    cwd = os.getcwd()
+    
+    if backslash:
+        cwd = cwd.replace('\\','/') 
+    
+    #remove potentially private info from the trace
+    fnsecure = filename.replace(cwd, '..')
+    
+    return fnsecure

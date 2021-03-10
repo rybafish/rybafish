@@ -1706,17 +1706,8 @@ class sqlConsole(QWidget):
                 os.mkdir(bkpPath)
             
         filename = self.backup
-        fnsecure = filename
-    
-        #print(filename) # C:/home/dug/delme.sql.sqbkp
-        #print(os.path.basename(filename)) #delme.sql.sqbkp
-
-        # apparently filename is with normal slashes, but getcwd with backslashes on windows, :facepalm:
-        cwd = os.getcwd()
-        cwd = cwd.replace('\\','/') 
         
-        #remove potentially private info from the trace
-        fnsecure = filename.replace(cwd, '..')
+        fnsecure = utils.securePath(filename)
     
         try:
             with open(filename, 'w') as f:
@@ -1803,7 +1794,10 @@ class sqlConsole(QWidget):
     
     def openFile(self, filename = None, backup = None):
 
-        log('openFile: %s, %s' % (filename, backup))
+        fnsecure = utils.securePath(filename, True)
+        bkpsecure = utils.securePath(backup)
+        
+        log('openFile: %s, %s' % (fnsecure, bkpsecure))
 
         if filename is None and backup is None:
             fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
@@ -1875,10 +1869,12 @@ class sqlConsole(QWidget):
 
             if answer == False:
                 try:
-                    log('delete backup: %s' % (str(self.tabname+'.sqbkp')))
-                    os.remove(self.tabname+'.sqbkp')
+                    #log('delete backup: %s' % (str(self.tabname+'.sqbkp')))
+                    #os.remove(self.tabname+'.sqbkp')
+                    log('delete backup: %s' % (utils.securePath(self.backup)))
+                    os.remove(self.backup)
                 except:
-                    log('delete backup faileld, passing')
+                    log('delete backup 2 faileld, passing')
                     # whatever...
                     pass
             
