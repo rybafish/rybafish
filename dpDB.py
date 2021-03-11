@@ -489,7 +489,10 @@ class dataProvider():
                                 # do NOT normalize here, only devide by delta seconds
 
                                 if i == 0:
-                                    normValue = rawValue / (data[timeKey][1] - data[timeKey][0])
+                                    if len(data[timeKey]) > 1:
+                                        normValue = rawValue / (data[timeKey][1] - data[timeKey][0])
+                                    else:
+                                        normValue = -1 # no data to calculate
                                 else:
                                     normValue = rawValue / (data[timeKey][i] - data[timeKey][i-1])
                                 
