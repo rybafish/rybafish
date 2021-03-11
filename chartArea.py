@@ -657,6 +657,9 @@ class myWidget(QWidget):
                 height = kpiStylesNN[type][kpi]['width']
                 ganttShift = kpiStylesNN[type][kpi]['shift']
             
+                if kpi not in data: # alt+clicked, but not refreshed yet
+                    continue
+                    
                 gc = data[kpi]
                 
                 if len(gc) == 0:
