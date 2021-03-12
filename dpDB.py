@@ -405,20 +405,55 @@ class dataProvider():
             stop = r[2]
             desc = str(r[3])
                
-            #print ('curr: %s - %s' % (str(start), str(stop)))
+            #print ('curr: %s: %s - %s' % (desc, str(start), str(stop)))
             
+            # go through entities
             if entity in data[kpi]:
             
                 shift = 0
+                i = 0
 
-                for i in range(len(data[kpi][entity])):
-                    #if start < data[kpi][entity][i][1]:
-                    if start < data[kpi][entity][i][1] and shift == data[kpi][entity][i][3]:
+                # now for each bar inside the entity we check if there is something
+                # still runing with the same shift
+                
+                # we are sure if something ends after start of current bar it is an intersection
+                # because data is sorted by start ascending
+                
+                while i < len(data[kpi][entity]):
+                    #print('gantt ', i)
+                    #print('compare if 1 < 2?:', start, data[kpi][entity][i][1])
+
+                    if shift == data[kpi][entity][i][3] and start < data[kpi][entity][i][1]:
                         shift += 1
+                        i = 0   # and we need to check from the scratch
+                    else:
+                        i += 1
+
+                '''
+                
+                # old implementation , with errors 100%
+                
+                for i in range(len(data[kpi][entity])):
+                    print('gantt ', i)
+                    print('compare if 1 < 2?:', start, data[kpi][entity][i][1])
+                    # if start < data[kpi][entity][i][1]:
+                    if start < data[kpi][entity][i][1] and shift == data[kpi][entity][i][3]:
+                        print('(yes)')
+                    #    i = 0
+                        shift += 1
+                    else:
+                        print('(no)')
+                '''
                     
                 data[kpi][entity].append([start, stop, desc, shift])
             else:
                 data[kpi][entity] = [[start, stop, desc, 0]]
+                
+        for e in data[kpi]:
+            print('entity:', e)
+            
+            for i in data[kpi][e]:
+                print(i[2], i[0], i[1], i[3])
     
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
         '''
