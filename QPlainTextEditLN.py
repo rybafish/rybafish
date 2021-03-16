@@ -13,6 +13,12 @@ class QPlainTextEditLN(QWidget):
             #font = QFont ('Consolas')
             #self.setFont(font)
 
+        '''
+        def contextMenuEvent (self, event):
+            print('bebebe')
+            #super().contextMenuEvent(event)
+        '''
+        
         def duplicateLine (self):
             cursor = self.textCursor()
             
@@ -26,6 +32,49 @@ class QPlainTextEditLN(QWidget):
 
                 cursor.clearSelection()
                 cursor.insertText(txt)
+
+        def moveLine(self, direction):
+
+            cursor = self.textCursor()
+            pos = cursor.position()
+            
+            lineFrom = self.document().findBlock(pos)
+
+            startPos = lineFrom.position()
+            endPos = startPos + len(lineFrom.text())
+
+            if direction == 'down':
+                lineTo = self.document().findBlock(endPos + 1)
+            else:
+                lineTo = self.document().findBlock(startPos - 1)
+
+            cursor.beginEditBlock() #deal with unso/redo
+            # select original line
+            cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+            cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+            
+            textMove = cursor.selectedText()
+            
+            # replace it by text from the new location
+            cursor.insertText(lineTo.text())
+
+            # now put moving text in place
+            startPos = lineTo.position()
+            endPos = startPos + len(lineTo.text())
+
+            cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+            cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+
+            cursor.insertText(textMove)
+            
+            cursor.endEditBlock() #deal with unso/redo
+            
+            self.repaint()
+            
+            cursor.setPosition(startPos, QTextCursor.MoveAnchor)
+            cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
+            
+            self.setTextCursor(cursor)
 
         def tabKey(self):
             
@@ -160,6 +209,12 @@ class QPlainTextEditLN(QWidget):
             if modifiers & Qt.ControlModifier and event.key() == Qt.Key_D:
                 self.duplicateLine()
                 
+            elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Down:
+                self.moveLine('down')
+
+            elif modifiers & Qt.ControlModifier and event.key() == Qt.Key_Up:
+                self.moveLine('up')
+
             elif event.key() == Qt.Key_Backtab and not (modifiers & Qt.ControlModifier):
                 self.shiftTabKey()
 
@@ -305,17 +360,32 @@ class QPlainTextEditLN(QWidget):
         self.setFont = self.edit.setFont
         self.setStyleSheet = self.edit.setStyleSheet
         
+        self.edit.contextMenuEvent = self.contextMenuEvent # not sure why this works but it does.
+        
         self.insertFromMimeData = self.edit.insertFromMimeData
         
+        self.setFocus = self.edit.setFocus
+        
+        self.firstVisibleBlock = self.edit.firstVisibleBlock
+        
         #self.keyPressEvent = self.edit.keyPressEvent
+        
+        self.locked = False
     
     def redrawLines(self, rect, dy):
         if rect.width() < 20:
             return
+        
+        if self.locked: #prevent refresh on top of refresh
+            return 
             
+        self.locked = True
+        
         self.lineNumbers.repaint()
+        
+        self.locked = False
 
-    def paintEvent(self, QPaintEvent):
+    def paintEventZZ(self, QPaintEvent):
         qp = QPainter()
         super().paintEvent(QPaintEvent)
         qp.begin(self)

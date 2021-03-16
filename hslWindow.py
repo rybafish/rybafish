@@ -23,6 +23,8 @@ import dpDummy
 import dpDB
 import sqlConsole
 
+import datetime
+
 from indicator import indicator
 
 from utils import resourcePath
@@ -139,6 +141,9 @@ class hslWindow(QMainWindow):
     
         if kpis:
             self.layout['kpis'] = kpis
+        else:
+            if 'kpis' in self.layout.lo:
+                del self.layout.lo['kpis']
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
@@ -173,13 +178,17 @@ class hslWindow(QMainWindow):
                     
                     if w.fileName is not None or w.backup is not None:
                         pos = w.cons.textCursor().position()
+                        block = w.cons.edit.verticalScrollBar().value()
+                        #print('scroll position:', block)
+                        #block = w.cons.firstVisibleBlock().position()
                         
                         if w.backup:
                             bkp = os.path.abspath(w.backup)
                         else:
                             bkp = None
                         
-                        tabs.append([w.fileName, bkp, pos])
+                        tabs.append([w.fileName, bkp, pos, block])
+                        #tabs.append([w.fileName, bkp, pos])
                         
                     w.close(None) # can not abort (and dont need to any more!)
 
@@ -318,7 +327,7 @@ class hslWindow(QMainWindow):
         else:
             connConf = self.connectionConf
             
-        conf, ok = configDialog.Config.getConfig(connConf)
+        conf, ok = configDialog.Config.getConfig(connConf, self)
         
         if ok:
             self.connectionConf = conf
@@ -334,7 +343,7 @@ class hslWindow(QMainWindow):
                 
                     w = self.tabs.widget(i)
                 
-                    if isinstance(w, sqlConsole.sqlConsole):
+                    if isinstance(w, sqlConsole.sqlConsole) and w.conn is not None:
                         log('closing connection...')
                         w.disconnectDB()
                         w.indicator.status = 'disconnected'
@@ -361,6 +370,13 @@ class hslWindow(QMainWindow):
                         self.chartArea.initDP(self.layout['kpis'])
                     else:
                         self.chartArea.initDP()
+                        
+                    starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
+                    starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
+                    
+                    self.chartArea.fromEdit.setText(starttime.strftime('%Y-%m-%d %H:%M:%S'))
+                    self.chartArea.toEdit.setText('')
+                        
                         
                 else:
                     self.chartArea.initDP()
@@ -601,22 +617,19 @@ class hslWindow(QMainWindow):
         fname = QFileDialog.getOpenFileNames(self, 'Import...',  None, 'Nameserver trace files (*.trc)')
         log(fname[0])
         
-        self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
         
-        self.chartArea.initDP()
-        
-        '''
-        log('But I dont work...')
-
         if len(fname[0]) > 0:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle('Import')
-            msgBox.setText('Not implemented yet')
-            iconPath = resourcePath('ico\\favicon.ico')
-            msgBox.setWindowIcon(QIcon(iconPath))
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.exec_()
-        '''
+            self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
+            
+            self.chartArea.initDP(message = 'Parsing the trace file, will take a minute or so...')
+
+            toTime = self.chartArea.widget.hosts[0]['to']
+            fromTime = toTime - datetime.timedelta(hours = 10)
+            
+            self.chartArea.toEdit.setText(toTime.strftime('%Y-%m-%d %H:%M:%S'))
+            self.chartArea.fromEdit.setText(fromTime.strftime('%Y-%m-%d %H:%M:%S'))
+            
+            self.chartArea.reloadChart()
         
     def raiseTab(self, tab):
         for i in range(self.tabs.count()):
@@ -636,12 +649,16 @@ class hslWindow(QMainWindow):
             self.layout = Layout(True)
             
             if self.layout['running']:
-                answer = utils.yesNoDialog('Warning', 'Another RybaFish is already runing. All the layout, backup and autosave fatures will be disabled.\n\nIf this message repeated without other RybaFish running - delete layout.yaml\n\nExit now?')
+                answer = utils.yesNoDialog('Warning', 'Another RybaFish is already running, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
+                #answer = utils.yesNoDialog('Warning', 'RybaFish is already running or crashed last time, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 
                 if answer == True or answer is None:
                     exit(0)
                 
-                self.layout = None
+                if answer == 'ignore':
+                    log('Ignoring the layout')
+                else:
+                    self.layout = None
             else:
                 self.layout['running'] = True
                 self.layout.dump()
@@ -763,7 +780,7 @@ class hslWindow(QMainWindow):
         configAct.triggered.connect(self.menuConfig)
 
 
-        if cfg('developmentMode'):
+        if cfg('experimental'):
             importAct = QAction('&Import', self)
             importAct.setShortcut('Ctrl+I')
             importAct.setStatusTip('Import nameserver.trc')
@@ -789,14 +806,11 @@ class hslWindow(QMainWindow):
         fileMenu.addAction(configAct)
 
         if cfg('experimental'):
-            #fileMenu.addAction(importAct)
+            fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
             fileMenu.addAction(sqlConsAct)
             fileMenu.addAction(openAct)
             fileMenu.addAction(saveAct)
-
-        if cfg('developmentMode'):
-            fileMenu.addAction(importAct)
 
         fileMenu.addAction(exitAct)
         
@@ -875,9 +889,11 @@ class hslWindow(QMainWindow):
         
         self.setWindowIcon(QIcon(iconPath))
         
+        scrollPosition = []
+        
         if cfg('saveOpenTabs', True) and self.layout is not None and self.layout['tabs']:
             for t in self.layout['tabs']:
-                if len(t) != 3:
+                if len(t) != 4:
                     continue
                     
                 console = sqlConsole.sqlConsole(self, None, '?')
@@ -903,8 +919,11 @@ class hslWindow(QMainWindow):
                     console.openFile(t[0], t[1])
                     
                     pos = t[2]
+                    block = t[3]
                     
-                    if isinstance(pos, int):
+                    scrollPosition.append(block)
+                    
+                    if isinstance(pos, int) and isinstance(block, int):
                         cursor = console.cons.textCursor()
                         cursor.setPosition(pos, cursor.MoveAnchor)
                         console.cons.setTextCursor(cursor)
@@ -923,6 +942,18 @@ class hslWindow(QMainWindow):
                 self.tabs.setCurrentIndex(0)
         
         self.show()
+
+        #scroll everything to stored position
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            if isinstance(w, sqlConsole.sqlConsole):
+            
+                if i - 1 < len(scrollPosition):
+                    block = scrollPosition[i - 1]
+                    w.cons.edit.verticalScrollBar().setValue(block)
+                else:
+                    log('[w] scroll position list out of range, ignoring scrollback...')
+        
 
         '''
             set up some interactions

@@ -109,6 +109,11 @@ class myWidget(QWidget):
     legendWidth = None
     
     legendRender = False # flag used only to copy the legend
+    
+    hideGanttLabels = False # do not render gantt entitiy names
+    gotGantt = False # True if there is any gantt on the chart (screen window only)
+    
+    timeScale = ''
         
     def __init__(self):
         super().__init__()
@@ -399,8 +404,8 @@ class myWidget(QWidget):
         cmenu.addSeparator()
         copyVAPNG = cmenu.addAction("Copy screen")
         saveVAPNG = cmenu.addAction("Save screen")
-        copyPNG = cmenu.addAction("Copy full area")
-        savePNG = cmenu.addAction("Save full area")
+        copyPNG = cmenu.addAction("Copy chart area")
+        savePNG = cmenu.addAction("Save chart area")
 
         copyLegend = None
         
@@ -413,9 +418,17 @@ class myWidget(QWidget):
             cmenu.addSeparator()
             putLegend = cmenu.addAction("Add Legend")
         
-        if self.highlightedEntity is not None:
+        if self.gotGantt:
             cmenu.addSeparator()
-            copyGantt = cmenu.addAction("Copy highlighted gantt details")
+            
+            if self.hideGanttLabels:
+                toggleGanttLabels = cmenu.addAction("Show Gantt Labels")
+            else:
+                toggleGanttLabels = cmenu.addAction("Hide Gantt Labels")
+        
+        if self.highlightedEntity is not None:
+            copyGanttEntity = cmenu.addAction("Copy highlighted gantt entity")
+            copyGanttDetails = cmenu.addAction("Copy highlighted gantt details")
             
 
         if cfg('developmentMode'):
@@ -534,7 +547,7 @@ class myWidget(QWidget):
             clipboard = QApplication.clipboard()
             clipboard.setText(ts)
             
-        if self.highlightedEntity and action == copyGantt:
+        if self.highlightedEntity and action == copyGanttDetails:
         
             entity = self.highlightedEntity
             kpi = self.highlightedKpi
@@ -543,10 +556,27 @@ class myWidget(QWidget):
 
             desc = self.ndata[host][kpi][entity][range_i][2]
             
+            desc = desc.replace('\\n', '\n')
+            
             clipboard = QApplication.clipboard()
             clipboard.setText(desc)
             
             self.statusMessage('Copied.')
+            
+        if self.highlightedEntity and action == copyGanttEntity:
+            
+            clipboard = QApplication.clipboard()
+            clipboard.setText(self.highlightedEntity)
+            
+            self.statusMessage('Copied.')
+
+        if self.gotGantt and action == toggleGanttLabels:
+            if self.hideGanttLabels:
+                self.hideGanttLabels = False
+            else:
+                self.hideGanttLabels = True
+                
+            self.repaint()
 
     
     def checkForHint(self, pos):
@@ -627,6 +657,9 @@ class myWidget(QWidget):
                 height = kpiStylesNN[type][kpi]['width']
                 ganttShift = kpiStylesNN[type][kpi]['shift']
             
+                if kpi not in data: # alt+clicked, but not refreshed yet
+                    continue
+                    
                 gc = data[kpi]
                 
                 if len(gc) == 0:
@@ -866,6 +899,8 @@ class myWidget(QWidget):
 
         raduga_i = 0
         
+        drawTimeScale = cfg('legendTimeScale', True)
+        
         for h in range(0, len(self.hosts)):
         
             type = hType(h, self.hosts)
@@ -957,7 +992,11 @@ class myWidget(QWidget):
                 leftX = 10 + startX
         
         
-        self.legendHeight = fontHeight * len(lkpisl)+8
+        if drawTimeScale:
+            self.legendHeight = fontHeight * (len(lkpisl) + 1)+8 + 4
+        else:
+            self.legendHeight = fontHeight * (len(lkpisl))+8
+            
         self.legendWidth = lLen + 58
 
         qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth, self.legendHeight)
@@ -997,6 +1036,9 @@ class myWidget(QWidget):
             qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
             
             i += 1
+            
+        if drawTimeScale:
+            qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
                     
     def drawChart(self, qp, startX, stopX):
     
@@ -1039,6 +1081,7 @@ class myWidget(QWidget):
         raduga_i = 0
         
 
+        self.gotGantt = False
         
         for h in range(0, len(self.hosts)):
         
@@ -1071,6 +1114,7 @@ class myWidget(QWidget):
                 
                 if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
                     gantt = True
+                    self.gotGantt = True
                 else:
                     gantt = False
                 
@@ -1205,7 +1249,7 @@ class myWidget(QWidget):
                             range_i += 1
 
 
-                        if stopX - startX > 400:
+                        if stopX - startX > 400 and not self.hideGanttLabels:
                         
                             # only draw labels in case of significant refresh
                         
@@ -1715,7 +1759,7 @@ class chartArea(QFrame):
         
         log('cleanup complete')
         
-    def initDP(self, kpis = None):
+    def initDP(self, kpis = None, message = None):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
@@ -1733,7 +1777,11 @@ class chartArea(QFrame):
         self.hostKPIs.clear()
         self.srvcKPIs.clear()
         
-        self.statusMessage('Connected, init basic info...')
+        if message:
+            self.statusMessage(message)
+        else:
+            self.statusMessage('Connected, init basic info...')
+            
         self.repaint()
         
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
@@ -2179,6 +2227,8 @@ class chartArea(QFrame):
         self.widget.t_scale = n * scale
         
         #recalculate x-size and adjust
+        self.widget.timeScale = txtValue
+        
         self.widget.resizeWidget()
         
         # force move it to the end
@@ -2331,8 +2381,8 @@ class chartArea(QFrame):
             self.timer.stop()
         
         t0 = time.time()
-        log('  reloadChart()')
-        log('  hosts:', str(self.widget.hosts))
+        log('  reloadChart()', 5)
+        log('  hosts: %s' % str(self.widget.hosts), 5)
         
         #time.sleep(2)
         fromTime = self.fromEdit.text().strip()
@@ -2649,6 +2699,8 @@ class chartArea(QFrame):
 
         self.reloadChart()
         self.widget.resizeWidget()
+        
+        self.widget.timeScale = self.scaleCB.currentText()
         
         self.scrollarea.setWidget(self.widget)
         

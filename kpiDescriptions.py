@@ -36,120 +36,11 @@ def generateRaduga(n):
         radugaColors.append(color)
         radugaPens.append(pen)
     
-    '''
-    for i in range(n):
-    
-        r = random.randint(0, 8)
-        g = random.randint(0, 8)
-        b = random.randint(0, 8)
-        
-        r = r*16+64
-        g = g*16+64
-        b = b*16+64
-        
-        color = QColor(r, g, b)
-        pen = QPen(color)
-        
-        radugaColors.append(color)
-        radugaPens.append(pen)
-    '''
-
-'''
-    0 - index?
-    1 - type
-    2 - group
-    3 - nameserver name
-    4 - brush
-    5 - label text
-    6 - sql name
-    7 - desc
-'''
-
-'''
-    not a very nice idea have tuuples here as they are immutable...
-    wouldn't it be much better have dicts... probably init them from csv/yaml rather than python
-'''
-
 kpiStylesN = {}
 kpiStylesNN = {'host':{}, 'service':{}}
 
 customSql = {}
 
-kpiStyles = [
-    #i, t, grp, ns_name,                           brush,                                          text name, sql_name, description
-    (0, 'h','cpu','cpuUsed',                      QPen(QColor('#E00'), 1, Qt.DashLine),           'CPU', 'cpu', 'CPU Used by All Processes'),
-    (0, 'h','mem','memoryUsed',                   QPen(QColor('#0E4'), 1, Qt.DashLine),           'Database Used Memory', 'memory_used', 'Memory used for all HANA processes'),
-    (0, 'h','mem','memoryResident',               QPen(QColor('#0A0'), 1, Qt.DashLine),           'Database Resident Memory', 'memory_resident', 'Physical memory used for all HANA processes'),
-    (0, 'h','mem','memoryTotalResident',          QPen(QColor('#0A0'), 1, Qt.DashLine),           'Total Resident Memory', 'memory_total_resident', 'Physical memory used for all processes'),
-    (0, 'h','mem','memoryLimit',                  QPen(QColor('#060'), 1, Qt.DashLine),           'Database Allocation Limit', 'memory_allocation_limit', 'Memory allocation limit for all processes of HANA instance'),
-    
-    (0, 'h','','networkIn',                       QPen(QColor('#0AA'), 1, Qt.DashDotLine),           'Network In', 'network_in', 'Bytes read from network by all processes'),
-    (0, 'h','','networkOut',                      QPen(QColor('#A0A'), 1, Qt.DashDotLine),           'Network Out', 'network_out', 'Bytes written to network by all processes'),
-
-    (0, 'h','','swapIn',                          QPen(QColor('#0AA'), 1, Qt.DashLine),           'Swap In', 'swap_in', 'Bytes read from swap by all processes'),
-    (0, 'h','','swapOut',                         QPen(QColor('#A0A'), 1, Qt.DashLine),           'Swap Out', 'swap_out', 'Bytes written To swap by all processes'),
-
-    (0, 's','cpu','indexserverCpu',               QPen(QColor('#E00'), 1, Qt.SolidLine),          'CPU', 'cpu', 'CPU Used by Service'),
-    (0, 's','cpu','indexserverCpuSys',            QPen(QColor('#A00'), 1, Qt.SolidLine),          'System CPU', 'system_cpu', 'OS Kernel/System CPU used by Service'),
-    
-    # mem
-    (0, 's','mem','-',                            '-',                                           'Memory', '', ''),
-    (0, 's','mem','indexserverMemUsed',           QPen(Qt.green, 1, Qt.SolidLine),                'Memory Used', 'memory_used', 'Memory used by Service'),
-    (0, 's','mem','indexserverMemLimit',          QPen(QColor('#080'), 1, Qt.SolidLine),          'Memory Limit', 'memory_allocation_limit', 'Memory allocation limit for Service'),
-    
-    # sql
-    (0, 's', '','-',                            '-',                                              'SQL', '', ''),
-    (0, 's', '','sqlBlockedTrans',                QPen(QColor('#C2C'), 1, Qt.SolidLine),          'Blocked Transactions', 'blocked_transaction_count','-'),
-    (0, 's', '','sqlStatements',                  QPen(QColor('#FD0'), 1, Qt.SolidLine),          'Statemens per second', 'statement_count','-'),
-    (0, 's', '','pendingRequestCount',            QPen(QColor('#0FF'), 1, Qt.SolidLine),          'Pending Session Request Count', 'pending_session_count','Number of pending requests'),
-    
-    #threads
-    (0, 's', '','-',                            '-',                                              'Threads', '', ''),
-    (0, 's', 'thr','indexserverThreads',          QPen(QColor('#00A'), 1, Qt.SolidLine),          'Active Threads', 'active_thread_count','Number of active threads'),
-    (0, 's', 'thr','waitingThreads',              QPen(QColor('#0F2'), 1, Qt.SolidLine),          'Waiting Threads', 'waiting_thread_count','Number of waiting threads'),
-    
-    
-    (0, 's', '','-',                            '-',                                              'Random Stuff', '', ''),
-    (0, 's', '','dataWriteSize',                QPen(QColor('#C00'), 1, Qt.DotLine),          'Data Write Size', 'data_write_size','Bytes written to data area'),
-    (0, 's','','indexserverSwapIn',               QPen(QColor('#0DD'), 1, Qt.SolidLine),          'Swap In', 'swap_in', 'Bytes read from swap by Service'),
-    
-    (0, 's', '','admissionTMP',                   QPen(QColor('#F48'), 1, Qt.SolidLine),          'Admission Control Queue', 'admission_control_queue_size','-'),
-    #(0, '',' sqlConnections',                  QPen(QColor('#8AF'), 1, Qt.SolidLine),          'Open Connections'),
-    ()
-]
-
-kpiStyles.remove(())
-
-for kpi in kpiStyles:
-    if len(kpi) > 0:
-        kpiKeys.append(kpi[3])
-        
-        kpiGroup[kpi[3]] = kpi[2]
-            
-def findKPIsql(t, sqlName):
-    for kpi in kpiStyles:
-        if kpi[1] == t and kpi[6] == sqlName:
-            return kpi
-
-    return None
-
-def findKPIns(t, nsName):
-    for kpi in kpiStyles:
-        if kpi[1] == t and kpi[3] == nsName:
-            return kpi
-            
-    #log('ns kpi not found: %s.%s' % (t, nsName))
-
-    return None
-   
-def decodeKPIns(t, nsName):
-    for kpi in kpiStyles:
-        if kpi[1] == t and kpi[3] == nsName:
-            return kpi[6]
-
-    return None
-    
-#new styles approach starting here
 def createStyle(kpi, custom = False, sqlIdx = None):
 
     style = {}
@@ -347,6 +238,13 @@ def clarifyGroups():
             'waiting_sql_executor_count',
             'total_sql_executor_count']
 
+    thread_kpis_ns = ['indexserverthreads',
+            'waitingthreads',
+            'totalthreads',
+            'activesqlexecutors',
+            'waitingsqlexecutors',
+            'totalsqlexecutors']
+
     def update_hardcoded(kpis, kpiList, grp):
         for kpi in kpis:
             if kpis[kpi]['name'] in kpiList:
@@ -370,22 +268,38 @@ def clarifyGroups():
                 if kpiStylesNN[h][kpi]['group'] == grpIdx:
                     kpiStylesNN[h][kpi]['dUnit'] = dUnit
         
-
     for h in kpiStylesNN:
+    
         if 'cpu' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['cpu']['group'], 'cpu')
-            
+
         if 'memory_used' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['memory_used']['group'], 'mem')
             
-            if cfg('memoryGB'):
-                updateDunit('mem', 'GB')
+
+        # those two for dpTrace as it is based on ns KPI names
+        if 'cpuused' in kpiStylesNN[h]:
+            update(kpiStylesNN[h]['cpuused']['group'], 'cpu')
+
+        if 'memoryused' in kpiStylesNN[h]:
+            update(kpiStylesNN[h]['memoryused']['group'], 'mem')
+
+        if cfg('memoryGB'):
+            updateDunit('mem', 'GB')
             
+        # enforce threads scaling
         if thread_kpis[0] in kpiStylesNN[h]:
             update_hardcoded(kpiStylesNN[h], thread_kpis, 33)
 
         if 'active_thread_count' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['active_thread_count']['group'], 'thr')
+            
+        # now the same for ns... 
+        if thread_kpis_ns[0] in kpiStylesNN[h]:
+            update_hardcoded(kpiStylesNN[h], thread_kpis_ns, 33)
+
+        if 'indexserverthreads' in kpiStylesNN[h]:
+            update(kpiStylesNN[h]['indexserverthreads']['group'], 'thr')
         
 
 def groups():
@@ -447,3 +361,48 @@ def denormalize (kpi, value):
         return nValue
     else:
         return value
+        
+def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
+    '''
+        Same interface to be reused for DB trace
+        
+        Output:
+            hostKPIs, srvcKPIs are filled with the respective KPIs lists
+            
+            kpiStylesNN - GLOBAL <--- list of KPIs...
+    '''
+    
+    for kpi in rows:
+    
+        if kpi[1].lower() == 'm_load_history_host':
+            type = 'host'
+        else:
+            type = 'service'
+    
+        if kpi[1] == '': #hierarchy nodes
+            if len(kpi[0]) == 1:
+                continue # top level hierarchy node (Host/Service)
+            else:
+                # Normal hierarchy node
+                kpiName = '.' + kpi[4]
+        else:
+            kpiName = kpi[2].lower()
+            kpiDummy = {
+                    'hierarchy':    kpi[0],
+                    'type':         type,
+                    'name':         kpiName,
+                    'group':        kpi[3],
+                    'label':        kpi[4],
+                    'description':  kpi[5],
+                    'sUnit':        kpi[6],
+                    'dUnit':        kpi[7],
+                    'color':        kpi[8],
+                    'style':        nsStyle(kpi[9])
+                }
+            
+            kpiStylesNN[type][kpiName] = createStyle(kpiDummy)
+                    
+        if kpi[1].lower() == 'm_load_history_host':
+            hostKPIs.append(kpiName)
+        else:
+            srvcKPIs.append(kpiName)
