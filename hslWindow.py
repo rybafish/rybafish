@@ -178,13 +178,17 @@ class hslWindow(QMainWindow):
                     
                     if w.fileName is not None or w.backup is not None:
                         pos = w.cons.textCursor().position()
+                        block = w.cons.edit.verticalScrollBar().value()
+                        #print('scroll position:', block)
+                        #block = w.cons.firstVisibleBlock().position()
                         
                         if w.backup:
                             bkp = os.path.abspath(w.backup)
                         else:
                             bkp = None
                         
-                        tabs.append([w.fileName, bkp, pos])
+                        tabs.append([w.fileName, bkp, pos, block])
+                        #tabs.append([w.fileName, bkp, pos])
                         
                     w.close(None) # can not abort (and dont need to any more!)
 
@@ -885,9 +889,11 @@ class hslWindow(QMainWindow):
         
         self.setWindowIcon(QIcon(iconPath))
         
+        scrollPosition = []
+        
         if cfg('saveOpenTabs', True) and self.layout is not None and self.layout['tabs']:
             for t in self.layout['tabs']:
-                if len(t) != 3:
+                if len(t) != 4:
                     continue
                     
                 console = sqlConsole.sqlConsole(self, None, '?')
@@ -913,8 +919,11 @@ class hslWindow(QMainWindow):
                     console.openFile(t[0], t[1])
                     
                     pos = t[2]
+                    block = t[3]
                     
-                    if isinstance(pos, int):
+                    scrollPosition.append(block)
+                    
+                    if isinstance(pos, int) and isinstance(block, int):
                         cursor = console.cons.textCursor()
                         cursor.setPosition(pos, cursor.MoveAnchor)
                         console.cons.setTextCursor(cursor)
@@ -933,6 +942,18 @@ class hslWindow(QMainWindow):
                 self.tabs.setCurrentIndex(0)
         
         self.show()
+
+        #scroll everything to stored position
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            if isinstance(w, sqlConsole.sqlConsole):
+            
+                if i - 1 < len(scrollPosition):
+                    block = scrollPosition[i - 1]
+                    w.cons.edit.verticalScrollBar().setValue(block)
+                else:
+                    log('[w] scroll position list out of range, ignoring scrollback...')
+        
 
         '''
             set up some interactions

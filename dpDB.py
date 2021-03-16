@@ -449,11 +449,13 @@ class dataProvider():
             else:
                 data[kpi][entity] = [[start, stop, desc, 0]]
                 
+        '''
         for e in data[kpi]:
             print('entity:', e)
             
             for i in data[kpi][e]:
                 print(i[2], i[0], i[1], i[3])
+        '''
     
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
         '''

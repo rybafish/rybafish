@@ -366,6 +366,8 @@ class QPlainTextEditLN(QWidget):
         
         self.setFocus = self.edit.setFocus
         
+        self.firstVisibleBlock = self.edit.firstVisibleBlock
+        
         #self.keyPressEvent = self.edit.keyPressEvent
         
         self.locked = False
