@@ -2153,7 +2153,7 @@ class sqlConsole(QWidget):
         
     def manualSelect(self, start, stop):
         charFmt = QTextCharFormat()
-        charFmt.setBackground(QColor('#8CF'))
+        charFmt.setBackground(QColor('#ADF'))
         
         #print('manualSelect %i - %i' % (start, stop))
 
