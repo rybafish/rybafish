@@ -64,7 +64,7 @@ class kpiCell(QWidget):
         qp.end()
 
 class kpiTable(QTableWidget):
-    kpiStyles = kpiDescriptions.kpiStyles
+    #kpiStyles = kpiDescriptions.kpiStyles
     
     silentMode = True
     kpiNames = [] # list of current kpis

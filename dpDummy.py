@@ -107,10 +107,10 @@ class dataProvider:
             t4 = t0 + datetime.timedelta(seconds=(3600*1))
             t5 = t4 + datetime.timedelta(seconds=(3600*6))
 
-            t6 = t5 + datetime.timedelta(seconds=(600))
+            t6 = t5 + datetime.timedelta(seconds=(-1600))
             t7 = t6 + datetime.timedelta(seconds=(3600*1))
 
-            t8 = t7 + datetime.timedelta(seconds=(300))
+            t8 = t7 + datetime.timedelta(seconds=(-1300))
             t9 = t8 + datetime.timedelta(seconds=(3600 + 3600/4))
 
             t10 = ctime + datetime.timedelta(seconds=(3600*9+1200))

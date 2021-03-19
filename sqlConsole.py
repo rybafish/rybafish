@@ -55,18 +55,28 @@ class sqlWorker(QObject):
         cons = self.cons # cons - sqlConsole class itself, not just a console...
 
         cons.wrkException = None
-    
-        if 3 < cfg('loglevel', 3) < 5:
-            log('console execute: [%s]' % (sql))
         
+        if cons.conn is None:
+            #cons.log('Error: No connection')
+            cons.wrkException = 'no db connection'
+            self.finished.emit()
+            return
+
         if len(sql) >= 2**17 and cons.conn.large_sql != True:
-            log('reconnecting to hangle large SQL')
+            log('reconnecting to handle large SQL')
             #print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
             
             db.largeSql = True
             
             try: 
                 cons.conn = db.console_connection(cons.config)
+
+                rows = db.execute_query(cons.conn, "select connection_id from m_connections where own = 'TRUE'", [])
+                
+                if len(rows):
+                    self.cons.connection_id = rows[0][0]
+                    log('connection open, id: %s' % self.cons.connection_id)
+                    
             except dbException as e:
                 err = str(e)
                 #
@@ -78,12 +88,6 @@ class sqlWorker(QObject):
                 self.finished.emit()
                 return
                 
-        if cons.conn is None:
-            #cons.log('Error: No connection')
-            cons.wrkException = 'no db connection'
-            self.finished.emit()
-            return
-            
         #execute the query
         
         try:
@@ -145,14 +149,23 @@ class sqlWorker(QObject):
                     log('[!] ' + str(e))
                     
                 cons.conn = None
+                cons.connection_id = None
+                
                 
                 log('connectionLost() used to be here, but now no UI possible from the thread')
                 #cons.connectionLost()
                 
+                
+        '''
+        
+        seems to be a leftover of old resulset treatment
+        this is to detach results reached resultset limit
+        
         if result.rows:
             resultSize = len(result.rows)
         else:
             resultSize = -1
+        '''
 
         # all the rest moved to post-processing in SQLFinished call back
         # as part of it resultset-dependent
@@ -218,6 +231,7 @@ class console(QPlainTextEditLN):
     
     connectSignal = pyqtSignal()
     disconnectSignal = pyqtSignal()
+    abortSignal = pyqtSignal()
     
     def insertTextS(self, str):
         cursor = self.textCursor()
@@ -428,6 +442,7 @@ class console(QPlainTextEditLN):
         cmenu.addSeparator()
         menuDisconnect = cmenu.addAction('Disconnect from the DB')
         menuConnect = cmenu.addAction('(re)connecto to the DB')
+        menuAbort = cmenu.addAction('Generate cancel session sql')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
 
         if cfg('dev'):
@@ -460,6 +475,8 @@ class console(QPlainTextEditLN):
             self.executionTriggered.emit('leave results')
         elif action == menuDisconnect:
             self.disconnectSignal.emit()
+        elif action == menuAbort:
+            self.abortSignal.emit()
         elif action == menuConnect:
             self.connectSignal.emit()
         elif action == menuOpenFile:
@@ -645,6 +662,7 @@ class console(QPlainTextEditLN):
         cursor.endEditBlock() 
     '''
     
+    '''
     def moveLine(self, direction):
 
         cursor = self.textCursor()
@@ -687,6 +705,7 @@ class console(QPlainTextEditLN):
         cursor.setPosition(startPos + len(textMove), QTextCursor.KeepAnchor)
         
         self.setTextCursor(cursor)
+    '''
     
     def keyPressEvent (self, event):
     
@@ -1151,8 +1170,6 @@ class resultSet(QTableWidget):
 
             self.insertText.emit(filter)
             
-            #QApplication.clipboard().setText(filter)
-            
         if action == copyTableScreen:
             w = self.verticalHeader().width() + self.horizontalHeader().length() + 1
             h = self.verticalHeader().length() + self.horizontalHeader().height() + 1
@@ -1204,10 +1221,12 @@ class resultSet(QTableWidget):
         self.detach()
         
     def triggerDetachTimer(self, window):
-        log('Setting detach timer for %s' % (utils.hextostr(self._resultset_id)))
+        dtimer = cfg('detachTimeout', 300)
+        
+        log('Setting detach timer for %s %i sec' % (utils.hextostr(self._resultset_id), dtimer))
         self.detachTimer = QTimer(window)
         self.detachTimer.timeout.connect(self.detachCB)
-        self.detachTimer.start(1000 * cfg('detachTimeout', 300))
+        self.detachTimer.start(1000 * dtimer)
     
     def csvRow(self, r):
         
@@ -1363,7 +1382,6 @@ class resultSet(QTableWidget):
         
         #fill the result table
         for r in range(len(rows)):
-                
             for c in range(len(row0)):
                 
                 val = rows[r][c]
@@ -1451,7 +1469,6 @@ class resultSet(QTableWidget):
                     blob = str(self.rows[i][j])
             else:
                 if self.rows[i][j] is not None:
-                    
                     value = self.rows[i][j].read()
                     
                     if db.ifBLOBType(self.cols[j][1]):
@@ -1466,11 +1483,31 @@ class resultSet(QTableWidget):
         else:
             blob = str(self.rows[i][j])
 
-        lob = lobDialog.lobDialog(blob)
+        lob = lobDialog.lobDialog(blob, self)
         
         lob.exec_()
 
         return False
+
+    def wheelEvent (self, event):
+    
+        p = event.angleDelta()
+        
+        if p.y() < 0:
+            mode = 1
+        else:
+            mode = -1
+            
+        modifiers = QApplication.keyboardModifiers()
+        
+        if modifiers == Qt.ShiftModifier:
+            #x = 0 - self.pos().x() 
+            x = self.horizontalScrollBar().value()
+            
+            step = self.horizontalScrollBar().singleStep() * 2 #pageStep()
+            self.horizontalScrollBar().setValue(x + mode * step)
+        else:
+            super().wheelEvent(event)
         
 class logArea(QPlainTextEdit):
     def __init__(self):
@@ -1552,6 +1589,8 @@ class sqlConsole(QWidget):
         
         self.noBackup = False
         
+        self.connection_id = None
+        
         super().__init__()
         self.initUI()
         
@@ -1573,6 +1612,10 @@ class sqlConsole(QWidget):
 
         self.cons.textChanged.connect(self.textChangedS)
         
+        self.cons.connectSignal.connect(self.connectDB)
+        self.cons.disconnectSignal.connect(self.disconnectDB)
+        self.cons.abortSignal.connect(self.cancelSession)
+
         if config is None:
             return
         
@@ -1580,17 +1623,25 @@ class sqlConsole(QWidget):
             log('starting console connection')
             self.conn = db.console_connection(config)
             self.config = config
+            
+            rows = db.execute_query(self.conn, "select connection_id from m_connections where own = 'TRUE'", [])
+            
+            if len(rows):
+                self.connection_id = rows[0][0]
+                
+                log('connection open, id: %s' % self.connection_id)
+            
         except dbException as e:
             log('[!] failed!')
             raise e
             return
+            
+        # print(self.conn.session_id) it's not where clear how to get the connection_id
+        # 
 
         if cfg('keepalive-cons'):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
-            
-        self.cons.connectSignal.connect(self.connectDB)
-        self.cons.disconnectSignal.connect(self.disconnectDB)
 
     def textChangedS(self):
         
@@ -1655,17 +1706,8 @@ class sqlConsole(QWidget):
                 os.mkdir(bkpPath)
             
         filename = self.backup
-        fnsecure = filename
-    
-        #print(filename) # C:/home/dug/delme.sql.sqbkp
-        #print(os.path.basename(filename)) #delme.sql.sqbkp
-
-        # apparently filename is with normal slashes, but getcwd with backslashes on windows, :facepalm:
-        cwd = os.getcwd()
-        cwd = cwd.replace('\\','/') 
         
-        #remove potentially private info from the trace
-        fnsecure = filename.replace(cwd, '..')
+        fnsecure = utils.securePath(filename)
     
         try:
             with open(filename, 'w') as f:
@@ -1752,7 +1794,10 @@ class sqlConsole(QWidget):
     
     def openFile(self, filename = None, backup = None):
 
-        log('openFile: %s, %s' % (filename, backup))
+        fnsecure = utils.securePath(filename, True)
+        bkpsecure = utils.securePath(backup)
+        
+        log('openFile: %s, %s' % (fnsecure, bkpsecure))
 
         if filename is None and backup is None:
             fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.sql')
@@ -1775,7 +1820,7 @@ class sqlConsole(QWidget):
                 data = f.read()
                 f.close()
         except Exception as e:
-            log ('Error: ' + str(e), True)
+            log ('Error: ' + str(e), 1, True)
             self.log ('Error: opening %s / %s' % (self.fileName, self.backup), True)
             self.log ('Error: ' + str(e), True)
             
@@ -1824,10 +1869,12 @@ class sqlConsole(QWidget):
 
             if answer == False:
                 try:
-                    log('delete backup: %s' % (str(self.tabname+'.sqbkp')))
-                    os.remove(self.tabname+'.sqbkp')
+                    #log('delete backup: %s' % (str(self.tabname+'.sqbkp')))
+                    #os.remove(self.tabname+'.sqbkp')
+                    log('delete backup: %s' % (utils.securePath(self.backup)))
+                    os.remove(self.backup)
                 except:
-                    log('delete backup faileld, passing')
+                    log('delete backup 2 faileld, passing')
                     # whatever...
                     pass
             
@@ -1837,6 +1884,8 @@ class sqlConsole(QWidget):
         self.closeResults()
 
         try: 
+            self.stopKeepAlive()
+            
             if self.conn is not None:
                 db.close_connection(self.conn)
         except dbException as e:
@@ -1853,22 +1902,35 @@ class sqlConsole(QWidget):
         
         return True
             
+    def cancelSession(self):
+        self.log("\nNOTE: the SQL needs to be executed manually from the other SQL console:\nalter system cancel session '%s'" % (str(self.connection_id)))
+        
     def disconnectDB(self):
+
         try: 
             if self.conn is not None:
                 db.close_connection(self.conn)
+                
+                self.stopKeepAlive()
                 self.conn = None
+                self.connection_id = None
                 self.log('\nDisconnected')
                 
         except dbException as e:
             log('close() db exception: '+ str(e))
             self.log('close() db exception: '+ str(e), True)
+            
+            self.stopKeepAlive()
             self.conn = None # ?
+            self.connection_id = None
             return
         except Exception as e:
             log('close() exception: '+ str(e))
             self.log('close() exception: '+ str(e), True)
+            
+            self.stopKeepAlive()
             self.conn = None # ?
+            self.connection_id = None
             return
         
     def connectDB(self):
@@ -1878,14 +1940,27 @@ class sqlConsole(QWidget):
 
             if self.conn is not None:
                 db.close_connection(self.conn)
+                
+                self.stopKeepAlive()
                 self.conn = None
+                self.connection_id = None
                 self.log('\nDisconnected')
 
             self.sqlRunning = False
             self.stQueue.clear()
 
             self.conn = db.console_connection(self.config)                
-            self.log('Connected')
+
+            rows = db.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
+            
+            if len(rows):
+                self.connection_id = rows[0][0]
+                
+                log('connection open, id: %s' % self.connection_id)
+
+            if cfg('keepalive-cons') and self.timer is None:
+                keepalive = int(cfg('keepalive-cons'))
+                self.enableKeepAlive(self, keepalive)
             
         except dbException as e:
             log('close() db exception: '+ str(e))
@@ -1903,6 +1978,14 @@ class sqlConsole(QWidget):
             
         try: 
             conn = db.console_connection(self.config)
+
+            rows = db.execute_query(conn, "select connection_id  from m_connections where own = 'TRUE'", [])
+            
+            if len(rows):
+                self.connection_id = rows[0][0]
+                
+                log('connection open, id: %s' % self.connection_id)
+
         except Exception as e:
             raise e
         
@@ -1972,13 +2055,21 @@ class sqlConsole(QWidget):
         self.results.clear()
             
     def enableKeepAlive(self, window, keepalive):
-        log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
+        log('Setting up console keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)
-        log('keep-alive timer')
         self.timer.timeout.connect(self.keepAlive)
         self.timer.start(1000 * keepalive)
         
+    def stopKeepAlive(self):
+    
+        if self.timer is not None:
+            self.timer.stop()
+            self.timer = None
+            
+            cname = self.tabname.rstrip(' *')
+            log('keep-alives stopped (%s)' % cname)
+    
     def renewKeepAlive(self):
         if self.timer is not None:
             self.timer.stop()
@@ -1990,12 +2081,19 @@ class sqlConsole(QWidget):
             return
 
         try:
-            log('console keep-alive... ', False, True)
+            cname = self.tabname.rstrip(' *')
+            log('console keep-alive (%s)... ' % (cname), 3, False, True)
+            
+            self.indicator.status = 'sync'
+            self.indicator.repaint()
             
             t0 = time.time()
             db.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
-            log('ok: %s ms' % (str(round(t1-t0, 3))), True)
+            self.indicator.status = 'idle'
+            self.indicator.repaint()
+            
+            log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
         except dbException as e:
             log('Trigger autoreconnect...')
             try:
@@ -2003,10 +2101,20 @@ class sqlConsole(QWidget):
                 if conn is not None:
                     self.conn = conn
                     log('Connection restored automatically')
+
+                    rows = db.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
+                    
+                    if len(rows):
+                        self.connection_id = rows[0][0]
+                        
+                        log('connection open, id: %s' % self.connection_id)
+                        
                 else:
                     log('Some connection issue, give up')
-                    self.log('Some connection issue, give up', True)
+                    self.log('Some connection issue, give up', 1, True)
+                    self.stopKeepAlive()
                     self.conn = None
+                    self.connection_id = None
             except:
                 log('Connection lost, give up')
 
@@ -2014,13 +2122,18 @@ class sqlConsole(QWidget):
                 self.indicator.repaint()
                 self.log('Connection lost, give up', True)
                 # print disable the timer?
+                self.stopKeepAlive()
                 self.conn = None
+                self.connection_id = None
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
             log('[!] %s' % str(e))
             self.log('[!] unexpected exception, disable the connection', True)
-            
+
+            self.stopKeepAlive()
+
             self.conn = None
+            self.connection_id = None
             self.indicator.status = 'disconnected'
             self.indicator.repaint()
             
@@ -2353,8 +2466,8 @@ class sqlConsole(QWidget):
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
                     if F9 and (start <= cursorPos <= stop) and (start < stop):
-                        print('start <= cursorPos <= stop:', start, cursorPos, stop)
-                        print('warning! selectSingle used to be here, but removed 05.02.2021')
+                        #print('start <= cursorPos <= stop:', start, cursorPos, stop)
+                        #print('warning! selectSingle used to be here, but removed 05.02.2021')
                         #selectSingle(start, stop)
                         break
                     else:
@@ -2494,6 +2607,13 @@ class sqlConsole(QWidget):
                     self.log('Connection restored')
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
+                    
+                    if cfg('keepalive-cons') and self.timer is None:
+                        keepalive = int(cfg('keepalive-cons'))
+                        self.enableKeepAlive(self, keepalive)
+                    else:
+                        self.renewKeepAlive() 
+                        
                 except Exception as e:
                     self.indicator.status = 'disconnected'
                     self.indicator.repaint()
@@ -2548,15 +2668,12 @@ class sqlConsole(QWidget):
         
         dbCursor = self.sqlWorker.dbCursor
         
-        if cfg('loglevel', 3) >= 3:
-            log ('Number of resultsets: %i' % len(dbCursor.description_list))
+        log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
 
         t0 = self.t0
         t1 = time.time()
         
         self.t0 = None
-
-        #logText = 'Query execution time: %s s' % (str(round(t1-t0, 3)))
 
         logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
         
@@ -2575,6 +2692,10 @@ class sqlConsole(QWidget):
             
             result.clear()
             return
+            
+        #print('cols:', cols_list)
+        #print('rows:', rows_list)
+        #print('resultset id list', resultset_id_list)
 
         for i in range(len(cols_list)):
             
@@ -2585,7 +2706,15 @@ class sqlConsole(QWidget):
                 
             result.rows = rows_list[i]
             result.cols = cols_list[i]
-            result._resultset_id = resultset_id_list[i]
+            
+            #print(result.cols)
+            #print(result.cols[0])
+            #print(result.cols[0][2])
+            
+            if result.cols[0][2] == 'SCALAR':
+                result._resultset_id = None
+            else:
+                result._resultset_id = resultset_id_list[i]
                 
             rows = rows_list[i]
         
@@ -2617,19 +2746,16 @@ class sqlConsole(QWidget):
             logText += '\n' + str(len(rows)) + ' rows fetched' + lobs
             if resultSize == cfg('resultSize', 1000): logText += ', note: this is the resultSize limit'
 
-            self.log(logText)
-
             result.populate(refreshMode)
+            
+        self.log(logText)
 
-
-        log('clearing lists: %i' % len(cols_list))
+        log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
         
         for i in range(len(cols_list)):
-        
-            log('rows %i:%i' % (i, len(rows_list[0])))
+            #log('rows %i:%i' % (i, len(rows_list[0])))
             del rows_list[0]
-
-            log('cols %i:%i' % (i, len(cols_list[0])))
+            #log('cols %i:%i' % (i, len(cols_list[0])))
             del cols_list[0]
             
         #del rows_list
@@ -2721,7 +2847,7 @@ class sqlConsole(QWidget):
         t1 = time.time()
         
         if t0 is not None:
-            self.log('Current run time: %s' % utils.formatTime(t1-t0))
+            self.log('Current run time: %s, [%s]' % (utils.formatTime(t1-t0), self.connection_id))
         else:
             self.log('Nothing is running')
     

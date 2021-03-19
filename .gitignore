@@ -52,3 +52,6 @@ sql/
 
 #screenshots dir
 screens/
+
+# trace files if any
+*.trc

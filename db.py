@@ -1,8 +1,6 @@
 import pyhdb
 import time
 
-from utils import cfg
-
 #### low-level pyhdb magic requred because of missing implementation of CLOSERESULTSET  ####
 
 from pyhdb.protocol.message import RequestMessage
@@ -35,7 +33,7 @@ logline = 'db configuration:'
 for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
     logline +=('    %s = %s\n' % (k, str(pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])))
     
-log(logline)
+log(logline, 4)
 
 largeSql = False
 
@@ -115,10 +113,10 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
             # normal connection
 
             if longdate:
-                log('console with longdates')
+                log('console connection with longdates')
                 connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
             else:
-                log('console without longdates')
+                log('console connection without longdates')
                 connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
 
             connection.large_sql = False
@@ -153,8 +151,7 @@ def execute_query(connection, sql_string, params):
 
     # prepare the statement...
 
-    if cfg('loglevel', 3) >= 5:
-        log('[SQL]: %s' % sql_string)
+    log('[SQL]: %s' % sql_string, 5)
 
     try:
         cursor = connection.cursor()
@@ -167,8 +164,8 @@ def execute_query(connection, sql_string, params):
         raise dbException(str(e))
     except Exception as e:
         log("[!] unexpected DB exception, sql: %s" % sql_string)
-        log("[!] unexpected DB exception:", str(e))
-        log("[!] unexpected DB exception:", sys.exc_info()[0])
+        log("[!] unexpected DB exception: %s" % str(e))
+        log("[!] unexpected DB exception: %s" % sys.exc_info()[0])
         raise dbException(str(e))
         
     try:
@@ -214,11 +211,10 @@ def execute_query_desc(connection, sql_string, params, resultSize):
 
     #cursor = connection.cursor()
     cursor = cursor_mod(connection)
-
+    
     # prepare the statement...
     
-    if cfg('loglevel', 3) >= 5:
-        log('[SQL]: %s' % sql_string)
+    log('[SQL]: %s' % sql_string, 5)
 
     try:
         psid = cursor.prepare(sql_string)
@@ -235,22 +231,73 @@ def execute_query_desc(connection, sql_string, params, resultSize):
         raise dbException(str(e))
     except Exception as e:
         log("[!] unexpected DB exception, sql: %s" % sql_string)
-        log("[!] unexpected DB exception:", str(e))
-        log("[!] unexpected DB exception:", sys.exc_info()[0])
+        log("[!] unexpected DB exception: %s" % str(e))
+        log("[!] unexpected DB exception: %s" % sys.exc_info()[0])
         raise dbException(str(e))
+        
+    metadata = cursor._prepared_statements[psid]._params_metadata
+    
+    scalarOutput = False
+    
+    if len(metadata) > 0:
+        #scalar output detected so now do this dirty parameters preparation and even fake result fetch later....
+        scalarOutput = True
+        for p in metadata:
+            # p - ParameterMetadata object
+            log('Okay, Scalar output parameter: [%s]' % (str(p)), 3)
+            
+            if(ifLOBType(p.datatype)):
+                params.append('') # don't even ask... PyHDB...
+            else:
+                params.append(None)
         
     try:
         ps = cursor.get_prepared_statement(psid)
 
         cursor.execute_prepared(ps, [params])
-
+        
+        columns_list = cursor.description_list.copy()
+        
         if cursor._function_code == function_codes.DDL:
             rows_list = None
         else:
             rows_list = []
         
+            if scalarOutput:
+                cols_list = []
+                
+                cols = [] #columns
+                
+                for p in metadata:
+                    cols.append((p.id, p.datatype, 'SCALAR'))
+                
+                columns_list = [(cols),]
+                
+                if cursor.description_list:
+                    columns_list.append(cursor.description_list[0])
+                    
+                rows = cursor.fetchmany(1, 0) # what is the number of scalar output?
+                
+                log('scalar row: %s' % str(rows), 5)
+                
+                rows_list.append(rows)
+        
+                log('scalar detected... is it truth? does it harm', 5)
+                log('columns_list (with scalar!)  ----> %s' % str(columns_list), 5)
+                
+            
+            for clmn in columns_list:
+                #log('--> %s' % str(clmn), 5)
+                #log('--> %s' % str(clmn), 5)
+                pass
+            
+            log('results to fetch: %i' % len(cursor.description_list), 5)
+            
+            scalar_shift = 1 if scalarOutput else 0
+            
             for i in range(len(cursor.description_list)):
-                rows = cursor.fetchmany(resultSize, i)
+                #log('fetch many %i' % (i + scalar_shift), 5)
+                rows = cursor.fetchmany(resultSize, i+scalar_shift)
                 
                 rows_list.append(rows)
             
@@ -262,9 +309,6 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     except Exception as e:
         log('[E] unexpected DB error: %s' % str(e))
         raise dbException(str(e))
-
-    #columns = cursor.description
-    columns_list = cursor.description_list
 
     return rows_list, columns_list, cursor
     

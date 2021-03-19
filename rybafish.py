@@ -93,9 +93,6 @@ if __name__ == '__main__':
     #sys._excepthook = sys.excepthook
     sys.excepthook = exceptionHandler.handler
         
-    log('Starting %s build %s' % (version, build_date))
-    log('qt version: %s' %(QtCore.QT_VERSION_STR))
-    
     app = QApplication(sys.argv)
 
     loadConfig = True
@@ -108,6 +105,9 @@ if __name__ == '__main__':
             loadConfig = utils.yesNoDialog('Config error', 'Cannot load/parse config.yaml\nTry again?')
         else:
             loadConfig = False
+
+    log('Starting %s build %s' % (version, build_date))
+    log('qt version: %s' %(QtCore.QT_VERSION_STR))
 
     #ex = hslWindow.hslWindow()
     ryba = hslWindow.hslWindow()

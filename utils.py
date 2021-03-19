@@ -4,6 +4,8 @@ from PyQt5.QtGui import QIcon
 
 from datetime import datetime
 
+import os
+
 import locale
 from decimal import Decimal
 
@@ -196,13 +198,15 @@ def formatTime(t):
     
     return s
 
-def yesNoDialog(title, message, cancel = False):
+def yesNoDialog(title, message, cancel = False, ignore = False):
     msgBox = QMessageBox()
     msgBox.setWindowTitle(title)
     msgBox.setText(message)
 
     if cancel == True:
         buttons = QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+    elif ignore:
+        buttons = QMessageBox.Yes | QMessageBox.No | QMessageBox.Ignore
     else:
         buttons = QMessageBox.Yes | QMessageBox.No
         
@@ -218,6 +222,8 @@ def yesNoDialog(title, message, cancel = False):
 
     if reply == QMessageBox.Yes:
         return True
+    elif reply == QMessageBox.Ignore:
+        return 'ignore'
     elif reply == QMessageBox.No:
         return False
         
@@ -323,11 +329,14 @@ def cfg(param, default = None):
     else:
         return default
         
-def log(s, nots = False, nonl = False):
+def log(s, loglevel = 3, nots = False, nonl = False):
     '''
         log the stuff one way or another...
     '''
     
+    if cfg('loglevel', 3) < loglevel:
+        return
+
     if not nots:
         ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' '
     else:
@@ -340,7 +349,7 @@ def log(s, nots = False, nonl = False):
         nl = ''
     else:
         nl = '\n'
-        
+    
     if cfg('logmode') != 'screen':
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
@@ -354,3 +363,17 @@ def log(s, nots = False, nonl = False):
         
         f.close()
         
+def securePath(filename, backslash = False):
+
+    if filename is None:
+        return None
+    # apparently filename is with normal slashes, but getcwd with backslashes on windows, :facepalm:
+    cwd = os.getcwd()
+    
+    if backslash:
+        cwd = cwd.replace('\\','/') 
+    
+    #remove potentially private info from the trace
+    fnsecure = filename.replace(cwd, '..')
+    
+    return fnsecure

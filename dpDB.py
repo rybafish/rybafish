@@ -59,7 +59,7 @@ class dataProvider():
             self.timerkeepalive = None
 
         if self.connection and closeConnection:
-            log('closing conection')
+            log('closing connection')
             close_connection(self.connection)
             self.connection = None
             log('closed')
@@ -102,7 +102,7 @@ class dataProvider():
             return
 
         try:
-            log('chart keep-alive... ', False, True)
+            log('chart keep-alive... ', 3, False, True)
             
             t0 = time.time()
             db.execute_query(self.connection, 'select * from dummy', [])
@@ -112,7 +112,7 @@ class dataProvider():
                 log (10/0)
             
             t1 = time.time()
-            log('ok: %s ms' % (str(round(t1-t0, 3))), True)
+            log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
         except dbException as e:
             log('Trigger autoreconnect...')
             try:
@@ -134,11 +134,9 @@ class dataProvider():
             log('[!] %s' % str(e))
             self.connection = None
         
-            
+        
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
     
-        # kpis_sql = 'select view_name, column_name, display_line_color, display_line_style from m_load_history_info order by display_hierarchy'
-        #kpis_sql = 'select view_name, column_name from m_load_history_info order by display_hierarchy'
         kpis_sql = sql.kpis_info
 
         if not self.connection:
@@ -165,40 +163,7 @@ class dataProvider():
 
         rows = db.execute_query(self.connection, kpis_sql, [])
         
-        for kpi in rows:
-        
-            if kpi[1].lower() == 'm_load_history_host':
-                type = 'host'
-            else:
-                type = 'service'
-        
-            if kpi[1] == '': #hierarchy nodes
-                if len(kpi[0]) == 1:
-                    continue # top level hierarchy node (Host/Service)
-                else:
-                    # Normal hierarchy node
-                    kpiName = '.' + kpi[4]
-            else:
-                kpiName = kpi[2].lower()
-                kpiDummy = {
-                        'hierarchy':    kpi[0],
-                        'type':         type,
-                        'name':         kpiName,
-                        'group':        kpi[3],
-                        'label':        kpi[4],
-                        'description':  kpi[5],
-                        'sUnit':        kpi[6],
-                        'dUnit':        kpi[7],
-                        'color':        kpi[8],
-                        'style':        kpiDescriptions.nsStyle(kpi[9])
-                    }
-                
-                kpiStylesNN[type][kpiName] = kpiDescriptions.createStyle(kpiDummy)
-                        
-            if kpi[1].lower() == 'm_load_history_host':
-                hostKPIs.append(kpiName)
-            else:
-                srvcKPIs.append(kpiName)
+        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
 
         t1 = time.time()
 
@@ -440,19 +405,57 @@ class dataProvider():
             stop = r[2]
             desc = str(r[3])
                
-            #print ('curr: %s - %s' % (str(start), str(stop)))
+            #print ('curr: %s: %s - %s' % (desc, str(start), str(stop)))
             
+            # go through entities
             if entity in data[kpi]:
             
                 shift = 0
+                i = 0
 
-                for i in range(len(data[kpi][entity])):
-                    if start < data[kpi][entity][i][1]:
+                # now for each bar inside the entity we check if there is something
+                # still runing with the same shift
+                
+                # we are sure if something ends after start of current bar it is an intersection
+                # because data is sorted by start ascending
+                
+                while i < len(data[kpi][entity]):
+                    #print('gantt ', i)
+                    #print('compare if 1 < 2?:', start, data[kpi][entity][i][1])
+
+                    if shift == data[kpi][entity][i][3] and start < data[kpi][entity][i][1]:
                         shift += 1
+                        i = 0   # and we need to check from the scratch
+                    else:
+                        i += 1
+
+                '''
+                
+                # old implementation , with errors 100%
+                
+                for i in range(len(data[kpi][entity])):
+                    print('gantt ', i)
+                    print('compare if 1 < 2?:', start, data[kpi][entity][i][1])
+                    # if start < data[kpi][entity][i][1]:
+                    if start < data[kpi][entity][i][1] and shift == data[kpi][entity][i][3]:
+                        print('(yes)')
+                    #    i = 0
+                        shift += 1
+                    else:
+                        print('(no)')
+                '''
                     
                 data[kpi][entity].append([start, stop, desc, shift])
             else:
                 data[kpi][entity] = [[start, stop, desc, 0]]
+                
+        '''
+        for e in data[kpi]:
+            print('entity:', e)
+            
+            for i in data[kpi][e]:
+                print(i[2], i[0], i[1], i[3])
+        '''
     
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
         '''
@@ -523,7 +526,10 @@ class dataProvider():
                                 # do NOT normalize here, only devide by delta seconds
 
                                 if i == 0:
-                                    normValue = rawValue / (data[timeKey][1] - data[timeKey][0])
+                                    if len(data[timeKey]) > 1:
+                                        normValue = rawValue / (data[timeKey][1] - data[timeKey][0])
+                                    else:
+                                        normValue = -1 # no data to calculate
                                 else:
                                     normValue = rawValue / (data[timeKey][i] - data[timeKey][i-1])
                                 
