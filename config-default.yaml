@@ -4,7 +4,7 @@ server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 ## Chart related stuff here
 ##
 
-# loglevel, 3 is default, 5 - log all messages (including SQL strings)
+# loglevel, 3 is default, 0 - no log at all, 5 - log all messages (including SQL strings)
 loglevel: 3
 
 # chart keep-alives timer

@@ -197,6 +197,7 @@ def close_result(connection, _resultset_id):
     
     # no exception...
     # no result check...
+    # never failed... (what if connection issue...)
     return
 
 def execute_query_desc(connection, sql_string, params, resultSize):
