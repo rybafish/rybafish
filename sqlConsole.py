@@ -38,6 +38,8 @@ class sqlWorker(QObject):
     def __init__(self, cons):
         super().__init__()
         
+        self.psid = None
+        
         self.cons = cons
         self.args = []
     
@@ -116,7 +118,7 @@ class sqlWorker(QObject):
             txtSub = txtSub.replace('\t', ' ')
             
             #print('start sql')
-            self.rows_list, self.cols_list, dbCursor = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+            self.rows_list, self.cols_list, dbCursor, psid = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
             self.resultset_id_list = dbCursor._resultset_id_list
             
             result.explicitLimit = explicitLimit
@@ -128,6 +130,7 @@ class sqlWorker(QObject):
             #print('sql finished')
 
             self.dbCursor = dbCursor
+            self.psid = psid
             
         except dbException as e:
             err = str(e)
@@ -1469,7 +1472,11 @@ class resultSet(QTableWidget):
                     blob = str(self.rows[i][j])
             else:
                 if self.rows[i][j] is not None:
-                    value = self.rows[i][j].read()
+                    try:
+                        value = self.rows[i][j].read()
+                    except Exception as e:
+                        self.log('LOB read() error: %s' % str(e), True)
+                        value = '<error1>'
                     
                     if db.ifBLOBType(self.cols[j][1]):
                         blob = str(value.decode("utf-8", errors="ignore"))
@@ -1590,6 +1597,8 @@ class sqlConsole(QWidget):
         self.noBackup = False
         
         self.connection_id = None
+
+        self.psid = None # prepared statement_id for drop_statement
         
         super().__init__()
         self.initUI()
@@ -2053,6 +2062,8 @@ class sqlConsole(QWidget):
             del self.results[i]
             
         self.results.clear()
+        
+        db.drop_statement(self.conn, self.psid)
             
     def enableKeepAlive(self, window, keepalive):
         log('Setting up console keep-alive requests: %i seconds' % (keepalive))
@@ -2639,6 +2650,8 @@ class sqlConsole(QWidget):
         self.indicator.status = 'render'
         self.indicator.repaint()
         
+        log('psid to save --> %s' % utils.hextostr(self.sqlWorker.psid), 4)
+        
         if self.wrkException is not None:
             self.log(self.wrkException, True)
             
@@ -2667,6 +2680,9 @@ class sqlConsole(QWidget):
         sql, result, refreshMode = self.sqlWorker.args
         
         dbCursor = self.sqlWorker.dbCursor
+        self.psid = self.sqlWorker.psid
+        
+        log('psid saved: %s' % utils.hextostr(self.psid))
         
         log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
 

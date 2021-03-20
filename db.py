@@ -5,15 +5,16 @@ import time
 
 from pyhdb.protocol.message import RequestMessage
 from pyhdb.protocol.segments import RequestSegment
-from pyhdb.protocol.parts import ResultSetId
+from pyhdb.protocol.parts import ResultSetId, StatementId
 
 from pyhdb.protocol.constants import message_types, type_codes
 
 from dbCursor import cursor_mod
 from pyhdb.protocol.constants import function_codes #for the cursor_mod
 
-message_types.CLOSERESULTSET = 69 # SAP HANA SQL Command Network Protocol Reference
-                                  # this one is still missing in pyhdb 2019-12-15
+# those two are missing in PyHDB
+message_types.CLOSERESULTSET = 69 
+message_types.DROPSTATEMENTID = 70
 
 #### low-level pyhdb magic requred because of missing implementation of CLOSERESULTSET  ####
 
@@ -25,7 +26,7 @@ import sql
 
 import sys
 
-from utils import log, cfg
+from utils import log, cfg, hextostr
 from utils import dbException
 
 logline = 'db configuration:'
@@ -175,7 +176,9 @@ def execute_query(connection, sql_string, params):
         
         rows = cursor.fetchall()
         
-        close_result(connection, cursor._resultset_id)
+        drop_statement(connection, psid)
+        
+        #close_result(connection, cursor._resultset_id)
 
     except pyhdb.exceptions.DatabaseError as e:
         log('[!]: sql execution issue %s\n' % e)
@@ -185,6 +188,27 @@ def execute_query(connection, sql_string, params):
         raise dbException(str(e))
 
     return rows
+
+def drop_statement(connection, statement_id):
+
+    log('psid to drop --> %s' % hextostr(statement_id), 4)
+
+    if statement_id is None:
+        return
+
+    t0 = time.time()
+    
+    request = RequestMessage.new(
+                connection,
+                RequestSegment(message_types.DROPSTATEMENTID, StatementId(statement_id))
+                )
+
+
+    response = connection.send_request(request)
+    
+    t1 = time.time()
+    
+    log('psid drop took %s' % (str(round(t1-t0, 3))), 4)
 
 def close_result(connection, _resultset_id):
     
@@ -301,7 +325,7 @@ def execute_query_desc(connection, sql_string, params, resultSize):
                 
                 rows_list.append(rows)
             
-            cursor.close()
+            # cursor.close() does nothing anyway...
 
     except pyhdb.exceptions.DatabaseError as e:
         log('[!]: sql execution issue %s\n' % e)
@@ -309,8 +333,10 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     except Exception as e:
         log('[E] unexpected DB error: %s' % str(e))
         raise dbException(str(e))
+        
+    # drop_statement(connection, psid) #useful to test LOB.read() issues
 
-    return rows_list, columns_list, cursor
+    return rows_list, columns_list, cursor, psid
     
 def get_data(connection, kpis, times, data):
     '''
