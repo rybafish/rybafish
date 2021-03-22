@@ -251,28 +251,31 @@ class dataProvider():
                 if fromto['from'][:1] == '-' :
                     hours = int(fromto['from'][1:])
                     params.append(hours)
-                    tfilter = " and time > add_seconds(now(), -3600 * ?)"
+                    tfilter = " time > add_seconds(now(), -3600 * ?)"
                 else:
                     params.append(fromto['from'])
-                    tfilter = " and time > ?"
+                    tfilter = " time > ?"
 
             elif fromto['from'] == '' and fromto['to'] != '':
                 params.append(fromto['to'])
-                tfilter = " and time < ?"
+                tfilter = " time < ?"
             else:
                 params.append(fromto['from'])
                 params.append(fromto['to'])
                 
-                tfilter = " and time between ? and ?"
+                tfilter = " time between ? and ?"
                 
         else:
             # ????
-            tfilter = " and time > add_seconds(now(), -3600*12)"
+            tfilter = " time > add_seconds(now(), -3600*12)"
         
         # allOk = True
         
         # loop through kpi sources
         for kpiSrc in kpiList.keys():
+        
+            nofilter = False
+        
             kpisSql = []
             kpis = kpiList[kpiSrc]
             
@@ -296,9 +299,22 @@ class dataProvider():
                 else:
                     kpisSql.append(kpiDescriptions.kpiStylesNN[type][kpi]['sqlname'])
                     
+            if 'nofilter' in kpiDescriptions.kpiStylesNN[type][kpi] and kpiDescriptions.kpiStylesNN[type][kpi]['nofilter']:
+                nofilter = True
+            
             cols = ', '.join(kpisSql)
             
-            sql = '%s %s %s %s%s %s' % (sql_pref, cols, fromTable, hfilter, tfilter, orderby)
+            if nofilter == False: #normal KPI
+                sql = '%s %s %s %s and%s %s' % (sql_pref, cols, fromTable, hfilter, tfilter, orderby)
+            else:
+                #need to remove host:port filter both from the SQL and parameters...
+                hfilter = 'where'
+                sql = '%s %s %s %s%s %s' % (sql_pref, cols, fromTable, hfilter, tfilter, orderby)
+                
+                if host['port'] == '':
+                    params = params[1:]
+                else:
+                    params = params[2:]
             
             '''
             print('sql_pref', sql_pref)

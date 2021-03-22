@@ -69,6 +69,11 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         return None
         
     if custom:
+        if 'nofilter' in kpi:
+            style['nofilter'] = True
+        else:
+            style['nofilter'] = False
+            
         if 'sqlname' in kpi:
             style['sqlname'] = kpi['sqlname']
         else:
