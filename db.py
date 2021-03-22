@@ -193,7 +193,7 @@ def drop_statement(connection, statement_id):
 
     log('psid to drop --> %s' % hextostr(statement_id), 4)
 
-    if statement_id is None:
+    if statement_id is None or connection is None:
         return
 
     t0 = time.time()
