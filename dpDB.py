@@ -309,17 +309,23 @@ class dataProvider():
             
             cols = ', '.join(kpisSql)
             
+            hfilter_now = hfilter # cannot modify hfilter as it is reused for the other KPI sources...
+            gtfilter_now = gtfilter # cannot modify hfilter as it is reused for the other KPI sources...
+            
+            print('hfilter_now', hfilter_now)
             if nofilter == False: #normal KPI
-                sql = '%s %s %s %s and%s %s' % (sql_pref, cols, fromTable, hfilter, tfilter, orderby)
+                sql = '%s %s %s %s and%s %s' % (sql_pref, cols, fromTable, hfilter_now, tfilter, orderby)
             else:
                 #need to remove host:port filter both from the SQL and parameters...
-                hfilter = 'where'
-                sql = '%s %s %s %s%s %s' % (sql_pref, cols, fromTable, hfilter, tfilter, orderby)
+                hfilter_now = 'where'
+                sql = '%s %s %s %s%s %s' % (sql_pref, cols, fromTable, hfilter_now, tfilter, orderby)
                 
                 if host['port'] == '':
                     params = params[1:]
                 else:
                     params = params[2:]
+                    
+            print('hfilter_now', hfilter_now)
             
             '''
             print('sql_pref', sql_pref)
@@ -344,15 +350,18 @@ class dataProvider():
                     #sql = 'select entity, "START", "STOP", details %s %s%s order by entity, "START" desc' % (fromTable, hfilter, tfilter_mod)
                     #sql = 'select entity, "START", "STOP", details %s %s%s order by entity, seconds_between("START", "STOP") desc' % (fromTable, hfilter, tfilter_mod)
                     
-                    if hfilter == 'where':
+                    if hfilter_now == 'where':
                         # no host/port filter due to nofilter kpi setting
+                        print('pass')
                         pass
                     else:
                         # there is a filter so we have to add ' AND ' before the time filter...
                         # tfilter_mod = ' and ' + tfilter_mod
-                        gtfilter = ' and ' + gtfilter
-                        
-                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity desc, "START"' % (fromTable, hfilter, gtfilter)
+                        gtfilter_now = ' and ' + gtfilter_now
+                        print('add and!')
+                      
+                    print('hfilter_now, gtfilter_now', hfilter_now, gtfilter_now)
+                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity desc, "START"' % (fromTable, hfilter_now, gtfilter_now)
                     gantt = True                    
 
             try:
