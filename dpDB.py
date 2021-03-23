@@ -252,22 +252,27 @@ class dataProvider():
                     hours = int(fromto['from'][1:])
                     params.append(hours)
                     tfilter = " time > add_seconds(now(), -3600 * ?)"
+                    gtfilter = ' "STOP" > add_seconds(now(), -3600 * ?)'
                 else:
                     params.append(fromto['from'])
                     tfilter = " time > ?"
+                    gtfilter = ' "STOP" > ?'
 
             elif fromto['from'] == '' and fromto['to'] != '':
                 params.append(fromto['to'])
                 tfilter = " time < ?"
+                gtfilter = ' "START" < ?'
             else:
                 params.append(fromto['from'])
                 params.append(fromto['to'])
                 
                 tfilter = " time between ? and ?"
+                gtfilter = ' "STOP" >= ? and "START <= ?'
                 
         else:
-            # ????
+            log('[!] code should not ever reach here (tfilter)', 2)
             tfilter = " time > add_seconds(now(), -3600*12)"
+            gtfilter = ' "STOP" >= add_seconds(now(), -3600*12)'
         
         # allOk = True
         
@@ -334,11 +339,20 @@ class dataProvider():
                 
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
                     
-                    tfilter_mod = tfilter.replace('time', '"START"')
+                    # tfilter_mod = tfilter.replace('time', '"START"') # removed 2021-03-23
                 
                     #sql = 'select entity, "START", "STOP", details %s %s%s order by entity, "START" desc' % (fromTable, hfilter, tfilter_mod)
                     #sql = 'select entity, "START", "STOP", details %s %s%s order by entity, seconds_between("START", "STOP") desc' % (fromTable, hfilter, tfilter_mod)
-                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity desc, "START"' % (fromTable, hfilter, tfilter_mod)
+                    
+                    if hfilter == 'where':
+                        # no host/port filter due to nofilter kpi setting
+                        pass
+                    else:
+                        # there is a filter so we have to add ' AND ' before the time filter...
+                        # tfilter_mod = ' and ' + tfilter_mod
+                        gtfilter = ' and ' + gtfilter
+                        
+                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity desc, "START"' % (fromTable, hfilter, gtfilter)
                     gantt = True                    
 
             try:
@@ -356,7 +370,7 @@ class dataProvider():
                         log('yesNoDialog ---> disable %s?' % (kpiSrc))
                         reply = yesNoDialog('Error: custom SQL exception', 'SQL for custom KPIs %s terminated with the following error:\n\n%s\n\n Disable this KPI source (%s)?' % (', '.join(kpis), str(e), kpiSrc))
                     else:
-                        log('Custom KPI exception: ' + str(e))
+                        log('Custom KPI exception: ' + str(e), 2)
                         # ?
                         pass
 
