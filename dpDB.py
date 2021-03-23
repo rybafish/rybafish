@@ -267,7 +267,7 @@ class dataProvider():
                 params.append(fromto['to'])
                 
                 tfilter = " time between ? and ?"
-                gtfilter = ' "STOP" >= ? and "START <= ?'
+                gtfilter = ' "STOP" >= ? and "START" <= ?'
                 
         else:
             log('[!] code should not ever reach here (tfilter)', 2)

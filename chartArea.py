@@ -1235,10 +1235,15 @@ class myWidget(QWidget):
                                 
                                 hlWidth = min(cfg('ganttLabelWidth', 500), hlWidth)
                                 
+                                # introduce an offset if the label goes off the right border
                                 if x + hlWidth > wsize.width():
                                     xOff = wsize.width() - (hlWidth + x + self.side_margin) - 4 # 4 - right margin
                                 else:
                                     xOff = 0
+                                    
+                                # don't put the label goes outside the left border
+                                if x + xOff <= 0:
+                                    xOff = - x + self.side_margin / 2
                                     
                                 nl = hlDesc.count('\n') + 1
                                 
