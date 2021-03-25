@@ -311,8 +311,8 @@ class dataProvider():
             
             hfilter_now = hfilter # cannot modify hfilter as it is reused for the other KPI sources...
             gtfilter_now = gtfilter # cannot modify hfilter as it is reused for the other KPI sources...
+            params_now = params.copy() # same for params list
             
-            print('hfilter_now', hfilter_now)
             if nofilter == False: #normal KPI
                 sql = '%s %s %s %s and%s %s' % (sql_pref, cols, fromTable, hfilter_now, tfilter, orderby)
             else:
@@ -321,11 +321,9 @@ class dataProvider():
                 sql = '%s %s %s %s%s %s' % (sql_pref, cols, fromTable, hfilter_now, tfilter, orderby)
                 
                 if host['port'] == '':
-                    params = params[1:]
+                    params_now = params_now[1:]
                 else:
-                    params = params[2:]
-                    
-            print('hfilter_now', hfilter_now)
+                    params_now = params_now[2:]
             
             '''
             print('sql_pref', sql_pref)
@@ -352,23 +350,20 @@ class dataProvider():
                     
                     if hfilter_now == 'where':
                         # no host/port filter due to nofilter kpi setting
-                        print('pass')
                         pass
                     else:
                         # there is a filter so we have to add ' AND ' before the time filter...
                         # tfilter_mod = ' and ' + tfilter_mod
                         gtfilter_now = ' and ' + gtfilter_now
-                        print('add and!')
                       
-                    print('hfilter_now, gtfilter_now', hfilter_now, gtfilter_now)
                     sql = 'select entity, "START", "STOP", details %s %s%s order by entity desc, "START"' % (fromTable, hfilter_now, gtfilter_now)
                     gantt = True                    
 
             try:
                 if not gantt:
-                    self.getHostKpis(type, kpis, data, sql, params, kpiSrc)
+                    self.getHostKpis(type, kpis, data, sql, params_now, kpiSrc)
                 else:
-                    self.getGanttData(type, kpis[0], data, sql, params, kpiSrc)
+                    self.getGanttData(type, kpis[0], data, sql, params_now, kpiSrc)
                     
             except Exception as e:
             
