@@ -1455,7 +1455,10 @@ class myWidget(QWidget):
         #prnt('grid %i:%i' % (startX, stopX))
         #print('grid: ', self.gridColor.getRgb())
         
-
+        '''
+        
+        what is that???
+        
         for h in range(0, len(self.hosts)):
 
             if len(self.nkpis) == 0: # sometimes hosts filled before nkpis
@@ -1468,6 +1471,7 @@ class myWidget(QWidget):
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
                     # self.left_margin = 100
                     break
+        '''
 
         
         t0 = time.time()
@@ -1695,21 +1699,38 @@ class chartArea(QFrame):
         if len(chart.nkpis) == 0:
             log('[w] disableDeadKPIs: no kpis at all, exit')
             return
-        
+            
         for host in range(0, len(chart.hosts)):
             type = hType(host, chart.hosts)
-            
+
+            delKpis = []
             for kpi in chart.nkpis[host]:
                 if kpi not in kpiStylesNN[type]:
-                    log('[w] kpi %s is dsabled so it is removed from the list of selected KPIs for the host' % (kpi))
+                    delKpis.append(kpi)
                     
-                    chart.nkpis[host].remove(kpi)
-                    
-                    if type == 'service':
-                        self.srvcKPIs.remove(kpi)
-                    else:
+            for kpi in delKpis:
+                log('[w] kpi %s is dsabled so it is removed from the list of selected KPIs for the host' % (kpi))
+                
+                chart.nkpis[host].remove(kpi)
+                
+                if type == 'service' and kpi in self.srvcKPIs:
+                    self.srvcKPIs.remove(kpi)
+                else:
+                    if kpi in self.hostKPIs:
                         self.hostKPIs.remove(kpi)
                     
+            delKpis = []
+            
+            for kpi in self.widget.nscales[host]:
+                if kpi != 'time' and kpi not in kpiStylesNN[type]:
+                    delKpis.append(kpi)
+                   
+            for kpi in delKpis:
+                log('[w] removing %s from nscales becaouse it does not exist (disabled?)' % (kpi), 2)
+                del self.widget.nscales[host][kpi]
+                log('[w] removing %s from data ' % (kpi), 2)
+                del self.widget.ndata[host][kpi]
+
     def statusMessage(self, str, repaint = False):
         if repaint: 
             self.statusMessage_.emit(str, True)
@@ -2289,6 +2310,15 @@ class chartArea(QFrame):
 
             for kpi in scales.keys():
             
+                if type == 'service':
+                    if kpi not in self.srvcKPIs:
+                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 2)
+                        continue
+                else:
+                    if kpi not in self.hostKPIs:
+                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 2)
+                        continue
+            
                 if kpi[:4] == 'time':
                     continue
                     
@@ -2454,6 +2484,8 @@ class chartArea(QFrame):
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):
+                    print('hots', host)
+                    print('nkpis,', self.widget.nkpis)
                     if len(self.widget.nkpis[host]) > 0:
                         #('normal reload -->')
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])

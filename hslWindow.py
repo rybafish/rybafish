@@ -136,7 +136,7 @@ class hslWindow(QMainWindow):
             host = self.chartArea.widget.hosts[i]
             hst = '%s:%s' % (host['host'], host['port'])
             
-            if self.chartArea.widget.nkpis[i]:
+            if i < len(self.chartArea.widget.nkpis) and self.chartArea.widget.nkpis[i]:
                 kpis[hst] = self.chartArea.widget.nkpis[i]
     
         if kpis:
@@ -273,7 +273,7 @@ class hslWindow(QMainWindow):
             dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
         except Exception as e:
             self.chartArea.disableDeadKPIs()
-            msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
+            msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
         
         self.chartArea.widget.initPens()
         self.chartArea.widget.update()
