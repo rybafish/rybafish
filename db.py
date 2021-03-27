@@ -12,6 +12,8 @@ from pyhdb.protocol.constants import message_types, type_codes
 from dbCursor import cursor_mod
 from pyhdb.protocol.constants import function_codes #for the cursor_mod
 
+from _constants import build_date, version
+
 # those two are missing in PyHDB
 message_types.CLOSERESULTSET = 69 
 message_types.DROPSTATEMENTID = 70
@@ -28,6 +30,8 @@ import sys
 
 from utils import log, cfg, hextostr
 from utils import dbException
+
+from os import getlogin
 
 logline = 'db configuration:'
 
@@ -46,6 +50,12 @@ def create_connection (server, dbProperties = None):
         connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
         connection.large_sql = False
         
+        setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
+        execute_query_desc(connection, setApp, [], 0)
+        
+        setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
+        execute_query_desc(connection, setApp, [], 0)
+
     except Exception as e:
 #    except pyhdb.exceptions.DatabaseError as e:
         log('[!]: connection failed: %s\n' % e)
@@ -122,6 +132,12 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
 
             connection.large_sql = False
             largeSql = False
+            
+        setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
+        execute_query_desc(connection, setApp, [], 0)
+        
+        setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
+        execute_query_desc(connection, setApp, [], 0)
             
         
     except Exception as e:
