@@ -616,7 +616,7 @@ class hslWindow(QMainWindow):
             
     
     def menuImport(self):
-        fname = QFileDialog.getOpenFileNames(self, 'Import...',  None, 'Nameserver trace files (*.trc)')
+        fname = QFileDialog.getOpenFileNames(self, 'Import nameserver_history.trc...',  None, 'Import nameserver history trace (*.trc)')
         log(fname[0])
         
         
