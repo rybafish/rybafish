@@ -306,11 +306,13 @@ class hslWindow(QMainWindow):
         abt.exec_()
         
     def menuConfHelp(self):
-        QDesktopServices.openUrl(QUrl('http://rybafish.net/config'))
+        QDesktopServices.openUrl(QUrl('https://rybafish.net/config'))
 
     def menuCustomConfHelp(self):
-        QDesktopServices.openUrl(QUrl('http://rybafish.net/customKPI'))
-        
+        QDesktopServices.openUrl(QUrl('https://rybafish.net/customKPI'))
+
+    def menuTips(self):
+        QDesktopServices.openUrl(QUrl('https://rybafish.net/tips'))
         
     def menuDummy(self):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
@@ -849,12 +851,17 @@ class hslWindow(QMainWindow):
         confCustomHelpAct = QAction('Custom KPIs', self)
         confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
         confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
+
+        confTipsAct = QAction('Tips and tricks', self)
+        confTipsAct.setStatusTip('Tips and tricks description')
+        confTipsAct.triggered.connect(self.menuTips)
         
         helpMenu = menubar.addMenu('&Help')
         helpMenu.addAction(confHelpAct)
         
         
         helpMenu.addAction(confCustomHelpAct)
+        helpMenu.addAction(confTipsAct)
             
         helpMenu.addAction(aboutAct)
 
