@@ -50,11 +50,12 @@ def create_connection (server, dbProperties = None):
         connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
         connection.large_sql = False
         
-        setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
-        execute_query_desc(connection, setApp, [], 0)
-        
-        setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
-        execute_query_desc(connection, setApp, [], 0)
+        if cfg('internal', True):
+            setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
+            execute_query_desc(connection, setApp, [], 0)
+            
+            setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
+            execute_query_desc(connection, setApp, [], 0)
 
     except Exception as e:
 #    except pyhdb.exceptions.DatabaseError as e:
@@ -133,12 +134,12 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
             connection.large_sql = False
             largeSql = False
             
-        setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
-        execute_query_desc(connection, setApp, [], 0)
-        
-        setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
-        execute_query_desc(connection, setApp, [], 0)
+        if cfg('internal', True):
+            setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
+            execute_query_desc(connection, setApp, [], 0)
             
+            setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
+            execute_query_desc(connection, setApp, [], 0)
         
     except Exception as e:
 #    except pyhdb.exceptions.DatabaseError as e:
