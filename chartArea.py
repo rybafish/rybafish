@@ -2484,8 +2484,8 @@ class chartArea(QFrame):
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):
-                    print('hots', host)
-                    print('nkpis,', self.widget.nkpis)
+                    #print('hots', host)
+                    #print('nkpis,', self.widget.nkpis)
                     if len(self.widget.nkpis[host]) > 0:
                         #('normal reload -->')
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
