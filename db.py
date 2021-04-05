@@ -208,7 +208,7 @@ def execute_query(connection, sql_string, params):
 
 def drop_statement(connection, statement_id):
 
-    log('connection/psid to drop --> %s/%s' % (str(connection), hextostr(statement_id), 4))
+    log('connection/psid to drop --> %s' % (hextostr(statement_id)), 4)
 
     if statement_id is None or connection is None:
         return
@@ -352,7 +352,7 @@ def execute_query_desc(connection, sql_string, params, resultSize):
         log('[E] unexpected DB error: %s' % str(e))
         raise dbException(str(e))
         
-    # drop_statement(connection, psid) #useful to test LOB.read() issues
+    # drop_statement(connection, psid) # might be useful to test LOB.read() issues
 
     return rows_list, columns_list, cursor, psid
     

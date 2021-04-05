@@ -2064,7 +2064,10 @@ class sqlConsole(QWidget):
         self.results.clear()
         
         if self.conn is not None:
-            db.drop_statement(self.conn, self.psid)
+            try:
+                db.drop_statement(self.conn, self.psid)
+            except Exception as e:
+                log('[E] exeption during console close/drop statement: %s' % str(e), 2)
             
     def enableKeepAlive(self, window, keepalive):
         log('Setting up console keep-alive requests: %i seconds' % (keepalive))
