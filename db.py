@@ -208,7 +208,7 @@ def execute_query(connection, sql_string, params):
 
 def drop_statement(connection, statement_id):
 
-    log('psid to drop --> %s' % hextostr(statement_id), 4)
+    log('connection/psid to drop --> %s/%s' % (str(connection), hextostr(statement_id), 4))
 
     if statement_id is None or connection is None:
         return
