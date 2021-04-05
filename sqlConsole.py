@@ -789,6 +789,8 @@ class console(QPlainTextEditLN):
 
     def cursorPositionChangedSignal(self):
     
+        t0 = time.time()
+    
         if self.manualSelection:
             #print('need to clear', self.manualSelectionPos)
             
@@ -812,6 +814,10 @@ class console(QPlainTextEditLN):
             return
     
         self.checkBrakets()
+        
+        t1 = time.time()
+        
+        #log('cursorPositionChangedSignal: %s ms' % (str(round(t1-t0, 3))), 5)
         
     def highlightBrakets(self, block, pos1, pos2, mode):
         #print ('highlight here: ', pos1, pos2)
@@ -1034,6 +1040,7 @@ class resultSet(QTableWidget):
         
         self.headers = [] # column names
         
+        self.psid = None # psid to drop on close
         
         # overriden in case of select top xxxx
         self.explicitLimit = False 
@@ -1598,7 +1605,7 @@ class sqlConsole(QWidget):
         
         self.connection_id = None
 
-        self.psid = None # prepared statement_id for drop_statement
+        # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
         
         super().__init__()
         self.initUI()
@@ -2054,6 +2061,13 @@ class sqlConsole(QWidget):
                     result.detachTimer = None
                     
                 result.detach()
+
+            if self.conn is not None:
+                try:
+                    db.drop_statement(self.conn, result.psid)
+                except Exception as e:
+                    log('[E] exeption during console close/drop statement: %s' % str(e), 2)
+
             
             #result.destroy()
             #result.deleteLater()
@@ -2062,12 +2076,6 @@ class sqlConsole(QWidget):
             del self.results[i]
             
         self.results.clear()
-        
-        if self.conn is not None:
-            try:
-                db.drop_statement(self.conn, self.psid)
-            except Exception as e:
-                log('[E] exeption during console close/drop statement: %s' % str(e), 2)
             
     def enableKeepAlive(self, window, keepalive):
         log('Setting up console keep-alive requests: %i seconds' % (keepalive))
@@ -2684,9 +2692,9 @@ class sqlConsole(QWidget):
         sql, result, refreshMode = self.sqlWorker.args
         
         dbCursor = self.sqlWorker.dbCursor
-        self.psid = self.sqlWorker.psid
         
-        log('psid saved: %s' % utils.hextostr(self.psid))
+        #self.psid = self.sqlWorker.psid
+        #log('psid saved: %s' % utils.hextostr(self.psid))
         
         log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
 
@@ -2726,6 +2734,9 @@ class sqlConsole(QWidget):
                 
             result.rows = rows_list[i]
             result.cols = cols_list[i]
+            
+            result.psid = self.sqlWorker.psid
+            log('psid saved: %s' % utils.hextostr(result.psid), 4)
             
             #print(result.cols)
             #print(result.cols[0])
@@ -2867,7 +2878,7 @@ class sqlConsole(QWidget):
         t1 = time.time()
         
         if t0 is not None:
-            self.log('Current run time: %s, [%s]' % (utils.formatTime(t1-t0), self.connection_id))
+            self.log('Current run time: %s' % (utils.formatTime(t1-t0)))
         else:
             self.log('Nothing is running')
     

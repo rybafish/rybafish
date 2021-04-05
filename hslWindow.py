@@ -783,7 +783,7 @@ class hslWindow(QMainWindow):
 
 
         if cfg('experimental'):
-            importAct = QAction('&Import', self)
+            importAct = QAction('&Import nameserver history trace', self)
             importAct.setShortcut('Ctrl+I')
             importAct.setStatusTip('Import nameserver.trc')
             importAct.triggered.connect(self.menuImport)
