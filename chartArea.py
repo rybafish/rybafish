@@ -2401,7 +2401,7 @@ class chartArea(QFrame):
 
     def reloadChart(self):
 
-        if self.lastReloadTime is not None and self.lastReloadTime > 3:
+        if self.lastReloadTime is not None and self.lastReloadTime > 1:
             sm = 'Reload... (last reload request took: %s)' % str(round(self.lastReloadTime, 3))
         else:
             sm = 'Reload...'
