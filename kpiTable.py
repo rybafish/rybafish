@@ -64,28 +64,30 @@ class kpiCell(QWidget):
         qp.end()
 
 class kpiTable(QTableWidget):
-    #kpiStyles = kpiDescriptions.kpiStyles
+
+    # so not sure why signals have to be declared here instead of 
+    # __init__ (does not work from there)
+    checkboxToggle = pyqtSignal([int,'QString'])
+
+    adjustScale = pyqtSignal(['QString', 'QString'])
+    
+    setScale = pyqtSignal([int, 'QString', int])
 
     def __init__(self):
+
+        self.silentMode = True
+        self.kpiNames = [] # list of current kpis
+        
+        self.host = None # current host 
+        
+        self.kpiScales = {} # pointer (?) to chartArea.widget.scales, updated solely by chartArea.widget.alignScales
+
+        self.hostKPIs = [] # link to chartArea list of available host KPIs
+        self.srvcKPIs = [] # link to chartArea list of available service KPIs
+        
+        self.rowKpi = [] #list of current kpis
+
         super().__init__()
-
-        silentMode = True
-        kpiNames = [] # list of current kpis
-        
-        host = None # current host 
-        
-        kpiScales = {} # pointer (?) to chartArea.widget.scales, updated solely by chartArea.widget.alignScales
-
-        hostKPIs = [] # link to chartArea list of available host KPIs
-        srvcKPIs = [] # link to chartArea list of available service KPIs
-        
-        rowKpi = [] #list of current kpis
-            
-        checkboxToggle = pyqtSignal([int,'QString'])
-        
-        adjustScale = pyqtSignal(['QString', 'QString'])
-        
-        setScale = pyqtSignal([int, 'QString', int])
 
         self.initTable()
     
@@ -315,7 +317,7 @@ class kpiTable(QTableWidget):
             log('update scales? why oh why...', 5)
             return
             
-        log('kpiTable: updateScales() host: %i' % (self.host))
+        log('kpiTable: updateScales() host: %i' % (self.host), 4)
         
         self.silentMode = True
         

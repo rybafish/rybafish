@@ -2017,6 +2017,8 @@ class chartArea(QFrame):
             self.setStatus('idle', True)
             return allOk
         
+        log('checkboxToggle %i %s' % (host, kpi), 5)
+        
         modifiers = QApplication.keyboardModifiers()
 
         host_d = self.widget.hosts[host]
@@ -2316,11 +2318,11 @@ class chartArea(QFrame):
             
                 if type == 'service':
                     if kpi not in self.srvcKPIs:
-                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 2)
+                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
                         continue
                 else:
                     if kpi not in self.hostKPIs:
-                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 2)
+                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
                         continue
             
                 if kpi[:4] == 'time':
