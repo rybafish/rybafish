@@ -65,25 +65,30 @@ class kpiCell(QWidget):
 
 class kpiTable(QTableWidget):
     #kpiStyles = kpiDescriptions.kpiStyles
-    
-    silentMode = True
-    kpiNames = [] # list of current kpis
-    
-    host = None # current host 
-    
-    kpiScales = {} # pointer (?) to chartArea.widget.scales, updated solely by chartArea.widget.alignScales
 
-    hostKPIs = [] # link to chartArea list of available host KPIs
-    srvcKPIs = [] # link to chartArea list of available service KPIs
-    
-    rowKpi = [] #list of current kpis
+    def __init__(self):
+        super().__init__()
+
+        silentMode = True
+        kpiNames = [] # list of current kpis
         
-    checkboxToggle = pyqtSignal([int,'QString'])
-    
-    adjustScale = pyqtSignal(['QString', 'QString'])
-    
-    setScale = pyqtSignal([int, 'QString', int])
+        host = None # current host 
+        
+        kpiScales = {} # pointer (?) to chartArea.widget.scales, updated solely by chartArea.widget.alignScales
 
+        hostKPIs = [] # link to chartArea list of available host KPIs
+        srvcKPIs = [] # link to chartArea list of available service KPIs
+        
+        rowKpi = [] #list of current kpis
+            
+        checkboxToggle = pyqtSignal([int,'QString'])
+        
+        adjustScale = pyqtSignal(['QString', 'QString'])
+        
+        setScale = pyqtSignal([int, 'QString', int])
+
+        self.initTable()
+    
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
@@ -147,11 +152,6 @@ class kpiTable(QTableWidget):
     def loadScales(self):
         # for kpi in scales: log(kpi)
         pass
-
-    def __init__(self):
-        super().__init__()
-
-        self.initTable()
         
     def checkBoxChanged(self, state):
         '''
@@ -312,14 +312,14 @@ class kpiTable(QTableWidget):
             to be called outside afted alignScales() by a signal
         '''
         if self.host is None:
-            log('update scales? why oh why...')
+            log('update scales? why oh why...', 5)
             return
             
         log('kpiTable: updateScales() host: %i' % (self.host))
         
         self.silentMode = True
         
-        #log(self.kpiScales[self.host])
+        log('kpiScales: %s' % (str(self.kpiScales[self.host])), 5)
         kpis = len(self.kpiScales[self.host])
         
         #check if stuff to be disabled here...

@@ -213,7 +213,7 @@ def generateTabName():
         else:
             fname = 'sql'
             
-        print('checking ', fname)
+        #print('checking ', fname)
         
         if not os.path.isfile(fname+'.sqbkp'):
             return fname
@@ -250,10 +250,14 @@ class console(QPlainTextEditLN):
         self.haveHighlighrs = False
         self.highlightedWords = []
         
-        self.braketsHighlighted = False
+        self.bracketsHighlighted = False
         #self.braketsHighlightedPos = []
         
-        self.modifiedLayouts = []
+        #self.modifiedLayouts = []
+        self.modifiedLayouts = {}
+        
+        self.modifiedLayouts['br'] = [] #brakets
+        self.modifiedLayouts['w'] = [] #words
         
         self.manualSelection = False
         self.manualSelectionPos = []
@@ -294,9 +298,9 @@ class console(QPlainTextEditLN):
         self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
         
         return a
-        
-        
-    def clearHighlighting(self):
+
+    '''
+    def _cl earHighlighting(self):
         self.lock = True
         
         txt = self.toPlainText()
@@ -316,15 +320,19 @@ class console(QPlainTextEditLN):
         self.highlightedWords.clear()
         
         self.lock = False
+    '''
       
-    def newLayout(self, position, lo, af):
+    def newLayout(self, type, position, lo, af):
+    
+        print('new lo', type, position)
         
-        for l in self.modifiedLayouts:
+        for l in self.modifiedLayouts[type]:
             if l[0] == position:
                 #this layout already in the list
+                print('already exists')
                 return
             
-        self.modifiedLayouts.append([position, lo, af])
+        self.modifiedLayouts[type].append([position, lo, af])
             
     def highlight(self):
     
@@ -354,7 +362,7 @@ class console(QPlainTextEditLN):
             
             if blkStInit != blkStCurrent:
                 #self.modifiedLayouts.append([blkStCurrent, lo, af])
-                self.newLayout(blkStCurrent, lo, af)
+                self.newLayout('w', blkStCurrent, lo, af)
                 
                 blkStInit = blkStCurrent
 
@@ -419,9 +427,14 @@ class console(QPlainTextEditLN):
             
         cursor = self.textCursor()
         selected = cursor.selectedText()
-        
+
+        '''
+        if self.bracketsHighlighted:
+            self.clearHighlighting('br') # why would we care with selections...
+        '''
+            
         if self.haveHighlighrs:
-            self.clearHighlighting()
+            self.clearHighlighting('w')
 
         txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
         line = txtline.text()
@@ -761,18 +774,20 @@ class console(QPlainTextEditLN):
     
         else:
             #have to clear each time in case of input right behind the braket
-            if self.braketsHighlighted:
-                self.clearHighlighting()
+            if self.haveHighlighrs:
+                self.clearHighlighting('w')
+            if self.bracketsHighlighted:
+                self.clearHighlighting('br')
                 
             super().keyPressEvent(event)
 
-    def clearHighlighting(self):
-        if self.braketsHighlighted or self.haveHighlighrs:
-            #pos = self.braketsHighlightedPos
-            #self.highlightBraket(self.document(), pos[0], False)
-            #self.highlightBraket(self.document(), pos[1], False)
+    def clearHighlighting(self, type):
+    
+        print('clear highlighting', type)
+
+        if self.bracketsHighlighted or self.haveHighlighrs:
             
-            for lol in self.modifiedLayouts:
+            for lol in self.modifiedLayouts[type]:
             
                 lo = lol[1]
                 af = lol[2]
@@ -780,12 +795,14 @@ class console(QPlainTextEditLN):
                 #lo.clearAdditionalFormats()
                 lo.setAdditionalFormats(af)
                 
-            self.modifiedLayouts.clear()
+            self.modifiedLayouts[type].clear()
             
             self.viewport().repaint()
             
-            self.braketsHighlighted = False
-            self.haveHighlighrs = False
+            if type == 'br':
+                self.bracketsHighlighted = False
+            elif type == 'w':
+                self.haveHighlighrs = False
 
     def cursorPositionChangedSignal(self):
     
@@ -853,9 +870,7 @@ class console(QPlainTextEditLN):
             
             lo1.setAdditionalFormats(af + [r1, r2])
             
-            #self.modifiedLayouts = [[lo1, af]]
-            #self.modifiedLayouts.append([lo1, af])
-            self.newLayout(txtblk1.position(), lo1, af)
+            self.newLayout('br', txtblk1.position(), lo1, af)
         else:
             lo2 = txtblk2.layout()
 
@@ -872,53 +887,16 @@ class console(QPlainTextEditLN):
             lo1.setAdditionalFormats(af1 + [r1])
             lo2.setAdditionalFormats(af2 + [r2])
             
-            #self.modifiedLayouts = [[lo1, af1], [lo2, af2]]
-            #self.modifiedLayouts.append([[lo1, af1], [lo2, af2]])
-            #self.modifiedLayouts.append([lo1, af1])
-            #self.modifiedLayouts.append([lo2, af2])
-            self.newLayout(txtblk1.position(), lo1, af1)
-            self.newLayout(txtblk2.position(), lo2, af2)
+            self.newLayout('br', txtblk1.position(), lo1, af1)
+            self.newLayout('br', txtblk2.position(), lo2, af2)
         
         self.viewport().repaint()
         
-    def highlightBraketDepr(self, block, pos, mode):
-        #print ('highlight here: ', block.text(), start, stop)
-        
-        cursor = QTextCursor(block)
-
-        cursor.setPosition(pos, QTextCursor.MoveAnchor)
-        cursor.setPosition(pos+1, QTextCursor.KeepAnchor)
-        
-        format = cursor.charFormat()
-        
-        font = cursor.charFormat().font()
-        
-        if mode == True:
-            font.setBold(True)
-            format.setForeground(QColor('#C22'))
-            #format.setBackground(QColor('#CCF'))
-            format.setFont(font)
-        else:
-            font.setBold(False)
-            format.setForeground(QColor('black'));
-            #format.setBackground(QColor('white'));
-            format.setFont(font)
-
-        '''
-        if mode == True:
-            format.setBackground(QColor('#8AF'))
-        else:
-            format.setBackground(QColor('white'));
-        '''
-            
-        cursor.setCharFormat(format)
-        
-        self.haveHighlighrs = True
-        
     def checkBrakets(self):
     
-        if self.braketsHighlighted:
-            self.clearHighlighting()
+        if self.bracketsHighlighted:
+            self.clearHighlighting('br')
+            #self.clearHighlighting('w')
     
         cursor = self.textCursor()
         pos = cursor.position()
@@ -930,8 +908,6 @@ class console(QPlainTextEditLN):
         def scanPairBraket(pos, shift):
         
             braket = text[pos]
-        
-            #print('scanPairBraket', pos, braket, shift)
         
             depth = 0
         
@@ -1003,10 +979,8 @@ class console(QPlainTextEditLN):
                 shift = 0
                 pb = scanPairBraket(bPos, shift)
 
-            #print(brLeft, brRight, bPos, pb)
-            
             if pb >= 0:
-                self.braketsHighlighted = True
+                self.bracketsHighlighted = True
                 #self.braketsHighlightedPos = [bPos, pb]
                 #self.highlightBraket(self.document(), bPos, True)
                 #self.highlightBraket(self.document(), pb, True)        

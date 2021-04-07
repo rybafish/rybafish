@@ -982,6 +982,8 @@ class hslWindow(QMainWindow):
         self.chartArea.kpiToggled.connect(kpisTable.refill)
         # update scales signal
         self.chartArea.scalesUpdated.connect(kpisTable.updateScales)
+        
+        log('self.scalesUpdated.emit() #0', 5)
         self.chartArea.scalesUpdated.emit() # it really not supposed to have any to update here
 
         #bind statusbox updating signals

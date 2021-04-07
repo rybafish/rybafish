@@ -260,7 +260,7 @@ class myWidget(QWidget):
         groups = []
         groupMax = {}
         
-        log('  alignScales()')
+        log('  alignScales()', 5)
         #mem_max = self.scanMetrics('mem')
         #thr_max = self.scanMetrics('thr')
         
@@ -1897,6 +1897,7 @@ class chartArea(QFrame):
             self.widget.manual_scales[group] = newScale
             
         self.widget.alignScales()
+        log('self.scalesUpdated.emit() #5', 5)
         self.scalesUpdated.emit()
         self.widget.update()
         
@@ -1916,6 +1917,7 @@ class chartArea(QFrame):
         self.widget.manual_scales['mem'] = mem_max
             
         self.widget.alignScales()
+        log('self.scalesUpdated.emit() #6', 5)
         self.scalesUpdated.emit()
         self.widget.update()
         
@@ -2154,6 +2156,8 @@ class chartArea(QFrame):
                 if allOk: 
                     self.renewMaxValues()
                     self.widget.alignScales()
+                    
+                    log('self.scalesUpdated.emit() #1', 5)
                     self.scalesUpdated.emit()
                 '''
                 t1 = time.time()
@@ -2397,6 +2401,8 @@ class chartArea(QFrame):
         t1 = time.time()
         
         self.widget.alignScales()
+        
+        log('self.scalesUpdated.emit() #2', 5)
         self.scalesUpdated.emit()
 
     def reloadChart(self):
