@@ -96,7 +96,7 @@ class About(QDialog):
         img.setToolTip('You are more than the sum of what you consume.')
         
         self.updatesLabel = QLabel()
-        #self.updatesLabel.setText('To report bugs or check for updates please visit <a href="https://rybafish.net">https://rybafish.net</a>.')
+        #self.updatesLabel.setText('To report bugs or check for updates please visit <a href="https://www.rybafish.net">https://rybafish.net</a>.')
 
         self.infoLabel = QLabel()
         self.infoLabel.linkActivated.connect(self.rybafishDotNet)

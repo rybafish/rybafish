@@ -306,13 +306,13 @@ class hslWindow(QMainWindow):
         abt.exec_()
         
     def menuConfHelp(self):
-        QDesktopServices.openUrl(QUrl('https://rybafish.net/config'))
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
 
     def menuCustomConfHelp(self):
-        QDesktopServices.openUrl(QUrl('https://rybafish.net/customKPI'))
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/customKPI'))
 
     def menuTips(self):
-        QDesktopServices.openUrl(QUrl('https://rybafish.net/tips'))
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/tips'))
         
     def menuDummy(self):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
