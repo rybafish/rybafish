@@ -95,10 +95,7 @@ def console_connection (server, dbProperties = None, data_format_version2 = Fals
 
     global largeSql
     
-    if cfg('experimental'):
-        longdate = cfg('longdate', True)
-    else:
-        longdate = False
+    longdate = cfg('longdate', True)
 
     t0 = time.time()
     

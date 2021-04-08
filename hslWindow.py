@@ -781,12 +781,10 @@ class hslWindow(QMainWindow):
         configAct.setStatusTip('Configure connection')
         configAct.triggered.connect(self.menuConfig)
 
-
-        if cfg('experimental'):
-            importAct = QAction('&Import nameserver history trace', self)
-            importAct.setShortcut('Ctrl+I')
-            importAct.setStatusTip('Import nameserver.trc')
-            importAct.triggered.connect(self.menuImport)
+        importAct = QAction('&Import nameserver history trace', self)
+        importAct.setShortcut('Ctrl+I')
+        importAct.setStatusTip('Import nameserver.trc')
+        importAct.triggered.connect(self.menuImport)
 
         sqlConsAct = QAction('New &SQL Console', self)
         sqlConsAct.setShortcut('Alt+S')
@@ -807,12 +805,13 @@ class hslWindow(QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(configAct)
 
+        fileMenu.addAction(importAct)
+        fileMenu.addAction(sqlConsAct)
+        fileMenu.addAction(openAct)
+        fileMenu.addAction(saveAct)
+        
         if cfg('experimental'):
-            fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
-            fileMenu.addAction(sqlConsAct)
-            fileMenu.addAction(openAct)
-            fileMenu.addAction(saveAct)
 
         fileMenu.addAction(exitAct)
         
@@ -827,11 +826,11 @@ class hslWindow(QMainWindow):
             
             actionsMenu.addAction(fontAct)
             
-            # issue #255
-            reloadConfigAct = QAction('Reload &Config', self)
-            reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions')
-            reloadConfigAct.triggered.connect(self.menuReloadConfig)
-            actionsMenu.addAction(reloadConfigAct)
+        # issue #255
+        reloadConfigAct = QAction('Reload &Config', self)
+        reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions (restart required).')
+        reloadConfigAct.triggered.connect(self.menuReloadConfig)
+        actionsMenu.addAction(reloadConfigAct)
 
         reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
         reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
