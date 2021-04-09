@@ -251,13 +251,15 @@ class console(QPlainTextEditLN):
         self.highlightedWords = []
         
         self.bracketsHighlighted = False
-        #self.braketsHighlightedPos = []
         
-        #self.modifiedLayouts = []
+        self.modifiedLayouts = []
+        
+        '''
         self.modifiedLayouts = {}
         
-        self.modifiedLayouts['br'] = [] #brakets
+        self.modifiedLayouts['br'] = [] #Brackets only this one used as work around 
         self.modifiedLayouts['w'] = [] #words
+        '''
         
         self.manualSelection = False
         self.manualSelectionPos = []
@@ -322,17 +324,17 @@ class console(QPlainTextEditLN):
         self.lock = False
     '''
       
-    def newLayout(self, type, position, lo, af):
-    
-        print('new lo', type, position)
+    #def newLayout(self, type, position, lo, af):
+    def newLayout(self, position, lo, af):
         
-        for l in self.modifiedLayouts[type]:
+        #for l in self.modifiedLayouts[type]:
+        for l in self.modifiedLayouts:
             if l[0] == position:
                 #this layout already in the list
-                print('already exists')
                 return
             
-        self.modifiedLayouts[type].append([position, lo, af])
+        #self.modifiedLayouts[type].append([position, lo, af])
+        self.modifiedLayouts.append([position, lo, af])
             
     def highlight(self):
     
@@ -361,8 +363,8 @@ class console(QPlainTextEditLN):
             af = lo.additionalFormats()
             
             if blkStInit != blkStCurrent:
-                #self.modifiedLayouts.append([blkStCurrent, lo, af])
-                self.newLayout('w', blkStCurrent, lo, af)
+                #self.newLayout('br', blkStCurrent, lo, af)
+                self.newLayout(blkStCurrent, lo, af)
                 
                 blkStInit = blkStCurrent
 
@@ -430,11 +432,11 @@ class console(QPlainTextEditLN):
 
         '''
         if self.bracketsHighlighted:
-            self.clearHighlighting('br') # why would we care with selections...
+            self.clearHighlighting() # why would we care with selections...
         '''
             
         if self.haveHighlighrs:
-            self.clearHighlighting('w')
+            self.clearHighlighting()
 
         txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
         line = txtline.text()
@@ -774,35 +776,43 @@ class console(QPlainTextEditLN):
     
         else:
             #have to clear each time in case of input right behind the braket
+            '''
             if self.haveHighlighrs:
-                self.clearHighlighting('w')
+                self.clearHighlighting('br')
             if self.bracketsHighlighted:
                 self.clearHighlighting('br')
+            '''
+            if self.bracketsHighlighted:
+                self.clearHighlighting()
                 
             super().keyPressEvent(event)
 
-    def clearHighlighting(self, type):
-    
-        print('clear highlighting', type)
+    #def clearHighlighting(self, type):
+    def clearHighlighting(self):
 
         if self.bracketsHighlighted or self.haveHighlighrs:
             
-            for lol in self.modifiedLayouts[type]:
+            #for lol in self.modifiedLayouts[type]:
+            for lol in self.modifiedLayouts:
             
                 lo = lol[1]
                 af = lol[2]
                     
-                #lo.clearAdditionalFormats()
                 lo.setAdditionalFormats(af)
                 
-            self.modifiedLayouts[type].clear()
+            #self.modifiedLayouts[type].clear()
+            self.modifiedLayouts.clear()
             
             self.viewport().repaint()
             
+            self.bracketsHighlighted = False
+            self.haveHighlighrs = False
+            '''
             if type == 'br':
                 self.bracketsHighlighted = False
-            elif type == 'w':
+            elif type == 'br':
                 self.haveHighlighrs = False
+            '''
 
     def cursorPositionChangedSignal(self):
     
@@ -827,16 +837,16 @@ class console(QPlainTextEditLN):
             self.manualSelection = False
 
     
-        if cfg('noBraketsHighlighting'):
+        if cfg('noBracketsHighlighting'):
             return
     
-        self.checkBrakets()
+        self.checkBrackets()
         
         t1 = time.time()
         
         #log('cursorPositionChangedSignal: %s ms' % (str(round(t1-t0, 3))), 5)
         
-    def highlightBrakets(self, block, pos1, pos2, mode):
+    def highlightBrackets(self, block, pos1, pos2, mode):
         #print ('highlight here: ', pos1, pos2)
     
         txtblk1 = self.document().findBlock(pos1)
@@ -870,7 +880,8 @@ class console(QPlainTextEditLN):
             
             lo1.setAdditionalFormats(af + [r1, r2])
             
-            self.newLayout('br', txtblk1.position(), lo1, af)
+            #self.newLayout('br', txtblk1.position(), lo1, af)
+            self.newLayout(txtblk1.position(), lo1, af)
         else:
             lo2 = txtblk2.layout()
 
@@ -887,15 +898,17 @@ class console(QPlainTextEditLN):
             lo1.setAdditionalFormats(af1 + [r1])
             lo2.setAdditionalFormats(af2 + [r2])
             
-            self.newLayout('br', txtblk1.position(), lo1, af1)
-            self.newLayout('br', txtblk2.position(), lo2, af2)
+            #self.newLayout('br', txtblk2.position(), lo2, af2) zhere??
+            self.newLayout(txtblk1.position(), lo1, af1)
+            self.newLayout(txtblk2.position(), lo2, af2)
         
         self.viewport().repaint()
         
-    def checkBrakets(self):
+    def checkBrackets(self):
     
         if self.bracketsHighlighted:
-            self.clearHighlighting('br')
+            self.clearHighlighting()
+            #self.clearHighlighting('br')
             #self.clearHighlighting('w')
     
         cursor = self.textCursor()
@@ -981,10 +994,7 @@ class console(QPlainTextEditLN):
 
             if pb >= 0:
                 self.bracketsHighlighted = True
-                #self.braketsHighlightedPos = [bPos, pb]
-                #self.highlightBraket(self.document(), bPos, True)
-                #self.highlightBraket(self.document(), pb, True)        
-                self.highlightBrakets(self.document(), bPos, pb, True)
+                self.highlightBrackets(self.document(), bPos, pb, True)
 
 class resultSet(QTableWidget):
     '''

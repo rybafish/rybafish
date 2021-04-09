@@ -100,7 +100,7 @@ class About(QDialog):
 
         self.infoLabel = QLabel()
         self.infoLabel.linkActivated.connect(self.rybafishDotNet)
-        self.infoLabel.setText('''To report bugs or check for updates please visit <a href="https://www.rybafish.net">https://rybafish.net</a>.''')
+        self.infoLabel.setText('''To report bugs or check for updates please visit <a href="https://www.rybafish.net">rybafish.net</a>.''')
         
         txt = QLabel('''Ryba Fish Charts.
 
