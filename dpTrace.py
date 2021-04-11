@@ -110,13 +110,18 @@ class dataProvider:
                         host = row[hostIdx]
                     
                     if port in self.ports:
-                        break
+                        #break
+                        continue
                     else:
                         self.ports.append(port)
                 
                 i += 1
                 
             trace_lines = int((trace_lines - 1) / i)
+            
+            t1 = time.time()
+            log('ports: %s' % str(self.ports))
+            log('ports scan time: %s' % str(round(t1-t0, 3)))
 
             rows = []
             for kpi in titles:

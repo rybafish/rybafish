@@ -70,7 +70,7 @@ class About(QDialog):
         manager = QNetworkAccessManager(self)
         
         manager.finished[QNetworkReply].connect(self.gotResponse)
-        manager.get(QNetworkRequest(QUrl('http://www.rybafish.net/version')))
+        manager.get(QNetworkRequest(QUrl('https://www.rybafish.net/version')))
         
         self.updatesLabel.setText('requesting...')
         
@@ -96,11 +96,11 @@ class About(QDialog):
         img.setToolTip('You are more than the sum of what you consume.')
         
         self.updatesLabel = QLabel()
-        #self.updatesLabel.setText('To report bugs or check for updates please visit <a href="http://rybafish.net">http://rybafish.net</a>.')
+        #self.updatesLabel.setText('To report bugs or check for updates please visit <a href="https://www.rybafish.net">https://rybafish.net</a>.')
 
         self.infoLabel = QLabel()
         self.infoLabel.linkActivated.connect(self.rybafishDotNet)
-        self.infoLabel.setText('''To report bugs or check for updates please visit <a href="http://www.rybafish.net">http://rybafish.net</a>.''')
+        self.infoLabel.setText('''To report bugs or check for updates please visit <a href="https://www.rybafish.net">rybafish.net</a>.''')
         
         txt = QLabel('''Ryba Fish Charts.
 

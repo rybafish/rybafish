@@ -260,7 +260,7 @@ class myWidget(QWidget):
         groups = []
         groupMax = {}
         
-        log('  alignScales()')
+        log('  alignScales()', 5)
         #mem_max = self.scanMetrics('mem')
         #thr_max = self.scanMetrics('thr')
         
@@ -1235,10 +1235,15 @@ class myWidget(QWidget):
                                 
                                 hlWidth = min(cfg('ganttLabelWidth', 500), hlWidth)
                                 
+                                # introduce an offset if the label goes off the right border
                                 if x + hlWidth > wsize.width():
                                     xOff = wsize.width() - (hlWidth + x + self.side_margin) - 4 # 4 - right margin
                                 else:
                                     xOff = 0
+                                    
+                                # don't put the label goes outside the left border
+                                if x + xOff <= 0:
+                                    xOff = - x + self.side_margin / 2
                                     
                                 nl = hlDesc.count('\n') + 1
                                 
@@ -1450,7 +1455,10 @@ class myWidget(QWidget):
         #prnt('grid %i:%i' % (startX, stopX))
         #print('grid: ', self.gridColor.getRgb())
         
-
+        '''
+        
+        what is that???
+        
         for h in range(0, len(self.hosts)):
 
             if len(self.nkpis) == 0: # sometimes hosts filled before nkpis
@@ -1463,6 +1471,7 @@ class myWidget(QWidget):
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
                     # self.left_margin = 100
                     break
+        '''
 
         
         t0 = time.time()
@@ -1690,21 +1699,38 @@ class chartArea(QFrame):
         if len(chart.nkpis) == 0:
             log('[w] disableDeadKPIs: no kpis at all, exit')
             return
-        
+            
         for host in range(0, len(chart.hosts)):
             type = hType(host, chart.hosts)
-            
+
+            delKpis = []
             for kpi in chart.nkpis[host]:
                 if kpi not in kpiStylesNN[type]:
-                    log('[w] kpi %s is dsabled so it is removed from the list of selected KPIs for the host' % (kpi))
+                    delKpis.append(kpi)
                     
-                    chart.nkpis[host].remove(kpi)
-                    
-                    if type == 'service':
-                        self.srvcKPIs.remove(kpi)
-                    else:
+            for kpi in delKpis:
+                log('[w] kpi %s is dsabled so it is removed from the list of selected KPIs for the host' % (kpi))
+                
+                chart.nkpis[host].remove(kpi)
+                
+                if type == 'service' and kpi in self.srvcKPIs:
+                    self.srvcKPIs.remove(kpi)
+                else:
+                    if kpi in self.hostKPIs:
                         self.hostKPIs.remove(kpi)
                     
+            delKpis = []
+            
+            for kpi in self.widget.nscales[host]:
+                if kpi != 'time' and kpi not in kpiStylesNN[type]:
+                    delKpis.append(kpi)
+                   
+            for kpi in delKpis:
+                log('[w] removing %s from nscales becaouse it does not exist (disabled?)' % (kpi), 2)
+                del self.widget.nscales[host][kpi]
+                log('[w] removing %s from data ' % (kpi), 2)
+                del self.widget.ndata[host][kpi]
+
     def statusMessage(self, str, repaint = False):
         if repaint: 
             self.statusMessage_.emit(str, True)
@@ -1871,6 +1897,7 @@ class chartArea(QFrame):
             self.widget.manual_scales[group] = newScale
             
         self.widget.alignScales()
+        log('self.scalesUpdated.emit() #5', 5)
         self.scalesUpdated.emit()
         self.widget.update()
         
@@ -1890,6 +1917,7 @@ class chartArea(QFrame):
         self.widget.manual_scales['mem'] = mem_max
             
         self.widget.alignScales()
+        log('self.scalesUpdated.emit() #6', 5)
         self.scalesUpdated.emit()
         self.widget.update()
         
@@ -1988,6 +2016,8 @@ class chartArea(QFrame):
             
             self.setStatus('idle', True)
             return allOk
+        
+        log('checkboxToggle %i %s' % (host, kpi), 5)
         
         modifiers = QApplication.keyboardModifiers()
 
@@ -2128,6 +2158,8 @@ class chartArea(QFrame):
                 if allOk: 
                     self.renewMaxValues()
                     self.widget.alignScales()
+                    
+                    log('self.scalesUpdated.emit() #1', 5)
                     self.scalesUpdated.emit()
                 '''
                 t1 = time.time()
@@ -2284,6 +2316,15 @@ class chartArea(QFrame):
 
             for kpi in scales.keys():
             
+                if type == 'service':
+                    if kpi not in self.srvcKPIs:
+                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
+                        continue
+                else:
+                    if kpi not in self.hostKPIs:
+                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
+                        continue
+            
                 if kpi[:4] == 'time':
                     continue
                     
@@ -2362,11 +2403,13 @@ class chartArea(QFrame):
         t1 = time.time()
         
         self.widget.alignScales()
+        
+        log('self.scalesUpdated.emit() #2', 5)
         self.scalesUpdated.emit()
 
     def reloadChart(self):
 
-        if self.lastReloadTime is not None and self.lastReloadTime > 3:
+        if self.lastReloadTime is not None and self.lastReloadTime > 1:
             sm = 'Reload... (last reload request took: %s)' % str(round(self.lastReloadTime, 3))
         else:
             sm = 'Reload...'
@@ -2449,6 +2492,8 @@ class chartArea(QFrame):
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):
+                    #print('hots', host)
+                    #print('nkpis,', self.widget.nkpis)
                     if len(self.widget.nkpis[host]) > 0:
                         #('normal reload -->')
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])

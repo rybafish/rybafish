@@ -136,7 +136,7 @@ class hslWindow(QMainWindow):
             host = self.chartArea.widget.hosts[i]
             hst = '%s:%s' % (host['host'], host['port'])
             
-            if self.chartArea.widget.nkpis[i]:
+            if i < len(self.chartArea.widget.nkpis) and self.chartArea.widget.nkpis[i]:
                 kpis[hst] = self.chartArea.widget.nkpis[i]
     
         if kpis:
@@ -273,7 +273,7 @@ class hslWindow(QMainWindow):
             dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
         except Exception as e:
             self.chartArea.disableDeadKPIs()
-            msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
+            msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
         
         self.chartArea.widget.initPens()
         self.chartArea.widget.update()
@@ -306,11 +306,13 @@ class hslWindow(QMainWindow):
         abt.exec_()
         
     def menuConfHelp(self):
-        QDesktopServices.openUrl(QUrl('http://rybafish.net/config'))
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
 
     def menuCustomConfHelp(self):
-        QDesktopServices.openUrl(QUrl('http://rybafish.net/customKPI'))
-        
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/customKPI'))
+
+    def menuTips(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/tips'))
         
     def menuDummy(self):
         self.chartArea.dp = dpDummy.dataProvider() # generated data
@@ -614,7 +616,7 @@ class hslWindow(QMainWindow):
             
     
     def menuImport(self):
-        fname = QFileDialog.getOpenFileNames(self, 'Import...',  None, 'Nameserver trace files (*.trc)')
+        fname = QFileDialog.getOpenFileNames(self, 'Import nameserver_history.trc...',  None, 'Import nameserver history trace (*.trc)')
         log(fname[0])
         
         
@@ -779,12 +781,10 @@ class hslWindow(QMainWindow):
         configAct.setStatusTip('Configure connection')
         configAct.triggered.connect(self.menuConfig)
 
-
-        if cfg('experimental'):
-            importAct = QAction('&Import', self)
-            importAct.setShortcut('Ctrl+I')
-            importAct.setStatusTip('Import nameserver.trc')
-            importAct.triggered.connect(self.menuImport)
+        importAct = QAction('&Import nameserver history trace', self)
+        importAct.setShortcut('Ctrl+I')
+        importAct.setStatusTip('Import nameserver.trc')
+        importAct.triggered.connect(self.menuImport)
 
         sqlConsAct = QAction('New &SQL Console', self)
         sqlConsAct.setShortcut('Alt+S')
@@ -805,12 +805,13 @@ class hslWindow(QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(configAct)
 
+        fileMenu.addAction(importAct)
+        fileMenu.addAction(sqlConsAct)
+        fileMenu.addAction(openAct)
+        fileMenu.addAction(saveAct)
+        
         if cfg('experimental'):
-            fileMenu.addAction(importAct)
             fileMenu.addAction(dummyAct)
-            fileMenu.addAction(sqlConsAct)
-            fileMenu.addAction(openAct)
-            fileMenu.addAction(saveAct)
 
         fileMenu.addAction(exitAct)
         
@@ -825,11 +826,11 @@ class hslWindow(QMainWindow):
             
             actionsMenu.addAction(fontAct)
             
-            # issue #255
-            reloadConfigAct = QAction('Reload &Config', self)
-            reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions')
-            reloadConfigAct.triggered.connect(self.menuReloadConfig)
-            actionsMenu.addAction(reloadConfigAct)
+        # issue #255
+        reloadConfigAct = QAction('Reload &Config', self)
+        reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions (restart required).')
+        reloadConfigAct.triggered.connect(self.menuReloadConfig)
+        actionsMenu.addAction(reloadConfigAct)
 
         reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
         reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
@@ -849,12 +850,17 @@ class hslWindow(QMainWindow):
         confCustomHelpAct = QAction('Custom KPIs', self)
         confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
         confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
+
+        confTipsAct = QAction('Tips and tricks', self)
+        confTipsAct.setStatusTip('Tips and tricks description')
+        confTipsAct.triggered.connect(self.menuTips)
         
         helpMenu = menubar.addMenu('&Help')
         helpMenu.addAction(confHelpAct)
         
         
         helpMenu.addAction(confCustomHelpAct)
+        helpMenu.addAction(confTipsAct)
             
         helpMenu.addAction(aboutAct)
 
@@ -975,6 +981,8 @@ class hslWindow(QMainWindow):
         self.chartArea.kpiToggled.connect(kpisTable.refill)
         # update scales signal
         self.chartArea.scalesUpdated.connect(kpisTable.updateScales)
+        
+        log('self.scalesUpdated.emit() #0', 5)
         self.chartArea.scalesUpdated.emit() # it really not supposed to have any to update here
 
         #bind statusbox updating signals

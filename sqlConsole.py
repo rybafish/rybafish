@@ -38,6 +38,8 @@ class sqlWorker(QObject):
     def __init__(self, cons):
         super().__init__()
         
+        self.psid = None
+        
         self.cons = cons
         self.args = []
     
@@ -116,7 +118,7 @@ class sqlWorker(QObject):
             txtSub = txtSub.replace('\t', ' ')
             
             #print('start sql')
-            self.rows_list, self.cols_list, dbCursor = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+            self.rows_list, self.cols_list, dbCursor, psid = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
             self.resultset_id_list = dbCursor._resultset_id_list
             
             result.explicitLimit = explicitLimit
@@ -128,6 +130,7 @@ class sqlWorker(QObject):
             #print('sql finished')
 
             self.dbCursor = dbCursor
+            self.psid = psid
             
         except dbException as e:
             err = str(e)
@@ -210,7 +213,7 @@ def generateTabName():
         else:
             fname = 'sql'
             
-        print('checking ', fname)
+        #print('checking ', fname)
         
         if not os.path.isfile(fname+'.sqbkp'):
             return fname
@@ -247,10 +250,16 @@ class console(QPlainTextEditLN):
         self.haveHighlighrs = False
         self.highlightedWords = []
         
-        self.braketsHighlighted = False
-        #self.braketsHighlightedPos = []
+        self.bracketsHighlighted = False
         
         self.modifiedLayouts = []
+        
+        '''
+        self.modifiedLayouts = {}
+        
+        self.modifiedLayouts['br'] = [] #Brackets only this one used as work around 
+        self.modifiedLayouts['w'] = [] #words
+        '''
         
         self.manualSelection = False
         self.manualSelectionPos = []
@@ -291,9 +300,9 @@ class console(QPlainTextEditLN):
         self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
         
         return a
-        
-        
-    def clearHighlighting(self):
+
+    '''
+    def _cl earHighlighting(self):
         self.lock = True
         
         txt = self.toPlainText()
@@ -313,14 +322,18 @@ class console(QPlainTextEditLN):
         self.highlightedWords.clear()
         
         self.lock = False
+    '''
       
+    #def newLayout(self, type, position, lo, af):
     def newLayout(self, position, lo, af):
         
+        #for l in self.modifiedLayouts[type]:
         for l in self.modifiedLayouts:
             if l[0] == position:
                 #this layout already in the list
                 return
             
+        #self.modifiedLayouts[type].append([position, lo, af])
         self.modifiedLayouts.append([position, lo, af])
             
     def highlight(self):
@@ -350,7 +363,7 @@ class console(QPlainTextEditLN):
             af = lo.additionalFormats()
             
             if blkStInit != blkStCurrent:
-                #self.modifiedLayouts.append([blkStCurrent, lo, af])
+                #self.newLayout('br', blkStCurrent, lo, af)
                 self.newLayout(blkStCurrent, lo, af)
                 
                 blkStInit = blkStCurrent
@@ -416,7 +429,12 @@ class console(QPlainTextEditLN):
             
         cursor = self.textCursor()
         selected = cursor.selectedText()
-        
+
+        '''
+        if self.bracketsHighlighted:
+            self.clearHighlighting() # why would we care with selections...
+        '''
+            
         if self.haveHighlighrs:
             self.clearHighlighting()
 
@@ -758,33 +776,47 @@ class console(QPlainTextEditLN):
     
         else:
             #have to clear each time in case of input right behind the braket
-            if self.braketsHighlighted:
+            '''
+            if self.haveHighlighrs:
+                self.clearHighlighting('br')
+            if self.bracketsHighlighted:
+                self.clearHighlighting('br')
+            '''
+            if self.bracketsHighlighted:
                 self.clearHighlighting()
                 
             super().keyPressEvent(event)
 
+    #def clearHighlighting(self, type):
     def clearHighlighting(self):
-        if self.braketsHighlighted or self.haveHighlighrs:
-            #pos = self.braketsHighlightedPos
-            #self.highlightBraket(self.document(), pos[0], False)
-            #self.highlightBraket(self.document(), pos[1], False)
+
+        if self.bracketsHighlighted or self.haveHighlighrs:
             
+            #for lol in self.modifiedLayouts[type]:
             for lol in self.modifiedLayouts:
             
                 lo = lol[1]
                 af = lol[2]
                     
-                #lo.clearAdditionalFormats()
                 lo.setAdditionalFormats(af)
                 
+            #self.modifiedLayouts[type].clear()
             self.modifiedLayouts.clear()
             
             self.viewport().repaint()
             
-            self.braketsHighlighted = False
+            self.bracketsHighlighted = False
             self.haveHighlighrs = False
+            '''
+            if type == 'br':
+                self.bracketsHighlighted = False
+            elif type == 'br':
+                self.haveHighlighrs = False
+            '''
 
     def cursorPositionChangedSignal(self):
+    
+        t0 = time.time()
     
         if self.manualSelection:
             #print('need to clear', self.manualSelectionPos)
@@ -805,12 +837,16 @@ class console(QPlainTextEditLN):
             self.manualSelection = False
 
     
-        if cfg('noBraketsHighlighting'):
+        if cfg('noBracketsHighlighting'):
             return
     
-        self.checkBrakets()
+        self.checkBrackets()
         
-    def highlightBrakets(self, block, pos1, pos2, mode):
+        t1 = time.time()
+        
+        #log('cursorPositionChangedSignal: %s ms' % (str(round(t1-t0, 3))), 5)
+        
+    def highlightBrackets(self, block, pos1, pos2, mode):
         #print ('highlight here: ', pos1, pos2)
     
         txtblk1 = self.document().findBlock(pos1)
@@ -844,8 +880,7 @@ class console(QPlainTextEditLN):
             
             lo1.setAdditionalFormats(af + [r1, r2])
             
-            #self.modifiedLayouts = [[lo1, af]]
-            #self.modifiedLayouts.append([lo1, af])
+            #self.newLayout('br', txtblk1.position(), lo1, af)
             self.newLayout(txtblk1.position(), lo1, af)
         else:
             lo2 = txtblk2.layout()
@@ -863,53 +898,18 @@ class console(QPlainTextEditLN):
             lo1.setAdditionalFormats(af1 + [r1])
             lo2.setAdditionalFormats(af2 + [r2])
             
-            #self.modifiedLayouts = [[lo1, af1], [lo2, af2]]
-            #self.modifiedLayouts.append([[lo1, af1], [lo2, af2]])
-            #self.modifiedLayouts.append([lo1, af1])
-            #self.modifiedLayouts.append([lo2, af2])
+            #self.newLayout('br', txtblk2.position(), lo2, af2) zhere??
             self.newLayout(txtblk1.position(), lo1, af1)
             self.newLayout(txtblk2.position(), lo2, af2)
         
         self.viewport().repaint()
         
-    def highlightBraketDepr(self, block, pos, mode):
-        #print ('highlight here: ', block.text(), start, stop)
-        
-        cursor = QTextCursor(block)
-
-        cursor.setPosition(pos, QTextCursor.MoveAnchor)
-        cursor.setPosition(pos+1, QTextCursor.KeepAnchor)
-        
-        format = cursor.charFormat()
-        
-        font = cursor.charFormat().font()
-        
-        if mode == True:
-            font.setBold(True)
-            format.setForeground(QColor('#C22'))
-            #format.setBackground(QColor('#CCF'))
-            format.setFont(font)
-        else:
-            font.setBold(False)
-            format.setForeground(QColor('black'));
-            #format.setBackground(QColor('white'));
-            format.setFont(font)
-
-        '''
-        if mode == True:
-            format.setBackground(QColor('#8AF'))
-        else:
-            format.setBackground(QColor('white'));
-        '''
-            
-        cursor.setCharFormat(format)
-        
-        self.haveHighlighrs = True
-        
-    def checkBrakets(self):
+    def checkBrackets(self):
     
-        if self.braketsHighlighted:
+        if self.bracketsHighlighted:
             self.clearHighlighting()
+            #self.clearHighlighting('br')
+            #self.clearHighlighting('w')
     
         cursor = self.textCursor()
         pos = cursor.position()
@@ -921,8 +921,6 @@ class console(QPlainTextEditLN):
         def scanPairBraket(pos, shift):
         
             braket = text[pos]
-        
-            #print('scanPairBraket', pos, braket, shift)
         
             depth = 0
         
@@ -994,14 +992,9 @@ class console(QPlainTextEditLN):
                 shift = 0
                 pb = scanPairBraket(bPos, shift)
 
-            #print(brLeft, brRight, bPos, pb)
-            
             if pb >= 0:
-                self.braketsHighlighted = True
-                #self.braketsHighlightedPos = [bPos, pb]
-                #self.highlightBraket(self.document(), bPos, True)
-                #self.highlightBraket(self.document(), pb, True)        
-                self.highlightBrakets(self.document(), bPos, pb, True)
+                self.bracketsHighlighted = True
+                self.highlightBrackets(self.document(), bPos, pb, True)
 
 class resultSet(QTableWidget):
     '''
@@ -1031,6 +1024,7 @@ class resultSet(QTableWidget):
         
         self.headers = [] # column names
         
+        self.psid = None # psid to drop on close
         
         # overriden in case of select top xxxx
         self.explicitLimit = False 
@@ -1469,7 +1463,11 @@ class resultSet(QTableWidget):
                     blob = str(self.rows[i][j])
             else:
                 if self.rows[i][j] is not None:
-                    value = self.rows[i][j].read()
+                    try:
+                        value = self.rows[i][j].read()
+                    except Exception as e:
+                        self.log('LOB read() error: %s' % str(e), True)
+                        value = '<error1>'
                     
                     if db.ifBLOBType(self.cols[j][1]):
                         blob = str(value.decode("utf-8", errors="ignore"))
@@ -1590,6 +1588,8 @@ class sqlConsole(QWidget):
         self.noBackup = False
         
         self.connection_id = None
+
+        # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
         
         super().__init__()
         self.initUI()
@@ -2045,6 +2045,13 @@ class sqlConsole(QWidget):
                     result.detachTimer = None
                     
                 result.detach()
+
+            if self.conn is not None:
+                try:
+                    db.drop_statement(self.conn, result.psid)
+                except Exception as e:
+                    log('[E] exeption during console close/drop statement: %s' % str(e), 2)
+
             
             #result.destroy()
             #result.deleteLater()
@@ -2266,7 +2273,7 @@ class sqlConsole(QWidget):
         
     def manualSelect(self, start, stop):
         charFmt = QTextCharFormat()
-        charFmt.setBackground(QColor('#8CF'))
+        charFmt.setBackground(QColor('#ADF'))
         
         #print('manualSelect %i - %i' % (start, stop))
 
@@ -2639,6 +2646,8 @@ class sqlConsole(QWidget):
         self.indicator.status = 'render'
         self.indicator.repaint()
         
+        log('psid to save --> %s' % utils.hextostr(self.sqlWorker.psid), 4)
+        
         if self.wrkException is not None:
             self.log(self.wrkException, True)
             
@@ -2667,6 +2676,9 @@ class sqlConsole(QWidget):
         sql, result, refreshMode = self.sqlWorker.args
         
         dbCursor = self.sqlWorker.dbCursor
+        
+        #self.psid = self.sqlWorker.psid
+        #log('psid saved: %s' % utils.hextostr(self.psid))
         
         log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
 
@@ -2706,6 +2718,9 @@ class sqlConsole(QWidget):
                 
             result.rows = rows_list[i]
             result.cols = cols_list[i]
+            
+            result.psid = self.sqlWorker.psid
+            log('psid saved: %s' % utils.hextostr(result.psid), 4)
             
             #print(result.cols)
             #print(result.cols[0])
@@ -2847,7 +2862,7 @@ class sqlConsole(QWidget):
         t1 = time.time()
         
         if t0 is not None:
-            self.log('Current run time: %s, [%s]' % (utils.formatTime(t1-t0), self.connection_id))
+            self.log('Current run time: %s' % (utils.formatTime(t1-t0)))
         else:
             self.log('Nothing is running')
     
