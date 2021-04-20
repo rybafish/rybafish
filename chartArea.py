@@ -554,14 +554,18 @@ class myWidget(QWidget):
             host = self.highlightedKpiHost
             range_i = self.highlightedRange
 
-            desc = self.ndata[host][kpi][entity][range_i][2]
+            if entity in self.ndata[host][kpi]:
             
-            desc = desc.replace('\\n', '\n')
+                #can disappear after zoom as we dont remove highlights
             
-            clipboard = QApplication.clipboard()
-            clipboard.setText(desc)
-            
-            self.statusMessage('Copied.')
+                desc = self.ndata[host][kpi][entity][range_i][2]
+                
+                desc = desc.replace('\\n', '\n')
+                
+                clipboard = QApplication.clipboard()
+                clipboard.setText(desc)
+                
+                self.statusMessage('Copied.')
             
         if self.highlightedEntity and action == copyGanttEntity:
             
