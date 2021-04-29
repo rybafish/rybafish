@@ -153,13 +153,26 @@ class dataProvider():
         
         rows = db.execute_query(self.connection, sql_string, [])
         
-        for i in range(0, len(rows)):
-            hosts.append({
-                        'host':rows[i][0],
-                        'port':rows[i][1],
-                        'from':rows[i][2],
-                        'to':rows[i][3]
-                        })
+        if cfg('hostmapping'):
+            for i in range(0, len(rows)):
+            
+                hm = cfg('hostmapping')
+                pm = cfg('portmapping')
+            
+                hosts.append({
+                            'host':rows[i][0].replace(hm[0], hm[1]),
+                            'port':rows[i][1].replace(pm[0], pm[1]),
+                            'from':rows[i][2],
+                            'to':rows[i][3]
+                            })
+        else:
+            for i in range(0, len(rows)):
+                hosts.append({
+                            'host':rows[i][0],
+                            'port':rows[i][1],
+                            'from':rows[i][2],
+                            'to':rows[i][3]
+                            })
 
         rows = db.execute_query(self.connection, kpis_sql, [])
         
@@ -199,12 +212,20 @@ class dataProvider():
                 kpisList['-'].append(kpi)
                         
         return kpisList
-    def getData(self, host, fromto, kpiIn, data):
+    def getData(self, h, fromto, kpiIn, data):
         '''
             returns boolean
             False = some kpis were disabled due to sql errors
         '''
+        
+        host = h.copy()
                 
+        if cfg('hostmapping'):
+            hm = cfg('hostmapping')
+            pm = cfg('portmapping')
+            host['host'] = host['host'].replace(hm[1], hm[0])
+            host['port'] = host['port'].replace(pm[1], pm[0])
+
         sql_pref = 'select time,'
         tfilter = ''
         hfilter = ''

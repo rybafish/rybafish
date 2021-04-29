@@ -78,7 +78,11 @@ def create_connection (server, dbProperties = None):
                 
                 dbProperties['timeZoneDelta'] = int(dbUTCDelta) - int(hostUTCDelta)
             elif row[0] == 'sid':
-                dbProperties['sid'] = row[1]
+                if cfg('sidmapping'):
+                    sm = cfg('sidmapping')
+                    dbProperties['sid'] = row[1].replace(sm[0], sm[1])
+                else:
+                    dbProperties['sid'] = row[1]
 
         if 'timeZoneDelta' not in dbProperties:
             dbProperties['timeZoneDelta'] = 0

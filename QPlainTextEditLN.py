@@ -23,7 +23,8 @@ class QPlainTextEditLN(QWidget):
             cursor = self.textCursor()
             
             if cursor.selection().isEmpty():
-                txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
+                #txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
+                txtline = self.document().findBlockByNumber(cursor.blockNumber())
                 
                 cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.MoveAnchor)
                 cursor.insertText('\n' + txtline.text())
@@ -101,7 +102,8 @@ class QPlainTextEditLN(QWidget):
             else:
 
                 for i in range(stLine, endLine):
-                    line = self.document().findBlockByLineNumber(i)
+                    #line = self.document().findBlockByLineNumber(i)
+                    line = self.document().findBlockByNumber(i)
                     pos = line.position()
 
                     #move selection start to start of the line
@@ -144,7 +146,8 @@ class QPlainTextEditLN(QWidget):
             if not cursor.hasSelection() or (stLine == endLine):
                 #cursor.removeSelectedText()
                 
-                line = self.document().findBlockByLineNumber(stLine)
+                #line = self.document().findBlockByLineNumber(stLine)
+                line = self.document().findBlockByNumber(stLine)
                 pos = line.position()
                 cursor.setPosition(pos, QTextCursor.MoveAnchor)
 
@@ -165,7 +168,8 @@ class QPlainTextEditLN(QWidget):
 
                 for i in range(stLine, endLine):
 
-                    line = self.document().findBlockByLineNumber(i)
+                    #line = self.document().findBlockByLineNumber(i)
+                    line = self.document().findBlockByNumber(i)
                     pos = line.position()
                     cursor.setPosition(pos, QTextCursor.MoveAnchor)
 

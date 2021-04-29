@@ -389,6 +389,8 @@ class console(QPlainTextEditLN):
         
         self.highlightedWords = []
         
+        #print('okay, search...', str)
+        
         while st >= 0:
             st = line.find(str, st)
             
@@ -438,9 +440,10 @@ class console(QPlainTextEditLN):
         if self.haveHighlighrs:
             self.clearHighlighting()
 
-        txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
+        #txtline = self.document().findBlockByLineNumber(cursor.blockNumber()) one of the longest annoing bugs, someday I will give it a name
+        txtline = self.document().findBlockByNumber(cursor.blockNumber())
         line = txtline.text()
-
+        
         if re.match('\w+$', selected):
             if re.search('\\b%s\\b' % selected, line):
                 self.searchWord(selected)

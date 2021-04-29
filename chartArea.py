@@ -1270,8 +1270,17 @@ class myWidget(QWidget):
                             clr = ganttPen.color()
                             clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
                             
+                            if self.highlightedEntity == entity:
+                                gFont.setWeight(QFont.Bold)
+                                qp.setFont(gFont)
+
+                            
                             qp.setPen(clr) # entity label color
                             qp.drawText(startX + self.side_margin + fontHeight, y + top_margin + fontHeight / 2, entity);
+
+                            if self.highlightedEntity == entity:
+                                gFont.setWeight(QFont.Normal)
+                                qp.setFont(gFont)
                         
                         i += 1
 
