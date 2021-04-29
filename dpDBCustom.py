@@ -49,10 +49,17 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
     
     try: 
         f = open(os.path.join(path, file), 'r')
+        
+        for l in f:
+            if l[0] == '\t':
+                raise Exception('Please review custom KPIs documentation and YAML formatting rules.\nDo not use [TABS] to format YAML files, use spaces. Stopped loading custom KPIs.')
+            
+        f.seek(0, 0)
+        
         kpiFile = safe_load(f)
     #except parser.ParserError as e:
     except Exception as e:
-        log('Error loading custom KPI file %s: %s' %(os.path.join(path, file), str(e)))
+        log('Error loading custom KPI file %s: %s' %(os.path.join(path, file), str(e)), 1)
         
         raise e
         
