@@ -307,15 +307,22 @@ class dataProvider():
             
             if len(kpis) == 0:
                 continue
-                
+            
             if host['port'] == '':
                 if kpiSrc == '-':
-                    fromTable = 'from m_load_history_host'
+                    if cfg('ess', False):
+                        fromTable = 'from _sys_statistics.host_load_history_host'
+                    else:
+                        fromTable = 'from m_load_history_host'
                 else:
                     fromTable = 'from (%s)' % kpiDescriptions.customSql[kpiSrc]
             else:
                 if kpiSrc == '-':
-                    fromTable = 'from m_load_history_service'
+                    if cfg('ess', False):
+                        fromTable = 'from _sys_statistics.host_load_history_service'
+                    else:
+                        fromTable = 'from m_load_history_service'
+
                 else:
                     fromTable = 'from (%s)' % kpiDescriptions.customSql[kpiSrc]
                                 
@@ -540,6 +547,8 @@ class dataProvider():
 
         kpis_ = [timeKey] + kpis # need a copy of kpis list (+time entry)
         
+        print('------------>', len(rows))
+        
         try:
             '''
             for j in range(len(kpis)):
@@ -547,6 +556,10 @@ class dataProvider():
                     p rint('%s --> adjust!!!' % (kpis[j]))
                     p rint('%s --> %s' % (kpiStylesNN[type][kpis[j]]['sUnit'], kpiStylesNN[type][kpis[j]]['dUnit']))
             '''
+            
+            if len(rows) == 0:
+                for key in data:
+                    data[key].clear()
         
             for row in rows:
                 if i == 0: # allocate memory

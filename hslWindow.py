@@ -615,6 +615,17 @@ class hslWindow(QMainWindow):
         console.indicator.repaint()
             
     
+    def menuEss(self):
+    
+        if cfg('ess', False) == False:
+            utils.cfgSet('ess', True)
+            self.essAct.setText('Switch back to m_load_history...')
+            #self.essAct.setStatusTip('Switches back to online m_load_history viws')
+        else:
+            utils.cfgSet('ess', False)
+            self.essAct.setText('Switch to ESS load history')
+            self.essAct.setStatusTip('Switches from online m_load_history viws to ESS tables')
+    
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import nameserver_history.trc...',  None, 'Import nameserver history trace (*.trc)')
         log(fname[0])
@@ -837,6 +848,12 @@ class hslWindow(QMainWindow):
         reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
 
         actionsMenu.addAction(reloadCustomKPIsAct)
+
+        self.essAct = QAction('Switch to ESS load history', self)
+        self.essAct.setStatusTip('Switches from online m_load_history viws to ESS tables')
+        self.essAct.triggered.connect(self.menuEss)
+
+        actionsMenu.addAction(self.essAct)
 
         # help menu part
         aboutAct = QAction(QIcon(iconPath), '&About', self)

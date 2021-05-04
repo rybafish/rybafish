@@ -320,6 +320,11 @@ def loadConfig():
         
     return True
     
+def cfgSet(param, value):
+    global config
+
+    config[param] = value
+
 def cfg(param, default = None):
 
     global config

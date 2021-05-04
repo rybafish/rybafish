@@ -307,10 +307,17 @@ class myWidget(QWidget):
                 
                 groupName = kpiStylesNN[type][kpi]['group']
                 
+                print(scaleKpi)
+                
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = str(scaleKpi['max'])
-                    scaleKpi['last_label'] = str(scaleKpi['last_value'])
+                    
+                    if 'last_value' in scaleKpi:
+                        scaleKpi['last_label'] = str(scaleKpi['last_value']) 
+                    else: 
+                        scaleKpi['last_label'] = '?'
+                        
                     scaleKpi['label'] = '10 / 100'
                     scaleKpi['yScale'] = 100
                     scaleKpi['unit'] = '%'
@@ -2361,6 +2368,9 @@ class chartArea(QFrame):
                 # array_size = len(self.widget.ndata[h][timeKey]) # 2020-03-11
                 array_size = len(data[timeKey])
                 
+                if array_size == 0:
+                    continue
+                
                 if cfg('loglevel', 3) > 3:
                     log('h: %i (%s), array_size: %i, timekey = %s, kpi = %s' %(h, self.widget.hosts[h]['host'], array_size, timeKey, kpi))
                 
@@ -2411,7 +2421,10 @@ class chartArea(QFrame):
                         
                     raise e
                         
-                scales[kpi]['last_value'] = data[kpi][i]
+                if i > 0:
+                    scales[kpi]['last_value'] = data[kpi][i]
+                else:
+                    scales[kpi]['last_value'] = None
         
         t1 = time.time()
         
