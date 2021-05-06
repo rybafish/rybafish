@@ -1033,6 +1033,9 @@ class resultSet(QTableWidget):
         self.explicitLimit = False 
         self.resultSizeLimit = cfg('resultSize', 1000)
         
+        self.timer = None
+        self.timerDelay = None
+        
         super().__init__()
         
         verticalHeader = self.verticalHeader()
@@ -1118,6 +1121,9 @@ class resultSet(QTableWidget):
         cmenu.addSeparator()
         insertColumnName = cmenu.addAction('Insert Column Name(s)')
         copyFilter = cmenu.addAction('Generate Filter Condition')
+
+        cmenu.addSeparator()
+        triggerTimer = cmenu.addAction('Refresh every 5 seconds')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -1183,7 +1189,30 @@ class resultSet(QTableWidget):
             self.render(pixmap)
             
             QApplication.clipboard().setPixmap(pixmap)
-                
+
+        if action == triggerTimer:
+
+            self.timer = QTimer(self)
+            self.timer.timeout.connect(self.refreshResultset)
+            self.timer.start(1000 * 5)
+        
+        
+            self.log('[W] Resultset autorefresh triggered...')
+
+    def refreshResultset(self):
+        '''
+            Это надо слать сигнал в SQLConsole, на уровне resultset это не разрулить
+            
+            а там вызывать refresh(i)
+            
+            причём я склонен захардкодить i = 0 потому что иначе очень сложно, по контекстному меню не понять какой именно это резалтсет
+            
+            А Ещё здесь надо остановить таймер и заново его поднять потом, иначе они могут наложиться
+            
+        '''
+        log('refresh %i' % i)
+        self.log('refresh...')
+        
     def detach(self):
         if self._resultset_id is None:
             # could be if the result did not have result: for example DDL or error statement

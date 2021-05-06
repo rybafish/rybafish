@@ -307,8 +307,6 @@ class myWidget(QWidget):
                 
                 groupName = kpiStylesNN[type][kpi]['group']
                 
-                print(scaleKpi)
-                
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = str(scaleKpi['max'])
@@ -359,8 +357,11 @@ class myWidget(QWidget):
                     d = kpiStylesNN[type][kpi].get('decimal', 0) # defined couple lines above
                     
                     scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d), d)
-                    scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
-                    
+                    if 'last_value' in scaleKpi:
+                        scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
+                    else:
+                        scaleKpi['last_label'] = '-1'
+                        
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
                     
