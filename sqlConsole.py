@@ -1967,6 +1967,7 @@ class sqlConsole(QWidget):
         
     def connectDB(self):
         try: 
+            log('connectDB, indicator sync', 5)
             self.indicator.status = 'sync'
             self.indicator.repaint()
 
@@ -2123,6 +2124,7 @@ class sqlConsole(QWidget):
             cname = self.tabname.rstrip(' *')
             log('console keep-alive (%s)... ' % (cname), 3, False, True)
             
+            log('keepAlive, indicator sync', 5)
             self.indicator.status = 'sync'
             self.indicator.repaint()
             
@@ -2635,6 +2637,7 @@ class sqlConsole(QWidget):
         reply = None
         
         while reply != QMessageBox.No and self.conn is None:
+            log('connectionLost, indicator sync')
             self.indicator.status = 'sync'
             self.indicator.repaint()
             
