@@ -1,0 +1,7 @@
+# requrements file
+# tested/proven qt:  5.11.2
+# preferred PyHDB fork is from rybafish repository: https://github.com/rybafish/PyHDB
+
+PyQt5
+PyYAML
+PyHDB
