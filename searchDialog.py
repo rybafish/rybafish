@@ -34,7 +34,7 @@ class searchDialog(QDialog):
         
     def initUI(self, lastSearch):
 
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
 
         self.setWindowIcon(QIcon(iconPath))
         

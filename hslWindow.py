@@ -411,7 +411,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -425,7 +425,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Error')
                 msgBox.setText('Init failed: %s \n\nSee more deteails in the log file.' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -439,7 +439,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -775,7 +775,7 @@ class hslWindow(QMainWindow):
         self.statusbar.addPermanentWidget(ind)
 
         #menu
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
 
         exitAct = QAction('&Exit', self)        
         exitAct.setShortcut('Alt+Q')

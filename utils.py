@@ -212,7 +212,7 @@ def yesNoDialog(title, message, cancel = False, ignore = False):
         
     msgBox.setStandardButtons(buttons)
     msgBox.setDefaultButton(QMessageBox.Yes)
-    iconPath = resourcePath('ico\\favicon.ico')
+    iconPath = resourcePath('ico\\favicon.png')
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)
     
@@ -237,7 +237,7 @@ def msgDialog(title, message):
     buttons = QMessageBox.Ok
         
     msgBox.setStandardButtons(buttons)
-    iconPath = resourcePath('ico\\favicon.ico')
+    iconPath = resourcePath('ico\\favicon.png')
     
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)

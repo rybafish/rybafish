@@ -79,7 +79,7 @@ class ExceptionHandler(QtCore.QObject):
         msgBox.setText('Unhandled exception occured. Check the log file for details.')
         msgBox.setIcon(QMessageBox.Critical)
         msgBox.setDetailedText(details)
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.exec_()
         
