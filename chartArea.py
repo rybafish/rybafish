@@ -283,7 +283,7 @@ class myWidget(QWidget):
                 type = hType(h, self.hosts)
                 
                 scaleKpi = self.nscales[h][kpi] # short cut
-                
+
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
                 
                     #scaleKpi['y_max'] = ''
@@ -301,6 +301,7 @@ class myWidget(QWidget):
                     max and last values calculated before by renewMaxValues
                 '''
                 scaleKpi['y_min'] = 0 # we always start at 0...
+                scaleKpi['y_max'] = None
                 
                 #memory group
                 #if kpiDescriptions.kpiGroup[kpi] == 'mem':
@@ -341,7 +342,7 @@ class myWidget(QWidget):
                         else:
                             max_value = groupMax[groupName]
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
-
+                            
                             if max_value_n <= 10 and max_value != max_value_n:
                                 kpiStylesNN[type][kpi]['decimal'] = 2
                             elif max_value_n <= 100 and max_value != max_value_n:
@@ -357,11 +358,12 @@ class myWidget(QWidget):
                     d = kpiStylesNN[type][kpi].get('decimal', 0) # defined couple lines above
                     
                     scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d), d)
-                    if 'last_value' in scaleKpi:
+                    if 'last_value' in scaleKpi and scaleKpi['last_value'] is not None:
                         scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
                     else:
                         scaleKpi['last_label'] = '-1'
                         
+                    print('HERE 6')
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
                     
@@ -381,7 +383,6 @@ class myWidget(QWidget):
                         scaleKpi['unit'] = dUnit + '/sec'
                     else:
                         scaleKpi['unit'] = dUnit
-                    
       
     def posToTime(self, x):
         time = self.t_from + datetime.timedelta(seconds= (x - self.side_margin - self.left_margin)/self.step_size*self.t_scale - self.delta) 
@@ -2302,12 +2303,12 @@ class chartArea(QFrame):
             this one ignores groups/scales at all, just raw values
         '''
     
-        log('  renewMaxValues()')
+        print('\n')
+        log('renewMaxValues()', 5)
         
         t0 = time.time()
         t_from = self.widget.t_from.timestamp()
         t_to = self.widget.t_to.timestamp()
-        
         
         for h in range(0, len(self.widget.hosts)):
             if len(self.widget.ndata[h]) == 0: 
@@ -2318,7 +2319,6 @@ class chartArea(QFrame):
             scales = self.widget.nscales[h]
             
             type = hType(h, self.widget.hosts)
-
 
             # init zero dicts for scales
             # especially important for the first run
@@ -2337,6 +2337,9 @@ class chartArea(QFrame):
 
             for kpi in scales.keys():
             
+                if kpi[:4] == 'time':
+                    continue
+
                 if type == 'service':
                     if kpi not in self.srvcKPIs:
                         log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
@@ -2345,9 +2348,6 @@ class chartArea(QFrame):
                     if kpi not in self.hostKPIs:
                         log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
                         continue
-            
-                if kpi[:4] == 'time':
-                    continue
                     
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
                 
@@ -2372,15 +2372,10 @@ class chartArea(QFrame):
                 if array_size == 0:
                     continue
                 
-                if cfg('loglevel', 3) > 3:
-                    log('h: %i (%s), array_size: %i, timekey = %s, kpi = %s' %(h, self.widget.hosts[h]['host'], array_size, timeKey, kpi))
+                log('h: %i (%s), array_size: %i, timekey = %s, kpi = %s' %(h, self.widget.hosts[h]['host'], array_size, timeKey, kpi), 4)
                 
                 scales[timeKey] = {'min': data[timeKey][0], 'max': data[timeKey][array_size-1]}
 
-                #log('  scan %i -> %s' % (h, kpi))
-                #log('  timekey: ' + timeKey)
-                #log('  array size: %i' % (array_size))
-                
                 anti_crash_len = len(data[kpi])
 
                 try:
@@ -2426,6 +2421,11 @@ class chartArea(QFrame):
                     scales[kpi]['last_value'] = data[kpi][i]
                 else:
                     scales[kpi]['last_value'] = None
+
+
+            print('host:', h)
+            for kpi in scales:
+                print(kpi, scales[kpi])
         
         t1 = time.time()
         

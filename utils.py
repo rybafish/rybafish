@@ -82,7 +82,7 @@ class Layout():
     def dump(self):
         try: 
             f = open('layout.yaml', 'w')
-            dump(self.lo, f)
+            dump(self.lo, f, default_flow_style=None)
             f.close()
         except:
             log('layout dump issue')
@@ -251,6 +251,9 @@ def GB(bytes, scale = 'GB'):
     '''
         returns same number but in GB (/=1023^3)
     '''
+    
+    if bytes is None:
+        return None
     
     if scale == 'MB':
         mult = 1024*1024
