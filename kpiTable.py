@@ -320,7 +320,7 @@ class kpiTable(QTableWidget):
         log('kpiTable: updateScales() host: %i' % (self.host), 4)
         
         self.silentMode = True
-        
+   
         log('kpiScales: %s' % (str(self.kpiScales[self.host])), 5)
         kpis = len(self.kpiScales[self.host])
         

@@ -370,8 +370,10 @@ class hslWindow(QMainWindow):
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
                         self.chartArea.initDP(self.layout['kpis'])
+                        self.kpisTable.host = None
                     else:
                         self.chartArea.initDP()
+                        self.kpisTable.host = None
                         
                     starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
                     starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
