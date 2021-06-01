@@ -354,6 +354,7 @@ class QPlainTextEditLN(QWidget):
 
         self.document = self.edit.document
         self.textChanged = self.edit.textChanged
+        self.updateRequest = self.edit.updateRequest
         self.setPlainText = self.edit.setPlainText
 
         self.textCursor = self.edit.textCursor

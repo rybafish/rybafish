@@ -12,6 +12,9 @@ from PyQt5.QtCore import QObject, QThread
 
 import time, sys
 
+#import shiboken2
+#import sip
+
 import db
 
 import utils
@@ -247,12 +250,16 @@ class console(QPlainTextEditLN):
     def __init__(self, parent):
         self.lock = False
         
-        self.haveHighlighrs = False
-        self.highlightedWords = []
-        
+        self.haveHighlighrs = False #have words highlighted
         self.bracketsHighlighted = False
+
+        self.highlightedWords = [] # list of (start, stop) tuples of highlighed words
         
-        self.modifiedLayouts = []
+        
+        self.modifiedLayouts = [] # backup of the original layouts: tuples (position, layout, additionalFormats)
+                                  # position - block position (start of the paragraph)
+                                  # layout - hz
+                                  # af - list of modifications as a result of syntax highlighting, for example
         
         '''
         self.modifiedLayouts = {}
@@ -334,9 +341,13 @@ class console(QPlainTextEditLN):
                 return
             
         #self.modifiedLayouts[type].append([position, lo, af])
+        log('add layout: %s' % str(lo), 5)
         self.modifiedLayouts.append([position, lo, af])
             
     def highlight(self):
+        '''
+            highlights word in document based on self.highlightedWords[]
+        '''
     
         blkStInit = None
         blkStCurrent = None
@@ -437,7 +448,9 @@ class console(QPlainTextEditLN):
             self.clearHighlighting() # why would we care with selections...
         '''
             
-        if self.haveHighlighrs:
+        print('consSelection')
+        if True or self.haveHighlighrs:
+            # we ignore highlighted brackets here
             self.clearHighlighting()
 
         #txtline = self.document().findBlockByLineNumber(cursor.blockNumber()) one of the longest annoing bugs, someday I will give it a name
@@ -777,7 +790,7 @@ class console(QPlainTextEditLN):
                 
                 search.exec_()
     
-        else:
+        elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
             #have to clear each time in case of input right behind the braket
             '''
             if self.haveHighlighrs:
@@ -786,44 +799,55 @@ class console(QPlainTextEditLN):
                 self.clearHighlighting('br')
             '''
             if self.bracketsHighlighted:
+                log('keypress clear highlighting', 5)
                 self.clearHighlighting()
                 
             super().keyPressEvent(event)
 
     #def clearHighlighting(self, type):
     def clearHighlighting(self):
-
-        if self.bracketsHighlighted or self.haveHighlighrs:
+        #log('modifiedLayouts count: %i' % len(self.modifiedLayouts), 5)
+        #return
+        log('clearHighlighting', 5)
+        if self.bracketsHighlighted or self.haveHighlighrs and not self.lock:
             
             #for lol in self.modifiedLayouts[type]:
+            
+            log('modifiedLayouts count: %i' % len(self.modifiedLayouts), 5)
             for lol in self.modifiedLayouts:
             
                 lo = lol[1]
                 af = lol[2]
-                    
+
+                log('mod: %s' % str(lo), 5)
+                #log('lines: %s' % lo.lineCount(), 5)
                 lo.setAdditionalFormats(af)
+                log('clear went ok')
                 
             #self.modifiedLayouts[type].clear()
-            self.modifiedLayouts.clear()
-            
             self.viewport().repaint()
+
+        self.modifiedLayouts.clear()
             
+        self.bracketsHighlighted = False # <<<< this is not true in case of #382
+                                         # <<<< we came here just to clear words
+                                         # somehow need to manage this explicitly
+                                         
+        self.haveHighlighrs = False
+
+        '''
+        if type == 'br':
             self.bracketsHighlighted = False
+        elif type == 'br':
             self.haveHighlighrs = False
-            '''
-            if type == 'br':
-                self.bracketsHighlighted = False
-            elif type == 'br':
-                self.haveHighlighrs = False
-            '''
+        '''
 
     def cursorPositionChangedSignal(self):
+        log('cursorPositionChangedSignal', 5)
     
         t0 = time.time()
     
         if self.manualSelection:
-            #print('need to clear', self.manualSelectionPos)
-            
             start = self.manualSelectionPos[0]
             stop = self.manualSelectionPos[1]
             
@@ -910,6 +934,7 @@ class console(QPlainTextEditLN):
     def checkBrackets(self):
     
         if self.bracketsHighlighted:
+            log('checkBrackets clear', 5)
             self.clearHighlighting()
             #self.clearHighlighting('br')
             #self.clearHighlighting('w')
@@ -1644,6 +1669,8 @@ class sqlConsole(QWidget):
 
         self.cons.textChanged.connect(self.textChangedS)
         
+        self.cons.updateRequest.connect(self.updateRequestS)
+        
         self.cons.connectSignal.connect(self.connectDB)
         self.cons.disconnectSignal.connect(self.disconnectDB)
         self.cons.abortSignal.connect(self.cancelSession)
@@ -1675,8 +1702,41 @@ class sqlConsole(QWidget):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
 
-    def textChangedS(self):
+    def updateRequestS(self, rect):
+        '''
+            okay all this logic below is a workaround for #382
+            
+            somehow the brackets highlighting disappears by itself on any text change
+            
+            therefore we can just clear the list and set the flags (flags?) off
+        '''
+        if rect.width() > 11:
+            # width == 10 means just cursor blinking with any (!) font size
+            if self.cons.bracketsHighlighted:
+                log('updateRequestS FAKE clear highlighting', 5)
+                #self.cons.clearHighlighting()
+
+                self.cons.modifiedLayouts.clear()
+                    
+                self.cons.bracketsHighlighted = False
+                self.cons.haveHighlighrs = False
+
         
+    def textChangedS(self):
+        if not cfg('noWordHighlighting'):
+            if not self.cons.lock:
+                if self.cons.haveHighlighrs:
+                    log('textChangedS, clear highlighting', 5)
+                    self.cons.clearHighlighting()
+
+        '''
+        # 2021-05-29
+        print('textChangedS')
+        if self.cons.bracketsHighlighted:
+            log('textChangedS clear highlighting', 5)
+            self.cons.clearHighlighting()
+        '''
+
         if self.unsavedChanges == False: #and self.fileName is not None:
             if self.cons.toPlainText() == '':
                 return
