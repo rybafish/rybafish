@@ -7,4 +7,3 @@
 PyQt5
 PyYAML
 PyHDB
-shiboken2
