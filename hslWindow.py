@@ -337,6 +337,8 @@ class hslWindow(QMainWindow):
         if ok and conf['ok']:
         
             try:
+            
+                #self.dumpLayout()
 
                 # need to disconnect open consoles first...
                 self.statusMessage('Disconnecing open consoles...', False)

@@ -87,6 +87,12 @@ class ExceptionHandler(QtCore.QObject):
 
 if __name__ == '__main__':
     
+    try:
+        import pyi_splash
+        pyi_splash.close()
+    except:
+        pass
+
     global ryba
     
     exceptionHandler = ExceptionHandler()
