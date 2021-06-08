@@ -122,12 +122,14 @@ class hslWindow(QMainWindow):
         '''
         
     def dumpLayout(self):
-    
+
         if self.layoutDumped:
             return
             
         if self.layout is None:
             return
+
+        #log('--> dumpLayout')
             
         self.layoutDumped = True
     
@@ -144,6 +146,8 @@ class hslWindow(QMainWindow):
         else:
             if 'kpis' in self.layout.lo:
                 del self.layout.lo['kpis']
+                
+        #log('--> dumpLayout, kpis: ' + str(kpis))
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
@@ -338,7 +342,18 @@ class hslWindow(QMainWindow):
         
             try:
             
-                #self.dumpLayout()
+                '''
+                if cfg('saveLayout', True):
+                    log('connect dump layout')
+                    
+                    it seems KPIs already clean here? Is it possible...
+                    this will not work as KPIs are empty on this point
+                    
+                    self.dumpLayout()
+
+                    self.layoutDumped = False
+                    
+                '''
 
                 # need to disconnect open consoles first...
                 self.statusMessage('Disconnecing open consoles...', False)
@@ -371,9 +386,11 @@ class hslWindow(QMainWindow):
         
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
+                        #log('--> dumplayout, init kpis:' + str(self.layout['kpis']))
                         self.chartArea.initDP(self.layout['kpis'])
                         self.kpisTable.host = None
                     else:
+                        #log('--> dumplayout, no kpis')
                         self.chartArea.initDP()
                         self.kpisTable.host = None
                         

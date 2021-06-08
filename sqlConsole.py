@@ -1148,7 +1148,9 @@ class resultSet(QTableWidget):
         copyFilter = cmenu.addAction('Generate Filter Condition')
 
         cmenu.addSeparator()
-        triggerTimer = cmenu.addAction('Refresh every 5 seconds')
+        
+        if cfg('dev'):
+            triggerTimer = cmenu.addAction('Refresh every 5 seconds')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -1215,12 +1217,11 @@ class resultSet(QTableWidget):
             
             QApplication.clipboard().setPixmap(pixmap)
 
-        if action == triggerTimer:
+        if if cfg('dev') and action == triggerTimer:
 
             self.timer = QTimer(self)
             self.timer.timeout.connect(self.refreshResultset)
             self.timer.start(1000 * 5)
-        
         
             self.log('[W] Resultset autorefresh triggered...')
 
