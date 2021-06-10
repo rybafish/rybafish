@@ -639,12 +639,11 @@ class hslWindow(QMainWindow):
         if cfg('ess', False) == False:
             utils.cfgSet('ess', True)
             self.essAct.setText('Switch back to m_load_history...')
-            #self.essAct.setStatusTip('Switches back to online m_load_history viws')
             self.statusMessage('You need to reconnect in order to have full ESS data available', False)
         else:
             utils.cfgSet('ess', False)
-            self.essAct.setText('Switch to ESS load history [limited supportability]')
-            self.essAct.setStatusTip('Switches from online m_load_history viws to ESS tables: only same host supported at the moment')
+            self.essAct.setText('Switch to ESS load history')
+            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables: only same host supported at the moment')
     
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import nameserver_history.trc...',  None, 'Import nameserver history trace (*.trc)')
@@ -878,7 +877,7 @@ class hslWindow(QMainWindow):
 
         if cfg('experimental'):
             self.essAct = QAction('Switch to ESS load history', self)
-            self.essAct.setStatusTip('Switches from online m_load_history viws to ESS tables')
+            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
             self.essAct.triggered.connect(self.menuEss)
 
             actionsMenu.addAction(self.essAct)
