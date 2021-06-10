@@ -129,7 +129,7 @@ class hslWindow(QMainWindow):
         if self.layout is None:
             return
 
-        #log('--> dumpLayout')
+        log('--> dumpLayout', 5)
             
         self.layoutDumped = True
     
@@ -139,8 +139,12 @@ class hslWindow(QMainWindow):
             hst = '%s:%s' % (host['host'], host['port'])
             
             if i < len(self.chartArea.widget.nkpis) and self.chartArea.widget.nkpis[i]:
-                kpis[hst] = self.chartArea.widget.nkpis[i]
+                # this a list assignement we have to copy, otherwise this
+                # will be implicitly erased in cleanup() at it is the same list
+                kpis[hst] = self.chartArea.widget.nkpis[i].copy() 
     
+        log('--> dumpLayout kpis: %s' % str(kpis), 5)
+        
         if kpis:
             self.layout['kpis'] = kpis
         else:
@@ -342,18 +346,12 @@ class hslWindow(QMainWindow):
         
             try:
             
-                '''
-                if cfg('saveLayout', True):
+                if cfg('saveLayout', True) and len(self.chartArea.widget.hosts):
                     log('connect dump layout')
-                    
-                    it seems KPIs already clean here? Is it possible...
-                    this will not work as KPIs are empty on this point
                     
                     self.dumpLayout()
 
                     self.layoutDumped = False
-                    
-                '''
 
                 # need to disconnect open consoles first...
                 self.statusMessage('Disconnecing open consoles...', False)
@@ -383,14 +381,14 @@ class hslWindow(QMainWindow):
                 
                     if isinstance(w, sqlConsole.sqlConsole):
                         w.config = conf
-        
+                        
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
-                        #log('--> dumplayout, init kpis:' + str(self.layout['kpis']))
-                        self.chartArea.initDP(self.layout['kpis'])
+                        log('--> dumplayout, init kpis:' + str(self.layout['kpis']), 5)
+                        self.chartArea.initDP(self.layout['kpis'].copy())
                         self.kpisTable.host = None
                     else:
-                        #log('--> dumplayout, no kpis')
+                        log('--> dumplayout, no kpis', 5)
                         self.chartArea.initDP()
                         self.kpisTable.host = None
                         
@@ -642,10 +640,11 @@ class hslWindow(QMainWindow):
             utils.cfgSet('ess', True)
             self.essAct.setText('Switch back to m_load_history...')
             #self.essAct.setStatusTip('Switches back to online m_load_history viws')
+            self.statusMessage('You need to reconnect in order to have full ESS data available', False)
         else:
             utils.cfgSet('ess', False)
-            self.essAct.setText('Switch to ESS load history')
-            self.essAct.setStatusTip('Switches from online m_load_history viws to ESS tables')
+            self.essAct.setText('Switch to ESS load history [limited supportability]')
+            self.essAct.setStatusTip('Switches from online m_load_history viws to ESS tables: only same host supported at the moment')
     
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import nameserver_history.trc...',  None, 'Import nameserver history trace (*.trc)')

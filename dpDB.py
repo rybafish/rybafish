@@ -149,6 +149,10 @@ class dataProvider():
 
         sql_string = sql.hosts_info
 
+        if cfg('ess'):
+            #dirty but this will work
+            sql_string = sql_string.replace('m_load_history', '_sys_statistics.host_load_history')
+
         t0 = time.time()
         
         rows = db.execute_query(self.connection, sql_string, [])
@@ -547,7 +551,7 @@ class dataProvider():
 
         kpis_ = [timeKey] + kpis # need a copy of kpis list (+time entry)
         
-        print('------------>', len(rows))
+        #print('------------>', len(rows))
         
         try:
             '''

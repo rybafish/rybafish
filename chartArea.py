@@ -1813,7 +1813,9 @@ class chartArea(QFrame):
             to be called right after self.chartArea.dp = new dp
         '''
 
+        log('before cleanup:' + str(kpis))
         self.cleanup()
+        log('after cleanup:' + str(kpis))
             
         self.widget.ndata.clear()
 
@@ -1837,15 +1839,24 @@ class chartArea(QFrame):
         self.widget.initPens()
         
         if kpis:
+            log('initDP processing', 5)
+            log(str(kpis), 5)
             for i in range(len(self.widget.hosts)):
                 host = self.widget.hosts[i]
                 hst = '%s:%s' % (host['host'], host['port'])
                 
+                log(hst, 5)
+                
                 if hst in kpis:
+                
+                    log('host: ' + hst, 5)
+                
                     if hst[-1] == ':':
                         kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
                     else:
                         kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
+                        
+                    log(str(kpis_n), 5)
                     
                     self.widget.nkpis[i] = kpis_n
 
