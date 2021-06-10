@@ -2,6 +2,7 @@ RybaFish Charts versioning approach.
  
 0.1, 0.2,...
     Major releases are named and numbered like this.
+    Merged to master branch.
 
 0.11, 0.12,...
     Hotfix releases. To replace the major release in case of critical/embarrassing bugs.

@@ -683,6 +683,13 @@ class hslWindow(QMainWindow):
             self.layout = Layout(True)
             
             if self.layout['running']:
+
+                try:
+                    import pyi_splash
+                    pyi_splash.close()
+                except:
+                    pass
+
                 answer = utils.yesNoDialog('Warning', 'Another RybaFish is already running, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 #answer = utils.yesNoDialog('Warning', 'RybaFish is already running or crashed last time, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 
@@ -870,11 +877,12 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
-        self.essAct = QAction('Switch to ESS load history', self)
-        self.essAct.setStatusTip('Switches from online m_load_history viws to ESS tables')
-        self.essAct.triggered.connect(self.menuEss)
+        if cfg('experimental'):
+            self.essAct = QAction('Switch to ESS load history', self)
+            self.essAct.setStatusTip('Switches from online m_load_history viws to ESS tables')
+            self.essAct.triggered.connect(self.menuEss)
 
-        actionsMenu.addAction(self.essAct)
+            actionsMenu.addAction(self.essAct)
 
         # help menu part
         aboutAct = QAction(QIcon(iconPath), '&About', self)

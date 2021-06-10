@@ -1217,7 +1217,7 @@ class resultSet(QTableWidget):
             
             QApplication.clipboard().setPixmap(pixmap)
 
-        if if cfg('dev') and action == triggerTimer:
+        if cfg('dev') and action == triggerTimer:
 
             self.timer = QTimer(self)
             self.timer.timeout.connect(self.refreshResultset)
