@@ -443,14 +443,10 @@ class console(QPlainTextEditLN):
         cursor = self.textCursor()
         selected = cursor.selectedText()
 
-        '''
-        if self.bracketsHighlighted:
-            self.clearHighlighting() # why would we care with selections...
-        '''
-            
-        print('consSelection')
-        if True or self.haveHighlighrs:
+        #if True or self.haveHighlighrs:
+        if self.haveHighlighrs:
             # we ignore highlighted brackets here
+            log('consSelection clear highlighting', 5)
             self.clearHighlighting()
 
         #txtline = self.document().findBlockByLineNumber(cursor.blockNumber()) one of the longest annoing bugs, someday I will give it a name
@@ -791,7 +787,7 @@ class console(QPlainTextEditLN):
                 search.exec_()
     
         elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
-            #have to clear each time in case of input right behind the braket
+            #have to clear each time in case of input right behind the bracket
             '''
             if self.haveHighlighrs:
                 self.clearHighlighting('br')
@@ -946,26 +942,26 @@ class console(QPlainTextEditLN):
 
         textSize = len(text)
         
-        def scanPairBraket(pos, shift):
+        def scanPairBracket(pos, shift):
         
-            braket = text[pos]
+            bracket = text[pos]
         
             depth = 0
         
-            if braket == ')':
+            if bracket == ')':
                 pair = '('
-            elif braket == '(':
+            elif bracket == '(':
                 pair = ')'
-            elif braket == '[':
+            elif bracket == '[':
                 pair = ']'
-            elif braket == ']':
+            elif bracket == ']':
                 pair = '['
             else:
                 return -1
             
             i = pos + shift
             
-            if braket in (')', ']'):
+            if bracket in (')', ']'):
                 # skan forward
                 stop = 0
                 step = -1
@@ -978,7 +974,7 @@ class console(QPlainTextEditLN):
                 i += step
                 ch = text[i]
                 
-                if ch == braket:
+                if ch == bracket:
                     depth += 1
                     continue
                 
@@ -1014,11 +1010,11 @@ class console(QPlainTextEditLN):
                     shift = 0
                 else:
                     shift = 0
-                pb = scanPairBraket(bPos, shift)
+                pb = scanPairBracket(bPos, shift)
             else:
                 bPos = pos
                 shift = 0
-                pb = scanPairBraket(bPos, shift)
+                pb = scanPairBracket(bPos, shift)
 
             if pb >= 0:
                 self.bracketsHighlighted = True
