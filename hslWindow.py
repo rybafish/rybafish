@@ -121,7 +121,7 @@ class hslWindow(QMainWindow):
         QApplication.sendEvent(clipboard, event)
         '''
         
-    def dumpLayout(self):
+    def dumpLayout(self, closeTabs = True):
 
         if self.layoutDumped:
             return
@@ -144,6 +144,9 @@ class hslWindow(QMainWindow):
                 kpis[hst] = self.chartArea.widget.nkpis[i].copy() 
     
         log('--> dumpLayout kpis: %s' % str(kpis), 5)
+        
+        if len(kpis) == 0:
+            log('--> no KPIs... maybe check if connected at all and if not - dont reset kpis?')
         
         if kpis:
             self.layout['kpis'] = kpis
@@ -198,9 +201,11 @@ class hslWindow(QMainWindow):
                         tabs.append([w.fileName, bkp, pos, block])
                         #tabs.append([w.fileName, bkp, pos])
                         
-                    w.close(None) # can not abort (and dont need to any more!)
+                        
+                    if closeTabs:
+                        w.close(None) # can not abort (and dont need to any more!)
 
-                    self.tabs.removeTab(i)
+                        self.tabs.removeTab(i)
 
             tabs.reverse()
                     
@@ -349,7 +354,9 @@ class hslWindow(QMainWindow):
                 if cfg('saveLayout', True) and len(self.chartArea.widget.hosts):
                     log('connect dump layout')
                     
-                    self.dumpLayout()
+                    self.dumpLayout(closeTabs = False)
+                    
+                    log('done')
 
                     self.layoutDumped = False
 
