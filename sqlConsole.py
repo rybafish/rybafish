@@ -1707,6 +1707,10 @@ class sqlConsole(QWidget):
             
             therefore we can just clear the list and set the flags (flags?) off
         '''
+        
+        if self.cons.lock:
+            return
+            
         if rect.width() > 11:
             # width == 10 means just cursor blinking with any (!) font size
             if self.cons.bracketsHighlighted:
@@ -1824,7 +1828,8 @@ class sqlConsole(QWidget):
             backTo = self.spliter.sizes()
 
             if self.splitterSizes is None:
-                self.splitterSizes = [4000, 200, 100]
+                #self.splitterSizes = [4000, 200, 100]
+                self.splitterSizes = [200, 800, 100]
                 
             self.spliter.setSizes(self.splitterSizes)
             

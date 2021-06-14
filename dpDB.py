@@ -357,15 +357,6 @@ class dataProvider():
                 else:
                     params_now = params_now[2:]
             
-            '''
-            print('sql_pref', sql_pref)
-            print('cols', cols)
-            print('fromTable', fromTable)
-            print('hfilter', hfilter)
-            print('tfilter', tfilter)
-            print('orderby', orderby)
-            '''
-            
             #if gantt to be checked here
             
             gantt = False
@@ -563,7 +554,8 @@ class dataProvider():
             
             if len(rows) == 0:
                 for key in data:
-                    data[key].clear()
+                    if key in kpis:
+                        data[key].clear()
         
             for row in rows:
                 if i == 0: # allocate memory

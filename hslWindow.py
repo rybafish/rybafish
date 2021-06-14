@@ -997,7 +997,8 @@ class hslWindow(QMainWindow):
                 
             else:
                 self.tabs.setCurrentIndex(0)
-        
+
+        # if the cursor points to a pair bracket, the highlighting will disappear on the next call...
         self.show()
 
         #scroll everything to stored position
@@ -1007,6 +1008,8 @@ class hslWindow(QMainWindow):
             
                 if i - 1 < len(scrollPosition):
                     block = scrollPosition[i - 1]
+                    
+                    print('before this...')
                     w.cons.edit.verticalScrollBar().setValue(block)
                 else:
                     log('[w] scroll position list out of range, ignoring scrollback...')

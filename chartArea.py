@@ -363,7 +363,6 @@ class myWidget(QWidget):
                     else:
                         scaleKpi['last_label'] = '-1'
                         
-                    print('HERE 6')
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
                     
@@ -1157,16 +1156,6 @@ class myWidget(QWidget):
 
                     x_scale = self.step_size / self.t_scale
 
-                    '''
-                    # print gantt debug
-                    for e in gc:
-                        print('%s:'% e)
-                        
-                        for l in gc[e]:
-                            print ('    ', str(l[0]), '-' , str(l[1]))
-                    '''
-
-
                     qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
                     
                     #print(kpiStylesNN[type][kpi])
@@ -1178,18 +1167,7 @@ class myWidget(QWidget):
                         y_shift = y_scale/100*yr[0] * len(gc)
                         y_scale = y_scale * (yr[1] - yr[0])/100
                     
-                    #print(y_scale)
-                    
                     i = 0
-                    
-                    '''
-                    print('start/stop: ', startX, stopX)
-                    
-                    qp.setPen(QColor('#B4A')) # bar outline color
-                    qp.drawLine(startX, 100, stopX, 130)
-                    
-                    qp.drawLine(startX + 100, 200, stopX + 100, 230)
-                    '''
                     
                     hlDesc = None
 
@@ -1198,11 +1176,7 @@ class myWidget(QWidget):
                     
                     for entity in gc:
                     
-                        # print so far startX, stopX totally ignored: bad performance
-                    
                         y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
-                        
-                        #print('y ==> %i' % y)
                     
                         range_i = 0
                         for t in gc[entity]:
@@ -2078,12 +2052,8 @@ class chartArea(QFrame):
                             if kpi in self.widget.ndata[hst]: #might be empty for alt-added (2019-08-30)
                                 del(self.widget.ndata[hst][kpi])
                                 
-                        if cfg('loglevel', 3) > 3:
-                            log('kpis after unclick: %s' % (self.widget.nkpis[hst]))
-                            log('data keys: %s' % str(self.widget.ndata[hst].keys()))
-                            
-                            if len(self.widget.nkpis[hst]) == 0:
-                                print('clear data[time]?')
+                        log('kpis after unclick: %s' % (self.widget.nkpis[hst]), 4)
+                        log('data keys: %s' % str(self.widget.ndata[hst].keys()), 4)
                         
             else:       
                 if cfg('loglevel', 3) > 3:
@@ -2314,7 +2284,6 @@ class chartArea(QFrame):
             this one ignores groups/scales at all, just raw values
         '''
     
-        print('\n')
         log('renewMaxValues()', 5)
         
         t0 = time.time()
@@ -2322,6 +2291,7 @@ class chartArea(QFrame):
         t_to = self.widget.t_to.timestamp()
         
         for h in range(0, len(self.widget.hosts)):
+        
             if len(self.widget.ndata[h]) == 0: 
                 # not data at all, skip
                 continue
@@ -2433,11 +2403,6 @@ class chartArea(QFrame):
                 else:
                     scales[kpi]['last_value'] = None
 
-
-            print('host:', h)
-            for kpi in scales:
-                print(kpi, scales[kpi])
-        
         t1 = time.time()
         
         self.widget.alignScales()
@@ -2530,12 +2495,10 @@ class chartArea(QFrame):
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):
-                    #print('hots', host)
-                    #print('nkpis,', self.widget.nkpis)
                     if len(self.widget.nkpis[host]) > 0:
-                        #('normal reload -->')
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
                 allOk = True
+
             except utils.dbException as e:
                 self.setStatus('error', True)
                 reconnected = self.connectionLost(str(e))
