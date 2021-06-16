@@ -409,8 +409,16 @@ class hslWindow(QMainWindow):
                 else:
                     self.chartArea.initDP()
                 
+                if cfg('saveKPIs', True):
+                    if self.layout and 'kpis' in self.layout.lo:
+                        self.statusMessage('Loading saved kpis...', True)
+
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
+                    log('reload from menuConfig #1', 4)
+                    self.chartArea.reloadChart()
+                else:
+                    log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
                     
                 propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
@@ -1009,7 +1017,6 @@ class hslWindow(QMainWindow):
                 if i - 1 < len(scrollPosition):
                     block = scrollPosition[i - 1]
                     
-                    print('before this...')
                     w.cons.edit.verticalScrollBar().setValue(block)
                 else:
                     log('[w] scroll position list out of range, ignoring scrollback...')
