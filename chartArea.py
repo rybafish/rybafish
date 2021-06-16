@@ -1834,6 +1834,9 @@ class chartArea(QFrame):
                     
                     self.widget.nkpis[i] = kpis_n
 
+            self.statusMessage('Loading saved kpis...')
+            self.repaint()
+
             self.reloadChart()
 
         self.hostsUpdated.emit()
