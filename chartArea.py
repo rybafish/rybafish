@@ -2497,11 +2497,14 @@ class chartArea(QFrame):
         
         self.reloadLock = True
         
+        actualRequest = False
+        
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):
                     if len(self.widget.nkpis[host]) > 0:
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
+                        actualRequest = True
                 allOk = True
 
             except utils.dbException as e:
@@ -2530,7 +2533,11 @@ class chartArea(QFrame):
         
         t1 = time.time()
         self.lastReloadTime = t1-t0
-        self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
+        
+        if actualRequest:
+            self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
+        else:
+            self.statusMessage('Ready')
         
         if timerF == True:
             self.timer.start(1000 * self.refreshTime)
