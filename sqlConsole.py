@@ -1642,6 +1642,8 @@ class sqlConsole(QWidget):
         self.noBackup = False
         
         self.connection_id = None
+        
+        self.runtimeTimer = None
 
         # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
         
@@ -2874,6 +2876,8 @@ class sqlConsole(QWidget):
         #del cols_list
 
         self.indicator.status = 'idle'
+        self.indicator.runtime = None
+        self.updateRuntime('off')
         self.indicator.repaint()
         
         # should rather be some kind of mutex here...
@@ -2950,6 +2954,53 @@ class sqlConsole(QWidget):
                 return
                 
         super().keyPressEvent(event)
+        
+    def updateRuntime(self, mode = None):
+        t0 = self.t0
+        t1 = time.time()
+        
+        if mode == 'on' and t0 is not None:
+            if self.runtimeTimer == None:
+                self.runtimeTimer = QTimer(self)
+                self.runtimeTimer.timeout.connect(self.updateRuntime)
+                self.runtimeTimer.start(1000)
+                
+        elif mode == 'off':
+            if self.runtimeTimer is not None:
+                self.indicator.runtime = None
+                self.runtimeTimer.stop()
+                self.runtimeTimer = None  
+
+                self.indicator.updateRuntime()
+                
+                return
+        
+        if t0 is not None:
+            self.indicator.runtime = utils.formatTimeShort(t1-t0)
+            
+        self.indicator.updateRuntime()
+                
+    '''
+    def updateRuntime(self):
+        t0 = self.t0
+        t1 = time.time()
+        
+        if t0 is not None:
+            self.indicator.runtime = utils.formatTime(t1-t0)
+            
+            self.indicator.updateRuntime()
+            
+            if self.runtimeTimer == None:
+                self.runtimeTimer = QTimer(self)
+                self.runtimeTimer.timeout.connect(self.updateRuntime)
+                self.runtimeTimer.start(500)
+            
+        else:
+            if self.runtimeTimer is not None:
+                self.indicator.runtime = None
+                self.runtimeTimer.stop()
+                self.runtimeTimer = None    
+    '''
         
     def reportRuntime(self):
     

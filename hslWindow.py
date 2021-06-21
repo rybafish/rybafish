@@ -398,12 +398,16 @@ class hslWindow(QMainWindow):
                         log('--> dumplayout, no kpis', 5)
                         self.chartArea.initDP()
                         self.kpisTable.host = None
-                        
+                       
+
+                    '''
+                    #397, 2021-06-17
                     starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
                     starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                     
                     self.chartArea.fromEdit.setText(starttime.strftime('%Y-%m-%d %H:%M:%S'))
                     self.chartArea.toEdit.setText('')
+                    '''
                         
                         
                 else:
@@ -557,6 +561,9 @@ class hslWindow(QMainWindow):
             
             ind.iClicked.connect(console.reportRuntime)
             
+            if cfg('experimental'):
+                ind.iToggle.connect(console.updateRuntime)
+                        
             self.statusbar.addPermanentWidget(ind)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
@@ -626,6 +633,9 @@ class hslWindow(QMainWindow):
         
         console.indicator = ind
         ind.iClicked.connect(console.reportRuntime)
+
+        if cfg('experimental'):
+            ind.iToggle.connect(console.updateRuntime)
         
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
@@ -808,6 +818,9 @@ class hslWindow(QMainWindow):
         
         self.chartArea.selfRaise.connect(self.raiseTab)
         ind.iClicked.connect(self.chartArea.indicatorSignal)
+
+        if cfg('experimental'):
+            ind.iToggle.connect(console.updateRuntime)
         
         self.setCentralWidget(self.tabs)
         
@@ -974,6 +987,9 @@ class hslWindow(QMainWindow):
                 console.selfRaise.connect(self.raiseTab)
                 ind.iClicked.connect(console.reportRuntime)
                 
+                if cfg('experimental'):
+                    ind.iToggle.connect(console.updateRuntime)
+                
                 self.statusbar.addPermanentWidget(ind)
                 
                 self.tabs.setCurrentIndex(self.tabs.count() - 1)
@@ -1088,6 +1104,9 @@ class hslWindow(QMainWindow):
             self.statusbar.addPermanentWidget(ind)
             
             ind.iClicked.connect(console.reportRuntime)
+
+            if cfg('experimental'):
+                ind.iToggle.connect(console.updateRuntime)
             
             if cfg('developmentMode'): 
                 console.cons.setPlainText('''select 0 from dummy;

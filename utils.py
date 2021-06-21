@@ -169,6 +169,23 @@ def numberToStrCSV(num, grp = True):
     
     return s
 
+def formatTimeShort(t):
+    (ti, ms) = divmod(t, 1)
+    
+    if ti < 60:
+        
+        s = str(round(t)) + ' sec'
+        
+    elif ti < 3600:
+        format = '%M:%S'
+            
+        s = time.strftime(format, time.gmtime(ti))
+    else:
+        format = '%H:%M:%S'
+        s = time.strftime(format, time.gmtime(ti))
+    
+    return s
+
 def formatTime(t):
     
     (ti, ms) = divmod(t, 1)
@@ -187,7 +204,9 @@ def formatTime(t):
         
     elif ti < 3600:
         format = '%M:%S'
+
         msStr = '.%s' % ms
+            
         s = time.strftime(format, time.gmtime(ti)) + msStr
     else:
         format = '%H:%M:%S'
