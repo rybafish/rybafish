@@ -819,8 +819,7 @@ class hslWindow(QMainWindow):
         self.chartArea.selfRaise.connect(self.raiseTab)
         ind.iClicked.connect(self.chartArea.indicatorSignal)
 
-        if cfg('experimental'):
-            ind.iToggle.connect(console.updateRuntime)
+        # as console is fully sync it does not have runtime and corresponding signals
         
         self.setCentralWidget(self.tabs)
         

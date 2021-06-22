@@ -2765,11 +2765,23 @@ class sqlConsole(QWidget):
                 #if answer == True:
 
 
+            t0 = self.t0
+            t1 = time.time()
+            
+            logText = 'Query was running for... %s' % utils.formatTime(t1-t0)
+            
+            self.t0 = None
+            self.log(logText)
+
+            self.indicator.runtime = None
+            self.updateRuntime('off')
+
             self.indicator.repaint()
             
             if self.stQueue:
                 self.log('Queue processing stopped due to this exception.', True)
                 self.stQueue.clear()
+
             return
         
         sql, result, refreshMode = self.sqlWorker.args
