@@ -1,4 +1,4 @@
-RybaFish Charts versioning approach.
+RybaFish Charts versioning.
  
 0.1, 0.2,...
     Major releases are named and numbered like this.
@@ -16,4 +16,4 @@ RybaFish Charts versioning approach.
 
 0.1 beta 1, 0.1 beta 2, etc.
     Internal beta builds have a beta+number.
-    To be published internally only, not for public use.
+    To be published internally only, not for the public use.
