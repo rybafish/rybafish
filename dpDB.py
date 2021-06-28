@@ -149,6 +149,10 @@ class dataProvider():
 
         sql_string = sql.hosts_info
 
+        if cfg('ess'):
+            #dirty but this will work
+            sql_string = sql_string.replace('m_load_history', '_sys_statistics.host_load_history')
+
         t0 = time.time()
         
         rows = db.execute_query(self.connection, sql_string, [])
@@ -307,15 +311,22 @@ class dataProvider():
             
             if len(kpis) == 0:
                 continue
-                
+            
             if host['port'] == '':
                 if kpiSrc == '-':
-                    fromTable = 'from m_load_history_host'
+                    if cfg('ess', False):
+                        fromTable = 'from _sys_statistics.host_load_history_host'
+                    else:
+                        fromTable = 'from m_load_history_host'
                 else:
                     fromTable = 'from (%s)' % kpiDescriptions.customSql[kpiSrc]
             else:
                 if kpiSrc == '-':
-                    fromTable = 'from m_load_history_service'
+                    if cfg('ess', False):
+                        fromTable = 'from _sys_statistics.host_load_history_service'
+                    else:
+                        fromTable = 'from m_load_history_service'
+
                 else:
                     fromTable = 'from (%s)' % kpiDescriptions.customSql[kpiSrc]
                                 
@@ -345,15 +356,6 @@ class dataProvider():
                     params_now = params_now[1:]
                 else:
                     params_now = params_now[2:]
-            
-            '''
-            print('sql_pref', sql_pref)
-            print('cols', cols)
-            print('fromTable', fromTable)
-            print('hfilter', hfilter)
-            print('tfilter', tfilter)
-            print('orderby', orderby)
-            '''
             
             #if gantt to be checked here
             
@@ -540,6 +542,8 @@ class dataProvider():
 
         kpis_ = [timeKey] + kpis # need a copy of kpis list (+time entry)
         
+        #print('------------>', len(rows))
+        
         try:
             '''
             for j in range(len(kpis)):
@@ -547,6 +551,11 @@ class dataProvider():
                     p rint('%s --> adjust!!!' % (kpis[j]))
                     p rint('%s --> %s' % (kpiStylesNN[type][kpis[j]]['sUnit'], kpiStylesNN[type][kpis[j]]['dUnit']))
             '''
+            
+            if len(rows) == 0:
+                for key in data:
+                    if key in kpis:
+                        data[key].clear()
         
             for row in rows:
                 if i == 0: # allocate memory

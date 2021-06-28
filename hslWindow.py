@@ -121,13 +121,15 @@ class hslWindow(QMainWindow):
         QApplication.sendEvent(clipboard, event)
         '''
         
-    def dumpLayout(self):
-    
+    def dumpLayout(self, closeTabs = True):
+
         if self.layoutDumped:
             return
             
         if self.layout is None:
             return
+
+        log('--> dumpLayout', 5)
             
         self.layoutDumped = True
     
@@ -137,13 +139,22 @@ class hslWindow(QMainWindow):
             hst = '%s:%s' % (host['host'], host['port'])
             
             if i < len(self.chartArea.widget.nkpis) and self.chartArea.widget.nkpis[i]:
-                kpis[hst] = self.chartArea.widget.nkpis[i]
+                # this a list assignement we have to copy, otherwise this
+                # will be implicitly erased in cleanup() at it is the same list
+                kpis[hst] = self.chartArea.widget.nkpis[i].copy() 
     
+        log('--> dumpLayout kpis: %s' % str(kpis), 5)
+        
+        if len(kpis) == 0:
+            log('--> no KPIs... maybe check if connected at all and if not - dont reset kpis?')
+        
         if kpis:
             self.layout['kpis'] = kpis
         else:
             if 'kpis' in self.layout.lo:
                 del self.layout.lo['kpis']
+                
+        #log('--> dumpLayout, kpis: ' + str(kpis))
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
@@ -190,9 +201,11 @@ class hslWindow(QMainWindow):
                         tabs.append([w.fileName, bkp, pos, block])
                         #tabs.append([w.fileName, bkp, pos])
                         
-                    w.close(None) # can not abort (and dont need to any more!)
+                        
+                    if closeTabs:
+                        w.close(None) # can not abort (and dont need to any more!)
 
-                    self.tabs.removeTab(i)
+                        self.tabs.removeTab(i)
 
             tabs.reverse()
                     
@@ -337,6 +350,15 @@ class hslWindow(QMainWindow):
         if ok and conf['ok']:
         
             try:
+            
+                if cfg('saveLayout', True) and len(self.chartArea.widget.hosts):
+                    log('connect dump layout')
+                    
+                    self.dumpLayout(closeTabs = False)
+                    
+                    log('done')
+
+                    self.layoutDumped = False
 
                 # need to disconnect open consoles first...
                 self.statusMessage('Disconnecing open consoles...', False)
@@ -366,25 +388,41 @@ class hslWindow(QMainWindow):
                 
                     if isinstance(w, sqlConsole.sqlConsole):
                         w.config = conf
-        
+                        
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
-                        self.chartArea.initDP(self.layout['kpis'])
+                        log('--> dumplayout, init kpis:' + str(self.layout['kpis']), 5)
+                        self.chartArea.initDP(self.layout['kpis'].copy())
+                        self.kpisTable.host = None
                     else:
+                        log('--> dumplayout, no kpis', 5)
                         self.chartArea.initDP()
-                        
+                        self.kpisTable.host = None
+                       
+
+                    '''
+                    #397, 2021-06-17
                     starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
                     starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                     
                     self.chartArea.fromEdit.setText(starttime.strftime('%Y-%m-%d %H:%M:%S'))
                     self.chartArea.toEdit.setText('')
+                    '''
                         
                         
                 else:
                     self.chartArea.initDP()
                 
+                if cfg('saveKPIs', True):
+                    if self.layout and 'kpis' in self.layout.lo:
+                        self.statusMessage('Loading saved kpis...', True)
+
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
+                    log('reload from menuConfig #1', 4)
+                    self.chartArea.reloadChart()
+                else:
+                    log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
                     
                 propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
@@ -411,7 +449,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -425,7 +463,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Error')
                 msgBox.setText('Init failed: %s \n\nSee more deteails in the log file.' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -439,7 +477,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
-                iconPath = resourcePath('ico\\favicon.ico')
+                iconPath = resourcePath('ico\\favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -523,6 +561,9 @@ class hslWindow(QMainWindow):
             
             ind.iClicked.connect(console.reportRuntime)
             
+            if cfg('experimental'):
+                ind.iToggle.connect(console.updateRuntime)
+                        
             self.statusbar.addPermanentWidget(ind)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
@@ -592,6 +633,9 @@ class hslWindow(QMainWindow):
         
         console.indicator = ind
         ind.iClicked.connect(console.reportRuntime)
+
+        if cfg('experimental'):
+            ind.iToggle.connect(console.updateRuntime)
         
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
@@ -614,6 +658,17 @@ class hslWindow(QMainWindow):
         console.indicator.status = 'idle'
         console.indicator.repaint()
             
+    
+    def menuEss(self):
+    
+        if cfg('ess', False) == False:
+            utils.cfgSet('ess', True)
+            self.essAct.setText('Switch back to m_load_history...')
+            self.statusMessage('You need to reconnect in order to have full ESS data available', False)
+        else:
+            utils.cfgSet('ess', False)
+            self.essAct.setText('Switch to ESS load history')
+            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables: only same host supported at the moment')
     
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import nameserver_history.trc...',  None, 'Import nameserver history trace (*.trc)')
@@ -651,6 +706,13 @@ class hslWindow(QMainWindow):
             self.layout = Layout(True)
             
             if self.layout['running']:
+
+                try:
+                    import pyi_splash
+                    pyi_splash.close()
+                except:
+                    pass
+
                 answer = utils.yesNoDialog('Warning', 'Another RybaFish is already running, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 #answer = utils.yesNoDialog('Warning', 'RybaFish is already running or crashed last time, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 
@@ -756,6 +818,8 @@ class hslWindow(QMainWindow):
         
         self.chartArea.selfRaise.connect(self.raiseTab)
         ind.iClicked.connect(self.chartArea.indicatorSignal)
+
+        # as console is fully sync it does not have runtime and corresponding signals
         
         self.setCentralWidget(self.tabs)
         
@@ -764,7 +828,7 @@ class hslWindow(QMainWindow):
         self.statusbar.addPermanentWidget(ind)
 
         #menu
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
 
         exitAct = QAction('&Exit', self)        
         exitAct.setShortcut('Alt+Q')
@@ -837,6 +901,13 @@ class hslWindow(QMainWindow):
         reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
 
         actionsMenu.addAction(reloadCustomKPIsAct)
+
+        if cfg('experimental'):
+            self.essAct = QAction('Switch to ESS load history', self)
+            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
+            self.essAct.triggered.connect(self.menuEss)
+
+            actionsMenu.addAction(self.essAct)
 
         # help menu part
         aboutAct = QAction(QIcon(iconPath), '&About', self)
@@ -915,6 +986,9 @@ class hslWindow(QMainWindow):
                 console.selfRaise.connect(self.raiseTab)
                 ind.iClicked.connect(console.reportRuntime)
                 
+                if cfg('experimental'):
+                    ind.iToggle.connect(console.updateRuntime)
+                
                 self.statusbar.addPermanentWidget(ind)
                 
                 self.tabs.setCurrentIndex(self.tabs.count() - 1)
@@ -946,7 +1020,8 @@ class hslWindow(QMainWindow):
                 
             else:
                 self.tabs.setCurrentIndex(0)
-        
+
+        # if the cursor points to a pair bracket, the highlighting will disappear on the next call...
         self.show()
 
         #scroll everything to stored position
@@ -956,6 +1031,7 @@ class hslWindow(QMainWindow):
             
                 if i - 1 < len(scrollPosition):
                     block = scrollPosition[i - 1]
+                    
                     w.cons.edit.verticalScrollBar().setValue(block)
                 else:
                     log('[w] scroll position list out of range, ignoring scrollback...')
@@ -1027,6 +1103,9 @@ class hslWindow(QMainWindow):
             self.statusbar.addPermanentWidget(ind)
             
             ind.iClicked.connect(console.reportRuntime)
+
+            if cfg('experimental'):
+                ind.iToggle.connect(console.updateRuntime)
             
             if cfg('developmentMode'): 
                 console.cons.setPlainText('''select 0 from dummy;
