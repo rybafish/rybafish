@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
-        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog, QMessageBox)
+        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog, QMessageBox, QInputDialog)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap, QIcon
 from PyQt5.QtGui import QTextCharFormat, QBrush, QPainter
@@ -1030,6 +1030,7 @@ class resultSet(QTableWidget):
     '''
     
     insertText = pyqtSignal(['QString'])
+    triggerAutorefresh = pyqtSignal([int])
 
     def __init__(self, conn):
     
@@ -1056,6 +1057,8 @@ class resultSet(QTableWidget):
         
         self.timer = None
         self.timerDelay = None
+        
+        self.timerSet = None        # autorefresh menu switch flag
         
         super().__init__()
         
@@ -1145,12 +1148,22 @@ class resultSet(QTableWidget):
 
         cmenu.addSeparator()
         
-        if cfg('dev'):
-            triggerTimer = cmenu.addAction('Refresh every 5 seconds')
+        refreshTimerStart = None
+        refreshTimerStop = None
+        
+        if cfg('experimental'):
+        
+            if not self.timerSet:
+                refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
+            else:
+                refreshTimerStop = cmenu.addAction('Stop autorefresh')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
         i = self.currentColumn()
+        
+        if action == None:
+            return
 
         '''
         if action == copyColumnName:
@@ -1213,27 +1226,30 @@ class resultSet(QTableWidget):
             
             QApplication.clipboard().setPixmap(pixmap)
 
-        if cfg('dev') and action == triggerTimer:
+        if cfg('experimental') and action == refreshTimerStart:
+            '''
+                triggers the auto-refresh timer
+                
+                the timer itself is to be processed by the parent SQLConsole object as it has 
+                all the relevant accesses
+                
+                the feature is blocked when there are several resultset tabs
+            '''
 
-            self.timer = QTimer(self)
-            self.timer.timeout.connect(self.refreshResultset)
-            self.timer.start(1000 * 5)
-        
-            self.log('[W] Resultset autorefresh triggered...')
+            id = QInputDialog
 
-    def refreshResultset(self):
-        '''
-            Это надо слать сигнал в SQLConsole, на уровне resultset это не разрулить
+            value, ok = id.getInt(self, 'Refresh interval', 'Input the refresh interval in seconds                          ', 10, 0, 3600, 5)
             
-            а там вызывать refresh(i)
-            
-            причём я склонен захардкодить i = 0 потому что иначе очень сложно, по контекстному меню не понять какой именно это резалтсет
-            
-            А Ещё здесь надо остановить таймер и заново его поднять потом, иначе они могут наложиться
-            
-        '''
-        log('refresh %i' % i)
-        self.log('refresh...')
+            if ok:
+                self.triggerAutorefresh.emit(value)
+                self.timerSet = True
+
+        if cfg('experimental') and action == refreshTimerStop:
+            log('disabeling the timer...')
+            self.triggerAutorefresh.emit(0)
+            self.timerSet = False
+
+
         
     def detach(self):
         if self._resultset_id is None:
@@ -1646,6 +1662,8 @@ class sqlConsole(QWidget):
         self.runtimeTimer = None
 
         # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
+        
+        self.timerAutorefresh = None
         
         super().__init__()
         self.initUI()
@@ -2092,6 +2110,42 @@ class sqlConsole(QWidget):
         else:
             self.log('re-connected')
             self.conn = conn
+
+    def autorefreshRun(self):
+        log('autorefresh...', 4)
+        self.timerAutorefresh.stop()
+
+        self.refresh(0)
+        
+        self.timerAutorefresh.start()
+    
+    def setupAutorefresh(self, interval):
+    
+        if interval == 0:
+            log('Stopping the autorefresh: %s' % self.tabname.rstrip(' *'))
+            self.log('--> Stopping the autorefresh')
+            
+            if self.timerAutorefresh is not None:
+                self.timerAutorefresh.stop()
+                self.timerAutorefresh = None
+            
+            return
+         
+        
+        if self.resultTabs.count() != 1:
+            self.log('Autorefresh only possible for single resultset output.', True)
+            return
+        
+        self.log('\n--> Scheduling autorefresh, logging will be supressed. Autorefresh will stop on manual query execution or context menu -> stop autorefresh')
+        log('Scheduling autorefresh %i (%s)' % (interval, self.tabname.rstrip(' *')))
+            
+        if self.timerAutorefresh is None:
+            self.timerAutorefresh = QTimer(self)
+            self.timerAutorefresh.timeout.connect(self.autorefreshRun)
+            self.timerAutorefresh.start(1000 * interval)
+        else:
+            log('[W] autorefresh timer is already running, ignoring the new one...', 2)
+            self.log('Autorefresh is already running? Ignoring the new one...', True)
             
     def newResult(self, conn, st):
         
@@ -2101,6 +2155,7 @@ class sqlConsole(QWidget):
         result.log = self.log
         
         result.insertText.connect(self.cons.insertTextS)
+        result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results)+1)
@@ -2345,6 +2400,10 @@ class sqlConsole(QWidget):
         if not cfg('dev') and self.config is None:
             self.log('No connection')
             return
+    
+        if self.timerAutorefresh:
+            self.log('--> Stopping the autorefresh...')
+            self.setupAutorefresh(0)
     
         if mode == 'normal':
             self.executeSelectionParse()
@@ -2874,7 +2933,9 @@ class sqlConsole(QWidget):
 
             result.populate(refreshMode)
             
-        self.log(logText)
+            
+        if not self.timerAutorefresh:
+            self.log(logText)
 
         log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
         
@@ -2933,7 +2994,8 @@ class sqlConsole(QWidget):
         txtSub = txtSub.replace('\t', ' ')
         txtSub = txtSub.replace('    ', ' ')
         
-        self.log('\nExecute: ' + txtSub + suffix)
+        if not self.timerAutorefresh:
+            self.log('\nExecute: ' + txtSub + suffix)
 
         ##########################
         ### trigger the thread ###
