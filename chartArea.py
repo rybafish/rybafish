@@ -407,7 +407,7 @@ class myWidget(QWidget):
         startHere = cmenu.addAction("Make this a FROM time")
         stopHere = cmenu.addAction("Make this a TO time")
         
-        copyTS = cmenu.addAction("Copy current timestamp")
+        copyTS = cmenu.addAction("Copy this timestamp")
 
         cmenu.addSeparator()
         copyVAPNG = cmenu.addAction("Copy screen")
