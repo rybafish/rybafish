@@ -1346,7 +1346,11 @@ class resultSet(QTableWidget):
                     
                     rowIndex.sort()
                     
-                    csv = ';'.join(self.headers) + '\n'
+                    if len(self.headers) > 1:
+                        csv = ';'.join(self.headers) + '\n'
+                    else:
+                        csv = ''
+                        
                     for r in rowIndex:
                         csv += self.csvRow(r) + '\n'
                         
