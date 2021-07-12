@@ -341,7 +341,7 @@ class console(QPlainTextEditLN):
                 return
             
         #self.modifiedLayouts[type].append([position, lo, af])
-        log('add layout: %s' % str(lo), 5)
+        #log('add layout: %s' % str(lo), 5)
         self.modifiedLayouts.append([position, lo, af])
             
     def highlight(self):
@@ -446,7 +446,7 @@ class console(QPlainTextEditLN):
         #if True or self.haveHighlighrs:
         if self.haveHighlighrs:
             # we ignore highlighted brackets here
-            log('consSelection clear highlighting', 5)
+            #log('consSelection clear highlighting', 5)
             self.clearHighlighting()
 
         #txtline = self.document().findBlockByLineNumber(cursor.blockNumber()) one of the longest annoing bugs, someday I will give it a name
@@ -795,7 +795,7 @@ class console(QPlainTextEditLN):
                 self.clearHighlighting('br')
             '''
             if self.bracketsHighlighted:
-                log('keypress clear highlighting', 5)
+                #log('keypress clear highlighting', 5)
                 self.clearHighlighting()
                 
             super().keyPressEvent(event)
@@ -804,21 +804,21 @@ class console(QPlainTextEditLN):
     def clearHighlighting(self):
         #log('modifiedLayouts count: %i' % len(self.modifiedLayouts), 5)
         #return
-        log('clearHighlighting', 5)
+        #log('clearHighlighting', 5)
         if self.bracketsHighlighted or self.haveHighlighrs and not self.lock:
             
             #for lol in self.modifiedLayouts[type]:
             
-            log('modifiedLayouts count: %i' % len(self.modifiedLayouts), 5)
+            #log('modifiedLayouts count: %i' % len(self.modifiedLayouts), 5)
             for lol in self.modifiedLayouts:
             
                 lo = lol[1]
                 af = lol[2]
 
-                log('mod: %s' % str(lo), 5)
+                #log('mod: %s' % str(lo), 5)
                 #log('lines: %s' % lo.lineCount(), 5)
                 lo.setAdditionalFormats(af)
-                log('clear went ok')
+                #log('clear went ok', 5)
                 
             #self.modifiedLayouts[type].clear()
             self.viewport().repaint()
@@ -839,7 +839,7 @@ class console(QPlainTextEditLN):
         '''
 
     def cursorPositionChangedSignal(self):
-        log('cursorPositionChangedSignal', 5)
+        #log('cursorPositionChangedSignal', 5)
     
         t0 = time.time()
     
@@ -930,7 +930,7 @@ class console(QPlainTextEditLN):
     def checkBrackets(self):
     
         if self.bracketsHighlighted:
-            log('checkBrackets clear', 5)
+            #log('checkBrackets clear', 5)
             self.clearHighlighting()
             #self.clearHighlighting('br')
             #self.clearHighlighting('w')
@@ -1734,7 +1734,7 @@ class sqlConsole(QWidget):
         if rect.width() > 11:
             # width == 10 means just cursor blinking with any (!) font size
             if self.cons.bracketsHighlighted:
-                log('updateRequestS FAKE clear highlighting', 5)
+                #log('updateRequestS FAKE clear highlighting', 5)
                 #self.cons.clearHighlighting()
 
                 self.cons.modifiedLayouts.clear()
@@ -1747,7 +1747,7 @@ class sqlConsole(QWidget):
         if not cfg('noWordHighlighting'):
             if not self.cons.lock:
                 if self.cons.haveHighlighrs:
-                    log('textChangedS, clear highlighting', 5)
+                    #log('textChangedS, clear highlighting', 5)
                     self.cons.clearHighlighting()
 
         '''
@@ -2049,7 +2049,7 @@ class sqlConsole(QWidget):
         
     def connectDB(self):
         try: 
-            log('connectDB, indicator sync', 5)
+            log('connectDB, indicator sync', 4)
             self.indicator.status = 'sync'
             self.indicator.repaint()
 
@@ -2243,7 +2243,7 @@ class sqlConsole(QWidget):
             cname = self.tabname.rstrip(' *')
             log('console keep-alive (%s)... ' % (cname), 3, False, True)
             
-            log('keepAlive, indicator sync', 5)
+            log('keepAlive, indicator sync', 4)
             self.indicator.status = 'sync'
             self.indicator.repaint()
             
@@ -3016,7 +3016,6 @@ class sqlConsole(QWidget):
         return
         
     def resultTabsKey (self, event):
-        super().keyPressEvent(event)
 
         modifiers = QApplication.keyboardModifiers()
 
