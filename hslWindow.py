@@ -121,6 +121,23 @@ class hslWindow(QMainWindow):
         QApplication.sendEvent(clipboard, event)
         '''
         
+    def formatKPIs(self):
+        '''
+            formats list of kpis for dumpLayout and ESS reconnection
+        '''
+
+        kpis = {}
+        for i in range(len(self.chartArea.widget.hosts)):
+            host = self.chartArea.widget.hosts[i]
+            hst = '%s:%s' % (host['host'], host['port'])
+            
+            if i < len(self.chartArea.widget.nkpis) and self.chartArea.widget.nkpis[i]:
+                # this a list assignement we have to copy, otherwise this
+                # will be implicitly erased in cleanup() at it is the same list
+                kpis[hst] = self.chartArea.widget.nkpis[i].copy() 
+        
+        return kpis
+        
     def dumpLayout(self, closeTabs = True):
 
         if self.layoutDumped:
@@ -133,15 +150,7 @@ class hslWindow(QMainWindow):
             
         self.layoutDumped = True
     
-        kpis = {}
-        for i in range(len(self.chartArea.widget.hosts)):
-            host = self.chartArea.widget.hosts[i]
-            hst = '%s:%s' % (host['host'], host['port'])
-            
-            if i < len(self.chartArea.widget.nkpis) and self.chartArea.widget.nkpis[i]:
-                # this a list assignement we have to copy, otherwise this
-                # will be implicitly erased in cleanup() at it is the same list
-                kpis[hst] = self.chartArea.widget.nkpis[i].copy() 
+        kpis = self.formatKPIs()
     
         log('--> dumpLayout kpis: %s' % str(kpis), 5)
         
@@ -664,11 +673,27 @@ class hslWindow(QMainWindow):
         if cfg('ess', False) == False:
             utils.cfgSet('ess', True)
             self.essAct.setText('Switch back to m_load_history...')
-            self.statusMessage('You need to reconnect in order to have full ESS data available', False)
+            #self.statusMessage('You need to reconnect in order to have full ESS data available', False)
+        
+
+            kpis = self.formatKPIs()
+        
+            self.chartArea.setStatus('sync', True)
+            self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+            self.kpisTable.host = None
+            self.chartArea.setStatus('idle', True)
+        
         else:
             utils.cfgSet('ess', False)
             self.essAct.setText('Switch to ESS load history')
-            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables: only same host supported at the moment')
+            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables, will trigger hosts re-init')
+
+            kpis = self.formatKPIs()
+        
+            self.chartArea.setStatus('sync', True)
+            self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+            self.kpisTable.host = None
+            self.chartArea.setStatus('idle', True)
     
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import nameserver_history.trc...',  None, 'Import nameserver history trace (*.trc)')

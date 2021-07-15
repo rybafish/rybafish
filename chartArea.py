@@ -764,6 +764,7 @@ class myWidget(QWidget):
             if timeKey not in data or kpi not in data:
                 # this kpi timeset is empty
                 # or data[key] is empty, alt-enabled stuff
+                
                 return
                 
             timeline = data[timeKey]
@@ -777,7 +778,8 @@ class myWidget(QWidget):
                 i+=1
 
             if i == array_size:
-                return
+                #kpi not found but we still need to check others! 2021-07-15, #386
+                continue
 
             j = i
                 
@@ -2380,13 +2382,18 @@ class chartArea(QFrame):
                             # continue - to have more details
                         
                         if t >= t_from:
-                    
+                            '''
+                            print(kpi, i)
+                            print(scales[kpi])
+                            print(data)
+                            '''
                             if scales[kpi]['max'] < data[kpi][i]:
                                 scales[kpi]['max'] = data[kpi][i]
 
                         if  t > t_to: #end of window no need to scan further
                             break
-                except Exception as e:
+
+                except ValueError as e:
                     log('error: i = %i, array_size = %i' % (i, array_size))
                     log('timeKey = %s, kpi: = %s' % (timeKey, kpi))
                     log('scales[kpi][max] = %i' % (scales[kpi]['max']))
