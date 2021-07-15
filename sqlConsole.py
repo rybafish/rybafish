@@ -1043,7 +1043,7 @@ class resultSet(QTableWidget):
     
         self._resultset_id = None    # filled manually right after execute_query
 
-        self._connection = conn
+        self._connection = None      # this one populated in sqlFinished # 2021-07-16, #377
         
         self.statement = None        # statements string (for refresh)
         
@@ -2857,6 +2857,8 @@ class sqlConsole(QWidget):
         sql, result, refreshMode = self.sqlWorker.args
         
         dbCursor = self.sqlWorker.dbCursor
+        
+        result._connection = dbCursor.connection
         
         #self.psid = self.sqlWorker.psid
         #log('psid saved: %s' % utils.hextostr(self.psid))
