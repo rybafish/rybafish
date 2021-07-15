@@ -463,9 +463,9 @@ class console(QPlainTextEditLN):
        
         cmenu = QMenu(self)
         
-        menuExec = cmenu.addAction('Execute selection\tF8')
+        menuExec = cmenu.addAction('Execute statement/selection\tF8')
         menuExecNP = cmenu.addAction('Execute without parsing')
-        menuExecLR = cmenu.addAction('Execute but leave results')
+        menuExecLR = cmenu.addAction('Execute but leave the results')
         cmenu.addSeparator()
         menuOpenFile = cmenu.addAction('Open File in this console')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
@@ -744,7 +744,14 @@ class console(QPlainTextEditLN):
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
-            self.executionTriggered.emit('normal')
+
+            
+            if modifiers & Qt.AltModifier:
+                self.executionTriggered.emit('no parsing')
+            elif modifiers & Qt.ControlModifier:
+                self.executionTriggered.emit('leave results')
+            else:
+                self.executionTriggered.emit('normal')
             
             '''
             
@@ -1264,7 +1271,7 @@ class resultSet(QTableWidget):
             return
         
         if self.detached == False and self._resultset_id is not None:
-            log('closing the resultset: %s' % result_str)
+            log('closing the resultset: %s' % (result_str))
             try:
                 db.close_result(self._connection, self._resultset_id) 
                 self.detached = True
@@ -2808,7 +2815,7 @@ class sqlConsole(QWidget):
         self.indicator.status = 'render'
         self.indicator.repaint()
         
-        log('psid to save --> %s' % utils.hextostr(self.sqlWorker.psid), 4)
+        log('(%s) psid to save --> %s' % (self.tabname.rstrip(' *'), utils.hextostr(self.sqlWorker.psid)), 4)
         
         if self.wrkException is not None:
             self.log(self.wrkException, True)

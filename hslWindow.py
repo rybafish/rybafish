@@ -850,12 +850,12 @@ class hslWindow(QMainWindow):
         importAct.setStatusTip('Import nameserver.trc')
         importAct.triggered.connect(self.menuImport)
 
-        sqlConsAct = QAction('New &SQL Console', self)
+        sqlConsAct = QAction('New &SQL Console [Experimental, MVCC!]', self)
         sqlConsAct.setShortcut('Alt+S')
         sqlConsAct.setStatusTip('Create SQL Console')
         sqlConsAct.triggered.connect(self.menuSQLConsole)
 
-        openAct = QAction('&Open file in new sql console', self)
+        openAct = QAction('&Open file in new sql console [MVCC!]', self)
         openAct.setShortcut('Ctrl+O')
         openAct.setStatusTip('Open new console with the file')
         openAct.triggered.connect(self.menuOpen)
@@ -870,11 +870,14 @@ class hslWindow(QMainWindow):
         fileMenu.addAction(configAct)
 
         fileMenu.addAction(importAct)
-        fileMenu.addAction(sqlConsAct)
-        fileMenu.addAction(openAct)
-        fileMenu.addAction(saveAct)
         
         if cfg('experimental'):
+            fileMenu.addAction(sqlConsAct)
+            fileMenu.addAction(openAct)
+            
+            fileMenu.addAction(saveAct)
+        
+        if cfg('dev'):
             fileMenu.addAction(dummyAct)
 
         fileMenu.addAction(exitAct)

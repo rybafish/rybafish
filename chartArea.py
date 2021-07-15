@@ -337,8 +337,12 @@ class myWidget(QWidget):
                             yScale = self.ceiling(int(round(max_value_n)))
                     else: 
                         if groupName in self.manual_scales:
-                            max_value = self.manual_scales[groupName]
-                            yScale = max_value_n = max_value
+                            #print('manual scale')
+                            #print(kpiStylesNN[type][kpi]['sUnit'], '-->', kpiStylesNN[type][kpi]['dUnit'])
+                            max_value = self.manual_scales[groupName] 
+                            #yScale = max_value_n = max_value # 2021-07-15, #429
+                            yScale = max_value                # 2021-07-15, #429
+                            max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value) #429
                         else:
                             max_value = groupMax[groupName]
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)

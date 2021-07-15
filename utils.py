@@ -381,7 +381,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
         try:
-            f.write(ts + s + nl)
+            f.write(ts + str(s) + nl)
         #except builtins.UnicodeEncodeError:   builtins unknown smth.
         #    f.write(ts + str(s.encode()) + nl)
 
