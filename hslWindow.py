@@ -681,6 +681,9 @@ class hslWindow(QMainWindow):
             self.chartArea.setStatus('sync', True)
             self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
             self.kpisTable.host = None
+            
+            self.statusMessage('Now reload...', True)
+            self.chartArea.reloadChart()
             self.chartArea.setStatus('idle', True)
         
         else:
@@ -693,6 +696,9 @@ class hslWindow(QMainWindow):
             self.chartArea.setStatus('sync', True)
             self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
             self.kpisTable.host = None
+            
+            self.statusMessage('Now reload...', True)
+            self.chartArea.reloadChart()
             self.chartArea.setStatus('idle', True)
     
     def menuImport(self):
