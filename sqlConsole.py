@@ -3098,6 +3098,7 @@ class sqlConsole(QWidget):
     
         self.selfRaise.emit(self)
     
+        '''
         t0 = self.t0
         t1 = time.time()
         
@@ -3105,6 +3106,8 @@ class sqlConsole(QWidget):
             self.log('Current run time: %s' % (utils.formatTime(t1-t0)))
         else:
             self.log('Nothing is running')
+            
+        '''
     
     def initUI(self):
         '''

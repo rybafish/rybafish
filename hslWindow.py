@@ -570,8 +570,7 @@ class hslWindow(QMainWindow):
             
             ind.iClicked.connect(console.reportRuntime)
             
-            if cfg('experimental'):
-                ind.iToggle.connect(console.updateRuntime)
+            ind.iToggle.connect(console.updateRuntime)
                         
             self.statusbar.addPermanentWidget(ind)
             
@@ -643,8 +642,7 @@ class hslWindow(QMainWindow):
         console.indicator = ind
         ind.iClicked.connect(console.reportRuntime)
 
-        if cfg('experimental'):
-            ind.iToggle.connect(console.updateRuntime)
+        ind.iToggle.connect(console.updateRuntime)
         
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
@@ -881,12 +879,12 @@ class hslWindow(QMainWindow):
         importAct.setStatusTip('Import nameserver.trc')
         importAct.triggered.connect(self.menuImport)
 
-        sqlConsAct = QAction('New &SQL Console [Experimental, MVCC!]', self)
+        sqlConsAct = QAction('New &SQL Console', self)
         sqlConsAct.setShortcut('Alt+S')
         sqlConsAct.setStatusTip('Create SQL Console')
         sqlConsAct.triggered.connect(self.menuSQLConsole)
 
-        openAct = QAction('&Open file in new sql console [MVCC!]', self)
+        openAct = QAction('&Open file in new sql console', self)
         openAct.setShortcut('Ctrl+O')
         openAct.setStatusTip('Open new console with the file')
         openAct.triggered.connect(self.menuOpen)
@@ -902,11 +900,10 @@ class hslWindow(QMainWindow):
 
         fileMenu.addAction(importAct)
         
-        if cfg('experimental'):
-            fileMenu.addAction(sqlConsAct)
-            fileMenu.addAction(openAct)
-            
-            fileMenu.addAction(saveAct)
+        fileMenu.addAction(sqlConsAct)
+        fileMenu.addAction(openAct)
+        
+        fileMenu.addAction(saveAct)
         
         if cfg('dev'):
             fileMenu.addAction(dummyAct)
@@ -936,12 +933,11 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
-        if cfg('experimental'):
-            self.essAct = QAction('Switch to ESS load history', self)
-            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
-            self.essAct.triggered.connect(self.menuEss)
+        self.essAct = QAction('Switch to ESS load history', self)
+        self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
+        self.essAct.triggered.connect(self.menuEss)
 
-            actionsMenu.addAction(self.essAct)
+        actionsMenu.addAction(self.essAct)
 
         # help menu part
         aboutAct = QAction(QIcon(iconPath), '&About', self)
@@ -1020,8 +1016,7 @@ class hslWindow(QMainWindow):
                 console.selfRaise.connect(self.raiseTab)
                 ind.iClicked.connect(console.reportRuntime)
                 
-                if cfg('experimental'):
-                    ind.iToggle.connect(console.updateRuntime)
+                ind.iToggle.connect(console.updateRuntime)
                 
                 self.statusbar.addPermanentWidget(ind)
                 
@@ -1138,8 +1133,7 @@ class hslWindow(QMainWindow):
             
             ind.iClicked.connect(console.reportRuntime)
 
-            if cfg('experimental'):
-                ind.iToggle.connect(console.updateRuntime)
+            ind.iToggle.connect(console.updateRuntime)
             
             if cfg('developmentMode'): 
                 console.cons.setPlainText('''select 0 from dummy;
