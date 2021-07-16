@@ -2249,6 +2249,12 @@ class sqlConsole(QWidget):
     
         if self.conn is None:
             return
+            
+        if self.sqlRunning:
+            log('SQL still running, need to skip keep-alive') # #362
+            self.timer.stop()
+            self.timer.start(1000 * self.timerkeepalive)
+            return
 
         try:
             cname = self.tabname.rstrip(' *')
