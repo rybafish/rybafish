@@ -337,8 +337,12 @@ class myWidget(QWidget):
                             yScale = self.ceiling(int(round(max_value_n)))
                     else: 
                         if groupName in self.manual_scales:
-                            max_value = self.manual_scales[groupName]
-                            yScale = max_value_n = max_value
+                            #print('manual scale')
+                            #print(kpiStylesNN[type][kpi]['sUnit'], '-->', kpiStylesNN[type][kpi]['dUnit'])
+                            max_value = self.manual_scales[groupName] 
+                            #yScale = max_value_n = max_value # 2021-07-15, #429
+                            yScale = max_value                # 2021-07-15, #429
+                            max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value) #429
                         else:
                             max_value = groupMax[groupName]
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
@@ -407,7 +411,7 @@ class myWidget(QWidget):
         startHere = cmenu.addAction("Make this a FROM time")
         stopHere = cmenu.addAction("Make this a TO time")
         
-        copyTS = cmenu.addAction("Copy current timestamp")
+        copyTS = cmenu.addAction("Copy this timestamp")
 
         cmenu.addSeparator()
         copyVAPNG = cmenu.addAction("Copy screen")
@@ -760,6 +764,7 @@ class myWidget(QWidget):
             if timeKey not in data or kpi not in data:
                 # this kpi timeset is empty
                 # or data[key] is empty, alt-enabled stuff
+                
                 return
                 
             timeline = data[timeKey]
@@ -773,7 +778,8 @@ class myWidget(QWidget):
                 i+=1
 
             if i == array_size:
-                return
+                #kpi not found but we still need to check others! 2021-07-15, #386
+                continue
 
             j = i
                 
@@ -2376,13 +2382,18 @@ class chartArea(QFrame):
                             # continue - to have more details
                         
                         if t >= t_from:
-                    
+                            '''
+                            print(kpi, i)
+                            print(scales[kpi])
+                            print(data)
+                            '''
                             if scales[kpi]['max'] < data[kpi][i]:
                                 scales[kpi]['max'] = data[kpi][i]
 
                         if  t > t_to: #end of window no need to scan further
                             break
-                except Exception as e:
+
+                except ValueError as e:
                     log('error: i = %i, array_size = %i' % (i, array_size))
                     log('timeKey = %s, kpi: = %s' % (timeKey, kpi))
                     log('scales[kpi][max] = %i' % (scales[kpi]['max']))

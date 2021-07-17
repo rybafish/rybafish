@@ -55,7 +55,7 @@ class Config(QDialog):
             cf.config['host'] = hostport
         
         cf.config['user'] = cf.userEdit.text()
-        cf.config['password'] = cf.pwdEdit.text()
+        cf.config['password'] = cf.pwdEdit.text().strip()
         
         return (cf.config, result == QDialog.Accepted)
 

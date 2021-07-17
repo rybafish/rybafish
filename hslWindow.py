@@ -121,6 +121,23 @@ class hslWindow(QMainWindow):
         QApplication.sendEvent(clipboard, event)
         '''
         
+    def formatKPIs(self):
+        '''
+            formats list of kpis for dumpLayout and ESS reconnection
+        '''
+
+        kpis = {}
+        for i in range(len(self.chartArea.widget.hosts)):
+            host = self.chartArea.widget.hosts[i]
+            hst = '%s:%s' % (host['host'], host['port'])
+            
+            if i < len(self.chartArea.widget.nkpis) and self.chartArea.widget.nkpis[i]:
+                # this a list assignement we have to copy, otherwise this
+                # will be implicitly erased in cleanup() at it is the same list
+                kpis[hst] = self.chartArea.widget.nkpis[i].copy() 
+        
+        return kpis
+        
     def dumpLayout(self, closeTabs = True):
 
         if self.layoutDumped:
@@ -133,15 +150,7 @@ class hslWindow(QMainWindow):
             
         self.layoutDumped = True
     
-        kpis = {}
-        for i in range(len(self.chartArea.widget.hosts)):
-            host = self.chartArea.widget.hosts[i]
-            hst = '%s:%s' % (host['host'], host['port'])
-            
-            if i < len(self.chartArea.widget.nkpis) and self.chartArea.widget.nkpis[i]:
-                # this a list assignement we have to copy, otherwise this
-                # will be implicitly erased in cleanup() at it is the same list
-                kpis[hst] = self.chartArea.widget.nkpis[i].copy() 
+        kpis = self.formatKPIs()
     
         log('--> dumpLayout kpis: %s' % str(kpis), 5)
         
@@ -561,8 +570,7 @@ class hslWindow(QMainWindow):
             
             ind.iClicked.connect(console.reportRuntime)
             
-            if cfg('experimental'):
-                ind.iToggle.connect(console.updateRuntime)
+            ind.iToggle.connect(console.updateRuntime)
                         
             self.statusbar.addPermanentWidget(ind)
             
@@ -634,8 +642,7 @@ class hslWindow(QMainWindow):
         console.indicator = ind
         ind.iClicked.connect(console.reportRuntime)
 
-        if cfg('experimental'):
-            ind.iToggle.connect(console.updateRuntime)
+        ind.iToggle.connect(console.updateRuntime)
         
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
@@ -664,11 +671,33 @@ class hslWindow(QMainWindow):
         if cfg('ess', False) == False:
             utils.cfgSet('ess', True)
             self.essAct.setText('Switch back to m_load_history...')
-            self.statusMessage('You need to reconnect in order to have full ESS data available', False)
+            #self.statusMessage('You need to reconnect in order to have full ESS data available', False)
+        
+
+            kpis = self.formatKPIs()
+        
+            self.chartArea.setStatus('sync', True)
+            self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+            self.kpisTable.host = None
+            
+            self.statusMessage('Now reload...', True)
+            self.chartArea.reloadChart()
+            self.chartArea.setStatus('idle', True)
+        
         else:
             utils.cfgSet('ess', False)
             self.essAct.setText('Switch to ESS load history')
-            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables: only same host supported at the moment')
+            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables, will trigger hosts re-init')
+
+            kpis = self.formatKPIs()
+        
+            self.chartArea.setStatus('sync', True)
+            self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+            self.kpisTable.host = None
+            
+            self.statusMessage('Now reload...', True)
+            self.chartArea.reloadChart()
+            self.chartArea.setStatus('idle', True)
     
     def menuImport(self):
         fname = QFileDialog.getOpenFileNames(self, 'Import nameserver_history.trc...',  None, 'Import nameserver history trace (*.trc)')
@@ -870,11 +899,13 @@ class hslWindow(QMainWindow):
         fileMenu.addAction(configAct)
 
         fileMenu.addAction(importAct)
+        
         fileMenu.addAction(sqlConsAct)
         fileMenu.addAction(openAct)
+        
         fileMenu.addAction(saveAct)
         
-        if cfg('experimental'):
+        if cfg('dev'):
             fileMenu.addAction(dummyAct)
 
         fileMenu.addAction(exitAct)
@@ -902,12 +933,11 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
-        if cfg('experimental'):
-            self.essAct = QAction('Switch to ESS load history', self)
-            self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
-            self.essAct.triggered.connect(self.menuEss)
+        self.essAct = QAction('Switch to ESS load history', self)
+        self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
+        self.essAct.triggered.connect(self.menuEss)
 
-            actionsMenu.addAction(self.essAct)
+        actionsMenu.addAction(self.essAct)
 
         # help menu part
         aboutAct = QAction(QIcon(iconPath), '&About', self)
@@ -986,8 +1016,7 @@ class hslWindow(QMainWindow):
                 console.selfRaise.connect(self.raiseTab)
                 ind.iClicked.connect(console.reportRuntime)
                 
-                if cfg('experimental'):
-                    ind.iToggle.connect(console.updateRuntime)
+                ind.iToggle.connect(console.updateRuntime)
                 
                 self.statusbar.addPermanentWidget(ind)
                 
@@ -1104,8 +1133,7 @@ class hslWindow(QMainWindow):
             
             ind.iClicked.connect(console.reportRuntime)
 
-            if cfg('experimental'):
-                ind.iToggle.connect(console.updateRuntime)
+            ind.iToggle.connect(console.updateRuntime)
             
             if cfg('developmentMode'): 
                 console.cons.setPlainText('''select 0 from dummy;
