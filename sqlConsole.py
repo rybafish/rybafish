@@ -1268,6 +1268,7 @@ class resultSet(QTableWidget):
         result_str = utils.hextostr(self._resultset_id)
         
         if self._connection is None:
+            log('[!] resultset connection is None!')
             return
         
         if self.detached == False and self._resultset_id is not None:
@@ -1491,7 +1492,7 @@ class resultSet(QTableWidget):
                             
                     item = QTableWidgetItem(val)
                     
-                    if cfg('highlightLOBs'):
+                    if cfg('highlightLOBs', True):
                         item.setBackground(QBrush(QColor('#f4f4f4')))
                     
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
@@ -2033,10 +2034,14 @@ class sqlConsole(QWidget):
     def disconnectDB(self):
 
         try: 
+        
+            self.stopResults()
+        
             if self.conn is not None:
                 db.close_connection(self.conn)
                 
                 self.stopKeepAlive()
+                
                 self.conn = None
                 self.connection_id = None
                 self.log('\nDisconnected')
@@ -2124,6 +2129,7 @@ class sqlConsole(QWidget):
 
     def autorefreshRun(self):
         log('autorefresh...', 4)
+        
         self.timerAutorefresh.stop()
 
         self.refresh(0)
@@ -2163,6 +2169,8 @@ class sqlConsole(QWidget):
         result = resultSet(conn)
         result.statement = st
         
+        result._connection = conn
+        
         result.log = self.log
         
         result.insertText.connect(self.cons.insertTextS)
@@ -2180,10 +2188,38 @@ class sqlConsole(QWidget):
         
         return result
         
+    def stopResults(self):
+    
+        log('Stopping all the results, %s...' % (self.tabname.rstrip(' *')), 4)
+        
+        for result in self.results:
+
+            # stop autorefresh if any
+            if self.timerAutorefresh is not None:
+                log('Stopping autorefresh as it was enabled')
+                self.timerAutorefresh.stop()
+                self.timerAutorefresh = None
+
+            if result.LOBs and not result.detached:
+                if result.detachTimer is not None:
+                    log('Stopping the detach timer as we are disconnecting...')
+                    result.detachTimer.stop()
+                    result.detachTimer = None
+                    
+                result.detach()
+
+            if self.conn is not None:
+                try:
+                    db.drop_statement(self.conn, result.psid)
+                except Exception as e:
+                    log('[E] exeption during console close/drop statement: %s' % str(e), 2)
+    
     def closeResults(self):
         '''
             closes all results tabs, detaches resultsets if any LOBs
         '''
+        
+        self.stopResults()
         
         for i in range(len(self.results) - 1, -1, -1):
             
@@ -2201,6 +2237,9 @@ class sqlConsole(QWidget):
             del(result.rows)
             
             #same code in refresh()
+            
+            '''
+            # from here....
             if result.LOBs and not result.detached:
                 if result.detachTimer is not None:
                     log('stopping the detach timer in advance...')
@@ -2208,13 +2247,16 @@ class sqlConsole(QWidget):
                     result.detachTimer = None
                     
                 result.detach()
-
+                
             if self.conn is not None:
                 try:
                     db.drop_statement(self.conn, result.psid)
                 except Exception as e:
                     log('[E] exeption during console close/drop statement: %s' % str(e), 2)
 
+            # to here
+            # can be removed as duplicated in stopResults
+            '''
             
             #result.destroy()
             #result.deleteLater()
@@ -3040,6 +3082,7 @@ class sqlConsole(QWidget):
 
         if not ((modifiers & Qt.ControlModifier) or (modifiers & Qt.AltModifier)):
             if event.key() == Qt.Key_F8 or event.key() == Qt.Key_F9 or event.key() == Qt.Key_F5:
+            
                 i = self.resultTabs.currentIndex()
                 log('refresh %i' % i)
                 self.refresh(i) # we refresh by index here...
