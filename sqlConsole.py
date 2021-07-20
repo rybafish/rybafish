@@ -2807,6 +2807,8 @@ class sqlConsole(QWidget):
         
         log('Connection Lost...')
         
+        self.stopResults()
+        
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Connection lost')
         msgBox.setText('Connection failed, reconnect?')

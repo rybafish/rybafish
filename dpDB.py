@@ -554,7 +554,7 @@ class dataProvider():
             
             if len(rows) == 0:
                 for key in data:
-                    if key in kpis:
+                    if key in kpis_:
                         data[key].clear()
         
             for row in rows:
