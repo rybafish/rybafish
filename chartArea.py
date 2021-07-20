@@ -2361,6 +2361,8 @@ class chartArea(QFrame):
                 # array_size = len(self.widget.ndata[h][timeKey]) # 2020-03-11
                 array_size = len(data[timeKey])
                 
+                #print(data[timeKey][0], data[timeKey][array_size-1])
+                
                 if array_size == 0:
                     continue
                 
@@ -2369,13 +2371,13 @@ class chartArea(QFrame):
                 scales[timeKey] = {'min': data[timeKey][0], 'max': data[timeKey][array_size-1]}
 
                 anti_crash_len = len(data[kpi])
-
+                
                 try:
                     for i in range(0, array_size):
                         t = data[timeKey][i]
                         
                         if i >= anti_crash_len:
-                            log('[!] I am seriously considering crash here, my anti_crash_len=%i, i = %i! host %i, kpi = %s, timeKey = %s' % (anti_crash_len, i, h, kpi, timeKey))
+                            log('[!] I am seriously considering crash here, my anti_crash_len=%i, array_size=%i, i = %i! host %i, kpi = %s, timeKey = %s' % (anti_crash_len, array_size, i, h, kpi, timeKey))
                             log('[!] host: %s' % (self.widget.hosts[h]))
                             
                             log('[!] len(kpi), len(time)', len(data[kpi]), len(data[timeKey]))
