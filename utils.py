@@ -390,6 +390,17 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         
         f.close()
         
+def normalize_header(header):
+    if header.isupper() and header[0].isalpha():
+        if cfg('lowercase-columns', False):
+            h = header.lower()
+        else:
+            h = header
+    else:
+        h = '"%s"' % (header)
+        
+    return h
+        
 def securePath(filename, backslash = False):
 
     if filename is None:

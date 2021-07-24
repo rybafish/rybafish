@@ -171,6 +171,9 @@ def execute_query(connection, sql_string, params):
     # prepare the statement...
 
     log('[SQL]: %s' % sql_string, 5)
+    
+    if len(params) > 0:
+        log('[PRMS]: %s' % str(params), 5)
 
     try:
         cursor = connection.cursor()

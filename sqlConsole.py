@@ -23,10 +23,12 @@ from QPlainTextEditLN import QPlainTextEditLN
 from utils import cfg
 from utils import dbException, log
 from utils import resourcePath
+from utils import normalize_header
 
 import re
 
 import lobDialog, searchDialog
+from autocompleteDialog import autocompleteDialog 
 
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
@@ -238,6 +240,8 @@ class console(QPlainTextEditLN):
     connectSignal = pyqtSignal()
     disconnectSignal = pyqtSignal()
     abortSignal = pyqtSignal()
+    
+    autocompleteSignal = pyqtSignal()
     
     def insertTextS(self, str):
         cursor = self.textCursor()
@@ -792,9 +796,11 @@ class console(QPlainTextEditLN):
                 search.findSignal.connect(self.findString)
                 
                 search.exec_()
-    
-        elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
-            #have to clear each time in case of input right behind the bracket
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
+            self.autocompleteSignal.emit()
+        else:
+            #have to clear each time in case of input right behind the braket
+            #elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
             '''
             if self.haveHighlighrs:
                 self.clearHighlighting('br')
@@ -1112,17 +1118,6 @@ class resultSet(QTableWidget):
         #self.setStyleSheet('QTableWidget::item:selected {padding: 2px; border: 1px; background-color: #08D}')
         
     def contextMenuEvent(self, event):
-        def normalize_header(header):
-            if header.isupper() and header[0].isalpha():
-                if cfg('lowercase-columns', False):
-                    h = header.lower()
-                else:
-                    h = header
-            else:
-                h = '"%s"' % (header)
-                
-            return h
-            
         def prepareColumns():
             headers = []
             headers_norm = []
@@ -1624,6 +1619,7 @@ class logArea(QPlainTextEdit):
 class sqlConsole(QWidget):
 
     nameChanged = pyqtSignal(['QString'])
+    statusMessage = pyqtSignal(['QString', bool])
     selfRaise = pyqtSignal(object)
 
     def __init__(self, window, config, tabname = None):
@@ -1703,6 +1699,7 @@ class sqlConsole(QWidget):
         self.cons.connectSignal.connect(self.connectDB)
         self.cons.disconnectSignal.connect(self.disconnectDB)
         self.cons.abortSignal.connect(self.cancelSession)
+        self.cons.autocompleteSignal.connect(self.autocompleteHint)
 
         if config is None:
             return
@@ -2028,6 +2025,106 @@ class sqlConsole(QWidget):
         
         return True
             
+    def autocompleteHint(self):
+            
+            if self.conn is None:
+                self.log('The console is not connected to the DB', True)
+                return
+            
+            cursor = self.cons.textCursor()
+            pos = cursor.position()
+            linePos = cursor.positionInBlock();
+            lineFrom = self.cons.document().findBlock(pos)
+            
+            line = lineFrom.text()
+
+            print(line, linePos)
+            
+            j = i = 0
+            # check for the space
+            for i in range(linePos-1, 0, -1):
+                if line[i] == ' ':
+                    break
+            else:
+                #start of the line reached
+                i = -1
+                
+            # check for the dot
+            for j in range(linePos-1, i+1, -1):
+                if line[j] == '.':
+                    break
+            else:
+                j = -1
+                
+            if j > i:
+                schema = line[i+1:j]
+                
+                if schema.islower() and schema[0] != '"' and schema[-1] != '"':
+                    schema = schema.upper()
+                    
+                term = line[j+1:linePos].lower() + '%'
+                
+            else:
+                schema = 'PUBLIC'
+                term = line[i+1:linePos].lower() + '%'
+                
+            print('i, j', i, j)
+            print('-------->', schema)
+                    
+            if linePos - i <= 2:
+                #string is to short for autocomplete search
+                return
+                 
+            if j == -1:
+                stPos = lineFrom.position() + i + 1
+            else:
+                stPos = lineFrom.position() + j + 1
+
+            endPos = lineFrom.position() + linePos
+
+            log('get autocomplete input (%s)... ' % (term), 3)
+            
+            if j != -1:
+                self.statusMessage.emit('Autocomplete request: %s.%s...' % (schema, term), False)
+            else:
+                self.statusMessage.emit('Autocomplete request: %s...' % (term), False)
+            
+            self.indicator.status = 'sync'
+            self.indicator.repaint()
+            
+            t0 = time.time()
+            
+            rows = db.execute_query(self.conn, 'select distinct object_name from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
+            t1 = time.time()
+            
+            time.sleep(0.5)
+
+            self.statusMessage.emit('', False)
+            self.indicator.status = 'idle'
+            self.indicator.repaint()
+            
+            n = len(rows)
+            
+            log('ok, %i rows: %s ms' % (n, str(round(t1-t0, 3))), 3, True)
+            
+            if n == 0:
+                return
+                
+                
+            lines = []
+            for r in rows:
+                lines.append(r[0])
+                
+            line, ok = autocompleteDialog.getLine(self, lines)
+
+            if ok:
+            
+                cursor.clearSelection()
+                cursor.setPosition(stPos, QTextCursor.MoveAnchor)
+                cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+            
+                cursor.insertText(normalize_header(line))
+                
     def cancelSession(self):
         self.log("\nNOTE: the SQL needs to be executed manually from the other SQL console:\nalter system cancel session '%s'" % (str(self.connection_id)))
         
