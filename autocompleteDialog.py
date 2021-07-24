@@ -35,12 +35,13 @@ class autocompleteDialog(QDialog):
     def initUI(self):
 
         #form = QFormLayout()
-        form = QGridLayout()
+        #form = QGridLayout()
+        #form = QVBoxLayout()
         
         iconPath = resourcePath('ico\\favicon.ico')
         
         self.linesList = QListWidget()
-        form.addWidget(self.linesList, 1, 1)
+        #form.addWidget(self.linesList)
         
         for l in self.lines:
             self.linesList.addItem(l)
@@ -56,10 +57,10 @@ class autocompleteDialog(QDialog):
         self.buttons.rejected.connect(self.reject)
 
         vbox = QVBoxLayout()
-        #vbox.addWidget(checkButton)
-        vbox.addLayout(form)
-        vbox.addStretch(1)
-        # vbox.addLayout(hbox)
+        
+        vbox.addWidget(self.linesList)
+
+        #vbox.addStretch(1)
         
         vbox.addWidget(self.buttons)
         

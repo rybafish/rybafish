@@ -517,6 +517,7 @@ class hslWindow(QMainWindow):
             self.tabs.addTab(console, console.tabname)
             
             console.selfRaise.connect(self.raiseTab)
+            console.statusMessage.connect(self.statusMessage)
             
             ind = indicator()
             console.indicator = ind
@@ -598,6 +599,7 @@ class hslWindow(QMainWindow):
         self.tabs.addTab(console, tname)
         
         console.selfRaise.connect(self.raiseTab)
+        console.statusMessage.connect(self.statusMessage)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -913,6 +915,8 @@ class hslWindow(QMainWindow):
                 console.indicator = ind
                 
                 console.selfRaise.connect(self.raiseTab)
+                console.statusMessage.connect(self.statusMessage)
+                
                 ind.iClicked.connect(console.reportRuntime)
                 
                 self.statusbar.addPermanentWidget(ind)
@@ -1016,6 +1020,7 @@ class hslWindow(QMainWindow):
             self.tabs.addTab(console, tname)
             
             console.selfRaise.connect(self.raiseTab)
+            console.statusMessage.connect(self.statusMessage)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 

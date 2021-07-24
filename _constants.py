@@ -1,4 +1,4 @@
 # getarated automaticaly based on myryba.spec
 
-build_date = "2021-04-27 22:31:26"
-version = "0.71 beta 1"
+build_date = "2021-07-24 20:02:27"
+version = "0.8 Plotva"

@@ -1540,6 +1540,7 @@ class logArea(QPlainTextEdit):
 class sqlConsole(QWidget):
 
     nameChanged = pyqtSignal(['QString'])
+    statusMessage = pyqtSignal(['QString', bool])
     selfRaise = pyqtSignal(object)
 
     def __init__(self, window, config, tabname = None):
@@ -1902,11 +1903,9 @@ class sqlConsole(QWidget):
         return True
             
     def autocompleteHint(self):
-            print('ctrl+space')
-            
             
             if self.conn is None:
-                self.log('Connect to the db first...', True)
+                self.log('The console is not connected to the DB', True)
                 return
             
             cursor = self.cons.textCursor()
@@ -1918,36 +1917,66 @@ class sqlConsole(QWidget):
 
             print(line, linePos)
             
-            i = 0
+            j = i = 0
+            # check for the space
             for i in range(linePos-1, 0, -1):
                 if line[i] == ' ':
                     break
             else:
                 #start of the line reached
                 i = -1
+                
+            # check for the dot
+            for j in range(linePos-1, i+1, -1):
+                if line[j] == '.':
+                    break
+            else:
+                j = -1
+                
+            if j > i:
+                schema = line[i+1:j]
+                
+                if schema.islower() and schema[0] != '"' and schema[-1] != '"':
+                    schema = schema.upper()
+                    
+                term = line[j+1:linePos].lower() + '%'
+                
+            else:
+                schema = 'PUBLIC'
+                term = line[i+1:linePos].lower() + '%'
+                
+            print('i, j', i, j)
+            print('-------->', schema)
                     
             if linePos - i <= 2:
                 #string is to short for autocomplete search
                 return
-                    
-            term = line[i+1:linePos].lower() + '%'
-            
-            stPos = lineFrom.position() + i + 1
+                 
+            if j == -1:
+                stPos = lineFrom.position() + i + 1
+            else:
+                stPos = lineFrom.position() + j + 1
+
             endPos = lineFrom.position() + linePos
 
             log('get autocomplete input (%s)... ' % (term), 3)
+            
+            if j != -1:
+                self.statusMessage.emit('Autocomplete request: %s.%s...' % (schema, term), False)
+            else:
+                self.statusMessage.emit('Autocomplete request: %s...' % (term), False)
             
             self.indicator.status = 'sync'
             self.indicator.repaint()
             
             t0 = time.time()
             
-            schema = 'PUBLIC'
             rows = db.execute_query(self.conn, 'select distinct object_name from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
             t1 = time.time()
             
             time.sleep(0.5)
 
+            self.statusMessage.emit('', False)
             self.indicator.status = 'idle'
             self.indicator.repaint()
             
