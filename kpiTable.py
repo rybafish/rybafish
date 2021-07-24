@@ -147,6 +147,7 @@ class kpiTable(QTableWidget):
             log('exception, not an integer value: %s' % (item.text()))
             return
         
+        #log('kpiScales: %s' % (str(self.kpiScales[self.host])), 5)
         self.setScale.emit(self.host, self.kpiNames[item.row()], newScale)
         
         #self.setFont(QFont('SansSerif', 8, QFont.Bold))
@@ -320,7 +321,7 @@ class kpiTable(QTableWidget):
         log('kpiTable: updateScales() host: %i' % (self.host), 4)
         
         self.silentMode = True
-        
+   
         log('kpiScales: %s' % (str(self.kpiScales[self.host])), 5)
         kpis = len(self.kpiScales[self.host])
         

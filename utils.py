@@ -82,7 +82,7 @@ class Layout():
     def dump(self):
         try: 
             f = open('layout.yaml', 'w')
-            dump(self.lo, f)
+            dump(self.lo, f, default_flow_style=None)
             f.close()
         except:
             log('layout dump issue')
@@ -169,6 +169,23 @@ def numberToStrCSV(num, grp = True):
     
     return s
 
+def formatTimeShort(t):
+    (ti, ms) = divmod(t, 1)
+    
+    if ti < 60:
+        
+        s = str(round(t)) + ' sec'
+        
+    elif ti < 3600:
+        format = '%M:%S'
+            
+        s = time.strftime(format, time.gmtime(ti))
+    else:
+        format = '%H:%M:%S'
+        s = time.strftime(format, time.gmtime(ti))
+    
+    return s
+
 def formatTime(t):
     
     (ti, ms) = divmod(t, 1)
@@ -187,7 +204,9 @@ def formatTime(t):
         
     elif ti < 3600:
         format = '%M:%S'
+
         msStr = '.%s' % ms
+            
         s = time.strftime(format, time.gmtime(ti)) + msStr
     else:
         format = '%H:%M:%S'
@@ -212,7 +231,7 @@ def yesNoDialog(title, message, cancel = False, ignore = False):
         
     msgBox.setStandardButtons(buttons)
     msgBox.setDefaultButton(QMessageBox.Yes)
-    iconPath = resourcePath('ico\\favicon.ico')
+    iconPath = resourcePath('ico\\favicon.png')
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)
     
@@ -237,7 +256,7 @@ def msgDialog(title, message):
     buttons = QMessageBox.Ok
         
     msgBox.setStandardButtons(buttons)
-    iconPath = resourcePath('ico\\favicon.ico')
+    iconPath = resourcePath('ico\\favicon.png')
     
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)
@@ -251,6 +270,9 @@ def GB(bytes, scale = 'GB'):
     '''
         returns same number but in GB (/=1023^3)
     '''
+    
+    if bytes is None:
+        return None
     
     if scale == 'MB':
         mult = 1024*1024
@@ -320,6 +342,11 @@ def loadConfig():
         
     return True
     
+def cfgSet(param, value):
+    global config
+
+    config[param] = value
+
 def cfg(param, default = None):
 
     global config
@@ -354,7 +381,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
         try:
-            f.write(ts + s + nl)
+            f.write(ts + str(s) + nl)
         #except builtins.UnicodeEncodeError:   builtins unknown smth.
         #    f.write(ts + str(s.encode()) + nl)
 

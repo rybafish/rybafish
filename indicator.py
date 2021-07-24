@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QWidget, QToolTip
 
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen
 
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize, Qt, QPoint
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -19,13 +19,33 @@ class indicator(QWidget):
 
 
     iClicked = pyqtSignal()
+    iHover = pyqtSignal()
+    
+    iToggle = pyqtSignal(['QString'])
     
     def __init__(self, parent = None):
         self.active = False
         self.status = 'idle'
+        
+        self.runtime = None
         super().__init__(parent)
         
         self.setMinimumSize(QSize(15, 15))
+        
+        #self.setMouseTracking(True)
+        
+    def leaveEvent(self, event):
+        self.iToggle.emit('off')
+    
+    def enterEvent(self, event):
+        self.iToggle.emit('on')
+        
+        
+    def updateRuntime(self):
+        if self.runtime is not None:
+            QToolTip.showText(self.mapToGlobal(QPoint(5, 5)), str(self.runtime), self)
+        else:
+            QToolTip.showText(self.mapToGlobal(QPoint(5, 5)), None, self)
 
     def mousePressEvent(self, event):
         self.iClicked.emit()

@@ -79,16 +79,22 @@ class ExceptionHandler(QtCore.QObject):
         msgBox.setText('Unhandled exception occured. Check the log file for details.')
         msgBox.setIcon(QMessageBox.Critical)
         msgBox.setDetailedText(details)
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.exec_()
         
         sys.exit(0)
 
 if __name__ == '__main__':
-    
+
     global ryba
-    
+
+    try:
+        import pyi_splash
+        pyi_splash.update_text('Starting...')
+    except:
+        pass
+
     exceptionHandler = ExceptionHandler()
     #sys._excepthook = sys.excepthook
     sys.excepthook = exceptionHandler.handler
@@ -102,6 +108,11 @@ if __name__ == '__main__':
         ok = utils.loadConfig()
         
         if not ok:
+            try:
+                import pyi_splash
+                pyi_splash.close()
+            except:
+                pass
             loadConfig = utils.yesNoDialog('Config error', 'Cannot load/parse config.yaml\nTry again?')
         else:
             loadConfig = False
@@ -112,6 +123,13 @@ if __name__ == '__main__':
     #ex = hslWindow.hslWindow()
     ryba = hslWindow.hslWindow()
     #ex = hslWindow.hslWindow()
+
+    try:
+        import pyi_splash
+        pyi_splash.close()
+    except:
+        pass
+
     
     loadConfig = True
     

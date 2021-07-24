@@ -202,7 +202,7 @@ def execute_query(connection, sql_string, params):
         #close_result(connection, cursor._resultset_id)
 
     except pyhdb.exceptions.DatabaseError as e:
-        log('[!]: sql execution issue %s\n' % e)
+        log('[!] sql execution issue: %s\n' % e)
         raise dbException(str(e))
     except Exception as e:
         log('[E] unexpected error: %s' % str(e))
@@ -350,7 +350,7 @@ def execute_query_desc(connection, sql_string, params, resultSize):
             # cursor.close() does nothing anyway...
 
     except pyhdb.exceptions.DatabaseError as e:
-        log('[!]: sql execution issue %s\n' % e)
+        log('[!] sql execution issue: %s\n' % e)
         raise dbException(str(e))
     except Exception as e:
         log('[E] unexpected DB error: %s' % str(e))

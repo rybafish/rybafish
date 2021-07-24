@@ -5,6 +5,8 @@ from PyQt5.QtGui import QFont, QIcon, QPainter, QBrush, QColor, QPen, QFontMetri
 
 from PyQt5.QtCore import Qt, QSize
 
+from utils import cfg
+
 class QPlainTextEditLN(QWidget):
     class PlainTextEdit(QPlainTextEdit):
         def __init__(self, parent = None):
@@ -259,6 +261,11 @@ class QPlainTextEditLN(QWidget):
             self.edit = edit
 
             self.font = self.edit.font()
+            
+            fontSize = cfg('console-fontSize', 10)
+            
+            self.font.setPointSize(fontSize)
+            
             self.fm = QFontMetrics(self.font)
             
             self.fontHeight = self.fm.height()
@@ -354,6 +361,7 @@ class QPlainTextEditLN(QWidget):
 
         self.document = self.edit.document
         self.textChanged = self.edit.textChanged
+        self.updateRequest = self.edit.updateRequest
         self.setPlainText = self.edit.setPlainText
 
         self.textCursor = self.edit.textCursor

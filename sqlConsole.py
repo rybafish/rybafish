@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
-        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog, QMessageBox)
+        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog, QMessageBox, QInputDialog)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap, QIcon
 from PyQt5.QtGui import QTextCharFormat, QBrush, QPainter
@@ -11,6 +11,9 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtCore import QObject, QThread
 
 import time, sys
+
+#import shiboken2
+#import sip
 
 import db
 
@@ -251,12 +254,16 @@ class console(QPlainTextEditLN):
     def __init__(self, parent):
         self.lock = False
         
-        self.haveHighlighrs = False
-        self.highlightedWords = []
-        
+        self.haveHighlighrs = False #have words highlighted
         self.bracketsHighlighted = False
+
+        self.highlightedWords = [] # list of (start, stop) tuples of highlighed words
         
-        self.modifiedLayouts = []
+        
+        self.modifiedLayouts = [] # backup of the original layouts: tuples (position, layout, additionalFormats)
+                                  # position - block position (start of the paragraph)
+                                  # layout - hz
+                                  # af - list of modifications as a result of syntax highlighting, for example
         
         '''
         self.modifiedLayouts = {}
@@ -338,9 +345,13 @@ class console(QPlainTextEditLN):
                 return
             
         #self.modifiedLayouts[type].append([position, lo, af])
+        #log('add layout: %s' % str(lo), 5)
         self.modifiedLayouts.append([position, lo, af])
             
     def highlight(self):
+        '''
+            highlights word in document based on self.highlightedWords[]
+        '''
     
         blkStInit = None
         blkStCurrent = None
@@ -436,12 +447,10 @@ class console(QPlainTextEditLN):
         cursor = self.textCursor()
         selected = cursor.selectedText()
 
-        '''
-        if self.bracketsHighlighted:
-            self.clearHighlighting() # why would we care with selections...
-        '''
-            
+        #if True or self.haveHighlighrs:
         if self.haveHighlighrs:
+            # we ignore highlighted brackets here
+            #log('consSelection clear highlighting', 5)
             self.clearHighlighting()
 
         #txtline = self.document().findBlockByLineNumber(cursor.blockNumber()) one of the longest annoing bugs, someday I will give it a name
@@ -458,9 +467,9 @@ class console(QPlainTextEditLN):
        
         cmenu = QMenu(self)
         
-        menuExec = cmenu.addAction('Execute selection\tF8')
+        menuExec = cmenu.addAction('Execute statement/selection\tF8')
         menuExecNP = cmenu.addAction('Execute without parsing')
-        menuExecLR = cmenu.addAction('Execute but leave results')
+        menuExecLR = cmenu.addAction('Execute but leave the results')
         cmenu.addSeparator()
         menuOpenFile = cmenu.addAction('Open File in this console')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
@@ -739,7 +748,14 @@ class console(QPlainTextEditLN):
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
-            self.executionTriggered.emit('normal')
+
+            
+            if modifiers & Qt.AltModifier:
+                self.executionTriggered.emit('no parsing')
+            elif modifiers & Qt.ControlModifier:
+                self.executionTriggered.emit('leave results')
+            else:
+                self.executionTriggered.emit('normal')
             
             '''
             
@@ -780,11 +796,11 @@ class console(QPlainTextEditLN):
                 search.findSignal.connect(self.findString)
                 
                 search.exec_()
-
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
             self.autocompleteSignal.emit()
         else:
             #have to clear each time in case of input right behind the braket
+            #elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
             '''
             if self.haveHighlighrs:
                 self.clearHighlighting('br')
@@ -792,44 +808,55 @@ class console(QPlainTextEditLN):
                 self.clearHighlighting('br')
             '''
             if self.bracketsHighlighted:
+                #log('keypress clear highlighting', 5)
                 self.clearHighlighting()
                 
             super().keyPressEvent(event)
 
     #def clearHighlighting(self, type):
     def clearHighlighting(self):
-
-        if self.bracketsHighlighted or self.haveHighlighrs:
+        #log('modifiedLayouts count: %i' % len(self.modifiedLayouts), 5)
+        #return
+        #log('clearHighlighting', 5)
+        if self.bracketsHighlighted or self.haveHighlighrs and not self.lock:
             
             #for lol in self.modifiedLayouts[type]:
+            
+            #log('modifiedLayouts count: %i' % len(self.modifiedLayouts), 5)
             for lol in self.modifiedLayouts:
             
                 lo = lol[1]
                 af = lol[2]
-                    
+
+                #log('mod: %s' % str(lo), 5)
+                #log('lines: %s' % lo.lineCount(), 5)
                 lo.setAdditionalFormats(af)
+                #log('clear went ok', 5)
                 
             #self.modifiedLayouts[type].clear()
-            self.modifiedLayouts.clear()
-            
             self.viewport().repaint()
+
+        self.modifiedLayouts.clear()
             
+        self.bracketsHighlighted = False # <<<< this is not true in case of #382
+                                         # <<<< we came here just to clear words
+                                         # somehow need to manage this explicitly
+                                         
+        self.haveHighlighrs = False
+
+        '''
+        if type == 'br':
             self.bracketsHighlighted = False
+        elif type == 'br':
             self.haveHighlighrs = False
-            '''
-            if type == 'br':
-                self.bracketsHighlighted = False
-            elif type == 'br':
-                self.haveHighlighrs = False
-            '''
+        '''
 
     def cursorPositionChangedSignal(self):
+        #log('cursorPositionChangedSignal', 5)
     
         t0 = time.time()
     
         if self.manualSelection:
-            #print('need to clear', self.manualSelectionPos)
-            
             start = self.manualSelectionPos[0]
             stop = self.manualSelectionPos[1]
             
@@ -916,6 +943,7 @@ class console(QPlainTextEditLN):
     def checkBrackets(self):
     
         if self.bracketsHighlighted:
+            #log('checkBrackets clear', 5)
             self.clearHighlighting()
             #self.clearHighlighting('br')
             #self.clearHighlighting('w')
@@ -927,26 +955,26 @@ class console(QPlainTextEditLN):
 
         textSize = len(text)
         
-        def scanPairBraket(pos, shift):
+        def scanPairBracket(pos, shift):
         
-            braket = text[pos]
+            bracket = text[pos]
         
             depth = 0
         
-            if braket == ')':
+            if bracket == ')':
                 pair = '('
-            elif braket == '(':
+            elif bracket == '(':
                 pair = ')'
-            elif braket == '[':
+            elif bracket == '[':
                 pair = ']'
-            elif braket == ']':
+            elif bracket == ']':
                 pair = '['
             else:
                 return -1
             
             i = pos + shift
             
-            if braket in (')', ']'):
+            if bracket in (')', ']'):
                 # skan forward
                 stop = 0
                 step = -1
@@ -959,7 +987,7 @@ class console(QPlainTextEditLN):
                 i += step
                 ch = text[i]
                 
-                if ch == braket:
+                if ch == bracket:
                     depth += 1
                     continue
                 
@@ -995,11 +1023,11 @@ class console(QPlainTextEditLN):
                     shift = 0
                 else:
                     shift = 0
-                pb = scanPairBraket(bPos, shift)
+                pb = scanPairBracket(bPos, shift)
             else:
                 bPos = pos
                 shift = 0
-                pb = scanPairBraket(bPos, shift)
+                pb = scanPairBracket(bPos, shift)
 
             if pb >= 0:
                 self.bracketsHighlighted = True
@@ -1015,12 +1043,13 @@ class resultSet(QTableWidget):
     '''
     
     insertText = pyqtSignal(['QString'])
+    triggerAutorefresh = pyqtSignal([int])
 
     def __init__(self, conn):
     
         self._resultset_id = None    # filled manually right after execute_query
 
-        self._connection = conn
+        self._connection = None      # this one populated in sqlFinished # 2021-07-16, #377
         
         self.statement = None        # statements string (for refresh)
         
@@ -1038,6 +1067,11 @@ class resultSet(QTableWidget):
         # overriden in case of select top xxxx
         self.explicitLimit = False 
         self.resultSizeLimit = cfg('resultSize', 1000)
+        
+        self.timer = None
+        self.timerDelay = None
+        
+        self.timerSet = None        # autorefresh menu switch flag
         
         super().__init__()
         
@@ -1113,10 +1147,25 @@ class resultSet(QTableWidget):
         cmenu.addSeparator()
         insertColumnName = cmenu.addAction('Insert Column Name(s)')
         copyFilter = cmenu.addAction('Generate Filter Condition')
+
+        cmenu.addSeparator()
+        
+        refreshTimerStart = None
+        refreshTimerStop = None
+        
+        if cfg('experimental'):
+        
+            if not self.timerSet:
+                refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
+            else:
+                refreshTimerStop = cmenu.addAction('Stop autorefresh')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
         i = self.currentColumn()
+        
+        if action == None:
+            return
 
         '''
         if action == copyColumnName:
@@ -1178,7 +1227,32 @@ class resultSet(QTableWidget):
             self.render(pixmap)
             
             QApplication.clipboard().setPixmap(pixmap)
+
+        if cfg('experimental') and action == refreshTimerStart:
+            '''
+                triggers the auto-refresh timer
                 
+                the timer itself is to be processed by the parent SQLConsole object as it has 
+                all the relevant accesses
+                
+                the feature is blocked when there are several resultset tabs
+            '''
+
+            id = QInputDialog
+
+            value, ok = id.getInt(self, 'Refresh interval', 'Input the refresh interval in seconds                          ', 10, 0, 3600, 5)
+            
+            if ok:
+                self.triggerAutorefresh.emit(value)
+                self.timerSet = True
+
+        if cfg('experimental') and action == refreshTimerStop:
+            log('disabeling the timer...')
+            self.triggerAutorefresh.emit(0)
+            self.timerSet = False
+
+
+        
     def detach(self):
         if self._resultset_id is None:
             # could be if the result did not have result: for example DDL or error statement
@@ -1189,10 +1263,11 @@ class resultSet(QTableWidget):
         result_str = utils.hextostr(self._resultset_id)
         
         if self._connection is None:
+            log('[!] resultset connection is None!')
             return
         
         if self.detached == False and self._resultset_id is not None:
-            log('closing the resultset: %s' % result_str)
+            log('closing the resultset: %s' % (result_str))
             try:
                 db.close_result(self._connection, self._resultset_id) 
                 self.detached = True
@@ -1274,7 +1349,11 @@ class resultSet(QTableWidget):
                     
                     rowIndex.sort()
                     
-                    csv = ';'.join(self.headers) + '\n'
+                    if len(self.headers) > 1:
+                        csv = ';'.join(self.headers) + '\n'
+                    else:
+                        csv = ''
+                        
                     for r in rowIndex:
                         csv += self.csvRow(r) + '\n'
                         
@@ -1408,7 +1487,7 @@ class resultSet(QTableWidget):
                             
                     item = QTableWidgetItem(val)
                     
-                    if cfg('highlightLOBs'):
+                    if cfg('highlightLOBs', True):
                         item.setBackground(QBrush(QColor('#f4f4f4')))
                     
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
@@ -1587,8 +1666,12 @@ class sqlConsole(QWidget):
         self.noBackup = False
         
         self.connection_id = None
+        
+        self.runtimeTimer = None
 
         # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
+        
+        self.timerAutorefresh = None
         
         super().__init__()
         self.initUI()
@@ -1610,6 +1693,8 @@ class sqlConsole(QWidget):
             '''
 
         self.cons.textChanged.connect(self.textChangedS)
+        
+        self.cons.updateRequest.connect(self.updateRequestS)
         
         self.cons.connectSignal.connect(self.connectDB)
         self.cons.disconnectSignal.connect(self.disconnectDB)
@@ -1643,8 +1728,45 @@ class sqlConsole(QWidget):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
 
-    def textChangedS(self):
+    def updateRequestS(self, rect):
+        '''
+            okay all this logic below is a workaround for #382
+            
+            somehow the brackets highlighting disappears by itself on any text change
+            
+            therefore we can just clear the list and set the flags (flags?) off
+        '''
         
+        if self.cons.lock:
+            return
+            
+        if rect.width() > 11:
+            # width == 10 means just cursor blinking with any (!) font size
+            if self.cons.bracketsHighlighted:
+                #log('updateRequestS FAKE clear highlighting', 5)
+                #self.cons.clearHighlighting()
+
+                self.cons.modifiedLayouts.clear()
+                    
+                self.cons.bracketsHighlighted = False
+                self.cons.haveHighlighrs = False
+
+        
+    def textChangedS(self):
+        if not cfg('noWordHighlighting'):
+            if not self.cons.lock:
+                if self.cons.haveHighlighrs:
+                    #log('textChangedS, clear highlighting', 5)
+                    self.cons.clearHighlighting()
+
+        '''
+        # 2021-05-29
+        print('textChangedS')
+        if self.cons.bracketsHighlighted:
+            log('textChangedS clear highlighting', 5)
+            self.cons.clearHighlighting()
+        '''
+
         if self.unsavedChanges == False: #and self.fileName is not None:
             if self.cons.toPlainText() == '':
                 return
@@ -1735,7 +1857,8 @@ class sqlConsole(QWidget):
             backTo = self.spliter.sizes()
 
             if self.splitterSizes is None:
-                self.splitterSizes = [4000, 200, 100]
+                #self.splitterSizes = [4000, 200, 100]
+                self.splitterSizes = [200, 800, 100]
                 
             self.spliter.setSizes(self.splitterSizes)
             
@@ -2008,10 +2131,14 @@ class sqlConsole(QWidget):
     def disconnectDB(self):
 
         try: 
+        
+            self.stopResults()
+        
             if self.conn is not None:
                 db.close_connection(self.conn)
                 
                 self.stopKeepAlive()
+                
                 self.conn = None
                 self.connection_id = None
                 self.log('\nDisconnected')
@@ -2035,6 +2162,7 @@ class sqlConsole(QWidget):
         
     def connectDB(self):
         try: 
+            log('connectDB, indicator sync', 4)
             self.indicator.status = 'sync'
             self.indicator.repaint()
 
@@ -2095,15 +2223,55 @@ class sqlConsole(QWidget):
         else:
             self.log('re-connected')
             self.conn = conn
+
+    def autorefreshRun(self):
+        log('autorefresh...', 4)
+        
+        self.timerAutorefresh.stop()
+
+        self.refresh(0)
+        
+        self.timerAutorefresh.start()
+    
+    def setupAutorefresh(self, interval):
+    
+        if interval == 0:
+            log('Stopping the autorefresh: %s' % self.tabname.rstrip(' *'))
+            self.log('--> Stopping the autorefresh')
+            
+            if self.timerAutorefresh is not None:
+                self.timerAutorefresh.stop()
+                self.timerAutorefresh = None
+            
+            return
+         
+        
+        if self.resultTabs.count() != 1:
+            self.log('Autorefresh only possible for single resultset output.', True)
+            return
+        
+        self.log('\n--> Scheduling autorefresh, logging will be supressed. Autorefresh will stop on manual query execution or context menu -> stop autorefresh')
+        log('Scheduling autorefresh %i (%s)' % (interval, self.tabname.rstrip(' *')))
+            
+        if self.timerAutorefresh is None:
+            self.timerAutorefresh = QTimer(self)
+            self.timerAutorefresh.timeout.connect(self.autorefreshRun)
+            self.timerAutorefresh.start(1000 * interval)
+        else:
+            log('[W] autorefresh timer is already running, ignoring the new one...', 2)
+            self.log('Autorefresh is already running? Ignoring the new one...', True)
             
     def newResult(self, conn, st):
         
         result = resultSet(conn)
         result.statement = st
         
+        result._connection = conn
+        
         result.log = self.log
         
         result.insertText.connect(self.cons.insertTextS)
+        result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results)+1)
@@ -2117,10 +2285,38 @@ class sqlConsole(QWidget):
         
         return result
         
+    def stopResults(self):
+    
+        log('Stopping all the results, %s...' % (self.tabname.rstrip(' *')), 4)
+        
+        for result in self.results:
+
+            # stop autorefresh if any
+            if self.timerAutorefresh is not None:
+                log('Stopping autorefresh as it was enabled')
+                self.timerAutorefresh.stop()
+                self.timerAutorefresh = None
+
+            if result.LOBs and not result.detached:
+                if result.detachTimer is not None:
+                    log('Stopping the detach timer as we are disconnecting...')
+                    result.detachTimer.stop()
+                    result.detachTimer = None
+                    
+                result.detach()
+
+            if self.conn is not None:
+                try:
+                    db.drop_statement(self.conn, result.psid)
+                except Exception as e:
+                    log('[E] exeption during console close/drop statement: %s' % str(e), 2)
+    
     def closeResults(self):
         '''
             closes all results tabs, detaches resultsets if any LOBs
         '''
+        
+        self.stopResults()
         
         for i in range(len(self.results) - 1, -1, -1):
             
@@ -2138,6 +2334,9 @@ class sqlConsole(QWidget):
             del(result.rows)
             
             #same code in refresh()
+            
+            '''
+            # from here....
             if result.LOBs and not result.detached:
                 if result.detachTimer is not None:
                     log('stopping the detach timer in advance...')
@@ -2145,13 +2344,16 @@ class sqlConsole(QWidget):
                     result.detachTimer = None
                     
                 result.detach()
-
+                
             if self.conn is not None:
                 try:
                     db.drop_statement(self.conn, result.psid)
                 except Exception as e:
                     log('[E] exeption during console close/drop statement: %s' % str(e), 2)
 
+            # to here
+            # can be removed as duplicated in stopResults
+            '''
             
             #result.destroy()
             #result.deleteLater()
@@ -2186,11 +2388,18 @@ class sqlConsole(QWidget):
     
         if self.conn is None:
             return
+            
+        if self.sqlRunning:
+            log('SQL still running, need to skip keep-alive') # #362
+            self.timer.stop()
+            self.timer.start(1000 * self.timerkeepalive)
+            return
 
         try:
             cname = self.tabname.rstrip(' *')
             log('console keep-alive (%s)... ' % (cname), 3, False, True)
             
+            log('keepAlive, indicator sync', 4)
             self.indicator.status = 'sync'
             self.indicator.repaint()
             
@@ -2347,6 +2556,10 @@ class sqlConsole(QWidget):
         if not cfg('dev') and self.config is None:
             self.log('No connection')
             return
+    
+        if self.timerAutorefresh:
+            self.log('--> Stopping the autorefresh...')
+            self.setupAutorefresh(0)
     
         if mode == 'normal':
             self.executeSelectionParse()
@@ -2691,18 +2904,21 @@ class sqlConsole(QWidget):
         
         log('Connection Lost...')
         
+        self.stopResults()
+        
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Connection lost')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico\\favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
         reply = None
         
         while reply != QMessageBox.No and self.conn is None:
+            log('connectionLost, indicator sync')
             self.indicator.status = 'sync'
             self.indicator.repaint()
             
@@ -2746,7 +2962,7 @@ class sqlConsole(QWidget):
         self.indicator.status = 'render'
         self.indicator.repaint()
         
-        log('psid to save --> %s' % utils.hextostr(self.sqlWorker.psid), 4)
+        log('(%s) psid to save --> %s' % (self.tabname.rstrip(' *'), utils.hextostr(self.sqlWorker.psid)), 4)
         
         if self.wrkException is not None:
             self.log(self.wrkException, True)
@@ -2766,16 +2982,30 @@ class sqlConsole(QWidget):
                 #if answer == True:
 
 
+            t0 = self.t0
+            t1 = time.time()
+            
+            logText = 'Query was running for... %s' % utils.formatTime(t1-t0)
+            
+            self.t0 = None
+            self.log(logText)
+
+            self.indicator.runtime = None
+            self.updateRuntime('off')
+
             self.indicator.repaint()
             
             if self.stQueue:
                 self.log('Queue processing stopped due to this exception.', True)
                 self.stQueue.clear()
+
             return
         
         sql, result, refreshMode = self.sqlWorker.args
         
         dbCursor = self.sqlWorker.dbCursor
+        
+        result._connection = dbCursor.connection
         
         #self.psid = self.sqlWorker.psid
         #log('psid saved: %s' % utils.hextostr(self.psid))
@@ -2863,7 +3093,9 @@ class sqlConsole(QWidget):
 
             result.populate(refreshMode)
             
-        self.log(logText)
+            
+        if not self.timerAutorefresh:
+            self.log(logText)
 
         log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
         
@@ -2877,6 +3109,8 @@ class sqlConsole(QWidget):
         #del cols_list
 
         self.indicator.status = 'idle'
+        self.indicator.runtime = None
+        self.updateRuntime('off')
         self.indicator.repaint()
         
         # should rather be some kind of mutex here...
@@ -2920,7 +3154,8 @@ class sqlConsole(QWidget):
         txtSub = txtSub.replace('\t', ' ')
         txtSub = txtSub.replace('    ', ' ')
         
-        self.log('\nExecute: ' + txtSub + suffix)
+        if not self.timerAutorefresh:
+            self.log('\nExecute: ' + txtSub + suffix)
 
         ##########################
         ### trigger the thread ###
@@ -2941,12 +3176,12 @@ class sqlConsole(QWidget):
         return
         
     def resultTabsKey (self, event):
-        super().keyPressEvent(event)
 
         modifiers = QApplication.keyboardModifiers()
 
         if not ((modifiers & Qt.ControlModifier) or (modifiers & Qt.AltModifier)):
             if event.key() == Qt.Key_F8 or event.key() == Qt.Key_F9 or event.key() == Qt.Key_F5:
+            
                 i = self.resultTabs.currentIndex()
                 log('refresh %i' % i)
                 self.refresh(i) # we refresh by index here...
@@ -2954,10 +3189,58 @@ class sqlConsole(QWidget):
                 
         super().keyPressEvent(event)
         
+    def updateRuntime(self, mode = None):
+        t0 = self.t0
+        t1 = time.time()
+        
+        if mode == 'on' and t0 is not None:
+            if self.runtimeTimer == None:
+                self.runtimeTimer = QTimer(self)
+                self.runtimeTimer.timeout.connect(self.updateRuntime)
+                self.runtimeTimer.start(1000)
+                
+        elif mode == 'off':
+            if self.runtimeTimer is not None:
+                self.indicator.runtime = None
+                self.runtimeTimer.stop()
+                self.runtimeTimer = None  
+
+                self.indicator.updateRuntime()
+                
+                return
+        
+        if t0 is not None:
+            self.indicator.runtime = utils.formatTimeShort(t1-t0)
+            
+        self.indicator.updateRuntime()
+                
+    '''
+    def updateRuntime(self):
+        t0 = self.t0
+        t1 = time.time()
+        
+        if t0 is not None:
+            self.indicator.runtime = utils.formatTime(t1-t0)
+            
+            self.indicator.updateRuntime()
+            
+            if self.runtimeTimer == None:
+                self.runtimeTimer = QTimer(self)
+                self.runtimeTimer.timeout.connect(self.updateRuntime)
+                self.runtimeTimer.start(500)
+            
+        else:
+            if self.runtimeTimer is not None:
+                self.indicator.runtime = None
+                self.runtimeTimer.stop()
+                self.runtimeTimer = None    
+    '''
+        
     def reportRuntime(self):
     
         self.selfRaise.emit(self)
     
+        '''
         t0 = self.t0
         t1 = time.time()
         
@@ -2965,6 +3248,8 @@ class sqlConsole(QWidget):
             self.log('Current run time: %s' % (utils.formatTime(t1-t0)))
         else:
             self.log('Nothing is running')
+            
+        '''
     
     def initUI(self):
         '''
