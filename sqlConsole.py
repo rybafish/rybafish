@@ -2738,6 +2738,7 @@ class sqlConsole(QWidget):
         i = 0
         start = stop = 0
         
+        leadingComment = False
         insideString = False
         insideProc = False
         
@@ -2776,12 +2777,19 @@ class sqlConsole(QWidget):
             if str == '':
                 #happens when semicolon detected.
                 # print('str = \'\'', 'startDelta: ', startDelta)
-                if c in (' ', '\n', '\t'):
+                if c in (' ', '\n', '\t') and not leadingComment:
                     # warning: insideString logic skipped here (as it is defined below this line
                     # skip leading whitespaces
                     # print(start, stop, cursorPos, i)
                     # startDelta += 1
                     continue
+                elif not leadingComment and c == '-' and i < scanTo and txt[i] == '-':
+                    leadingComment = True
+                elif leadingComment:
+                    if c == '\n':
+                        leadingComment = False
+                    else:
+                        continue
                 else:
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
