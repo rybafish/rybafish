@@ -468,8 +468,8 @@ class console(QPlainTextEditLN):
         cmenu = QMenu(self)
         
         menuExec = cmenu.addAction('Execute statement/selection\tF8')
-        menuExecNP = cmenu.addAction('Execute without parsing')
-        menuExecLR = cmenu.addAction('Execute but leave the results')
+        menuExecNP = cmenu.addAction('Execute without parsing\tAlt+F8')
+        menuExecLR = cmenu.addAction('Execute but leave the results\tAlt+F9')
         cmenu.addSeparator()
         menuOpenFile = cmenu.addAction('Open File in this console')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
