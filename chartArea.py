@@ -1740,14 +1740,62 @@ class chartArea(QFrame):
             self.statusMessage_.emit(str, False)
             
     def keyPressEventZ(self, event):
+    
+        def reportHighlight(host, kpi, point):
+            #this is black magic copy paste from scanforhint
+            type = hType(host, self.widget.hosts)
+            timeKey = kpiDescriptions.getTimeKey(type, kpi)
+            
+            d = kpiStylesNN[type][kpi].get('decimal', 0)
+            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
+
+            scaled_value = utils.numberToStr(normVal, d)
+            tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
+            
+            unit = self.widget.nscales[host][kpi]['unit']
+
+            hst = self.widget.hosts[host]['host']
+            if self.widget.hosts[host]['port'] != '':
+                hst += ':'+str(self.widget.hosts[host]['port'])
+            
+            self.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
+
+            self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
+            
+        modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_Left:
-            x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
-            self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
+            if modifiers == Qt.AltModifier:
+                # move highlighted point one step left
+                host = self.widget.highlightedKpiHost
+                kpi = self.widget.highlightedKpi
+                
+                if self.widget.highlightedPoint > 0:
+                    self.widget.highlightedPoint -= 1
+                    self.widget.update()
+                    
+                    reportHighlight(host, kpi, self.widget.highlightedPoint)
+            else:
+                x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
+                self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
 
         elif event.key() == Qt.Key_Right:
-            x = 0 - self.widget.pos().x() 
-            self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
+            if modifiers == Qt.AltModifier:
+                # move highlighted point one step right
+                
+                host = self.widget.highlightedKpiHost
+                kpi = self.widget.highlightedKpi
+                dSize = len(self.widget.ndata[host][kpi])
+                
+                if self.widget.highlightedPoint < dSize:
+                    self.widget.highlightedPoint += 1
+                    self.widget.update()
+                    
+                    reportHighlight(host, kpi, self.widget.highlightedPoint)
+
+            else:
+                x = 0 - self.widget.pos().x() 
+                self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
             
         elif event.key() == Qt.Key_Home:
             self.scrollarea.horizontalScrollBar().setValue(0)
