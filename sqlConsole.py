@@ -2067,9 +2067,6 @@ class sqlConsole(QWidget):
             else:
                 schema = 'PUBLIC'
                 term = line[i+1:linePos].lower() + '%'
-                
-            print('i, j', i, j)
-            print('-------->', schema)
                     
             if linePos - i <= 2:
                 #string is to short for autocomplete search
@@ -2094,12 +2091,12 @@ class sqlConsole(QWidget):
             
             t0 = time.time()
             
-            rows = db.execute_query(self.conn, 'select distinct object_name from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
+            if schema == 'PUBLIC':
+                rows = db.execute_query(self.conn, 'select distinct schema_name object, \'SCHEMA\' type from schemas where lower(schema_name) like ? union select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [term, schema, term])
+            else:
+                rows = db.execute_query(self.conn, 'select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
             t1 = time.time()
-            
-            time.sleep(0.5)
 
-            self.statusMessage.emit('', False)
             self.indicator.status = 'idle'
             self.indicator.repaint()
             
@@ -2108,17 +2105,25 @@ class sqlConsole(QWidget):
             log('ok, %i rows: %s ms' % (n, str(round(t1-t0, 3))), 3, True)
             
             if n == 0:
+                self.statusMessage.emit('No suggestions found', False)
                 return
                 
+            self.statusMessage.emit('', False)
+
+            if n > 1:
+                lines = []
+                for r in rows:
+                    lines.append('%s (%s)' % (r[0], r[1]))
+                    
+                line, ok = autocompleteDialog.getLine(self, lines)
+            else:
+                #single suggestion, let's fake "OK":
+                ok = True
+                line = rows[0][0]
                 
-            lines = []
-            for r in rows:
-                lines.append(r[0])
-                
-            line, ok = autocompleteDialog.getLine(self, lines)
+            line = line.split(' (')[0]
 
             if ok:
-            
                 cursor.clearSelection()
                 cursor.setPosition(stPos, QTextCursor.MoveAnchor)
                 cursor.setPosition(endPos, QTextCursor.KeepAnchor)

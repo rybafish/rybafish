@@ -68,6 +68,8 @@ class autocompleteDialog(QDialog):
         
         self.setLayout(vbox)
         
+        self.resize(500, 300)
+        
         #self.setGeometry(300, 300, 300, 150)
         self.setWindowTitle('Auto-complete options')
         #self.show()

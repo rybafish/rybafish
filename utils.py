@@ -391,7 +391,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         f.close()
         
 def normalize_header(header):
-    if header.isupper() and header[0].isalpha():
+    if header.isupper() and (header[0].isalpha() or header[0] == '_'):
         if cfg('lowercase-columns', False):
             h = header.lower()
         else:
