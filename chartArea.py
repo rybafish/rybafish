@@ -1765,7 +1765,7 @@ class chartArea(QFrame):
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_Left:
-            if modifiers == Qt.AltModifier:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
                 # move highlighted point one step left
                 host = self.widget.highlightedKpiHost
                 kpi = self.widget.highlightedKpi
@@ -1780,7 +1780,7 @@ class chartArea(QFrame):
                 self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
 
         elif event.key() == Qt.Key_Right:
-            if modifiers == Qt.AltModifier:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
                 # move highlighted point one step right
                 
                 host = self.widget.highlightedKpiHost
