@@ -627,6 +627,7 @@ class myWidget(QWidget):
                 
                 self.highlightedKpiHost = None
                 self.highlightedKpi = None
+                self.highlightedPoint = None
 
                 self.highlightedEntity = None
                 self.highlightedRange = None
@@ -1758,7 +1759,7 @@ class chartArea(QFrame):
             if self.widget.hosts[host]['port'] != '':
                 hst += ':'+str(self.widget.hosts[host]['port'])
             
-            self.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
+            self.widget.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
 
             self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
             

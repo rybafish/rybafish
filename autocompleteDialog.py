@@ -32,16 +32,14 @@ class autocompleteDialog(QDialog):
         
         return (line, result == QDialog.Accepted)
 
+    def itemOk(self):
+        self.accept()
+        
     def initUI(self):
 
-        #form = QFormLayout()
-        #form = QGridLayout()
-        #form = QVBoxLayout()
-        
         iconPath = resourcePath('ico\\favicon.ico')
         
         self.linesList = QListWidget()
-        #form.addWidget(self.linesList)
         
         for l in self.lines:
             self.linesList.addItem(l)
@@ -60,6 +58,7 @@ class autocompleteDialog(QDialog):
         
         vbox.addWidget(self.linesList)
 
+        self.linesList.itemDoubleClicked.connect(self.itemOk)
         #vbox.addStretch(1)
         
         vbox.addWidget(self.buttons)
@@ -70,13 +69,4 @@ class autocompleteDialog(QDialog):
         
         self.resize(500, 300)
         
-        #self.setGeometry(300, 300, 300, 150)
         self.setWindowTitle('Auto-complete options')
-        #self.show()
-        
-        
-if __name__ == '__main__':
-    
-    app = QApplication(sys.argv)
-    cfg = Config()
-    sys.exit(app.exec_())

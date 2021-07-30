@@ -2091,10 +2091,22 @@ class sqlConsole(QWidget):
             
             t0 = time.time()
             
-            if schema == 'PUBLIC':
-                rows = db.execute_query(self.conn, 'select distinct schema_name object, \'SCHEMA\' type from schemas where lower(schema_name) like ? union select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [term, schema, term])
-            else:
-                rows = db.execute_query(self.conn, 'select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
+
+            try:
+                if schema == 'PUBLIC':
+                    rows = db.execute_query(self.conn, 'select distinct schema_name object, \'SCHEMA\' type from schemas where lower(schema_name) like ? union select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [term, schema, term])
+                else:
+                    rows = db.execute_query(self.conn, 'select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
+                    
+            except dbException as e:
+                err = str(e)
+                
+                self.statusMessage.emit('db error: %s' % err, False)
+
+                self.indicator.status = 'error'
+                self.indicator.repaint()
+                return
+
             t1 = time.time()
 
             self.indicator.status = 'idle'
