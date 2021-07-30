@@ -236,9 +236,15 @@ class myWidget(QWidget):
             # for the issue https://github.com/rybafish/rybafish/issues/30
             # log('self.nscales[h].keys(): ' + str(self.nscales[h].keys()))
             
-            for kpi in self.nscales[h].keys():
+            #for kpi in self.nscales[h].keys():
+            for kpi in list(self.nscales[h].keys()):
 
                 if kpi[:4] == 'time':
+                    continue
+                    
+                if kpi not in kpiStylesNN[type]:
+                    log('[!] the kpi is disabled... %s, so deleting it from nscales' % kpi)
+                    del self.nscales[h][kpi]
                     continue
 
                 if kpiStylesNN[type][kpi]['group'] == grp:
@@ -284,6 +290,10 @@ class myWidget(QWidget):
                 
                 scaleKpi = self.nscales[h][kpi] # short cut
 
+                if kpi not in kpiStylesNN[type]:
+                    log('[!] the kpi is disaaableeed, %s' % kpi)
+                    continue
+                    
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
                 
                     #scaleKpi['y_max'] = ''
@@ -667,6 +677,10 @@ class myWidget(QWidget):
         for kpi in kpis:
         
             if kpi[:4] == 'time':
+                continue
+                
+
+            if kpi not in kpiStylesNN[type]:
                 continue
                 
             if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
@@ -1131,6 +1145,10 @@ class myWidget(QWidget):
 
                 #print(kpiStylesNN[type][kpi]['subtype'])
                 
+                if kpi not in kpiStylesNN[type]:
+                    log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
+                    self.nkpis[h].remove(kpi)
+                    continue
                 if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
                     gantt = True
                     self.gotGantt = True
@@ -1138,7 +1156,13 @@ class myWidget(QWidget):
                     gantt = False
                 
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)
-
+                
+                if timeKey not in self.ndata[h]:
+                    # this is possible for example when custom KPI definition changed
+                    # 
+                    log('[!] kpi removed: %s.%s, skipping!' % (timeKey, kpi), 2)
+                    continue
+                    
                 if gantt:
                 
                     #gFont = QFont ('SansSerif', 8)
@@ -2061,7 +2085,12 @@ class chartArea(QFrame):
             while allOk is None:
                 try:
                     t0 = time.time()
-                    self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host])  
+                    
+                    log('need to check here if all the kpis actually exist...')
+                    log(str(host))
+                    log(str(kpis))
+                    
+                    self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host])
                     self.widget.nkpis[host] = kpis
                     
                     allOk = True
@@ -2565,6 +2594,18 @@ class chartArea(QFrame):
             try:
                 for host in range(0, len(self.widget.hosts)):
                     if len(self.widget.nkpis[host]) > 0:
+
+                        log('--->> need to check here if all the kpis actually exist...')
+                        type = hType(host, self.widget.hosts)
+                        
+                        for k in self.widget.nkpis[host]:
+                            log(k)
+                            if k not in kpiStylesNN[type]:
+                                log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
+                                self.widget.nkpis[host].remove(k)
+                            else:
+                                log('ok')
+                        
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
                         actualRequest = True
                 allOk = True

@@ -248,6 +248,10 @@ class kpiTable(QTableWidget):
                     continue 
                 '''
                 
+                if kpiName not in kpiStyles:
+                    log('[!] kpiTable refill: kpi is missing, %s' % kpiName, 2)
+                    continue
+                    
                 style = kpiStyles[kpiName]
                 cb.stateChanged.connect(self.checkBoxChanged)
                 self.setCellWidget(i, 0, cb)
@@ -335,6 +339,9 @@ class kpiTable(QTableWidget):
                 
                 kpiScale = self.kpiScales[self.host][self.kpiNames[i]]
                 
+                if self.kpiNames[i] not in kpiStylesNN[type]:
+                    log('[!] kpiTable, kpi does not exist: %s' % self.kpiNames[i])
+                    continue
                 style = kpiStylesNN[type][self.kpiNames[i]]
                 
                 if 'disabled' in style.keys():
