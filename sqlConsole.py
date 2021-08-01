@@ -123,8 +123,20 @@ class sqlWorker(QObject):
             txtSub = txtSub.replace('\t', ' ')
             
             #print('start sql')
-            self.rows_list, self.cols_list, dbCursor, psid = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
-            self.resultset_id_list = dbCursor._resultset_id_list
+            
+            m = re.search('^sleep\s?\(\s*(\d+)\s*\)$', txtSub)
+            
+            if m is not None:
+                time.sleep(int(m.group(1)))
+                self.rows_list = None
+                self.cols_list = None
+                dbCursor = None
+                psid = None
+                self.resultset_id_list = None
+            else:
+                self.rows_list, self.cols_list, dbCursor, psid = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+            
+                self.resultset_id_list = dbCursor._resultset_id_list
             
             result.explicitLimit = explicitLimit
             result.resultSizeLimit = resultSizeLimit          
@@ -3030,12 +3042,14 @@ class sqlConsole(QWidget):
         
         dbCursor = self.sqlWorker.dbCursor
         
-        result._connection = dbCursor.connection
+        if dbCursor is not None:
+            result._connection = dbCursor.connection
         
         #self.psid = self.sqlWorker.psid
         #log('psid saved: %s' % utils.hextostr(self.psid))
         
-        log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
+        if dbCursor is not None:
+            log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
 
         t0 = self.t0
         t1 = time.time()
@@ -3053,7 +3067,9 @@ class sqlConsole(QWidget):
             
             #logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
             #logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
-            logText += ', ' + utils.numberToStr(dbCursor.rowcount) + ' rows affected'
+            
+            if dbCursor is not None:
+                logText += ', ' + utils.numberToStr(dbCursor.rowcount) + ' rows affected'
             
             self.log(logText)
             
