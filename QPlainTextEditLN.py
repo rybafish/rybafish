@@ -28,8 +28,6 @@ class QPlainTextEditLN(QWidget):
                 #txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
                 txtline = self.document().findBlockByNumber(cursor.blockNumber())
                 
-                print('->>' + txtline.text() + '<<-')
-                
                 cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.MoveAnchor)
                 cursor.insertText('\n' + txtline.text())
             else:

@@ -3071,16 +3071,18 @@ class sqlConsole(QWidget):
             if dbCursor is not None:
                 logText += ', ' + utils.numberToStr(dbCursor.rowcount) + ' rows affected'
             
-            self.log(logText)
+            # self.log(logText)
             
             result.clear()
-            return
             
-        #print('cols:', cols_list)
-        #print('rows:', rows_list)
-        #print('resultset id list', resultset_id_list)
-
-        for i in range(len(cols_list)):
+            #return 2021-08-01
+            
+            numberOfResults = 0
+            
+        else:
+            numberOfResults = len(cols_list)
+        
+        for i in range(numberOfResults):
             
             #print('result:', i)
             
@@ -3092,10 +3094,6 @@ class sqlConsole(QWidget):
             
             result.psid = self.sqlWorker.psid
             log('psid saved: %s' % utils.hextostr(result.psid), 4)
-            
-            #print(result.cols)
-            #print(result.cols[0])
-            #print(result.cols[0][2])
             
             if result.cols[0][2] == 'SCALAR':
                 result._resultset_id = None
@@ -3138,17 +3136,15 @@ class sqlConsole(QWidget):
         if not self.timerAutorefresh:
             self.log(logText)
 
-        log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
-        
-        for i in range(len(cols_list)):
-            #log('rows %i:%i' % (i, len(rows_list[0])))
-            del rows_list[0]
-            #log('cols %i:%i' % (i, len(cols_list[0])))
-            del cols_list[0]
+        if numberOfResults:
+            log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
             
-        #del rows_list
-        #del cols_list
-
+            for i in range(len(cols_list)):
+                #log('rows %i:%i' % (i, len(rows_list[0])))
+                del rows_list[0]
+                #log('cols %i:%i' % (i, len(cols_list[0])))
+                del cols_list[0]
+            
         self.indicator.status = 'idle'
         self.indicator.runtime = None
         self.updateRuntime('off')
