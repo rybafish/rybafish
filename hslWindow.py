@@ -436,8 +436,15 @@ class hslWindow(QMainWindow):
                     
                 propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
                 
+                tenant = self.chartArea.dp.dbProperties.get('tenant')
+                
+                if tenant:
+                    windowStr = ('%s %s@%s' % (conf['user'], tenant, self.chartArea.dp.dbProperties['sid']))
+                else:
+                    windowStr = propStr
+                
                 self.tabs.setTabText(0, propStr)
-                self.setWindowTitle('RybaFish Charts [%s]' % propStr)
+                self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
                 
                 #setup keep alives
                 

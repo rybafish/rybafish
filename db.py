@@ -88,6 +88,28 @@ def create_connection (server, dbProperties = None):
             dbProperties['timeZoneDelta'] = 0
         if 'sid' not in dbProperties:
             dbProperties['sid'] = '???'
+            
+            
+        if cfg('skipTenant', False) == False:
+            
+            rows = []
+            
+            try:
+                rows = execute_query(connection, 'select database_name from m_database', [])
+
+                if len(rows) == 1:
+                    dbProperties['tenant'] = rows[0][0]
+                else:
+                    dbProperties['tenant'] = '???'
+                    log('[w] tenant cannot be identitied')
+                    log('[w] response rows array: %s' % str(rows))
+                    
+            except dbException as e:
+                rows.append(['???'])
+                log('[w] tenant request error: %s' % str(e))
+                
+                dbProperties['tenant'] = None
+            
     
     t2 = time.time()
     
