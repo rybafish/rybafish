@@ -976,10 +976,10 @@ class hslWindow(QMainWindow):
         confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
         confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
 
-        if cfg('experimental')
-            confCustomHelpAct = QAction('Context SQLs', self)
-            confCustomHelpAct.setStatusTip('Short manual on context SQLs')
-            confCustomHelpAct.triggered.connect(self.menuContextSQLsConfHelp)
+        if cfg('experimental'):
+            confContextHelpAct = QAction('Context SQLs', self)
+            confContextHelpAct.setStatusTip('Short manual on context SQLs')
+            confContextHelpAct.triggered.connect(self.menuContextSQLsConfHelp)
 
         confTipsAct = QAction('Tips and tricks', self)
         confTipsAct.setStatusTip('Tips and tricks description')
@@ -990,6 +990,10 @@ class hslWindow(QMainWindow):
         
         
         helpMenu.addAction(confCustomHelpAct)
+        
+        if cfg('experimental'):
+            helpMenu.addAction(confContextHelpAct)
+        
         helpMenu.addAction(confTipsAct)
             
         helpMenu.addAction(aboutAct)
@@ -1129,7 +1133,8 @@ class hslWindow(QMainWindow):
         log('init finish()')
 
 
-        customSQLs.loadSQLs()
+        if cfg('experimental'):
+            customSQLs.loadSQLs()
 
         # offline console tests
         

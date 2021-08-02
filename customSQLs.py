@@ -17,6 +17,7 @@ def loadSQLs():
     folder = 'ContextSQLs'
 
     if not os.path.isdir(folder):
+        log('no context sqls folder exist (%s), skipping' % folder)
         return
 
     dir = os.listdir(folder)
