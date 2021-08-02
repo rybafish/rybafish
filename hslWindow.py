@@ -337,6 +337,9 @@ class hslWindow(QMainWindow):
 
     def menuCustomConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/customKPI'))
+    
+    def menuContextSQLsConfHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/contextSQLs'))
 
     def menuTips(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/tips'))
@@ -948,8 +951,8 @@ class hslWindow(QMainWindow):
         actionsMenu.addAction(reloadCustomKPIsAct)
 
         if cfg('experimental'):
-            reloadCustomSQLsAct = QAction('Reload Custom &SQLs', self)
-            reloadCustomSQLsAct.setStatusTip('Reload definition of custom SQLs')
+            reloadCustomSQLsAct = QAction('Reload Context &SQLs', self)
+            reloadCustomSQLsAct.setStatusTip('Reload definition of context SQLs')
             reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
             
             actionsMenu.addAction(reloadCustomSQLsAct)
@@ -972,6 +975,11 @@ class hslWindow(QMainWindow):
         confCustomHelpAct = QAction('Custom KPIs', self)
         confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
         confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
+
+        if cfg('experimental')
+            confCustomHelpAct = QAction('Context SQLs', self)
+            confCustomHelpAct.setStatusTip('Short manual on context SQLs')
+            confCustomHelpAct.triggered.connect(self.menuContextSQLsConfHelp)
 
         confTipsAct = QAction('Tips and tricks', self)
         confTipsAct.setStatusTip('Tips and tricks description')
