@@ -37,6 +37,8 @@ from utils import dbException, msgDialog
 
 import utils
 
+import customSQLs
+
 import kpiDescriptions
 
 import sys, os
@@ -251,6 +253,9 @@ class hslWindow(QMainWindow):
                     
         self.close()
 
+    def menuReloadCustomSQLs(self):
+        customSQLs.loadSQLs()
+    
     def menuReloadCustomKPIs(self):
     
         kpiStylesNN = kpiDescriptions.kpiStylesNN
@@ -942,6 +947,13 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
+        if cfg('experimental'):
+            reloadCustomSQLsAct = QAction('Reload Custom &SQLs', self)
+            reloadCustomSQLsAct.setStatusTip('Reload definition of custom SQLs')
+            reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
+            
+            actionsMenu.addAction(reloadCustomSQLsAct)
+
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
         self.essAct.triggered.connect(self.menuEss)
@@ -1107,7 +1119,9 @@ class hslWindow(QMainWindow):
 
         self.chartArea.connected.connect(self.setTabName)
         log('init finish()')
-        
+
+
+        customSQLs.loadSQLs()
 
         # offline console tests
         

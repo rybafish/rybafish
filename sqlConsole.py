@@ -35,6 +35,8 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 import datetime
 import os
 
+import customSQLs
+
 from PyQt5.QtCore import pyqtSignal
 
 class sqlWorker(QObject):
@@ -1055,6 +1057,7 @@ class resultSet(QTableWidget):
     '''
     
     insertText = pyqtSignal(['QString'])
+    executeSQL = pyqtSignal(['QString'])
     triggerAutorefresh = pyqtSignal([int])
 
     def __init__(self, conn):
@@ -1165,16 +1168,20 @@ class resultSet(QTableWidget):
         refreshTimerStart = None
         refreshTimerStop = None
         
-        if cfg('experimental'):
+        if not self.timerSet:
+            refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
+        else:
+            refreshTimerStop = cmenu.addAction('Stop autorefresh')
         
-            if not self.timerSet:
-                refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
-            else:
-                refreshTimerStop = cmenu.addAction('Stop autorefresh')
-        
-        action = cmenu.exec_(self.mapToGlobal(event.pos()))
-
         i = self.currentColumn()
+        
+        if self.headers[i] in customSQLs.columns:
+            cmenu.addSeparator()
+
+            for m in customSQLs.menu[self.headers[i]]:
+                customSQL = cmenu.addAction(m)
+
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
         
         if action == None:
             return
@@ -1240,7 +1247,7 @@ class resultSet(QTableWidget):
             
             QApplication.clipboard().setPixmap(pixmap)
 
-        if cfg('experimental') and action == refreshTimerStart:
+        if action == refreshTimerStart:
             '''
                 triggers the auto-refresh timer
                 
@@ -1258,12 +1265,33 @@ class resultSet(QTableWidget):
                 self.triggerAutorefresh.emit(value)
                 self.timerSet = True
 
-        if cfg('experimental') and action == refreshTimerStop:
+        if action == refreshTimerStop:
             log('disabeling the timer...')
             self.triggerAutorefresh.emit(0)
             self.timerSet = False
+            
+            
+        if action is not None:
+            
+            key = self.headers[i] + '.' + action.text()
+            
+            if key in customSQLs.sqls:
+                # custom sql menu item
+            
+                r = self.currentItem().row()
+                c = self.currentItem().column()
+                
+                sm = self.selectionModel()
 
-
+                if len(sm.selectedIndexes()) != 1:
+                    self.log('Only single value supported for this action.', True)
+                    return
+                
+                value = str(self.rows[r][c])
+                
+                sql = customSQLs.sqls[key].replace('$value', value)
+                
+                self.executeSQL.emit(sql)
         
     def detach(self):
         if self._resultset_id is None:
@@ -2300,6 +2328,7 @@ class sqlConsole(QWidget):
         result.log = self.log
         
         result.insertText.connect(self.cons.insertTextS)
+        result.executeSQL.connect(self.surprizeSQL)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:
@@ -2597,18 +2626,24 @@ class sqlConsole(QWidget):
         elif mode == 'leave results':
             self.executeSelectionNP(True)
             
-    def executeSelectionNP(self, leaveResults):
+    def surprizeSQL(self, sql):
+        self.executeSelectionNP(True, sql)
+        
+    def executeSelectionNP(self, leaveResults, sql = None):
     
         cursor = self.cons.textCursor()
     
-        if cursor.selection().isEmpty():
+        if cursor.selection().isEmpty() and sql is None:
             self.log('You need to select statement manually for this option')
             return
 
         if leaveResults == False:
             self.closeResults()
 
-        statement = cursor.selection().toPlainText()
+        if sql == None:
+            statement = cursor.selection().toPlainText()
+        else:
+            statement = sql
         
         result = self.newResult(self.conn, statement)
         self.executeStatement(statement, result)
