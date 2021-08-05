@@ -790,6 +790,7 @@ class hslWindow(QMainWindow):
 
         ind = indicator()
         self.chartArea.indicator = ind
+        self.chartArea.indicator.status = 'disconnected'
 
         # establish hard links:
         kpisTable.kpiScales = self.chartArea.widget.nscales
@@ -1045,6 +1046,7 @@ class hslWindow(QMainWindow):
                 
                 ind = indicator()
                 console.indicator = ind
+                console.indicator.status = 'disconnected'
                 
                 console.selfRaise.connect(self.raiseTab)
                 console.statusMessage.connect(self.statusMessage)
