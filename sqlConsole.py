@@ -539,9 +539,15 @@ class console(QPlainTextEditLN):
             cursor.insertText('123')
             self.setTextCursor(cursor)
             
-    def findString(self, str):
+    def findString(self, str = None):
     
-        self.lastSearch = str
+        if str is None:
+            if self.lastSearch  is None:
+                return
+                
+            str = self.lastSearch 
+        else:
+            self.lastSearch = str
     
         def select(start, stop):
             cursor = QTextCursor(self.document())
@@ -810,6 +816,9 @@ class console(QPlainTextEditLN):
                 search.findSignal.connect(self.findString)
                 
                 search.exec_()
+        elif event.key() == Qt.Key_F3:
+            self.findString()
+            
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
             self.autocompleteSignal.emit()
         else:
