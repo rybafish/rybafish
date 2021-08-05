@@ -10,6 +10,7 @@ import time
 import datetime
 import math
 import random
+import re
 
 from array import array
 
@@ -417,45 +418,55 @@ class myWidget(QWidget):
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
-
-        startHere = cmenu.addAction("Make this a FROM time")
-        stopHere = cmenu.addAction("Make this a TO time")
         
-        copyTS = cmenu.addAction("Copy this timestamp")
+        between = False
+
+        startHere = cmenu.addAction('Make this a FROM time')
+        stopHere = cmenu.addAction('Make this a TO time')
+        
+        cmenu.addSeparator()
+        copyTS = cmenu.addAction('Copy this timestamp')
+        
+        clipboard = QApplication.clipboard()
+        ts1 = clipboard.text()
+        
+        if re.match('^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d$', ts1): 
+            between = True
+            copyTSbetween = cmenu.addAction('* Compose between predicate')
 
         cmenu.addSeparator()
-        copyVAPNG = cmenu.addAction("Copy screen")
-        saveVAPNG = cmenu.addAction("Save screen")
-        copyPNG = cmenu.addAction("Copy chart area")
-        savePNG = cmenu.addAction("Save chart area")
+        copyVAPNG = cmenu.addAction('Copy screen')
+        saveVAPNG = cmenu.addAction('Save screen')
+        copyPNG = cmenu.addAction('Copy chart area')
+        savePNG = cmenu.addAction('Save chart area')
 
         copyLegend = None
         
         if self.legend:
             cmenu.addSeparator()
-            copyLegend = cmenu.addAction("Copy Legend to clipboard")
-            putLegend = cmenu.addAction("Remove Legend")
+            copyLegend = cmenu.addAction('Copy Legend to clipboard')
+            putLegend = cmenu.addAction('Remove Legend')
 
         else:
             cmenu.addSeparator()
-            putLegend = cmenu.addAction("Add Legend")
+            putLegend = cmenu.addAction('Add Legend')
         
         if self.gotGantt:
             cmenu.addSeparator()
             
             if self.hideGanttLabels:
-                toggleGanttLabels = cmenu.addAction("Show Gantt Labels")
+                toggleGanttLabels = cmenu.addAction('Show Gantt Labels')
             else:
-                toggleGanttLabels = cmenu.addAction("Hide Gantt Labels")
+                toggleGanttLabels = cmenu.addAction('Hide Gantt Labels')
         
         if self.highlightedEntity is not None:
-            copyGanttEntity = cmenu.addAction("Copy highlighted gantt entity")
-            copyGanttDetails = cmenu.addAction("Copy highlighted gantt details")
+            copyGanttEntity = cmenu.addAction('Copy highlighted gantt entity')
+            copyGanttDetails = cmenu.addAction('Copy highlighted gantt details')
             
 
         if cfg('developmentMode'):
             cmenu.addSeparator()
-            fakeDisconnection = cmenu.addAction("fake disconnection")
+            fakeDisconnection = cmenu.addAction('fake disconnection')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -560,14 +571,22 @@ class myWidget(QWidget):
             self.updateToTime.emit(time.strftime('%Y-%m-%d %H:%M:%S'))
 
         if action == copyTS:
-            even_offset = 0 # time.timestamp() % self.t_scale
+            #even_offset = 0 # time.timestamp() % self.t_scale
             #time = time - datetime.timedelta(seconds= even_offset - self.t_scale - self.delta)
-            time = time - datetime.timedelta(seconds= even_offset)
+            #time = time - datetime.timedelta(seconds= even_offset)
             
             ts = time.strftime('%Y-%m-%d %H:%M:%S')
             
             clipboard = QApplication.clipboard()
             clipboard.setText(ts)
+
+        if between and action == copyTSbetween:
+            ts2 = time.strftime('%Y-%m-%d %H:%M:%S')
+            
+            predicate = ts1
+            predicate = "between '%s' and '%s'" % (ts1, ts2)
+            
+            clipboard.setText(predicate)
             
         if self.highlightedEntity and action == copyGanttDetails:
         
@@ -1157,10 +1176,10 @@ class myWidget(QWidget):
                 
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)
                 
-                if timeKey not in self.ndata[h]:
+                if timeKey not in self.ndata[h] and kpiDescriptions.getSubtype(type, kpi) != 'gantt':
                     # this is possible for example when custom KPI definition changed
-                    # 
-                    log('[!] kpi removed: %s.%s, skipping!' % (timeKey, kpi), 2)
+                    # not relevant for gantt as it does not have time key at all
+                    log('[!] here --> kpi removed: %s - %s, skipping!' % (timeKey, kpi), 2)
                     continue
                     
                 if gantt:
