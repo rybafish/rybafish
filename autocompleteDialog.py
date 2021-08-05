@@ -6,15 +6,45 @@ from PyQt5.QtGui import QPixmap, QIcon
 
 from PyQt5.QtCore import Qt
 
+from PyQt5.QtCore import pyqtSignal
+
 from utils import resourcePath
 
 from utils import log, cfg
 
+class QListWidgetMod(QListWidget):
+
+    #filterUpdated = pyqtSignal(['QString'])
+    filterUpdated = pyqtSignal()
+
+    def __init__(self):
+        self.filter = ''
+        super().__init__()
+
+    def keyPressEvent(self, event):
+    
+        k = event.text()
+
+        if k.isalnum():
+            self.filter += k
+            self.filterUpdated.emit()
+        elif event.key() == Qt.Key_Backspace:
+            self.filter = self.filter[:-1]
+            self.filterUpdated.emit()
+        else:
+            super().keyPressEvent(event)
+        
+        
+    
 class autocompleteDialog(QDialog):
     
     def __init__(self, parent, lines):
         
-        self.lines = lines
+        
+        self.linesAll = lines
+        self.lines = lines.copy()
+        
+        self.filterLabel = None
         
         super(autocompleteDialog, self).__init__(parent)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
@@ -28,10 +58,33 @@ class autocompleteDialog(QDialog):
         ac = autocompleteDialog(parent, lines)
         result = ac.exec_()
         
-        line = ac.linesList.currentItem().text()
+        if ac.linesList.currentItem():
+            line = ac.linesList.currentItem().text()
+        else:
+            line = '??'
         
         return (line, result == QDialog.Accepted)
 
+    def updateFilter(self):
+        self.filterLabel.setText(self.linesList.filter)
+        
+        self.lines.clear()
+        
+        for l in self.linesAll:
+            if l.lower().find(self.linesList.filter.lower()) >= 0:
+                self.lines.append(l)
+                
+        self.updateList()
+                
+    def updateList(self):
+        self.linesList.clear()
+    
+        for l in self.lines:
+            self.linesList.addItem(l)
+            
+        self.linesList.setCurrentRow(0)
+        self.linesList.update()
+    
     def itemOk(self):
         self.accept()
         
@@ -39,10 +92,9 @@ class autocompleteDialog(QDialog):
 
         iconPath = resourcePath('ico\\favicon.ico')
         
-        self.linesList = QListWidget()
-        
-        for l in self.lines:
-            self.linesList.addItem(l)
+        self.linesList = QListWidgetMod()
+
+        self.updateList()
             
         self.linesList.setCurrentRow(0)
         self.linesList.setFocus()
@@ -60,6 +112,12 @@ class autocompleteDialog(QDialog):
 
         self.linesList.itemDoubleClicked.connect(self.itemOk)
         #vbox.addStretch(1)
+        
+        self.filterLabel = QLabel('?')
+        
+        self.linesList.filterUpdated.connect(self.updateFilter)
+        
+        vbox.addWidget(self.filterLabel)
         
         vbox.addWidget(self.buttons)
         
