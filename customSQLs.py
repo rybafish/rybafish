@@ -26,7 +26,6 @@ def loadSQLs():
     
     for fl in dir:
     
-        print(fl)
         yamlFile = fl
         
         sqlFile = None
@@ -48,12 +47,34 @@ def loadSQLs():
                 
         if sqlFile:
         
-            print(sqlFile)
-        
-            columns.append(sqlFile['column'])
-            if sqlFile['column'] not in menu:
-                menu[sqlFile['column']] = []
+            columnList = sqlFile['column']
 
-            menu[sqlFile['column']].append(sqlFile['name'])
+            # convert column to a list
+            if isinstance(columnList, list):
+                pass
+            else:
+                columnList = [columnList]
+                
+                
+            # convert sqls to a list
+            sqlList = []
             
-            sqls[sqlFile['column'] + '.' + sqlFile['name']] = sqlFile['sql'].strip().rstrip(';')
+            if isinstance(sqlFile['sql'], list):
+                for sql in sqlFile['sql']:
+                    sqlList.append(sql.strip().rstrip(';'))
+            else:
+                sqlList.append(sqlFile['sql'].strip().rstrip(';'))
+            
+            
+            
+            
+            for c in columnList:
+
+                columns.append(c)
+
+                if c not in menu:
+                    menu[c] = []
+
+                menu[c].append(sqlFile['name'])
+            
+                sqls[c + '.' + sqlFile['name']] = sqlList

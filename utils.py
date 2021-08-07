@@ -82,7 +82,7 @@ class Layout():
     def dump(self):
         try: 
             f = open('layout.yaml', 'w')
-            dump(self.lo, f, default_flow_style=None)
+            dump(self.lo, f, default_flow_style=None, sort_keys=False)
             f.close()
         except:
             log('layout dump issue')

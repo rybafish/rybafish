@@ -1066,7 +1066,7 @@ class resultSet(QTableWidget):
     '''
     
     insertText = pyqtSignal(['QString'])
-    executeSQL = pyqtSignal(['QString'])
+    executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
 
     def __init__(self, conn):
@@ -1298,9 +1298,9 @@ class resultSet(QTableWidget):
                 
                 value = str(self.rows[r][c])
                 
-                sql = customSQLs.sqls[key].replace('$value', value)
+                #sql = customSQLs.sqls[key].replace('$value', value)
                 
-                self.executeSQL.emit(sql)
+                self.executeSQL.emit(key, value)
         
     def detach(self):
         if self._resultset_id is None:
@@ -2648,8 +2648,23 @@ class sqlConsole(QWidget):
         elif mode == 'leave results':
             self.executeSelectionNP(True)
             
-    def surprizeSQL(self, sql):
-        self.executeSelectionNP(True, sql)
+    def surprizeSQL(self, key, value):
+        
+        print(key, value)
+        
+        sqls = []
+        
+        for st in customSQLs.sqls[key]:
+            sqls.append(st.replace('$value', value))
+            
+        if len(sqls) == 0:
+            self.log('No sql defined', 2)
+        
+        if len(sqls) == 1:
+            self.executeSelectionNP(True, sqls[0])
+        else:
+            self.stQueue = sqls.copy()
+            self.launchStatementQueue()
         
     def executeSelectionNP(self, leaveResults, sql = None):
     
