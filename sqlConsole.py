@@ -3133,7 +3133,7 @@ class sqlConsole(QWidget):
         rows_list = self.sqlWorker.rows_list
         cols_list = self.sqlWorker.cols_list
         resultset_id_list = self.sqlWorker.resultset_id_list
-
+        
         if rows_list is None or cols_list is None:
             # it was a DDL or something else without a result set so we just stop
             
@@ -3146,6 +3146,10 @@ class sqlConsole(QWidget):
             # self.log(logText)
             
             result.clear()
+            
+            # destroy the tab, #453
+            i = self.resultTabs.count()
+            self.resultTabs.removeTab(i-1)
             
             #return 2021-08-01
             
