@@ -2558,7 +2558,10 @@ class chartArea(QFrame):
         if fromTime[:1] == '-' and toTime == '':
             try:
                 hours = int(fromTime[1:])
-                starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600)
+                #self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
+                
+                log('timeZoneDelta: %i' % self.widget.timeZoneDelta, 4)
+                starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600 + self.widget.timeZoneDelta)
                 starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                 self.widget.t_from = starttime
                 self.fromEdit.setStyleSheet("color: black;")
