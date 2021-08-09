@@ -2570,9 +2570,10 @@ class chartArea(QFrame):
                 if len(fromTime) == 10:
                     self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d')
                     
-                    self.fromEdit.setText(fromTime + ' 00:00:00')
-                else:
-                    self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
+                    fromTime += ' 00:00:00'
+                    self.fromEdit.setText(fromTime)
+
+                self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
                     
                 self.fromEdit.setStyleSheet("color: black;")
                 
@@ -2590,15 +2591,17 @@ class chartArea(QFrame):
                 if len(toTime) == 10:
                     self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d')
                     
-                    self.toEdit.setText(toTime + ' 00:00:00')
-                else:
-                    self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+                    toTime += ' 23:59:59'
+                    self.toEdit.setText(toTime)
+                    #self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+
+                self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
                     
                 self.toEdit.setStyleSheet("color: black;")
             except:
                 self.statusMessage('datetime syntax error')
                 return
-              
+                
         fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
         
         allOk = None
