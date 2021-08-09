@@ -2087,8 +2087,6 @@ class sqlConsole(QWidget):
             
             line = lineFrom.text()
 
-            print(line, linePos)
-            
             j = i = 0
             # check for the space
             for i in range(linePos-1, 0, -1):
@@ -2350,7 +2348,8 @@ class sqlConsole(QWidget):
         self.results.append(result)
         self.resultTabs.addTab(result, rName)
         
-        self.resultTabs.setCurrentIndex(len(self.results) - 1)
+        #self.resultTabs.setCurrentIndex(len(self.results) - 1)
+        self.resultTabs.setCurrentIndex(self.resultTabs.count() - 1)
         
         return result
         
@@ -2649,8 +2648,6 @@ class sqlConsole(QWidget):
             self.executeSelectionNP(True)
             
     def surprizeSQL(self, key, value):
-        
-        print(key, value)
         
         sqls = []
         
@@ -3148,6 +3145,9 @@ class sqlConsole(QWidget):
             result.clear()
             
             # destroy the tab, #453
+            # should we also remove the result from self.results? Do we know which one?
+            # self.results.remove(result) ?
+            
             i = self.resultTabs.count()
             self.resultTabs.removeTab(i-1)
             
