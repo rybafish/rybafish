@@ -1793,6 +1793,8 @@ class chartArea(QFrame):
             d = kpiStylesNN[type][kpi].get('decimal', 0)
             normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
 
+            self.widget.highlightedNormVal = normVal
+            
             scaled_value = utils.numberToStr(normVal, d)
             tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
             
