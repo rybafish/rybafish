@@ -327,6 +327,7 @@ def execute_query_desc(connection, sql_string, params, resultSize):
         columns_list = cursor.description_list.copy()
         
         if cursor._function_code == function_codes.DDL:
+            log('that was a ddl...', 4)
             rows_list = None
         else:
             rows_list = []

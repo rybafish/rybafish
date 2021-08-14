@@ -1141,6 +1141,61 @@ class resultSet(QTableWidget):
         #self.setStyleSheet('QTableWidget::item {padding: 2px; border: 1px; selection-background-color}')
         #self.setStyleSheet('QTableWidget::item:selected {padding: 2px; border: 1px; background-color: #08D}')
         
+    def highlightColumn(self, col, row = None):
+        rows = self.rowCount()
+        cols = self.columnCount()
+
+        hl = False
+
+        clr = QColor(cfg('highlightColor', '#def'))
+        hlBrush = QBrush(clr)
+
+        clr = QColor(clr.red()*0.9, clr.green()*0.9, clr.blue()*0.95)
+        hlBrushLOB = QBrush(clr)
+        
+        wBrush = QBrush(QColor('#ffffff'))
+        wBrushLOB = QBrush(QColor('#f4f4f4'))
+        
+        if row is None:
+            val = self.item(0, col).text()
+        else:
+            val = self.item(row, col).text()
+            
+            
+            
+        lobCols = []
+        
+        for i in range(len(self.cols)):
+            if db.ifLOBType(self.cols[i][1]):
+                lobCols.append(i)
+            
+        for i in range(rows):
+        
+            if row is None:
+                if val != self.item(i, col).text():
+                    hl = not hl
+            else:
+                if val == self.item(i, col).text():
+                    hl = True
+                else:
+                    hl = False
+            
+            if hl:
+                for j in range(cols):
+                    if j in lobCols:
+                        self.item(i, j).setBackground(hlBrushLOB)
+                    else:
+                        self.item(i, j).setBackground(hlBrush)
+            else:
+                for j in range(cols):
+                    if j in lobCols:
+                        self.item(i, j).setBackground(wBrushLOB)
+                    else:
+                        self.item(i, j).setBackground(wBrush)
+                    
+            if row is None:
+                val = self.item(i, col).text()
+    
     def contextMenuEvent(self, event):
         def prepareColumns():
             headers = []
@@ -1177,12 +1232,20 @@ class resultSet(QTableWidget):
         refreshTimerStart = None
         refreshTimerStop = None
         
+        i = self.currentColumn()
+        
+        if cfg('experimental'):
+            cmenu.addSeparator()
+        
+            highlightColCh = cmenu.addAction('Highlight changes')
+            highlightColVal = cmenu.addAction('Highlight this value')
+            
+        cmenu.addSeparator()
+        
         if not self.timerSet:
             refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
         else:
             refreshTimerStop = cmenu.addAction('Stop autorefresh')
-        
-        i = self.currentColumn()
         
         if self.headers[i] in customSQLs.columns:
             cmenu.addSeparator()
@@ -1200,6 +1263,12 @@ class resultSet(QTableWidget):
             clipboard = QApplication.clipboard()
             clipboard.setText(self.cols[i][0])
         '''
+        
+        if cfg('experimental') and action == highlightColCh:
+            self.highlightColumn(i)
+
+        if cfg('experimental') and action == highlightColVal:
+            self.highlightColumn(i, self.currentRow())
         
         if action == insertColumnName:
             headers_norm = prepareColumns()
@@ -3131,20 +3200,17 @@ class sqlConsole(QWidget):
         cols_list = self.sqlWorker.cols_list
         resultset_id_list = self.sqlWorker.resultset_id_list
         
-        if rows_list is None or cols_list is None:
+        #if rows_list is None or cols_list is None:
+        if not cols_list:
+            # that was not exception, but
             # it was a DDL or something else without a result set so we just stop
-            
-            #logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
-            #logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
             
             if dbCursor is not None:
                 logText += ', ' + utils.numberToStr(dbCursor.rowcount) + ' rows affected'
             
-            # self.log(logText)
-            
             result.clear()
             
-            # destroy the tab, #453
+            # now destroy the tab, #453
             # should we also remove the result from self.results? Do we know which one?
             # self.results.remove(result) ?
             

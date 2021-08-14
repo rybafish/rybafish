@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
-from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip
+from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip, QAction
 
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap, QRegion
 
@@ -432,7 +432,14 @@ class myWidget(QWidget):
         
         if re.match('^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d$', ts1): 
             between = True
-            copyTSbetween = cmenu.addAction('* Compose between predicate')
+            
+            copyTSbetween = QAction('Compose between predicate')
+            
+            f = copyTSbetween.font()
+            f.setBold(True)
+            copyTSbetween.setFont(f)
+            
+            cmenu.addAction(copyTSbetween)
 
         cmenu.addSeparator()
         copyVAPNG = cmenu.addAction('Copy screen')
@@ -2561,7 +2568,7 @@ class chartArea(QFrame):
                 #self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
                 
                 log('timeZoneDelta: %i' % self.widget.timeZoneDelta, 4)
-                starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600 + self.widget.timeZoneDelta)
+                starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600 - self.widget.timeZoneDelta)
                 starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                 self.widget.t_from = starttime
                 self.fromEdit.setStyleSheet("color: black;")
