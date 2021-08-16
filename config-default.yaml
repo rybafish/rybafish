@@ -55,6 +55,9 @@ keepalive: 1200
 ## light gray background for LOB columns just to be aware
 #highlightLOBs: True
 
+## highlighting background color for 'Highlight changes and Highlight value'
+#highlightColor: '#e2f0ff'
+
 #saveLayout: True
 #saveKPIs: True
 #saveOpenTabs: True
