@@ -206,6 +206,11 @@ class dataProvider():
         kpisList['-'] = []
         
         for kpi in kpis:
+            if kpi not in kpiStylesNN[type]:
+                #kpi disappeared on the fly, who cares
+                log('[!] kpi description does not exist, skipping (%s)' % kpi)
+                continue
+                
             if customKpi(kpi):
                 src = kpiDescriptions.kpiStylesNN[type][kpi]['sql']
                 if src in kpisList:
@@ -434,7 +439,10 @@ class dataProvider():
         
         for kpi in kpiIn.copy():
             #print('kpi: ', kpi)
-            if 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
+            
+            
+            
+            if kpi not in kpiDescriptions.kpiStylesNN[type] or 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
                 # this will affect the actual list of enabled kpis, which is good!
                 kpiIn.remove(kpi)
                 

@@ -13,8 +13,6 @@ from utils import log
 from utils import log, cfg
 
 class myCheckBox(QCheckBox):
-    host = ''
-    name = ''
     def __init__(self, host, name):
         super().__init__()
         self.host = host
@@ -175,6 +173,8 @@ class kpiTable(QTableWidget):
             to be connected to hostChanged signal (hostsTable)
         '''
         
+        log('refill: %s' % str(host), 5)
+        
         if len(self.hosts) == 0:
             return
 
@@ -235,6 +235,7 @@ class kpiTable(QTableWidget):
             if kpiName[:1] != '.':
                 #normal kpis
                 
+                log('myCheckBox, %s.%s' % (str(host), kpiName))
                 cb = myCheckBox(host, kpiName)
                 cb.setStyleSheet("QCheckBox::indicator { width: 10px; height: 10px; margin-left:16px;}")
 
@@ -248,6 +249,10 @@ class kpiTable(QTableWidget):
                     continue 
                 '''
                 
+                if kpiName not in kpiStyles:
+                    log('[!] kpiTable refill: kpi is missing, %s' % kpiName, 2)
+                    continue
+                    
                 style = kpiStyles[kpiName]
                 cb.stateChanged.connect(self.checkBoxChanged)
                 self.setCellWidget(i, 0, cb)
@@ -335,6 +340,9 @@ class kpiTable(QTableWidget):
                 
                 kpiScale = self.kpiScales[self.host][self.kpiNames[i]]
                 
+                if self.kpiNames[i] not in kpiStylesNN[type]:
+                    log('[!] kpiTable, kpi does not exist: %s' % self.kpiNames[i])
+                    continue
                 style = kpiStylesNN[type][self.kpiNames[i]]
                 
                 if 'disabled' in style.keys():

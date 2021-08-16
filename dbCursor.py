@@ -6,6 +6,8 @@ from pyhdb.protocol.constants import message_types, function_codes
 
 from pyhdb.protocol.parts import StatementId, Parameters
 
+from pyhdb.exceptions import InterfaceError
+
 class cursor_mod(cursor.Cursor):
     '''
         Cursor class re-implimentation with minor chanres to also support
@@ -51,7 +53,7 @@ class cursor_mod(cursor.Cursor):
                 self._handle_select(parts, prepared_statement.result_metadata_part)
             elif function_code in function_codes.DML:
                 self._handle_upsert(parts, request.segments[0].parts[1].unwritten_lobs)
-            elif function_code == function_codes.DDL:
+            elif function_code in (function_codes.DDL, function_codes.COMMIT, function_codes.ROLLBACK):
                 # No additional handling is required
                 pass
             elif function_code in (function_codes.DBPROCEDURECALL, function_codes.DBPROCEDURECALLWITHRESULT):

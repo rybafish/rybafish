@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
-from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip
+from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip, QAction
 
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap, QRegion
 
@@ -10,6 +10,7 @@ import time
 import datetime
 import math
 import random
+import re
 
 from array import array
 
@@ -236,9 +237,15 @@ class myWidget(QWidget):
             # for the issue https://github.com/rybafish/rybafish/issues/30
             # log('self.nscales[h].keys(): ' + str(self.nscales[h].keys()))
             
-            for kpi in self.nscales[h].keys():
+            #for kpi in self.nscales[h].keys():
+            for kpi in list(self.nscales[h].keys()):
 
                 if kpi[:4] == 'time':
+                    continue
+                    
+                if kpi not in kpiStylesNN[type]:
+                    log('[!] the kpi is disabled... %s, so deleting it from nscales' % kpi)
+                    del self.nscales[h][kpi]
                     continue
 
                 if kpiStylesNN[type][kpi]['group'] == grp:
@@ -284,6 +291,10 @@ class myWidget(QWidget):
                 
                 scaleKpi = self.nscales[h][kpi] # short cut
 
+                if kpi not in kpiStylesNN[type]:
+                    log('[!] the kpi is disaaableeed, %s' % kpi)
+                    continue
+                    
                 if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
                 
                     #scaleKpi['y_max'] = ''
@@ -407,45 +418,62 @@ class myWidget(QWidget):
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
-
-        startHere = cmenu.addAction("Make this a FROM time")
-        stopHere = cmenu.addAction("Make this a TO time")
         
-        copyTS = cmenu.addAction("Copy this timestamp")
+        between = False
+
+        startHere = cmenu.addAction('Make this a FROM time')
+        stopHere = cmenu.addAction('Make this a TO time')
+        
+        cmenu.addSeparator()
+        copyTS = cmenu.addAction('Copy this timestamp')
+        
+        clipboard = QApplication.clipboard()
+        ts1 = clipboard.text()
+        
+        if re.match('^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d$', ts1): 
+            between = True
+            
+            copyTSbetween = QAction('Compose between predicate')
+            
+            f = copyTSbetween.font()
+            f.setBold(True)
+            copyTSbetween.setFont(f)
+            
+            cmenu.addAction(copyTSbetween)
 
         cmenu.addSeparator()
-        copyVAPNG = cmenu.addAction("Copy screen")
-        saveVAPNG = cmenu.addAction("Save screen")
-        copyPNG = cmenu.addAction("Copy chart area")
-        savePNG = cmenu.addAction("Save chart area")
+        copyVAPNG = cmenu.addAction('Copy screen')
+        saveVAPNG = cmenu.addAction('Save screen')
+        copyPNG = cmenu.addAction('Copy chart area')
+        savePNG = cmenu.addAction('Save chart area')
 
         copyLegend = None
         
         if self.legend:
             cmenu.addSeparator()
-            copyLegend = cmenu.addAction("Copy Legend to clipboard")
-            putLegend = cmenu.addAction("Remove Legend")
+            copyLegend = cmenu.addAction('Copy Legend to clipboard')
+            putLegend = cmenu.addAction('Remove Legend')
 
         else:
             cmenu.addSeparator()
-            putLegend = cmenu.addAction("Add Legend")
+            putLegend = cmenu.addAction('Add Legend')
         
         if self.gotGantt:
             cmenu.addSeparator()
             
             if self.hideGanttLabels:
-                toggleGanttLabels = cmenu.addAction("Show Gantt Labels")
+                toggleGanttLabels = cmenu.addAction('Show Gantt Labels')
             else:
-                toggleGanttLabels = cmenu.addAction("Hide Gantt Labels")
+                toggleGanttLabels = cmenu.addAction('Hide Gantt Labels')
         
         if self.highlightedEntity is not None:
-            copyGanttEntity = cmenu.addAction("Copy highlighted gantt entity")
-            copyGanttDetails = cmenu.addAction("Copy highlighted gantt details")
+            copyGanttEntity = cmenu.addAction('Copy highlighted gantt entity')
+            copyGanttDetails = cmenu.addAction('Copy highlighted gantt details')
             
 
         if cfg('developmentMode'):
             cmenu.addSeparator()
-            fakeDisconnection = cmenu.addAction("fake disconnection")
+            fakeDisconnection = cmenu.addAction('fake disconnection')
         
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
@@ -550,14 +578,22 @@ class myWidget(QWidget):
             self.updateToTime.emit(time.strftime('%Y-%m-%d %H:%M:%S'))
 
         if action == copyTS:
-            even_offset = 0 # time.timestamp() % self.t_scale
+            #even_offset = 0 # time.timestamp() % self.t_scale
             #time = time - datetime.timedelta(seconds= even_offset - self.t_scale - self.delta)
-            time = time - datetime.timedelta(seconds= even_offset)
+            #time = time - datetime.timedelta(seconds= even_offset)
             
             ts = time.strftime('%Y-%m-%d %H:%M:%S')
             
             clipboard = QApplication.clipboard()
             clipboard.setText(ts)
+
+        if between and action == copyTSbetween:
+            ts2 = time.strftime('%Y-%m-%d %H:%M:%S')
+            
+            predicate = ts1
+            predicate = "between '%s' and '%s'" % (ts1, ts2)
+            
+            clipboard.setText(predicate)
             
         if self.highlightedEntity and action == copyGanttDetails:
         
@@ -627,6 +663,7 @@ class myWidget(QWidget):
                 
                 self.highlightedKpiHost = None
                 self.highlightedKpi = None
+                self.highlightedPoint = None
 
                 self.highlightedEntity = None
                 self.highlightedRange = None
@@ -666,6 +703,10 @@ class myWidget(QWidget):
         for kpi in kpis:
         
             if kpi[:4] == 'time':
+                continue
+                
+
+            if kpi not in kpiStylesNN[type]:
                 continue
                 
             if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
@@ -1130,6 +1171,10 @@ class myWidget(QWidget):
 
                 #print(kpiStylesNN[type][kpi]['subtype'])
                 
+                if kpi not in kpiStylesNN[type]:
+                    log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
+                    self.nkpis[h].remove(kpi)
+                    continue
                 if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
                     gantt = True
                     self.gotGantt = True
@@ -1137,7 +1182,13 @@ class myWidget(QWidget):
                     gantt = False
                 
                 timeKey = kpiDescriptions.getTimeKey(type, kpi)
-
+                
+                if timeKey not in self.ndata[h] and kpiDescriptions.getSubtype(type, kpi) != 'gantt':
+                    # this is possible for example when custom KPI definition changed
+                    # not relevant for gantt as it does not have time key at all
+                    log('[!] here --> kpi removed: %s - %s, skipping!' % (timeKey, kpi), 2)
+                    continue
+                    
                 if gantt:
                 
                     #gFont = QFont ('SansSerif', 8)
@@ -1740,14 +1791,64 @@ class chartArea(QFrame):
             self.statusMessage_.emit(str, False)
             
     def keyPressEventZ(self, event):
+    
+        def reportHighlight(host, kpi, point):
+            #this is black magic copy paste from scanforhint
+            type = hType(host, self.widget.hosts)
+            timeKey = kpiDescriptions.getTimeKey(type, kpi)
+            
+            d = kpiStylesNN[type][kpi].get('decimal', 0)
+            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
+
+            self.widget.highlightedNormVal = normVal
+            
+            scaled_value = utils.numberToStr(normVal, d)
+            tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
+            
+            unit = self.widget.nscales[host][kpi]['unit']
+
+            hst = self.widget.hosts[host]['host']
+            if self.widget.hosts[host]['port'] != '':
+                hst += ':'+str(self.widget.hosts[host]['port'])
+            
+            self.widget.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
+
+            self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
+            
+        modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_Left:
-            x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
-            self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+                # move highlighted point one step left
+                host = self.widget.highlightedKpiHost
+                kpi = self.widget.highlightedKpi
+                
+                if self.widget.highlightedPoint > 0:
+                    self.widget.highlightedPoint -= 1
+                    self.widget.update()
+                    
+                    reportHighlight(host, kpi, self.widget.highlightedPoint)
+            else:
+                x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
+                self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
 
         elif event.key() == Qt.Key_Right:
-            x = 0 - self.widget.pos().x() 
-            self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+                # move highlighted point one step right
+                
+                host = self.widget.highlightedKpiHost
+                kpi = self.widget.highlightedKpi
+                dSize = len(self.widget.ndata[host][kpi])
+                
+                if self.widget.highlightedPoint < dSize:
+                    self.widget.highlightedPoint += 1
+                    self.widget.update()
+                    
+                    reportHighlight(host, kpi, self.widget.highlightedPoint)
+
+            else:
+                x = 0 - self.widget.pos().x() 
+                self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
             
         elif event.key() == Qt.Key_Home:
             self.scrollarea.horizontalScrollBar().setValue(0)
@@ -2012,7 +2113,12 @@ class chartArea(QFrame):
             while allOk is None:
                 try:
                     t0 = time.time()
-                    self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host])  
+                    
+                    log('need to check here if all the kpis actually exist...')
+                    log(str(host))
+                    log(str(kpis))
+                    
+                    self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host])
                     self.widget.nkpis[host] = kpis
                     
                     allOk = True
@@ -2459,7 +2565,10 @@ class chartArea(QFrame):
         if fromTime[:1] == '-' and toTime == '':
             try:
                 hours = int(fromTime[1:])
-                starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600)
+                #self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
+                
+                log('timeZoneDelta: %i' % self.widget.timeZoneDelta, 4)
+                starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600 - self.widget.timeZoneDelta)
                 starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                 self.widget.t_from = starttime
                 self.fromEdit.setStyleSheet("color: black;")
@@ -2473,9 +2582,10 @@ class chartArea(QFrame):
                 if len(fromTime) == 10:
                     self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d')
                     
-                    self.fromEdit.setText(fromTime + ' 00:00:00')
-                else:
-                    self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
+                    fromTime += ' 00:00:00'
+                    self.fromEdit.setText(fromTime)
+
+                self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
                     
                 self.fromEdit.setStyleSheet("color: black;")
                 
@@ -2493,15 +2603,17 @@ class chartArea(QFrame):
                 if len(toTime) == 10:
                     self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d')
                     
-                    self.toEdit.setText(toTime + ' 00:00:00')
-                else:
-                    self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+                    toTime += ' 23:59:59'
+                    self.toEdit.setText(toTime)
+                    #self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+
+                self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
                     
                 self.toEdit.setStyleSheet("color: black;")
             except:
                 self.statusMessage('datetime syntax error')
                 return
-              
+                
         fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
         
         allOk = None
@@ -2516,6 +2628,18 @@ class chartArea(QFrame):
             try:
                 for host in range(0, len(self.widget.hosts)):
                     if len(self.widget.nkpis[host]) > 0:
+
+                        log('--->> need to check here if all the kpis actually exist...')
+                        type = hType(host, self.widget.hosts)
+                        
+                        for k in self.widget.nkpis[host]:
+                            log(k)
+                            if k not in kpiStylesNN[type]:
+                                log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
+                                self.widget.nkpis[host].remove(k)
+                            else:
+                                log('ok')
+                        
                         self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
                         actualRequest = True
                 allOk = True

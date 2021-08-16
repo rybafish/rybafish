@@ -82,7 +82,7 @@ class Layout():
     def dump(self):
         try: 
             f = open('layout.yaml', 'w')
-            dump(self.lo, f, default_flow_style=None)
+            dump(self.lo, f, default_flow_style=None, sort_keys=False)
             f.close()
         except:
             log('layout dump issue')
@@ -389,6 +389,17 @@ def log(s, loglevel = 3, nots = False, nonl = False):
             f.write(ts + str(e) + nl)
         
         f.close()
+        
+def normalize_header(header):
+    if header.isupper() and (header[0].isalpha() or header[0] == '_'):
+        if cfg('lowercase-columns', False):
+            h = header.lower()
+        else:
+            h = header
+    else:
+        h = '"%s"' % (header)
+        
+    return h
         
 def securePath(filename, backslash = False):
 

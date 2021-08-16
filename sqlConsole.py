@@ -23,15 +23,19 @@ from QPlainTextEditLN import QPlainTextEditLN
 from utils import cfg
 from utils import dbException, log
 from utils import resourcePath
+from utils import normalize_header
 
 import re
 
 import lobDialog, searchDialog
+from autocompleteDialog import autocompleteDialog 
 
 from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 import datetime
 import os
+
+import customSQLs
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -121,8 +125,20 @@ class sqlWorker(QObject):
             txtSub = txtSub.replace('\t', ' ')
             
             #print('start sql')
-            self.rows_list, self.cols_list, dbCursor, psid = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
-            self.resultset_id_list = dbCursor._resultset_id_list
+            
+            m = re.search('^sleep\s?\(\s*(\d+)\s*\)$', txtSub)
+            
+            if m is not None:
+                time.sleep(int(m.group(1)))
+                self.rows_list = None
+                self.cols_list = None
+                dbCursor = None
+                psid = None
+                self.resultset_id_list = None
+            else:
+                self.rows_list, self.cols_list, dbCursor, psid = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+            
+                self.resultset_id_list = dbCursor._resultset_id_list
             
             result.explicitLimit = explicitLimit
             result.resultSizeLimit = resultSizeLimit          
@@ -238,6 +254,8 @@ class console(QPlainTextEditLN):
     connectSignal = pyqtSignal()
     disconnectSignal = pyqtSignal()
     abortSignal = pyqtSignal()
+    
+    autocompleteSignal = pyqtSignal()
     
     def insertTextS(self, str):
         cursor = self.textCursor()
@@ -464,8 +482,8 @@ class console(QPlainTextEditLN):
         cmenu = QMenu(self)
         
         menuExec = cmenu.addAction('Execute statement/selection\tF8')
-        menuExecNP = cmenu.addAction('Execute without parsing')
-        menuExecLR = cmenu.addAction('Execute but leave the results')
+        menuExecNP = cmenu.addAction('Execute without parsing\tAlt+F8')
+        menuExecLR = cmenu.addAction('Execute but leave the results\tCtrl+F9')
         cmenu.addSeparator()
         menuOpenFile = cmenu.addAction('Open File in this console')
         menuSaveFile = cmenu.addAction('Save File\tCtrl+S')
@@ -521,9 +539,15 @@ class console(QPlainTextEditLN):
             cursor.insertText('123')
             self.setTextCursor(cursor)
             
-    def findString(self, str):
+    def findString(self, str = None):
     
-        self.lastSearch = str
+        if str is None:
+            if self.lastSearch  is None:
+                return
+                
+            str = self.lastSearch 
+        else:
+            self.lastSearch = str
     
         def select(start, stop):
             cursor = QTextCursor(self.document())
@@ -792,9 +816,14 @@ class console(QPlainTextEditLN):
                 search.findSignal.connect(self.findString)
                 
                 search.exec_()
-    
-        elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
-            #have to clear each time in case of input right behind the bracket
+        elif event.key() == Qt.Key_F3:
+            self.findString()
+            
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
+            self.autocompleteSignal.emit()
+        else:
+            #have to clear each time in case of input right behind the braket
+            #elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
             '''
             if self.haveHighlighrs:
                 self.clearHighlighting('br')
@@ -1037,6 +1066,7 @@ class resultSet(QTableWidget):
     '''
     
     insertText = pyqtSignal(['QString'])
+    executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
 
     def __init__(self, conn):
@@ -1111,18 +1141,62 @@ class resultSet(QTableWidget):
         #self.setStyleSheet('QTableWidget::item {padding: 2px; border: 1px; selection-background-color}')
         #self.setStyleSheet('QTableWidget::item:selected {padding: 2px; border: 1px; background-color: #08D}')
         
-    def contextMenuEvent(self, event):
-        def normalize_header(header):
-            if header.isupper() and header[0].isalpha():
-                if cfg('lowercase-columns', False):
-                    h = header.lower()
-                else:
-                    h = header
-            else:
-                h = '"%s"' % (header)
-                
-            return h
+    def highlightColumn(self, col, row = None):
+        rows = self.rowCount()
+        cols = self.columnCount()
+
+        hl = False
+
+        clr = QColor(cfg('highlightColor', '#def'))
+        hlBrush = QBrush(clr)
+
+        clr = QColor(clr.red()*0.9, clr.green()*0.9, clr.blue()*0.95)
+        hlBrushLOB = QBrush(clr)
+        
+        wBrush = QBrush(QColor('#ffffff'))
+        wBrushLOB = QBrush(QColor('#f4f4f4'))
+        
+        if row is None:
+            val = self.item(0, col).text()
+        else:
+            val = self.item(row, col).text()
             
+            
+            
+        lobCols = []
+        
+        for i in range(len(self.cols)):
+            if db.ifLOBType(self.cols[i][1]):
+                lobCols.append(i)
+            
+        for i in range(rows):
+        
+            if row is None:
+                if val != self.item(i, col).text():
+                    hl = not hl
+            else:
+                if val == self.item(i, col).text():
+                    hl = True
+                else:
+                    hl = False
+            
+            if hl:
+                for j in range(cols):
+                    if j in lobCols:
+                        self.item(i, j).setBackground(hlBrushLOB)
+                    else:
+                        self.item(i, j).setBackground(hlBrush)
+            else:
+                for j in range(cols):
+                    if j in lobCols:
+                        self.item(i, j).setBackground(wBrushLOB)
+                    else:
+                        self.item(i, j).setBackground(wBrush)
+                    
+            if row is None:
+                val = self.item(i, col).text()
+    
+    def contextMenuEvent(self, event):
         def prepareColumns():
             headers = []
             headers_norm = []
@@ -1158,16 +1232,28 @@ class resultSet(QTableWidget):
         refreshTimerStart = None
         refreshTimerStop = None
         
-        if cfg('experimental'):
-        
-            if not self.timerSet:
-                refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
-            else:
-                refreshTimerStop = cmenu.addAction('Stop autorefresh')
-        
-        action = cmenu.exec_(self.mapToGlobal(event.pos()))
-
         i = self.currentColumn()
+        
+        if cfg('experimental'):
+            cmenu.addSeparator()
+        
+            highlightColCh = cmenu.addAction('Highlight changes')
+            highlightColVal = cmenu.addAction('Highlight this value')
+            
+        cmenu.addSeparator()
+        
+        if not self.timerSet:
+            refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
+        else:
+            refreshTimerStop = cmenu.addAction('Stop autorefresh')
+        
+        if self.headers[i] in customSQLs.columns:
+            cmenu.addSeparator()
+
+            for m in customSQLs.menu[self.headers[i]]:
+                customSQL = cmenu.addAction(m)
+
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
         
         if action == None:
             return
@@ -1177,6 +1263,12 @@ class resultSet(QTableWidget):
             clipboard = QApplication.clipboard()
             clipboard.setText(self.cols[i][0])
         '''
+        
+        if cfg('experimental') and action == highlightColCh:
+            self.highlightColumn(i)
+
+        if cfg('experimental') and action == highlightColVal:
+            self.highlightColumn(i, self.currentRow())
         
         if action == insertColumnName:
             headers_norm = prepareColumns()
@@ -1233,7 +1325,7 @@ class resultSet(QTableWidget):
             
             QApplication.clipboard().setPixmap(pixmap)
 
-        if cfg('experimental') and action == refreshTimerStart:
+        if action == refreshTimerStart:
             '''
                 triggers the auto-refresh timer
                 
@@ -1251,12 +1343,33 @@ class resultSet(QTableWidget):
                 self.triggerAutorefresh.emit(value)
                 self.timerSet = True
 
-        if cfg('experimental') and action == refreshTimerStop:
+        if action == refreshTimerStop:
             log('disabeling the timer...')
             self.triggerAutorefresh.emit(0)
             self.timerSet = False
+            
+            
+        if action is not None:
+            
+            key = self.headers[i] + '.' + action.text()
+            
+            if key in customSQLs.sqls:
+                # custom sql menu item
+            
+                r = self.currentItem().row()
+                c = self.currentItem().column()
+                
+                sm = self.selectionModel()
 
-
+                if len(sm.selectedIndexes()) != 1:
+                    self.log('Only single value supported for this action.', True)
+                    return
+                
+                value = str(self.rows[r][c])
+                
+                #sql = customSQLs.sqls[key].replace('$value', value)
+                
+                self.executeSQL.emit(key, value)
         
     def detach(self):
         if self._resultset_id is None:
@@ -1624,6 +1737,7 @@ class logArea(QPlainTextEdit):
 class sqlConsole(QWidget):
 
     nameChanged = pyqtSignal(['QString'])
+    statusMessage = pyqtSignal(['QString', bool])
     selfRaise = pyqtSignal(object)
 
     def __init__(self, window, config, tabname = None):
@@ -1703,6 +1817,7 @@ class sqlConsole(QWidget):
         self.cons.connectSignal.connect(self.connectDB)
         self.cons.disconnectSignal.connect(self.disconnectDB)
         self.cons.abortSignal.connect(self.cancelSession)
+        self.cons.autocompleteSignal.connect(self.autocompleteHint)
 
         if config is None:
             return
@@ -2028,6 +2143,121 @@ class sqlConsole(QWidget):
         
         return True
             
+    def autocompleteHint(self):
+            
+            if self.conn is None:
+                self.log('The console is not connected to the DB', True)
+                return
+            
+            cursor = self.cons.textCursor()
+            pos = cursor.position()
+            linePos = cursor.positionInBlock();
+            lineFrom = self.cons.document().findBlock(pos)
+            
+            line = lineFrom.text()
+
+            j = i = 0
+            # check for the space
+            for i in range(linePos-1, 0, -1):
+                if line[i] == ' ':
+                    break
+            else:
+                #start of the line reached
+                i = -1
+                
+            # check for the dot
+            for j in range(linePos-1, i+1, -1):
+                if line[j] == '.':
+                    break
+            else:
+                j = -1
+                
+            if j > i:
+                schema = line[i+1:j]
+                
+                if schema.islower() and schema[0] != '"' and schema[-1] != '"':
+                    schema = schema.upper()
+                    
+                term = line[j+1:linePos].lower() + '%'
+                
+            else:
+                schema = 'PUBLIC'
+                term = line[i+1:linePos].lower() + '%'
+                    
+            if linePos - i <= 2:
+                #string is to short for autocomplete search
+                return
+                 
+            if j == -1:
+                stPos = lineFrom.position() + i + 1
+            else:
+                stPos = lineFrom.position() + j + 1
+
+            endPos = lineFrom.position() + linePos
+
+            log('get autocomplete input (%s)... ' % (term), 3)
+            
+            if j != -1:
+                self.statusMessage.emit('Autocomplete request: %s.%s...' % (schema, term), False)
+            else:
+                self.statusMessage.emit('Autocomplete request: %s...' % (term), False)
+            
+            self.indicator.status = 'sync'
+            self.indicator.repaint()
+            
+            t0 = time.time()
+            
+
+            try:
+                if schema == 'PUBLIC':
+                    rows = db.execute_query(self.conn, 'select distinct schema_name object, \'SCHEMA\' type from schemas where lower(schema_name) like ? union select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [term, schema, term])
+                else:
+                    rows = db.execute_query(self.conn, 'select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
+                    
+            except dbException as e:
+                err = str(e)
+                
+                self.statusMessage.emit('db error: %s' % err, False)
+
+                self.indicator.status = 'error'
+                self.indicator.repaint()
+                return
+
+            t1 = time.time()
+
+            self.indicator.status = 'idle'
+            self.indicator.repaint()
+            
+            n = len(rows)
+            
+            log('ok, %i rows: %s ms' % (n, str(round(t1-t0, 3))), 3, True)
+            
+            if n == 0:
+                self.statusMessage.emit('No suggestions found', False)
+                return
+                
+            self.statusMessage.emit('', False)
+
+            if n > 1:
+                lines = []
+                for r in rows:
+                    lines.append('%s (%s)' % (r[0], r[1]))
+                    
+                line, ok = autocompleteDialog.getLine(self, lines)
+            else:
+                #single suggestion, let's fake "OK":
+                ok = True
+                line = rows[0][0]
+                
+            line = line.split(' (')[0]
+
+            if ok:
+                cursor.clearSelection()
+                cursor.setPosition(stPos, QTextCursor.MoveAnchor)
+                cursor.setPosition(endPos, QTextCursor.KeepAnchor)
+            
+                cursor.insertText(normalize_header(line))
+                
     def cancelSession(self):
         self.log("\nNOTE: the SQL needs to be executed manually from the other SQL console:\nalter system cancel session '%s'" % (str(self.connection_id)))
         
@@ -2103,6 +2333,8 @@ class sqlConsole(QWidget):
 
         self.indicator.status = 'idle'
         self.indicator.repaint()
+        
+        self.log('Connected.')
 
     
     def reconnect(self):
@@ -2174,6 +2406,7 @@ class sqlConsole(QWidget):
         result.log = self.log
         
         result.insertText.connect(self.cons.insertTextS)
+        result.executeSQL.connect(self.surprizeSQL)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:
@@ -2184,7 +2417,8 @@ class sqlConsole(QWidget):
         self.results.append(result)
         self.resultTabs.addTab(result, rName)
         
-        self.resultTabs.setCurrentIndex(len(self.results) - 1)
+        #self.resultTabs.setCurrentIndex(len(self.results) - 1)
+        self.resultTabs.setCurrentIndex(self.resultTabs.count() - 1)
         
         return result
         
@@ -2456,9 +2690,20 @@ class sqlConsole(QWidget):
         
     def executeSelection(self, mode):
     
-        if not cfg('dev') and self.config is None:
-            self.log('No connection')
+        if not cfg('dev-') and self.config is None:
+            self.log('No connection, connect RybaFish to the DB first.')
             return
+            
+        if self.conn is None:
+            self.log('The console is disconnected...')
+            
+            #answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect as "%s@%s:%s"?' % (self.config['user'], self.config['host'], str(self.config['port'])))
+            answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect now?')
+            
+            if not answer:
+                return 
+                
+            self.connectDB()
     
         if self.timerAutorefresh:
             self.log('--> Stopping the autorefresh...')
@@ -2471,18 +2716,37 @@ class sqlConsole(QWidget):
         elif mode == 'leave results':
             self.executeSelectionNP(True)
             
-    def executeSelectionNP(self, leaveResults):
+    def surprizeSQL(self, key, value):
+        
+        sqls = []
+        
+        for st in customSQLs.sqls[key]:
+            sqls.append(st.replace('$value', value))
+            
+        if len(sqls) == 0:
+            self.log('No sql defined', 2)
+        
+        if len(sqls) == 1:
+            self.executeSelectionNP(True, sqls[0])
+        else:
+            self.stQueue = sqls.copy()
+            self.launchStatementQueue()
+        
+    def executeSelectionNP(self, leaveResults, sql = None):
     
         cursor = self.cons.textCursor()
     
-        if cursor.selection().isEmpty():
+        if cursor.selection().isEmpty() and sql is None:
             self.log('You need to select statement manually for this option')
             return
 
         if leaveResults == False:
             self.closeResults()
 
-        statement = cursor.selection().toPlainText()
+        if sql == None:
+            statement = cursor.selection().toPlainText()
+        else:
+            statement = sql
         
         result = self.newResult(self.conn, statement)
         self.executeStatement(statement, result)
@@ -2641,6 +2905,7 @@ class sqlConsole(QWidget):
         i = 0
         start = stop = 0
         
+        leadingComment = False
         insideString = False
         insideProc = False
         
@@ -2679,12 +2944,19 @@ class sqlConsole(QWidget):
             if str == '':
                 #happens when semicolon detected.
                 # print('str = \'\'', 'startDelta: ', startDelta)
-                if c in (' ', '\n', '\t'):
+                if c in (' ', '\n', '\t') and not leadingComment:
                     # warning: insideString logic skipped here (as it is defined below this line
                     # skip leading whitespaces
                     # print(start, stop, cursorPos, i)
                     # startDelta += 1
                     continue
+                elif not leadingComment and c == '-' and i < scanTo and txt[i] == '-':
+                    leadingComment = True
+                elif leadingComment:
+                    if c == '\n':
+                        leadingComment = False
+                    else:
+                        continue
                 else:
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
@@ -2830,7 +3102,7 @@ class sqlConsole(QWidget):
                 try:
                     self.log('Reconnecting to %s:%s...' % (self.config['host'], str(self.config['port'])))
                     self.reconnect()
-                    self.log('Connection restored')
+                    self.log('Connection restored <<')
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
                     
@@ -2908,12 +3180,14 @@ class sqlConsole(QWidget):
         
         dbCursor = self.sqlWorker.dbCursor
         
-        result._connection = dbCursor.connection
+        if dbCursor is not None:
+            result._connection = dbCursor.connection
         
         #self.psid = self.sqlWorker.psid
         #log('psid saved: %s' % utils.hextostr(self.psid))
         
-        log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
+        if dbCursor is not None:
+            log('Number of resultsets: %i' % len(dbCursor.description_list), 3)
 
         t0 = self.t0
         t1 = time.time()
@@ -2925,24 +3199,32 @@ class sqlConsole(QWidget):
         rows_list = self.sqlWorker.rows_list
         cols_list = self.sqlWorker.cols_list
         resultset_id_list = self.sqlWorker.resultset_id_list
-
-        if rows_list is None or cols_list is None:
+        
+        #if rows_list is None or cols_list is None:
+        if not cols_list:
+            # that was not exception, but
             # it was a DDL or something else without a result set so we just stop
             
-            #logText += ', ' + str(self.sqlWorker.rowcount) + ' rows affected'
-            #logText += ', ' + str(dbCursor.rowcount) + ' rows affected'
-            logText += ', ' + utils.numberToStr(dbCursor.rowcount) + ' rows affected'
-            
-            self.log(logText)
+            if dbCursor is not None:
+                logText += ', ' + utils.numberToStr(dbCursor.rowcount) + ' rows affected'
             
             result.clear()
-            return
             
-        #print('cols:', cols_list)
-        #print('rows:', rows_list)
-        #print('resultset id list', resultset_id_list)
-
-        for i in range(len(cols_list)):
+            # now destroy the tab, #453
+            # should we also remove the result from self.results? Do we know which one?
+            # self.results.remove(result) ?
+            
+            i = self.resultTabs.count()
+            self.resultTabs.removeTab(i-1)
+            
+            #return 2021-08-01
+            
+            numberOfResults = 0
+            
+        else:
+            numberOfResults = len(cols_list)
+        
+        for i in range(numberOfResults):
             
             #print('result:', i)
             
@@ -2954,10 +3236,6 @@ class sqlConsole(QWidget):
             
             result.psid = self.sqlWorker.psid
             log('psid saved: %s' % utils.hextostr(result.psid), 4)
-            
-            #print(result.cols)
-            #print(result.cols[0])
-            #print(result.cols[0][2])
             
             if result.cols[0][2] == 'SCALAR':
                 result._resultset_id = None
@@ -3000,17 +3278,15 @@ class sqlConsole(QWidget):
         if not self.timerAutorefresh:
             self.log(logText)
 
-        log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
-        
-        for i in range(len(cols_list)):
-            #log('rows %i:%i' % (i, len(rows_list[0])))
-            del rows_list[0]
-            #log('cols %i:%i' % (i, len(cols_list[0])))
-            del cols_list[0]
+        if numberOfResults:
+            log('clearing lists (cols, rows): %i, %i' % (len(cols_list), len(rows_list)), 4)
             
-        #del rows_list
-        #del cols_list
-
+            for i in range(len(cols_list)):
+                #log('rows %i:%i' % (i, len(rows_list[0])))
+                del rows_list[0]
+                #log('cols %i:%i' % (i, len(cols_list[0])))
+                del cols_list[0]
+            
         self.indicator.status = 'idle'
         self.indicator.runtime = None
         self.updateRuntime('off')

@@ -43,6 +43,9 @@ keepalive-cons: 1800
 ## light gray background for LOB columns just to be aware
 highlightLOBs: True
 
+## highlighting background color for 'Highlight changes and Highlight value'
+#highlightColor: '#e2f0ff'
+
 ## sql console font sizes
 #console-fontSize: 10
 #result-fontSize 10

@@ -28,7 +28,7 @@ class QPlainTextEditLN(QWidget):
                 #txtline = self.document().findBlockByLineNumber(cursor.blockNumber())
                 txtline = self.document().findBlockByNumber(cursor.blockNumber())
                 
-                cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.MoveAnchor)
+                cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.MoveAnchor)
                 cursor.insertText('\n' + txtline.text())
             else:
                 txt = cursor.selectedText()

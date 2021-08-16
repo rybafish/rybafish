@@ -14,7 +14,7 @@ class indicator(QWidget):
         'running': '#8F8',
         'error': '#CCC',
         'render': '#FFF',
-        'disconnected': '#FCC'
+        'disconnected': '#FCC',
     }
 
 

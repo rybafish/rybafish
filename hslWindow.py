@@ -37,6 +37,8 @@ from utils import dbException, msgDialog
 
 import utils
 
+import customSQLs
+
 import kpiDescriptions
 
 import sys, os
@@ -251,6 +253,9 @@ class hslWindow(QMainWindow):
                     
         self.close()
 
+    def menuReloadCustomSQLs(self):
+        customSQLs.loadSQLs()
+    
     def menuReloadCustomKPIs(self):
     
         kpiStylesNN = kpiDescriptions.kpiStylesNN
@@ -332,6 +337,9 @@ class hslWindow(QMainWindow):
 
     def menuCustomConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/customKPI'))
+    
+    def menuContextSQLsConfHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/contextSQLs'))
 
     def menuTips(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/tips'))
@@ -436,8 +444,15 @@ class hslWindow(QMainWindow):
                     
                 propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
                 
+                tenant = self.chartArea.dp.dbProperties.get('tenant')
+                
+                if tenant:
+                    windowStr = ('%s %s@%s' % (conf['user'], tenant, self.chartArea.dp.dbProperties['sid']))
+                else:
+                    windowStr = propStr
+                
                 self.tabs.setTabText(0, propStr)
-                self.setWindowTitle('RybaFish Charts [%s]' % propStr)
+                self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
                 
                 #setup keep alives
                 
@@ -564,6 +579,7 @@ class hslWindow(QMainWindow):
             self.tabs.addTab(console, console.tabname)
             
             console.selfRaise.connect(self.raiseTab)
+            console.statusMessage.connect(self.statusMessage)
             
             ind = indicator()
             console.indicator = ind
@@ -649,6 +665,7 @@ class hslWindow(QMainWindow):
         self.tabs.addTab(console, tname)
         
         console.selfRaise.connect(self.raiseTab)
+        console.statusMessage.connect(self.statusMessage)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -773,6 +790,7 @@ class hslWindow(QMainWindow):
 
         ind = indicator()
         self.chartArea.indicator = ind
+        self.chartArea.indicator.status = 'disconnected'
 
         # establish hard links:
         kpisTable.kpiScales = self.chartArea.widget.nscales
@@ -933,6 +951,13 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
+        if cfg('experimental'):
+            reloadCustomSQLsAct = QAction('Reload Context &SQLs', self)
+            reloadCustomSQLsAct.setStatusTip('Reload definition of context SQLs')
+            reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
+            
+            actionsMenu.addAction(reloadCustomSQLsAct)
+
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
         self.essAct.triggered.connect(self.menuEss)
@@ -952,6 +977,11 @@ class hslWindow(QMainWindow):
         confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
         confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
 
+        if cfg('experimental'):
+            confContextHelpAct = QAction('Context SQLs', self)
+            confContextHelpAct.setStatusTip('Short manual on context SQLs')
+            confContextHelpAct.triggered.connect(self.menuContextSQLsConfHelp)
+
         confTipsAct = QAction('Tips and tricks', self)
         confTipsAct.setStatusTip('Tips and tricks description')
         confTipsAct.triggered.connect(self.menuTips)
@@ -961,6 +991,10 @@ class hslWindow(QMainWindow):
         
         
         helpMenu.addAction(confCustomHelpAct)
+        
+        if cfg('experimental'):
+            helpMenu.addAction(confContextHelpAct)
+        
         helpMenu.addAction(confTipsAct)
             
         helpMenu.addAction(aboutAct)
@@ -1012,8 +1046,11 @@ class hslWindow(QMainWindow):
                 
                 ind = indicator()
                 console.indicator = ind
+                console.indicator.status = 'disconnected'
                 
                 console.selfRaise.connect(self.raiseTab)
+                console.statusMessage.connect(self.statusMessage)
+                
                 ind.iClicked.connect(console.reportRuntime)
                 
                 ind.iToggle.connect(console.updateRuntime)
@@ -1096,7 +1133,10 @@ class hslWindow(QMainWindow):
 
         self.chartArea.connected.connect(self.setTabName)
         log('init finish()')
-        
+
+
+        if cfg('experimental'):
+            customSQLs.loadSQLs()
 
         # offline console tests
         
@@ -1121,6 +1161,7 @@ class hslWindow(QMainWindow):
             self.tabs.addTab(console, tname)
             
             console.selfRaise.connect(self.raiseTab)
+            console.statusMessage.connect(self.statusMessage)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 

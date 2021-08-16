@@ -50,6 +50,12 @@ layout.yaml
 # custom sql folder
 sql/
 
+# custom KPIs folder
+CustomKPIs/
+
+# custom sql folder
+ContextSQLs/
+
 #screenshots dir
 screens/
 

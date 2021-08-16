@@ -41,7 +41,7 @@ class lobDialog(QDialog):
         
         lobsize = 'Length: %i' % ls
         
-        if ls == 65536:
+        if ls >= 65536:
             lobsize += ' <truncated?>'
             
         te.setPlainText(lob)
