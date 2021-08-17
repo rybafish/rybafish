@@ -2184,6 +2184,10 @@ class sqlConsole(QWidget):
             if self.conn is None:
                 self.log('The console is not connected to the DB', True)
                 return
+                
+            if self.sqlRunning:
+                self.log('Autocomplete is blocked while the sql is still running...')
+                return
             
             cursor = self.cons.textCursor()
             pos = cursor.position()
