@@ -35,7 +35,7 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 import datetime
 import os
 
-import sqlparse
+from sqlparse import format
 
 import customSQLs
 
@@ -488,10 +488,18 @@ class console(QPlainTextEditLN):
             self.log.emit('Select the statement first')
             return
             
-        txt = cursor.selectedText()
+        txt = cursor.selection().toPlainText()
         
-        txt = sqlparse.format(txt, reindent=True)
+        trailingLN = False
         
+        if txt[-1:] == '\n':
+            trailingLN = True
+        
+        txt = format(txt, reindent=True)
+        
+        if trailingLN:
+           txt += '\n' 
+           
         cursor.insertText(txt)
         
         
