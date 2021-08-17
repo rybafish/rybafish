@@ -35,6 +35,8 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 import datetime
 import os
 
+import sqlparse
+
 import customSQLs
 
 from PyQt5.QtCore import pyqtSignal
@@ -244,6 +246,8 @@ class console(QPlainTextEditLN):
 #class console(QPlainTextEdit):
     
     executionTriggered = pyqtSignal(['QString'])
+    
+    log = pyqtSignal(['QString'])
     
     closeSignal = pyqtSignal()
     goingToCrash = pyqtSignal()
@@ -477,6 +481,20 @@ class console(QPlainTextEditLN):
 
         return
         
+    def formatSelection(self):
+        cursor = self.textCursor()
+
+        if cursor.selection().isEmpty():
+            self.log.emit('Select the statement first')
+            return
+            
+        txt = cursor.selectedText()
+        
+        txt = sqlparse.format(txt, reindent=True)
+        
+        cursor.insertText(txt)
+        
+        
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
@@ -492,7 +510,11 @@ class console(QPlainTextEditLN):
         menuConnect = cmenu.addAction('(re)connecto to the DB')
         menuAbort = cmenu.addAction('Generate cancel session sql')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
-
+        
+        if cfg('experimental'):
+            cmenu.addSeparator()
+            sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
+            
         if cfg('dev'):
             cmenu.addSeparator()
             menuTest = cmenu.addAction('Test menu')
@@ -538,6 +560,9 @@ class console(QPlainTextEditLN):
             cursor.removeSelectedText()
             cursor.insertText('123')
             self.setTextCursor(cursor)
+            
+        if cfg('experimental') and action == sqlFormat:
+            self.formatSelection()
             
     def findString(self, str = None):
     
@@ -818,6 +843,8 @@ class console(QPlainTextEditLN):
                 search.exec_()
         elif event.key() == Qt.Key_F3:
             self.findString()
+        elif event.key() == Qt.Key_O and (modifiers == Qt.ControlModifier | Qt.ShiftModifier):
+            self.formatSelection()
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
             self.autocompleteSignal.emit()
@@ -1348,7 +1375,6 @@ class resultSet(QTableWidget):
             self.triggerAutorefresh.emit(0)
             self.timerSet = False
             
-            
         if action is not None:
             
             key = self.headers[i] + '.' + action.text()
@@ -1370,6 +1396,8 @@ class resultSet(QTableWidget):
                 #sql = customSQLs.sqls[key].replace('$value', value)
                 
                 self.executeSQL.emit(key, value)
+                
+                
         
     def detach(self):
         if self._resultset_id is None:
@@ -3443,6 +3471,7 @@ class sqlConsole(QWidget):
         self.cons._parent = self
         
         self.cons.executionTriggered.connect(self.executeSelection)
+        self.cons.log.connect(self.log)
         
         self.cons.openFileSignal.connect(self.openFile)
         self.cons.goingToCrash.connect(self.delayBackup)
