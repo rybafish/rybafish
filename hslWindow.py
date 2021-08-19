@@ -470,7 +470,7 @@ class hslWindow(QMainWindow):
                 else:
                     log(e)
                     
-                msgBox = QMessageBox()
+                msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
                 iconPath = resourcePath('ico\\favicon.png')
@@ -484,7 +484,7 @@ class hslWindow(QMainWindow):
                 log('Init exception not related to DB')
                 log(str(e))
 
-                msgBox = QMessageBox()
+                msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Error')
                 msgBox.setText('Init failed: %s \n\nSee more deteails in the log file.' % (str(e)))
                 iconPath = resourcePath('ico\\favicon.png')
@@ -498,7 +498,7 @@ class hslWindow(QMainWindow):
             # cancel or parsing error
             
             if ok and conf['ok'] == False: #it's connection string dict in case of [Cancel]
-                msgBox = QMessageBox()
+                msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
                 iconPath = resourcePath('ico\\favicon.png')
