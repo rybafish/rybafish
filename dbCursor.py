@@ -53,7 +53,7 @@ class cursor_mod(cursor.Cursor):
                 self._handle_select(parts, prepared_statement.result_metadata_part)
             elif function_code in function_codes.DML:
                 self._handle_upsert(parts, request.segments[0].parts[1].unwritten_lobs)
-            elif function_code in (function_codes.DDL, function_codes.COMMIT, function_codes.ROLLBACK):
+            elif function_code in (function_codes.DDL, function_codes.COMMIT, function_codes.ROLLBACK, 7):
                 # No additional handling is required
                 pass
             elif function_code in (function_codes.DBPROCEDURECALL, function_codes.DBPROCEDURECALLWITHRESULT):

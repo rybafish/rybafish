@@ -259,6 +259,8 @@ class console(QPlainTextEditLN):
     disconnectSignal = pyqtSignal()
     abortSignal = pyqtSignal()
     
+    explainSignal = pyqtSignal(['QString'])
+    
     autocompleteSignal = pyqtSignal()
     
     def insertTextS(self, str):
@@ -481,11 +483,25 @@ class console(QPlainTextEditLN):
 
         return
         
+    def explainPlan(self):
+    
+        cursor = self.textCursor()
+    
+        if cursor.selection().isEmpty():
+            self.log.emit('You need to select the statement manually first')
+            return
+
+        st = cursor.selection().toPlainText()
+        
+        st = st.strip().rstrip(';')
+        
+        self.explainSignal.emit(st)
+    
     def formatSelection(self):
         cursor = self.textCursor()
 
         if cursor.selection().isEmpty():
-            self.log.emit('Select the statement first')
+            self.log.emit('Select the statement manually first')
             return
             
         txt = cursor.selection().toPlainText()
@@ -495,7 +511,7 @@ class console(QPlainTextEditLN):
         if txt[-1:] == '\n':
             trailingLN = True
         
-        txt = format(txt, reindent=True)
+        txt = format(txt, reindent=True, indent_width=4)
         
         if trailingLN:
            txt += '\n' 
@@ -521,6 +537,7 @@ class console(QPlainTextEditLN):
         
         if cfg('experimental'):
             cmenu.addSeparator()
+            explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
             sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
             
         if cfg('dev'):
@@ -571,6 +588,9 @@ class console(QPlainTextEditLN):
             
         if cfg('experimental') and action == sqlFormat:
             self.formatSelection()
+        
+        if cfg('experimental') and action == explainPlan:
+            self.explainPlan()
             
     def findString(self, str = None):
     
@@ -853,6 +873,8 @@ class console(QPlainTextEditLN):
             self.findString()
         elif event.key() == Qt.Key_O and (modifiers == Qt.ControlModifier | Qt.ShiftModifier):
             self.formatSelection()
+        elif event.key() == Qt.Key_X and (modifiers == Qt.ControlModifier | Qt.ShiftModifier):
+            self.explainPlan()
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
             self.autocompleteSignal.emit()
@@ -1854,6 +1876,8 @@ class sqlConsole(QWidget):
         self.cons.disconnectSignal.connect(self.disconnectDB)
         self.cons.abortSignal.connect(self.cancelSession)
         self.cons.autocompleteSignal.connect(self.autocompleteHint)
+        
+        self.cons.explainSignal.connect(self.explainPlan)
 
         if config is None:
             return
@@ -2179,6 +2203,18 @@ class sqlConsole(QWidget):
         
         return True
             
+    def explainPlan(self, st):
+        sqls = []
+        
+        st_name = 'rf'
+        
+        sqls.append("explain plan set statement_name = '%s' for %s" % (st_name, st))
+        sqls.append("select * from explain_plan_table where statement_name = '%s'" % (st_name))
+        sqls.append("delete from sys.explain_plan_table where statement_name = '%s'" % (st_name))
+            
+        self.stQueue = sqls.copy()
+        self.launchStatementQueue()
+        
     def autocompleteHint(self):
             
             if self.conn is None:
