@@ -960,6 +960,9 @@ class myWidget(QWidget):
         
         drawTimeScale = cfg('legendTimeScale', True)
         
+        
+        highlightedIndex = None
+        
         for h in range(0, len(self.hosts)):
         
             type = hType(h, self.hosts)
@@ -972,7 +975,7 @@ class myWidget(QWidget):
             for kpi in self.nkpis[h]:
             
                 gantt = False
-            
+                
                 if self.legend == 'kpis':
                     '''
                     
@@ -1011,6 +1014,9 @@ class myWidget(QWidget):
 
                     lkpis.append(kpi)
                     lkpisl.append(label)
+                    
+                if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
+                    highlightedIndex = len(lkpisl) - 1 # this also includes hostname separators without corresponding pen style
 
                 # legend width calc
                 ll = fm.width(label)
@@ -1079,7 +1085,15 @@ class myWidget(QWidget):
                     # but for normal kpis this is just a QPen
                     # for others (but only gantt exist?) it is s LIST (!) [QBrush, QPen]
 
-                    qp.setPen(lpens[i])
+                    kpiPen = lpens[i]
+                    
+                    if highlightedIndex:
+                        if highlightedIndex == i:
+                            kpiPen.setWidth(2)
+                        else:
+                            kpiPen.setWidth(1)
+
+                    qp.setPen(kpiPen)
                     qp.drawLine(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, leftX + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
                 else:
                     # must be gantt, so we put a bar...
