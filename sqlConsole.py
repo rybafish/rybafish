@@ -937,10 +937,14 @@ class console(QPlainTextEditLN):
         t0 = time.time()
     
         if self.manualSelection:
+        
+            #print('manualSelectionPos', self.manualSelectionPos)
+            
             start = self.manualSelectionPos[0]
             stop = self.manualSelectionPos[1]
             
             cursor = QTextCursor(self.document())
+            cursor.joinPreviousEditBlock()
 
             format = cursor.charFormat()
             format.setBackground(QColor('white'))
@@ -950,6 +954,7 @@ class console(QPlainTextEditLN):
             
             cursor.setCharFormat(format)
             
+            cursor.endEditBlock() 
             self.manualSelection = False
 
     
@@ -2042,10 +2047,8 @@ class sqlConsole(QWidget):
             
             self.splitterSizes = backTo
 
-        '''
-        elif event.key() == Qt.Key_F11:
-            #self.manualSelect(23, 42)
-        '''
+        #elif event.key() == Qt.Key_F11:
+            #self.manualSelect(4, 8)
             
                 
         super().keyPressEvent(event)
@@ -2828,14 +2831,29 @@ class sqlConsole(QWidget):
         self.executeStatement(statement, result)
         
     def manualSelect(self, start, stop):
+        
+        #print('manualSelect %i - %i' % (start, stop))
+        
+        cursor = QTextCursor(self.cons.document())
+        cursor.joinPreviousEditBlock()
+
+        format = cursor.charFormat()
+        format.setBackground(QColor('#ADF'))
+    
+        cursor.setPosition(start,QTextCursor.MoveAnchor)
+        cursor.setPosition(stop,QTextCursor.KeepAnchor)
+        
+        cursor.setCharFormat(format)
+        
+        cursor.endEditBlock() 
+
+        '''
+        
+        not sure why it was so complex, 
+        simplified during #478
+        
         charFmt = QTextCharFormat()
         charFmt.setBackground(QColor('#ADF'))
-        
-        print('manualSelect %i - %i' % (start, stop))
-        
-        cursor = self.cons.textCursor()
-        #cursor.joinPreviousEditBlock() # join highlighting to previous changes in undo stack
-        #cursor.beginEditBlock() 
 
         block = tbStart = self.cons.document().findBlock(start)
         tbEnd = self.cons.document().findBlock(stop)
@@ -2844,7 +2862,7 @@ class sqlConsole(QWidget):
         toTB = tbEnd.blockNumber()
         
         curTB = fromTB
-        
+
         while curTB <= toTB and block.isValid():
         
             #print('block, pos:', curTB, block.position())
@@ -2858,8 +2876,6 @@ class sqlConsole(QWidget):
                 lenght = stop - block.position() - delta
             else:
                 lenght = block.length()
-            
-            #print('print range: ', delta, lenght)
             
             lo = block.layout()
             
@@ -2876,11 +2892,15 @@ class sqlConsole(QWidget):
             
             block = block.next()
             curTB = block.blockNumber()
+            
+        '''
          
         #cursor.endEditBlock()
             
         self.cons.manualSelection = True
         self.cons.manualSelectionPos  = [start, stop]
+        
+        #print('manualSelectionPos', self.cons.manualSelectionPos)
             
         self.cons.viewport().repaint()
             
