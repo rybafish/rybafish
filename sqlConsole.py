@@ -2831,7 +2831,11 @@ class sqlConsole(QWidget):
         charFmt = QTextCharFormat()
         charFmt.setBackground(QColor('#ADF'))
         
-        #print('manualSelect %i - %i' % (start, stop))
+        print('manualSelect %i - %i' % (start, stop))
+        
+        cursor = self.cons.textCursor()
+        #cursor.joinPreviousEditBlock() # join highlighting to previous changes in undo stack
+        #cursor.beginEditBlock() 
 
         block = tbStart = self.cons.document().findBlock(start)
         tbEnd = self.cons.document().findBlock(stop)
@@ -2872,7 +2876,8 @@ class sqlConsole(QWidget):
             
             block = block.next()
             curTB = block.blockNumber()
-            
+         
+        #cursor.endEditBlock()
             
         self.cons.manualSelection = True
         self.cons.manualSelectionPos  = [start, stop]
