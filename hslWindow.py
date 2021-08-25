@@ -436,8 +436,9 @@ class hslWindow(QMainWindow):
 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
-                    log('reload from menuConfig #1', 4)
-                    self.chartArea.reloadChart()
+                    if not conf['noreload']:
+                        log('reload from menuConfig #1', 4)
+                        self.chartArea.reloadChart()
                 else:
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()

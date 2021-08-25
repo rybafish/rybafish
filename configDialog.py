@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
-    QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel)
+    QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox)
     
 from PyQt5.QtGui import QPixmap, QIcon
 
@@ -57,6 +57,8 @@ class Config(QDialog):
         cf.config['user'] = cf.userEdit.text()
         cf.config['password'] = cf.pwdEdit.text().strip()
         
+        cf.config['noreload'] = cf.noReload.isChecked()
+        
         return (cf.config, result == QDialog.Accepted)
 
     def initUI(self):
@@ -81,6 +83,8 @@ class Config(QDialog):
         form.addWidget(self.pwdEdit, 3, 2)
         
         checkButton = QPushButton("Check")
+        
+        self.noReload = QCheckBox('Skip initial KPIs load');
 
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
@@ -95,6 +99,7 @@ class Config(QDialog):
         vbox.addStretch(1)
         # vbox.addLayout(hbox)
         
+        vbox.addWidget(self.noReload)
         vbox.addWidget(self.buttons)
         
         self.setWindowIcon(QIcon(iconPath))
