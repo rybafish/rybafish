@@ -318,12 +318,25 @@ class console(QPlainTextEditLN):
         self.cursorPositionChanged.connect(self.cursorPositionChangedSignal) # why not just overload?
         self.selectionChanged.connect(self.consSelection)
         
+        self.rehighlightSig.connect(self.rehighlight)
+        
+    def rehighlight(self):
+        #need to force re-highlight manually because of #476
+
+        cursor = self.textCursor()
+        block = self.document().findBlockByLineNumber(cursor.blockNumber())
+        
+        self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
+
+
+    '''
     def insertFromMimeData(self, src):
-        '''
-            for some reason ctrl+v does not trigger highliqter
-            so do it manually
-        '''
+        
+            # for some reason ctrl+v does not trigger highliqter
+            # so do it manually
+        
         a = super().insertFromMimeData(src)
+        print('insertFromMimeData(src)')
         
         cursor = self.textCursor()
         block = self.document().findBlockByLineNumber(cursor.blockNumber())
@@ -331,6 +344,8 @@ class console(QPlainTextEditLN):
         self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
         
         return a
+        
+    '''
 
     '''
     def _cl earHighlighting(self):
@@ -892,6 +907,16 @@ class console(QPlainTextEditLN):
                 self.clearHighlighting()
                 
             super().keyPressEvent(event)
+            
+            if modifiers == Qt.ControlModifier and event.key() == Qt.Key_V:
+                print('QSyntaxHighlighter::rehighlightBlock')
+                '''
+                cursor = self.textCursor()
+                block = self.document().findBlockByLineNumber(cursor.blockNumber())
+        
+                self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
+                '''
+
 
     #def clearHighlighting(self, type):
     def clearHighlighting(self):
@@ -3203,7 +3228,9 @@ class sqlConsole(QWidget):
                 try:
                     self.log('Reconnecting to %s:%s...' % (self.config['host'], str(self.config['port'])))
                     self.reconnect()
-                    self.log('Connection restored <<')
+                    #self.log('Connection restored <<')
+                    self.logArea.appendHtml('Connection restored. <font color = "blue">You need to restart SQL manually</font>.');
+                    
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
                     

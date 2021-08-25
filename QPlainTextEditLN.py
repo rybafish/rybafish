@@ -5,22 +5,34 @@ from PyQt5.QtGui import QFont, QIcon, QPainter, QBrush, QColor, QPen, QFontMetri
 
 from PyQt5.QtCore import Qt, QSize
 
+from PyQt5.QtCore import pyqtSignal
+
 from utils import cfg
 
 class QPlainTextEditLN(QWidget):
+
     class PlainTextEdit(QPlainTextEdit):
+        
+        rehighlightSig = pyqtSignal()
+        
         def __init__(self, parent = None):
             super().__init__(parent)
-            
-            #font = QFont ('Consolas')
-            #self.setFont(font)
-
-        '''
-        def contextMenuEvent (self, event):
-            print('bebebe')
-            #super().contextMenuEvent(event)
-        '''
         
+        def insertFromMimeData(self, src):
+            # need to force re-highlight manually because of #476
+            # actually we only need to call it if there was a selection
+            
+            cursor = self.textCursor()
+            
+            rehighlight = not cursor.selection().isEmpty()
+            
+            a = super().insertFromMimeData(src)
+
+            if rehighlight:
+                self.rehighlightSig.emit()
+            
+            return a
+            
         def duplicateLine (self):
             cursor = self.textCursor()
             
@@ -338,19 +350,20 @@ class QPlainTextEditLN(QWidget):
             qp.end()
             
             self.locked  = False
-
+            
     def __init__(self, parent):
         super().__init__(parent)
         
         #self.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
 
         self.edit = self.PlainTextEdit(self)
+        
         self.lineNumbers = self.LineNumberArea(self.edit)
 
         hbox = QHBoxLayout(self)
 
         hbox.addWidget(self.lineNumbers)
-        hbox.addWidget(self.edit)  
+        hbox.addWidget(self.edit)
         
         self.edit.blockCountChanged.connect(self.lineNumbers.adjustWidth)
         self.edit.updateRequest.connect(self.redrawLines)
@@ -361,6 +374,7 @@ class QPlainTextEditLN(QWidget):
 
         self.document = self.edit.document
         self.textChanged = self.edit.textChanged
+
         self.updateRequest = self.edit.updateRequest
         self.setPlainText = self.edit.setPlainText
 
@@ -374,13 +388,15 @@ class QPlainTextEditLN(QWidget):
         
         self.edit.contextMenuEvent = self.contextMenuEvent # not sure why this works but it does.
         
-        self.insertFromMimeData = self.edit.insertFromMimeData
+        #self.insertFromMimeData = self.edit.insertFromMimeData
         
         self.setFocus = self.edit.setFocus
         
         self.firstVisibleBlock = self.edit.firstVisibleBlock
         
         #self.keyPressEvent = self.edit.keyPressEvent
+        
+        self.rehighlightSig = self.edit.rehighlightSig
         
         self.locked = False
     
