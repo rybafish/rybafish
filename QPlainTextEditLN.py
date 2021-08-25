@@ -284,6 +284,9 @@ class QPlainTextEditLN(QWidget):
             self.fontWidth = self.fm.width('0')
             
             self.adjustWidth(1)
+            
+            self.fromLine = None
+            self.toLine = None
 
         def adjustWidth(self, lines):
 
@@ -297,6 +300,8 @@ class QPlainTextEditLN(QWidget):
             self.baseWidth = self.width*self.fontWidth
                 
             self.setFixedWidth(self.width*self.fontWidth)
+            
+            self.fromLine = None
             
             self.repaint()
 
@@ -326,11 +331,23 @@ class QPlainTextEditLN(QWidget):
             
             block = self.edit.firstVisibleBlock()
             i = block.blockNumber()
+
+
+            if self.fromLine is not None:
+                delta = self.fromLine - 1
+            else:
+                delta = 0
+
             
             while block.isValid():
                 i += 1
 
-                ln = str(i)
+                j = i - delta
+
+                if j > 0:
+                    ln = str(j)
+                else:
+                    ln = ''
                 
                 offset = self.baseWidth - self.fm.width(ln)
                 y = self.edit.blockBoundingGeometry(block).translated(self.edit.contentOffset()).top()
@@ -343,6 +360,9 @@ class QPlainTextEditLN(QWidget):
                     
                 # check if out of the screen already
                 if y >= QPaintEvent.rect().bottom():
+                    break
+                    
+                if self.fromLine is not None and i >= self.toLine:
                     break
                 
                 block = block.next()

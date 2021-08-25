@@ -982,6 +982,8 @@ class console(QPlainTextEditLN):
             cursor.endEditBlock() 
             self.manualSelection = False
 
+            #self.lineNumbers.fromLine = None
+            #self.lineNumbers.repaint()
     
         if cfg('noBracketsHighlighting'):
             return
@@ -3275,6 +3277,62 @@ class sqlConsole(QWidget):
 
             if self.conn is not None:
                 self.indicator.status = 'error'
+                
+                if cfg('blockLineNumbers', True) and self.cons.manualSelection:
+                    pos = self.cons.manualSelectionPos
+                    doc = self.cons.document()
+                    
+                    #print('selection: ', pos)
+                    startBlk = doc.findBlock(pos[0])
+                    stopBlk = doc.findBlock(pos[1])
+                    
+                    if startBlk and stopBlk:
+                        fromLine = startBlk.blockNumber() + 1
+                        toLine = stopBlk.blockNumber() + 1
+                    
+                        #print(fromLine, toLine)
+                        
+                        self.cons.lineNumbers.fromLine = fromLine
+                        self.cons.lineNumbers.toLine = toLine
+                        
+                        self.cons.lineNumbers.repaint()
+                        
+                        linePos = self.wrkException.find(': line ') + 7
+                        
+                        if linePos > 0:
+                            linePosEnd = self.wrkException.find(' ', linePos)
+                            
+                            errLine = None
+                            if linePosEnd > 0:
+                                errLine = self.wrkException[linePos:linePosEnd]
+                                
+                                try:
+                                    errLine = int(errLine)
+                                except ValueError:
+                                    log('[w] ValueError exception: %s' % (errLine))
+                                    errLine = None
+                                    
+                                if errLine and toLine > fromLine:
+                                    doc = self.cons.document()
+                                    
+                                    blk = doc.findBlockByLineNumber(fromLine - 1 + errLine - 1)
+                                    
+                                    start = blk.position()
+                                    stop = start + blk.length()
+                                    cursor = QTextCursor(doc)
+                                    cursor.joinPreviousEditBlock()
+
+                                    format = cursor.charFormat()
+                                    format.setBackground(QColor('#FCC'))
+                                
+                                    cursor.setPosition(start,QTextCursor.MoveAnchor)
+                                    cursor.setPosition(stop,QTextCursor.KeepAnchor)
+                                    
+                                    cursor.setCharFormat(format)
+                                    
+                                    cursor.endEditBlock() 
+                                    
+                
             else:
                 self.indicator.status = 'disconnected'
                 
