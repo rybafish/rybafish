@@ -908,15 +908,14 @@ class console(QPlainTextEditLN):
                 
             super().keyPressEvent(event)
             
-            if modifiers == Qt.ControlModifier and event.key() == Qt.Key_V:
-                print('QSyntaxHighlighter::rehighlightBlock')
-                '''
+            #if modifiers == Qt.ControlModifier and event.key() == Qt.Key_V:
+                #print('QSyntaxHighlighter::rehighlightBlock')
+            '''
                 cursor = self.textCursor()
                 block = self.document().findBlockByLineNumber(cursor.blockNumber())
         
                 self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
-                '''
-
+            '''
 
     #def clearHighlighting(self, type):
     def clearHighlighting(self):
@@ -2983,6 +2982,7 @@ class sqlConsole(QWidget):
                 return False
         
         def selectSingle(start, stop):
+            #print('selectSingle', start, stop)
             self.manualSelect(start, stop)
             
             #cursor = QTextCursor(self.cons.document())
@@ -3292,7 +3292,7 @@ class sqlConsole(QWidget):
                         fromLine = startBlk.blockNumber() + 1
                         toLine = stopBlk.blockNumber() + 1
                     
-                        print('selection lines:', fromLine, toLine)
+                        #print('selection lines:', fromLine, toLine)
                         
                         self.cons.lineNumbers.fromLine = fromLine
                         self.cons.lineNumbers.toLine = toLine
@@ -3314,7 +3314,7 @@ class sqlConsole(QWidget):
                                     log('[w] ValueError exception: %s' % (errLine))
                                     errLine = None
                                     
-                                print('errLine:', errLine)
+                                #print('errLine:', errLine)
                                     
                                 if errLine and toLine > fromLine:
                                     doc = self.cons.document()
@@ -3324,7 +3324,10 @@ class sqlConsole(QWidget):
                                     start = blk.position()
                                     stop = start + blk.length() - 1
                                     
-                                    print('error highlight:', start, stop)
+                                    if stop > pos[1]:
+                                        stop = pos[1]
+                                    
+                                    #print('error highlight:', start, stop)
                                     
                                     cursor = QTextCursor(doc)
                                     cursor.joinPreviousEditBlock()

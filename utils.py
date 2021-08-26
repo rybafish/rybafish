@@ -186,7 +186,7 @@ def formatTimeShort(t):
     
     return s
 
-def formatTime(t):
+def formatTime(t, skipSeconds = False):
     
     (ti, ms) = divmod(t, 1)
     
@@ -213,7 +213,8 @@ def formatTime(t):
         msStr = '.%s' % ms
         s = time.strftime(format, time.gmtime(ti)) + msStr
     
-    s += '   (' + str(round(t, 3)) + ')'
+    if not skipSeconds:
+        s += '   (' + str(round(t, 3)) + ')'
     
     return s
 

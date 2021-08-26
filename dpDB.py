@@ -19,7 +19,7 @@ import sql
 
 import db
 
-from utils import cfg, log, yesNoDialog
+from utils import cfg, log, yesNoDialog, formatTime
 from utils import dbException
 
 class dataProvider():
@@ -468,7 +468,9 @@ class dataProvider():
             entity = str(r[0])
             start = r[1]
             stop = r[2]
-            desc = str(r[3])
+            
+            dur = formatTime((stop - start).total_seconds(), skipSeconds=True)
+            desc = str(r[3]).replace('$duration', dur)
                
             #print ('curr: %s: %s - %s' % (desc, str(start), str(stop)))
             
