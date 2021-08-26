@@ -963,7 +963,7 @@ class console(QPlainTextEditLN):
     
         if self.manualSelection:
         
-            #print('manualSelectionPos', self.manualSelectionPos)
+            print('clear manualSelectionPos', self.manualSelectionPos)
             
             start = self.manualSelectionPos[0]
             stop = self.manualSelectionPos[1]
@@ -2924,6 +2924,8 @@ class sqlConsole(QWidget):
          
         #cursor.endEditBlock()
             
+        print('set manualSelectionPos', self.cons.manualSelectionPos)
+        
         self.cons.manualSelection = True
         self.cons.manualSelectionPos  = [start, stop]
         
@@ -3290,7 +3292,7 @@ class sqlConsole(QWidget):
                         fromLine = startBlk.blockNumber() + 1
                         toLine = stopBlk.blockNumber() + 1
                     
-                        #print(fromLine, toLine)
+                        print('selection lines:', fromLine, toLine)
                         
                         self.cons.lineNumbers.fromLine = fromLine
                         self.cons.lineNumbers.toLine = toLine
@@ -3312,13 +3314,18 @@ class sqlConsole(QWidget):
                                     log('[w] ValueError exception: %s' % (errLine))
                                     errLine = None
                                     
+                                print('errLine:', errLine)
+                                    
                                 if errLine and toLine > fromLine:
                                     doc = self.cons.document()
                                     
-                                    blk = doc.findBlockByLineNumber(fromLine - 1 + errLine - 1)
+                                    blk = doc.findBlockByNumber(fromLine - 1 + errLine - 1)
                                     
                                     start = blk.position()
-                                    stop = start + blk.length()
+                                    stop = start + blk.length() - 1
+                                    
+                                    print('error highlight:', start, stop)
+                                    
                                     cursor = QTextCursor(doc)
                                     cursor.joinPreviousEditBlock()
 
