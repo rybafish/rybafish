@@ -3299,10 +3299,16 @@ class sqlConsole(QWidget):
                         
                         self.cons.lineNumbers.repaint()
                         
-                        linePos = self.wrkException.find(': line ') + 7
+                        linePos = self.wrkException.find(': line ')
+                        posPos = self.wrkException.find(' pos ')
                         
-                        if linePos > 0:
+                        if linePos > 0 or posPos > 0:
+                        
+                            linePos += 7
+                            posPos += 5
+                            
                             linePosEnd = self.wrkException.find(' ', linePos)
+                            posPosEnd = self.wrkException.find(')', posPos)
                             
                             errLine = None
                             if linePosEnd > 0:
@@ -3311,11 +3317,23 @@ class sqlConsole(QWidget):
                                 try:
                                     errLine = int(errLine)
                                 except ValueError:
-                                    log('[w] ValueError exception: %s' % (errLine))
+                                    log('[w] ValueError exception: [%s]' % (errLine))
                                     errLine = None
                                     
-                                #print('errLine:', errLine)
+                            if linePosEnd > 0:
+                                errPos = self.wrkException[posPos:posPosEnd]
+                                try:
+                                    errPos = int(errPos)
+                                except ValueError:
+                                    log('[w] ValueError exception: [%s]' % (errPos))
+                                    errPos = None
                                     
+
+                            if errLine or errPos:
+                            
+                                cursor = QTextCursor(doc)
+                                cursor.joinPreviousEditBlock()
+
                                 if errLine and toLine > fromLine:
                                     doc = self.cons.document()
                                     
@@ -3328,9 +3346,6 @@ class sqlConsole(QWidget):
                                         stop = pos[1]
                                     
                                     #print('error highlight:', start, stop)
-                                    
-                                    cursor = QTextCursor(doc)
-                                    cursor.joinPreviousEditBlock()
 
                                     format = cursor.charFormat()
                                     format.setBackground(QColor('#FCC'))
@@ -3340,8 +3355,19 @@ class sqlConsole(QWidget):
                                     
                                     cursor.setCharFormat(format)
                                     
-                                    cursor.endEditBlock() 
+                                if errPos:
                                     
+                                    start = self.cons.manualSelectionPos[0] + errPos - 1
+                                    
+                                    format = cursor.charFormat()
+                                    format.setBackground(QColor('#F66'))
+                                
+                                    cursor.setPosition(start,QTextCursor.MoveAnchor)
+                                    cursor.setPosition(start + 1,QTextCursor.KeepAnchor)
+                                    
+                                    cursor.setCharFormat(format)
+
+                                cursor.endEditBlock()
                 
             else:
                 self.indicator.status = 'disconnected'
