@@ -13,6 +13,8 @@ import utils
         
 from utils import log, cfg
 
+currentIndex = None
+
 def removeDeadKPIs(kpis, type):
 
     for kpi in kpis:
@@ -35,6 +37,28 @@ def generateRaduga(n):
         
         radugaColors.append(color)
         radugaPens.append(pen)
+        
+    resetRaduga()
+    
+
+def getRadugaPen():
+    global currentIndex
+    
+    n = len(radugaPens)
+    
+    pen = radugaPens[currentIndex]
+
+    currentIndex += 1
+    
+    if currentIndex >= n:
+        currentIndex = 0
+    
+    return pen
+
+def resetRaduga():
+    global currentIndex
+    
+    currentIndex = 0
     
 kpiStylesN = {}
 kpiStylesNN = {'host':{}, 'service':{}}
@@ -175,6 +199,29 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['y_range'][1] = 100 - min(100, yr[1])
             else:
                 style['y_range'] = [0, 100]
+                
+        if 'subtype' in kpi and kpi['subtype'] == 'multiline':
+            style['groupby'] = kpi['groupby']
+            
+            if 'multicolor' in kpi:
+                style['multicolor'] = kpi['multicolor']
+            else:
+                style['multicolor'] = False
+                
+            if style['multicolor']:
+                style['pen'] = QPen(QColor('#48f'), 1, Qt.SolidLine)
+            else:
+                style['pen'] = QPen(QColor(color), 1, Qt.SolidLine)
+                
+            style['brush'] = None
+            style['style'] = 'multiline'
+            #kpi['groupby'] = None
+            print('multiline')
+            print('multiline')
+            print('multiline')
+
+            print(kpi)
+            print(style)
         else:
             # regular kpis
             style['pen'] = QPen(color, 1, penStyle)

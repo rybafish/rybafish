@@ -316,6 +316,8 @@ class dataProvider():
             
             if len(kpis) == 0:
                 continue
+                
+            subtype = kpiDescriptions.getSubtype(type, kpis[0])
             
             if host['port'] == '':
                 if kpiSrc == '-':
@@ -346,6 +348,12 @@ class dataProvider():
             
             cols = ', '.join(kpisSql)
             
+            if subtype == 'multiline':
+                firstKpi = kpis[0]
+                style = kpiDescriptions.kpiStylesNN[type][firstKpi]
+                groupby = style['groupby']
+                cols += ', ' + groupby
+            
             hfilter_now = hfilter # cannot modify hfilter as it is reused for the other KPI sources...
             gtfilter_now = gtfilter # cannot modify hfilter as it is reused for the other KPI sources...
             params_now = params.copy() # same for params list
@@ -369,7 +377,7 @@ class dataProvider():
             if len(kpis) == 1: #only one kpi can be in gantt data source
                 kpi = kpis[0]
                 
-                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                if subtype == 'gantt':
                     
                     # tfilter_mod = tfilter.replace('time', '"START"') # removed 2021-03-23
                 
@@ -389,7 +397,7 @@ class dataProvider():
 
             try:
                 if not gantt:
-                    self.getHostKpis(type, kpis, data, sql, params_now, kpiSrc)
+                        self.getHostKpis(type, kpis, data, sql, params_now, kpiSrc)
                 else:
                     self.getGanttData(type, kpis[0], data, sql, params_now, kpiSrc)
                     
@@ -529,6 +537,45 @@ class dataProvider():
             performs query to a data source for specific host.port
             also for custom metrics
         '''
+        
+        def printDump(data):
+            for k in data:
+                print('[%s]' % k)
+                
+                if  isinstance(data[k][0], int):
+                    print('\t', data[k])
+                else:
+                    i = 0
+                    for r in data[k]:
+                        print('\t%i -'%(i), r)
+                        i += 1
+                
+        def multilineStats(rows, kpis):
+            #print(rows)
+            #print(kpis)
+            
+            t0 = time.time()
+            gb = []
+            t = None
+            tCount = 0
+            
+            gbi = 1 + len(kpis) # groupby index = time + kpis + 1
+            
+            for row in rows:
+                if row[0] != t:
+                    t = row[0]
+                    tCount += 1
+
+                if row[gbi] not in gb:
+                    gb.append(row[gbi])
+                  
+            gb.sort()
+            
+            t1 = time.time()
+            
+            log('multilineStats processing: %s' % (str(round(t1-t0, 3))), 4)
+            
+            return tCount, gb
 
         t0 = time.time()
         
@@ -538,12 +585,16 @@ class dataProvider():
             log('[!] execute_query: %s' % str(e))
             #raise dbException('Database Exception')
             raise dbException('[db]: ' + str(e))
+            
+            
+            
+        if len(kpis) > 0:
+            print(kpis, kpiSrc)
+            subtype = kpiDescriptions.getSubtype(type, kpis[0])
         
         trace_lines = len(rows)
         
         t1 = time.time()
-        
-        i = 0
         
         if kpiSrc == '-':
             timeKey = 'time'
@@ -553,6 +604,16 @@ class dataProvider():
         kpis_ = [timeKey] + kpis # need a copy of kpis list (+time entry)
         
         #print('------------>', len(rows))
+        
+        multiline = False
+        
+        if subtype == 'multiline':
+            multiline = True
+            
+        i = 0 # just the loop iterration number (row number)
+        ii = 0 # data index counter, equals to the row number for regular kpis and very not for multiline...
+
+        t = None
         
         try:
             '''
@@ -568,54 +629,111 @@ class dataProvider():
                         data[key].clear()
         
             for row in rows:
+            
+                #print(i, row[0])
+            
                 if i == 0: # allocate memory
+                
+                    if multiline:
+                        '''
+                            the data[k] for multiline kpi will be a list and it will look like this:
+                            data[timekey] - usual list
+                            data[mlKpi] - [[][][][][][]]
+                        '''
                     
-                    for j in range(0, len(kpis_)):
-                    
-                        if j == 0: #time
-                            data[timeKey] = [0] * (trace_lines)  #array('d', [0]*data_size) ??
-                            log('allocate data[%s]: %i' %(timeKey, trace_lines))
-                        else:
-                            '''
-                            if kpis_[j] in data:
-                                log('clean data[%s]' % (kpis_[j]))
-                                del(data[kpis_[j]]) # ndata is a dict
-                            '''
+                        tCount, gb = multilineStats(rows, kpis)
+                        
+                        gbi = 1 + len(kpis) # groupby index = time + kpis + 1
+                        
+                        gbc = len(gb) #groupby count
+                        
+                        for j in range(0, len(kpis_)):
+                            if j == 0: #time
+                                data[timeKey] = [0] * (tCount)
+                                log('allocate data[%s]: %i' %(timeKey, tCount))
+                            else:
+                                data[kpis_[j]] = [None] * gbc
+                                log('allocate data[%s]: %i' %(kpis_[j], gbc))
                                 
-                            #log('allocate %i for %s' % (trace_lines, kpis_[j]))
-                            data[kpis_[j]] = [0] * (trace_lines)  #array('l', [0]*data_size) ??
-                            log('allocate data[%s]: %i' %(kpis_[j], trace_lines))
+                                for k in range(0, gbc):
+                                    data[kpis_[j]][k] = [None] * 2
+                                    data[kpis_[j]][k][0] = gb[k]
+                                    data[kpis_[j]][k][1] = [-1] * (tCount)
+                                    log('allocate data[%s]/%i: %i' %(kpis_[j], k, tCount + 1))
 
+                        t = row[0]
+                        #printDump(data)
+                        
+                    else:
+                    
+                        for j in range(0, len(kpis_)):
+                        
+                            if j == 0: #time
+                                data[timeKey] = [0] * (trace_lines)  #array('d', [0]*data_size) ??
+                                log('allocate data[%s]: %i' %(timeKey, trace_lines), 4)
+                            else:
+                                '''
+                                if kpis_[j] in data:
+                                    log('clean data[%s]' % (kpis_[j]))
+                                    del(data[kpis_[j]]) # ndata is a dict
+                                '''
+                                    
+                                #log('allocate %i for %s' % (trace_lines, kpis_[j]))
+                                data[kpis_[j]] = [0] * (trace_lines)  #array('l', [0]*data_size) ??
+                                log('allocate data[%s]: %i' %(kpis_[j], trace_lines), 4)
+
+                if multiline:
+                    if t != row[0]:
+                        #next time frame
+                        t = row[0]
+                        ii += 1
+                else:
+                    ii = i # it is one step behind for some reason
+                    
                 for j in range(0, len(kpis_)):
                     if j == 0: #time column always 1st
-                        data[timeKey][i] = row[j].timestamp()
+                        data[timeKey][ii] = row[j].timestamp()
                     else:
+                    
                         rawValue = row[j]
-                        if rawValue is None:
-                            data[kpis_[j]][i] = -1
-                        else:
-                            if 'perSample' in kpiStylesNN[type][kpis_[j]]:
-                            
-                                # /sample --> /sec
-                                # do NOT normalize here, only devide by delta seconds
 
-                                if i == 0:
-                                    if len(data[timeKey]) > 1:
-                                        normValue = rawValue / (data[timeKey][1] - data[timeKey][0])
-                                    else:
-                                        normValue = -1 # no data to calculate
-                                else:
-                                    normValue = rawValue / (data[timeKey][i] - data[timeKey][i-1])
-                                
-                                data[kpis_[j]][i] = int(normValue)
+                        if multiline:
+                            gbv = row[gbi]
+                            k = gb.index(gbv)
+                            
+                            # data[kpis_[j]][ii][k] = rawValue # before transponding...
+                            data[kpis_[j]][k][1][ii] = rawValue 
+                            
+                        else:
+                    
+                            if rawValue is None:
+                                data[kpis_[j]][i] = -1
                             else:
-                                #normal values
-                                data[kpis_[j]][i] = int(rawValue) # integer only zone
+                                if 'perSample' in kpiStylesNN[type][kpis_[j]]:
+                                
+                                    # /sample --> /sec
+                                    # do NOT normalize here, only devide by delta seconds
+
+                                    if i == 0:
+                                        if len(data[timeKey]) > 1:
+                                            normValue = rawValue / (data[timeKey][1] - data[timeKey][0])
+                                        else:
+                                            normValue = -1 # no data to calculate
+                                    else:
+                                        normValue = rawValue / (data[timeKey][i] - data[timeKey][i-1])
+                                    
+                                    data[kpis_[j]][i] = int(normValue)
+                                else:
+                                    #normal values
+                                    data[kpis_[j]][i] = int(rawValue) # integer only zone
                 
                 i+=1
+                    
         except ValueError:
             log('non-integer kpi value returned: %s' % (str(row[j])))
             raise Exception('Integer only allowed as kpi value')
+
+        #printDump(data)
 
         t2 = time.time()
 

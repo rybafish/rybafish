@@ -69,6 +69,8 @@ class myWidget(QWidget):
     
     highlightedPoint = None #point currently highlihed (currently just one)
     
+    highlightedGBI = None # multiline groupby index 
+    
     #data = {} # dictionary of data sets + time line (all same length)
     #scales = {} # min and max values
     
@@ -189,8 +191,10 @@ class myWidget(QWidget):
                 
     def initPens(self):
     
-        if utils.cfg('raduga'):
+        '''
+        if utils.cfg('colorize'):
             kpiDescriptions.generateRaduga(utils.cfg('raduga'))
+        '''
     
         for t in kpiStylesNN:
             self.kpiPen[t] = {}
@@ -199,6 +203,9 @@ class myWidget(QWidget):
 
     def ceiling(self, num):
     
+        if num < 5:
+            return 5
+
         if num < 10:
             return 10
             
@@ -664,6 +671,7 @@ class myWidget(QWidget):
                 self.highlightedKpiHost = None
                 self.highlightedKpi = None
                 self.highlightedPoint = None
+                self.highlightedGBI = None
 
                 self.highlightedEntity = None
                 self.highlightedRange = None
@@ -709,7 +717,9 @@ class myWidget(QWidget):
             if kpi not in kpiStylesNN[type]:
                 continue
                 
-            if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+            subtype = kpiDescriptions.getSubtype(type, kpi)
+            
+            if subtype == 'gantt':
             
                 height = kpiStylesNN[type][kpi]['width']
                 ganttShift = kpiStylesNN[type][kpi]['shift']
@@ -822,86 +832,113 @@ class myWidget(QWidget):
                 #kpi not found but we still need to check others! 2021-07-15, #386
                 continue
 
-            j = i
+
+            if subtype == 'multiline':
+                rounds = len(data[kpi])
+            else:
+                rounds = 1
                 
-            y_min = data[kpi][i]
-            y_max = data[kpi][i]
-
-            while i < array_size and timeline[i] <= trgt_time + time_delta:
-                # note: for really zoomed in time scales there's a possibility
-                # that this loop will not be execuded even once
+            bubbleStop = False
                 
-                if timeline[j] < trgt_time:
-                    j+=1 # scan for exact value in closest point
+            for rc in range(rounds):
 
-                if y_min > data[kpi][i]:
-                    y_min = data[kpi][i]
-
-                if y_max < data[kpi][i]:
-                    y_max = data[kpi][i]
-
-                i+=1
-                
-            j -= 1 # THIS is the point right before the trgt_time
-            
-            found_some = False
-
-            if (scales[kpi]['y_max'] - scales[kpi]['y_min']) == 0:
-                log('delta = %i, skip %s' % (scales[kpi]['y_max'] - scales[kpi]['y_min'], str(kpi)))
-                break
-                
-            y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
-
-            ymin = y_min
-            ymin = scales[kpi]['y_min'] + ymin*y_scale
-            ymin = round(wsize.height() - self.bottom_margin - ymin) - 2
-
-            ymax = y_max
-            ymax = scales[kpi]['y_min'] + ymax*y_scale
-            ymax = round(wsize.height() - self.bottom_margin - ymax) - 2
-            
-            #log('%s = %i' % (kpi, self.data[kpi][i]))
-            #log('on screen y = %i, from click: %i' % (y, pos.y()))
-            #log('on screen %i/%i, from click: %i' % (ymin, ymax, pos.y()))
-            
-            #if abs(y - pos.y()) <= 2:
-            if pos.y() <= ymin + tolerance and pos.y() >= ymax - tolerance: #it's reversed in Y calculation...
-                if (self.highlightedKpi):
-                
-                    if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
-                        reportDelta = True
-                        
-                    self.highlightedKpi = None
-
-                d = kpiStylesNN[type][kpi].get('decimal', 0)
-                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], data[kpi][j], d)
-
-                scaled_value = utils.numberToStr(normVal, d)
-                
-                log('click on %s(%i).%s = %i, %s' % (self.hosts[host]['host'], host, kpi, data[kpi][j], scaled_value))
-                self.kpiPen[type][kpi].setWidth(2)
-                    
-                self.highlightedKpi = kpi
-                self.highlightedKpiHost = host
-                self.highlightedPoint = j
-                
-                if reportDelta:
-                    deltaVal = normVal - self.highlightedNormVal
-                    deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
+                if subtype == 'multiline':
+                    scan = data[kpi][rc][1]
+                    gb = data[kpi][rc][0]
                 else:
-                    deltaVal = ''
+                    gb = None
+                    scan = data[kpi]
 
-                self.highlightedNormVal = normVal
+                j = i
+                
+                y_min = scan[i]
+                y_max = scan[i]
+
+                while i < array_size and timeline[i] <= trgt_time + time_delta:
+                    # note: for really zoomed in time scales there's a possibility
+                    # that this loop will not be execuded even once
                     
-                tm = datetime.datetime.fromtimestamp(data[timeKey][j]).strftime('%Y-%m-%d %H:%M:%S')
+                    if timeline[j] < trgt_time:
+                        j+=1 # scan for exact value in closest point
+
+                    if y_min > scan[i]:
+                        y_min = scan[i]
+
+                    if y_max < scan[i]:
+                        y_max = scan[i]
+
+                    i+=1
+                    
+                j -= 1 # THIS is the point right before the trgt_time
+            
+                found_some = False
+
+                if (scales[kpi]['y_max'] - scales[kpi]['y_min']) == 0:
+                    log('delta = %i, skip %s' % (scales[kpi]['y_max'] - scales[kpi]['y_min'], str(kpi)))
+                    # bubbleStop = True ?
+                    break
                 
-                self.statusMessage('%s, %s.%s = %s %s at %s%s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm, deltaVal))
+                y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
+
+                ymin = y_min
+                ymin = scales[kpi]['y_min'] + ymin*y_scale
+                ymin = round(wsize.height() - self.bottom_margin - ymin) - 2
+
+                ymax = y_max
+                ymax = scales[kpi]['y_min'] + ymax*y_scale
+                ymax = round(wsize.height() - self.bottom_margin - ymax) - 2
                 
-                self.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, scales[kpi]['unit'], tm))
-                # if want instant hit - need to re-define mouseMoveEvent()
-                # https://stackoverflow.com/questions/13720465/how-to-remove-the-time-delay-before-a-qtooltip-is-displayed
+                #log('%s = %i' % (kpi, self.scan[i]))
+                #log('on screen y = %i, from click: %i' % (y, pos.y()))
+                #log('on screen %i/%i, from click: %i' % (ymin, ymax, pos.y()))
                 
-                found_some = True
+                #if abs(y - pos.y()) <= 2:
+                if pos.y() <= ymin + tolerance and pos.y() >= ymax - tolerance: #it's reversed in Y calculation...
+                    if (self.highlightedKpi):
+                    
+                        if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
+                            reportDelta = True
+                            
+                        self.highlightedKpi = None
+
+                    d = kpiStylesNN[type][kpi].get('decimal', 0)
+                    normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], scan[j], d)
+
+                    scaled_value = utils.numberToStr(normVal, d)
+                    
+                    if subtype == 'multiline':
+                        self.highlightedGBI = rc # groupby index
+                        ml = '/' + gb
+                    else:
+                        ml = ''
+
+                    log('click on %s(%i).%s%s = %i, %s' % (self.hosts[host]['host'], host, kpi, ml, scan[j], scaled_value))
+                    self.kpiPen[type][kpi].setWidth(2)
+                        
+                    self.highlightedKpi = kpi
+                    self.highlightedKpiHost = host
+                    self.highlightedPoint = j
+                    
+                    if reportDelta:
+                        deltaVal = normVal - self.highlightedNormVal
+                        deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
+                    else:
+                        deltaVal = ''
+
+                    self.highlightedNormVal = normVal
+                        
+                    tm = datetime.datetime.fromtimestamp(data[timeKey][j]).strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    self.statusMessage('%s, %s.%s%s = %s %s at %s%s' % (hst, type, kpi, ml, scaled_value, scales[kpi]['unit'], tm, deltaVal))
+                    
+                    self.setToolTip('%s, %s.%s%s = %s %s at %s' % (hst, type, kpi, ml, scaled_value, scales[kpi]['unit'], tm))
+                    
+                    found_some = True
+                    #okay, stop
+                    break
+                    
+            if found_some:
+                #bubble up the success flag...
                 break
                 
         if not found_some:
@@ -913,22 +950,10 @@ class myWidget(QWidget):
             
         log('click scan / kpi scan: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
 
-    '''
-    def event_(self, event):
-        if event.type() == QEvent.ToolTip:
-            QToolTip.showText(self.mapToGlobal(event.pos()), '123\n456', self)
-\            return True
-        else:
-            return super().event(event)
-    '''
-            
-        
     def mousePressEvent(self, event):
         '''
             step1: calculate time
             step2: look through metrics which one has same/similar value
-            step3: show tooltip?
-            
         '''
         
         if event.button() == Qt.RightButton:
@@ -1027,7 +1052,7 @@ class myWidget(QWidget):
                 if gantt:
                     lpens.append([QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]])
                 else:
-                    if utils.cfg('raduga'):
+                    if utils.cfg('colorize'):
                         lpens.append(kpiDescriptions.radugaPens[raduga_i % 32])
                         raduga_i += 1
                         
@@ -1131,6 +1156,104 @@ class myWidget(QWidget):
                     ls = s
             
             return ls
+            
+        def calculateOne():
+            #start_point = 0  # only requred for performance analysis, disabled
+        
+            x0 = 0
+            y0 = 0
+            
+            points_to_draw = 0
+            points_to_skip = 0
+            
+            if self.nscales[h][kpi]['y_max'] == 0:
+                y_scale = 0
+            else:
+                y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(self.nscales[h][kpi]['y_max'] - self.nscales[h][kpi]['y_min'])
+            
+            x_scale = self.step_size / self.t_scale
+
+
+            if array_size >= 2:
+                timeStep = time_array[1]-time_array[0]
+            else:
+                #actually no stuff will be drawn as just one data value available
+                timeStep = 3600
+                
+            drawStep = timeStep*x_scale + 2
+            
+            i = -1
+            
+            while i < array_size-1:
+                i+=1
+                #log(self.data['time'][i])
+                
+                #if time_array[i] < from_ts or time_array[i] > self.t_to.timestamp() - self.delta:
+                if time_array[i] < from_ts:
+                    #nobody asked to draw this...
+                    continue
+                    
+                x = (time_array[i] - from_ts) # number of seconds
+                x = self.side_margin + self.left_margin +  x * x_scale
+
+                if x < startX - drawStep or x > stopX + drawStep:
+                    
+                    if i + 1000 < array_size:
+                        x1000 = (time_array[i+1000] - from_ts) # number of seconds
+                        x1000 = self.side_margin + self.left_margin +  x1000 * x_scale
+                        
+                        if x1000 < startX - drawStep:
+                            #fast forward
+                            i += 1000
+                            
+                    if x > stopX + drawStep:
+                        break
+                
+                    #so skip this point as it's out of the drawing area
+                    continue
+                #else:
+                #    if start_point == 0:
+                #        t1 = time.time()
+                #        start_point = i
+                        
+                #y = self.ndata[h][kpi][i]
+                y = dataArray[i]
+                
+                if y < 0:
+                    y = wsize.height() - self.bottom_margin - 1
+                else:
+                    y = self.nscales[h][kpi]['y_min'] + y*y_scale
+                    y = round(wsize.height() - self.bottom_margin - y) - 2
+
+                if False and x0 == int(x) and y0 == int(y): # it's same point no need to draw
+                    points_to_skip += 1
+                    continue
+                    
+                #log('y = %i' % (y))
+                
+                # I wander how much this slows the processing...
+                # to be measured
+                if self.highlightedPoint == i and kpi == self.highlightedKpi and h == self.highlightedKpiHost:
+                
+                    if highlight and (subtype != 'multiline' or self.highlightedGBI == rn):
+                        qp.drawLine(x-5, y-5, x+5, y+5)
+                        qp.drawLine(x-5, y+5, x+5, y-5)
+
+                x0 = int(x)
+                y0 = int(y)
+                    
+                try: 
+                    points[points_to_draw] = QPoint(x, y)
+                    points_to_draw += 1
+                except:
+                    log('failed: %s %i = %i, x, y = (%i, %i)' % (kpi, i, self.data[kpi][i], x, y))
+                    log('scales: %s' % (str(self.scales[kpi])))
+                    break
+
+            #if start_point == 0:
+            #   t1 = time.time()
+                
+            return points_to_draw
                 
         #log('simulate delay()')
         #time.sleep(2)
@@ -1347,159 +1470,73 @@ class myWidget(QWidget):
                             
                             qp.drawText(hlRect, Qt.AlignLeft, hlDesc)
                     continue
+                    
+                # not gantt:
                 
                 array_size = len(self.ndata[h][timeKey])
                 time_array = self.ndata[h][timeKey]
 
-                points = [0]*array_size
-            
-                t0 = time.time()
-                
-                if utils.cfg('raduga'):
+                if utils.cfg('colorize'):
                     kpiPen = kpiDescriptions.radugaPens[raduga_i % 32]
                     raduga_i += 1
                 else:
                     kpiPen = self.kpiPen[type][kpi]
                 
+                highlight = False
+                
                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
-                    kpiPen.setWidth(2)
-                    qp.setPen(kpiPen)
+                    highlight = True
+                    if self.highlightedGBI is None:
+                        kpiPen.setWidth(2)
+                        qp.setPen(kpiPen)
+                    else:
+                        qp.setPen(kpiPen)
                 else:
                     kpiPen.setWidth(1)
                     qp.setPen(kpiPen)
+
+                t0 = time.time()
+
+                points = [0]*array_size
                 
-                start_point = 0
-            
-                x0 = 0
-                y0 = 0
+                # 
+                # a lot of logic moved from here to prepareOne
+                # due to multiline support
+                #
                 
-                points_to_draw = 0
-                points_to_skip = 0
+                subtype = kpiDescriptions.getSubtype(type, kpi)
                 
-                if self.nscales[h][kpi]['y_max'] == 0:
-                    y_scale = 0
+                if subtype == 'multiline':
+                    rounds = len(self.ndata[h][kpi])
                 else:
-                    y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(self.nscales[h][kpi]['y_max'] - self.nscales[h][kpi]['y_min'])
-                
-                x_scale = self.step_size / self.t_scale
-
-
-                if array_size >= 2:
-                    timeStep = time_array[1]-time_array[0]
-                else:
-                    #actually no stuff will be drawn as just one data value available
-                    timeStep = 3600
+                    rounds = 1
                     
-                drawStep = timeStep*x_scale + 2
-                
-                # log(h)
-                # log(kpi)
-                # log(self.nscales[h][kpi]['y_max'])
-                # log('y_scale = %s' % str(y_scale))
-                
-                # seems no longer required for drawing duet to starX/stopX
-                #x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
-                #x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
-
-                iii = 0
-                #for i in range(0, array_size):
-                
-                i = -1
-                
-                #to trace drawing area uncomment:
-                #qp.drawLine(startX, 10, startX, 50)
-                '''
-                qp.drawLine(startX, 10, startX, 50)
-                qp.drawLine(startX, 50, stopX-1, 50)
-                qp.drawLine(stopX, 50, stopX-1, 90)
-                qp.drawLine(startX, 10, stopX-1, 90)
-                '''
-                
-                while i < array_size-1:
-                    i+=1
-                    #log(self.data['time'][i])
-                    
-                    #if time_array[i] < from_ts or time_array[i] > self.t_to.timestamp() - self.delta:
-                    if time_array[i] < from_ts:
-                        #nobody asked to draw this...
-                        continue
-                        
-                    x = (time_array[i] - from_ts) # number of seconds
-                    x = self.side_margin + self.left_margin +  x * x_scale
-
-                    if x < startX - drawStep or x > stopX + drawStep:
-                        
-                        if i + 1000 < array_size:
-                            x1000 = (time_array[i+1000] - from_ts) # number of seconds
-                            x1000 = self.side_margin + self.left_margin +  x1000 * x_scale
-                            
-                            if x1000 < startX - drawStep:
-                                #fast forward
-                                i += 1000
-                                
-                        if x > stopX + drawStep:
-                            break
-                    
-                        #so skip this point as it's out of the drawing area
-                        continue
+                for rn in range(rounds):
+                    if subtype == 'multiline':
+                        dataArray = self.ndata[h][kpi][rn][1]
                     else:
-                        if start_point == 0:
-                            t1 = time.time()
-                            start_point = i
-                            
-                    y = self.ndata[h][kpi][i]
-                    
-                    if y < 0:
-                        y = wsize.height() - self.bottom_margin - 1
+                        dataArray = self.ndata[h][kpi]
+
+                    if subtype == 'multiline':
+                        if kpiStylesNN[type][kpi]['multicolor']:
+                            print(' ->>> extract new pen here <<<- ')
+
+                    if highlight and (subtype != 'multiline' or self.highlightedGBI == rn):
+                        kpiPen.setWidth(2)
+                        qp.setPen(kpiPen)
                     else:
-                        y = self.nscales[h][kpi]['y_min'] + y*y_scale
-                        y = round(wsize.height() - self.bottom_margin - y) - 2
+                        kpiPen.setWidth(1)
+                        qp.setPen(kpiPen)
 
-                    if False and x0 == int(x) and y0 == int(y): # it's same point no need to draw
-                        points_to_skip += 1
-                        continue
-                        
-                    #log('y = %i' % (y))
-                    
-                    # i wander how much this slows the processing...
-                    # to be measured
-                    if self.highlightedPoint == i and kpi == self.highlightedKpi and h == self.highlightedKpiHost:
-                        #log('i wander how much this slows the processing...')
-                        qp.drawLine(x-5, y-5, x+5, y+5)
-                        qp.drawLine(x-5, y+5, x+5, y-5)
+                    points_to_draw = calculateOne()
 
-                    x0 = int(x)
-                    y0 = int(y)
-                        
-                    try: 
-                        points[points_to_draw] = QPoint(x, y)
-                        points_to_draw += 1
-                        #points[i-start_point] = QPoint(x, y)
-                    except:
-                        log('failed: %s %i = %i, x, y = (%i, %i)' % (kpi, i, self.data[kpi][i], x, y))
-                        log('scales: %s' % (str(self.scales[kpi])))
-                        break
-
-                #log('points_to_draw: %i' % points_to_draw)
-                #log('points_to_draw: %s' % str(points[:points_to_draw]))
-                
-                if start_point == 0:
-                    t1 = time.time()
-                #log('start: %i' % start_point)
-                #log(points[:10])
-                t2 = time.time()
-                # qp.drawPolyline(QPolygon(points[:array_size-start_point]))
-                #log('points to draw: %i' % (points_to_draw))
-                #log('points: %s' % str(points[:10]))
-                
-                qp.drawPolyline(QPolygon(points[:points_to_draw]))
+                    qp.drawPolyline(QPolygon(points[:points_to_draw]))
                 
                 points.clear()
-                
+
                 t3 = time.time()
                 
                 #log('%s: skip/calc/draw: %s/%s/%s, (skip: %i)' % (kpi, str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), points_to_skip))
-                #log('iii = %i' % (iii))
         
         # this supposed to restore the border for negative values (downtime)...
         
@@ -2452,6 +2489,8 @@ class chartArea(QFrame):
                 if kpi[:4] == 'time':
                     continue
 
+                subtype = kpiDescriptions.getSubtype(type, kpi)
+
                 if type == 'service':
                     if kpi not in self.srvcKPIs:
                         log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
@@ -2461,7 +2500,7 @@ class chartArea(QFrame):
                         log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
                         continue
                     
-                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                if subtype == 'gantt':
                 
                     eNum = 0
                     total = 0
@@ -2490,57 +2529,69 @@ class chartArea(QFrame):
                 
                 scales[timeKey] = {'min': data[timeKey][0], 'max': data[timeKey][array_size-1]}
 
-                anti_crash_len = len(data[kpi])
-                
-                try:
-                    for i in range(0, array_size):
-                        t = data[timeKey][i]
-                        
-                        if i >= anti_crash_len:
-                            log('[!] I am seriously considering crash here, my anti_crash_len=%i, array_size=%i, i = %i! host %i, kpi = %s, timeKey = %s' % (anti_crash_len, array_size, i, h, kpi, timeKey))
-                            log('[!] host: %s' % (self.widget.hosts[h]))
-                            
-                            log('[!] len(kpi), len(time)', len(data[kpi]), len(data[timeKey]))
-                            # continue - to have more details
-                        
-                        if t >= t_from:
-                            '''
-                            print(kpi, i)
-                            print(scales[kpi])
-                            print(data)
-                            '''
-                            if scales[kpi]['max'] < data[kpi][i]:
-                                scales[kpi]['max'] = data[kpi][i]
-
-                        if  t > t_to: #end of window no need to scan further
-                            break
-
-                except ValueError as e:
-                    log('error: i = %i, array_size = %i' % (i, array_size))
-                    log('timeKey = %s, kpi: = %s' % (timeKey, kpi))
-                    log('scales[kpi][max] = %i' % (scales[kpi]['max']))
-                    log('len(data[kpi]) = %i' % (len(data[kpi])))
+                if subtype == 'multiline':
+                    # need to scan all values, not one set
+                    print('multiline action here, %s' % (kpi))
+                    print('\ttime frames:', len(data[kpi][0]))
+                    print('\tgroupbys:', len(data[kpi]))
                     
-                    log('scales[kpi] = %s' % str(scales[kpi]))
-
-                    log('exception text: %s' % (str(e)))
-                    
-                    for j in range(10):
-                        log('data[%i] = %s' % (j, str(data[kpi][j])))
-                        
-                    for j in range(1, 10):
-                        k = array_size - (10 - j) - 1
-                        log('k = %i, kpi = %s, timeKey = %s' % (k, kpi, timeKey))
-                        log('data[%s][%i] = %s' % (kpi, k, str(data[kpi][k])))
-                        log('data[%s][%i] = %s' % (timeKey, k, str(data[timeKey][k])))
-                        
-                    raise e
-                        
-                if i > 0:
-                    scales[kpi]['last_value'] = data[kpi][i]
+                if subtype == 'multiline':
+                    scans = len(data[kpi])
                 else:
-                    scales[kpi]['last_value'] = None
+                    scans = 1
+                
+                for sn in range(scans):
+                    if subtype == 'multiline':
+                        scan = data[kpi][sn][1]
+                    else:
+                        scan = data[kpi] # yep, this simple
+                        
+                    anti_crash_len = len(scan)
+                
+                    try:
+                        for i in range(0, array_size):
+                            t = data[timeKey][i]
+                            
+                            if i >= anti_crash_len:
+                                log('[!] I am seriously considering crash here, my anti_crash_len=%i, array_size=%i, i = %i! host %i, kpi = %s, timeKey = %s' % (anti_crash_len, array_size, i, h, kpi, timeKey))
+                                log('[!] host: %s' % (self.widget.hosts[h]))
+                                
+                                log('[!] len(kpi), len(time)', len(scan), len(data[timeKey]))
+                                # continue - to have more details
+                            
+                            if t >= t_from:
+                                if scales[kpi]['max'] < scan[i]:
+                                    scales[kpi]['max'] = scan[i]
 
+                            if  t > t_to: #end of window no need to scan further
+                                break
+
+                    except ValueError as e:
+                        log('error: i = %i, array_size = %i' % (i, array_size))
+                        log('timeKey = %s, kpi: = %s' % (timeKey, kpi))
+                        log('scales[kpi][max] = %i' % (scales[kpi]['max']))
+                        log('len(data[kpi]) = %i' % (len(scan)))
+                        
+                        log('scales[kpi] = %s' % str(scales[kpi]))
+
+                        log('exception text: %s' % (str(e)))
+                        
+                        for j in range(10):
+                            log('data[%i] = %s' % (j, str(data[kpi][j])))
+                            
+                        for j in range(1, 10):
+                            k = array_size - (10 - j) - 1
+                            log('k = %i, kpi = %s, timeKey = %s' % (k, kpi, timeKey))
+                            log('data[%s][%i] = %s' % (kpi, k, str(scan[k])))
+                            log('data[%s][%i] = %s' % (timeKey, k, str(data[timeKey][k])))
+                            
+                        raise e
+                        
+                    if i > 0:
+                        scales[kpi]['last_value'] = scan[i]
+                    else:
+                        scales[kpi]['last_value'] = None
+                    
         t1 = time.time()
         
         self.widget.alignScales()

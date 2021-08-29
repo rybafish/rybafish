@@ -335,6 +335,9 @@ def loadConfig():
     try: 
         f = open(cfgFile, 'r')
         config = safe_load(f)
+        
+        if 'raduga' not in config:
+            config['raduga'] = ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00fa9a', '#8a2be2']
     except:
         log('no config file? <-')
         config = {}

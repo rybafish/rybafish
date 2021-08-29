@@ -1,0 +1,13 @@
+KPIsTableWidth: [35, 140, 35, 70, 50, 80, 50, 35, 80, 220, 40]
+currentTab: 1
+hostTableWidth: [8, 46, 37, 110, 110]
+kpiSplitter: [426, 1377]
+mainSplitter: [637, 369]
+pos: [687, 60]
+size: [1832, 1078]
+tabs:
+- [null, 'C:\home\dug\rybafish\rybafish\bkp\sql.sqbkp', 143, 0]
+- [null, 'C:\home\dug\rybafish\rybafish\bkp\sql2.sqbkp', 255, 0]
+- [null, 'C:\home\dug\rybafish\rybafish\bkp\sql3.sqbkp', 57, 0]
+kpis:
+  hxehost:39003: [cpu, memory_used, cs-exp_st]
