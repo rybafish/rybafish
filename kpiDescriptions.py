@@ -192,6 +192,8 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
             style['pen'] = QPen(penColor, 1, penStyle)
             
+            print(kpi, style['pen'])
+            
             if 'y_range' in kpi and kpi['y_range'] != '':
                 yr = kpi['y_range']
                 style['y_range'] = [None]*2
@@ -200,7 +202,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             else:
                 style['y_range'] = [0, 100]
                 
-        if 'subtype' in kpi and kpi['subtype'] == 'multiline':
+        elif 'subtype' in kpi and kpi['subtype'] == 'multiline':
             style['groupby'] = kpi['groupby']
             
             if 'multicolor' in kpi:
@@ -216,12 +218,6 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['brush'] = None
             style['style'] = 'multiline'
             #kpi['groupby'] = None
-            print('multiline')
-            print('multiline')
-            print('multiline')
-
-            print(kpi)
-            print(style)
         else:
             # regular kpis
             style['pen'] = QPen(color, 1, penStyle)

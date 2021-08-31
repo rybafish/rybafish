@@ -1053,12 +1053,15 @@ class myWidget(QWidget):
                     lpens.append([QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]])
                 else:
                     if utils.cfg('colorize'):
+                        print('Colorize:', 1)
+                        print('Colorize:', 1)
                         lpens.append(kpiDescriptions.radugaPens[raduga_i % 32])
                         raduga_i += 1
                         
                     else:
+                        print('Colorize:', 0)
+                        print('Colorize:', 0)
                         lpens.append(self.kpiPen[type][kpi])
-
 
         fontHeight = fm.height()
         
@@ -1511,6 +1514,9 @@ class myWidget(QWidget):
                 else:
                     rounds = 1
                     
+                if subtype == 'multiline' and kpiStylesNN[type][kpi]['multicolor']:
+                    kpiDescriptions.resetRaduga()
+                
                 for rn in range(rounds):
                     if subtype == 'multiline':
                         dataArray = self.ndata[h][kpi][rn][1]
@@ -1519,7 +1525,7 @@ class myWidget(QWidget):
 
                     if subtype == 'multiline':
                         if kpiStylesNN[type][kpi]['multicolor']:
-                            print(' ->>> extract new pen here <<<- ')
+                            kpiPen = kpiDescriptions.getRadugaPen()
 
                     if highlight and (subtype != 'multiline' or self.highlightedGBI == rn):
                         kpiPen.setWidth(2)
@@ -1849,7 +1855,15 @@ class chartArea(QFrame):
             timeKey = kpiDescriptions.getTimeKey(type, kpi)
             
             d = kpiStylesNN[type][kpi].get('decimal', 0)
-            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
+            
+            subtype = kpiDescriptions.getSubtype(type, kpi)
+            
+            if subtype == 'multiline':
+                gbi = self.widget.highlightedGBI
+                value = self.widget.ndata[host][kpi][gbi][1][point]
+                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], value, d)
+            else:
+                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
 
             self.widget.highlightedNormVal = normVal
             
@@ -1867,7 +1881,7 @@ class chartArea(QFrame):
             self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
             
         modifiers = QApplication.keyboardModifiers()
-
+        
         if event.key() == Qt.Key_Left:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
                 # move highlighted point one step left
@@ -1889,9 +1903,16 @@ class chartArea(QFrame):
                 
                 host = self.widget.highlightedKpiHost
                 kpi = self.widget.highlightedKpi
-                dSize = len(self.widget.ndata[host][kpi])
                 
-                if self.widget.highlightedPoint < dSize:
+                type = hType(host, self.widget.hosts)
+                subtype = kpiDescriptions.getSubtype(type, kpi)
+                
+                if subtype == 'multiline':
+                    dSize = len(self.widget.ndata[host][kpi][0][1]) # this is time kpi but for multiline it equals to kpi data itelf...
+                else:
+                    dSize = len(self.widget.ndata[host][kpi])
+                    
+                if self.widget.highlightedPoint < dSize - 1:
                     self.widget.highlightedPoint += 1
                     self.widget.update()
                     
