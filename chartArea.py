@@ -972,21 +972,22 @@ class myWidget(QWidget):
         
     def drawLegend(self, qp, startX, stopX):
     
-        lkpis = []      # kpi names to be able to skip doubles
+        lkpis = []      # kpi names to be able to skip doubles (what doubles...)
         lkpisl = []     # kpi labels
-        lpens = []      # pens. None = host line (no pen)
+        # lpens = []      # pens. None = host line (no pen)  ### depricated with multilines support, 2021-08-31
+        lmeta = []      # legend metadata, list of four values: [type, pen/brush, ident for marker, ident for text]
         
         lLen = 128
     
         lFont = QFont ('SansSerif', utils.cfg('legend_font', 8))
         fm = QFontMetrics(lFont)
-
-        raduga_i = 0
         
         drawTimeScale = cfg('legendTimeScale', True)
         
-        
         highlightedIndex = None
+        
+        if utils.cfg('colorize'):
+            kpiDescriptions.resetRaduga()
         
         for h in range(0, len(self.hosts)):
         
@@ -994,37 +995,22 @@ class myWidget(QWidget):
             
             if self.legend == 'hosts' and len(self.nkpis[h]) > 0:
                 # put a host label
-                lpens.append(None)
                 lkpisl.append('%s:%s' % (self.hosts[h]['host'], self.hosts[h]['port']))
+                lmeta.append(['host', None, 0, 0])
         
             for kpi in self.nkpis[h]:
             
                 gantt = False
+                multiline = False
+
+                if self.legend == 'hosts': ## it is either hosts or None now so 'hosts' basically mean it is enabled
                 
-                if self.legend == 'kpis':
-                    '''
-                    
-                        DEPR ECA DEAD
-                        
-                    '''
-                    if kpi in lkpis:
-                        #skip as already there
-                        continue
-                        
-                    if 'dUnit' in kpiStylesNN[type][kpi]:
-                        unit = ' ' + kpiStylesNN[type][kpi]['dUnit']
-                    else:
-                        unit = ''
-                        
-                    label = kpiStylesNN[type][kpi]['label'] + ': ' + self.nscales[h][kpi]['label'] + unit
-                            
-                    lkpis.append(kpi)
-                    lkpisl.append(label)
+                    subtype = kpiDescriptions.getSubtype(type, kpi)
 
-                if self.legend == 'hosts':
-
-                    if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                    if  subtype == 'gantt':
                         gantt = True
+                    elif subtype == 'multiline':
+                        multiline = True
                         
                     if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
                         unit = ' ' + self.nscales[h][kpi]['unit']
@@ -1032,45 +1018,83 @@ class myWidget(QWidget):
                         label = kpiStylesNN[type][kpi]['label']
                         
                         if kpi in self.nscales[h]: #if those are scanned already
-                            label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max: ' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
+                            if multiline:
+                                kpiDescriptions.resetRaduga()
+                                label += ': ' + self.nscales[h][kpi]['label'] + unit
+
+                                lkpis.append(kpi)
+                                lkpisl.append(label)
+                                lmeta.append(['multiline', None, 0, 10])
+
+                                gbn = min(len(self.ndata[h][kpi]), kpiStylesNN[type][kpi]['legendCount'])
+                                for i in range(gbn):
+                                
+                                    label = self.ndata[h][kpi][i][0]
+                                
+                                    lkpis.append(kpi)
+                                    lkpisl.append(label)
+
+                                    if kpiStylesNN[type][kpi]['multicolor']:
+                                        pen = kpiDescriptions.getRadugaPen()
+                                    else:
+                                        pen = self.kpiPen[type][kpi]
+                                        
+                                    if kpi == self.highlightedKpi and h == self.highlightedKpiHost and i == self.highlightedGBI:
+                                        pen = QPen(pen)
+                                        pen.setWidth(2)
+                                    else:
+                                        pen.setWidth(1)
+
+                                    lmeta.append(['multiline', pen, 10, 44])
+                            else: 
+                                # regular kpi
+                                label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max: ' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
+
+                                lkpis.append(kpi)
+                                lkpisl.append(label)
+                                
+                                if utils.cfg('colorize'):
+                                    pen = kpiDescriptions.getRadugaPen()
+                                else:
+                                    pen = self.kpiPen[type][kpi]
+                                    
+                                    
+                                if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
+                                    pen.setWidth(2)
+                                    
+                                lmeta.append(['', pen, 0, 44])
+                                
                     else:
                             
                         label = kpiStylesNN[type][kpi]['label']
 
-                    lkpis.append(kpi)
-                    lkpisl.append(label)
+                        lkpis.append(kpi)
+                        lkpisl.append(label)
+                        lmeta.append(['gantt', [QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]], 0, 40])
                     
-                if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
-                    highlightedIndex = len(lkpisl) - 1 # this also includes hostname separators without corresponding pen style
-
-                # legend width calc
-                ll = fm.width(label)
+                # print(self.highlightedKpi, self.highlightedKpiHost)
                 
-                if ll > lLen:
-                    lLen = ll
-                    
-                if gantt:
-                    lpens.append([QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]])
-                else:
-                    if utils.cfg('colorize'):
-                        print('Colorize:', 1)
-                        print('Colorize:', 1)
-                        lpens.append(kpiDescriptions.radugaPens[raduga_i % 32])
-                        raduga_i += 1
-                        
+                '''
+                if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
+                    if multiline:
+                        pass
                     else:
-                        print('Colorize:', 0)
-                        print('Colorize:', 0)
-                        lpens.append(self.kpiPen[type][kpi])
+                        highlightedIndex = len(lkpisl) - 1 # this also includes hostname separators without corresponding pen style
+                '''
 
+        # calculates longest label width
+        
+        for label in lkpisl:
+            ll = fm.width(label)
+            
+            if ll > lLen:
+                lLen = ll
+                    
         fontHeight = fm.height()
         
         qp.setPen(QColor('#888'))
         qp.setBrush(QColor('#FFF'))
         
-        #qp.drawRect(10 + self.side_margin, 10 + self.top_margin + self.y_delta, lLen + 58, fontHeight * len(lkpisl)+8)
-        
-        #print('legendRender, stopX, startX: a', self.legendRender, stopX, startX)
         if self.legendRender == False and (stopX - startX < 400):
             return
         
@@ -1083,8 +1107,7 @@ class myWidget(QWidget):
                 leftX = 10 + self.side_margin + startX
             else:
                 leftX = 10 + startX
-        
-        
+
         if drawTimeScale:
             self.legendHeight = fontHeight * (len(lkpisl) + 1)+8 + 4
         else:
@@ -1097,49 +1120,54 @@ class myWidget(QWidget):
         # this if for Copy Legend action
         # so call for render will be with startX = 0, so we fake leftX
         
-        #print('drawlegend, startX - leftX', startX, leftX)
-        
         self.legendRegion = QRegion(10 + self.side_margin, 10 + self.top_margin + self.y_delta, self.legendWidth + 1, self.legendHeight + 1)
+        
+        qp.setFont(lFont)
         
         i = 0
         
-        qp.setFont(lFont)
-        for kpi in lkpisl:
+        for i in range(len(lmeta)):
         
-            if lpens[i] is not None:
-
-                if isinstance(lpens[i], QPen):
-                    # ah, this is wrong, so wrong...
-                    # but for normal kpis this is just a QPen
-                    # for others (but only gantt exist?) it is s LIST (!) [QBrush, QPen]
-
-                    kpiPen = lpens[i]
-                    
+            meta = lmeta[i]
+        
+            #print(i, meta)
+        
+            kpi = lkpisl[i]
+            
+            kpiPen = meta[1]
+        
+            #if lpens[i] is not None:
+            if meta[0] == 'gantt':
+                qp.setBrush(kpiPen[0])
+                qp.setPen(kpiPen[1])
+                qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
+            elif meta[0] != 'host':
+                if kpiPen:
+                
+                    '''
                     if highlightedIndex:
                         if highlightedIndex == i:
                             kpiPen.setWidth(2)
                         else:
                             kpiPen.setWidth(1)
+                    '''
 
                     qp.setPen(kpiPen)
-                    qp.drawLine(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, leftX + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
-                else:
-                    # must be gantt, so we put a bar...
-                    qp.setBrush(lpens[i][0])
-                    qp.setPen(lpens[i][1])
-                    qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
+                    
+                    pen_ident = meta[2]
+                    
+                    qp.drawLine(leftX + pen_ident + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, \
+                                    leftX + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
                 
-                ident = 10 + 40
+                ident = 4 + meta[3]
             else:
-                ident = 4
+                ident = 4 + meta[3] 
             
             qp.setPen(QColor('#000'))
             qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
-            
-            i += 1
-            
+                        
         if drawTimeScale:
-            qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
+            qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+2) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
                     
     def drawChart(self, qp, startX, stopX):
     

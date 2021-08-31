@@ -551,11 +551,16 @@ class dataProvider():
                         i += 1
                 
         def multilineStats(rows, kpis):
-            #print(rows)
+            
+            #for r in rows:
+            #    print(r)
             #print(kpis)
             
             t0 = time.time()
             gb = []
+            
+            gbs = {}
+            
             t = None
             tCount = 0
             
@@ -566,16 +571,34 @@ class dataProvider():
                     t = row[0]
                     tCount += 1
 
-                if row[gbi] not in gb:
+                grpby = row[gbi]
+
+                if grpby not in gb:
                     gb.append(row[gbi])
-                  
+                    
+                    
+                v = row[1]
+                    
+                if grpby not in gbs:
+                    gbs[grpby] = [v, v]
+                else:
+                    if gbs[grpby][0] > v:
+                        gbs[grpby][0] = v
+
+                    if gbs[grpby][1] < v:
+                        gbs[grpby][1] = v
+            
+            # not very sure here
+            # the idea was to sort gbs based on second list element descending
+            gbsSorted =  sorted(gbs, key=lambda x: (gbs[x][1]), reverse=True)
+            
             gb.sort()
             
             t1 = time.time()
             
             log('multilineStats processing: %s' % (str(round(t1-t0, 3))), 4)
             
-            return tCount, gb
+            return tCount, gbsSorted
 
         t0 = time.time()
         

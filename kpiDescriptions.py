@@ -209,6 +209,11 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['multicolor'] = kpi['multicolor']
             else:
                 style['multicolor'] = False
+
+            if 'legendCount' in kpi:
+                style['legendCount'] = kpi['legendCount']
+            else:
+                style['legendCount'] = 5
                 
             if style['multicolor']:
                 style['pen'] = QPen(QColor('#48f'), 1, Qt.SolidLine)
