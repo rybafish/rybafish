@@ -77,6 +77,8 @@ class myWidget(QWidget):
     ndata = [] # list of dicts of data sets + time line (all same length)
     nscales = [] # min and max values, list of dicts (per host)
     
+    nscalesml = [] # min and max values for multiline groupbys, list of dicts (per host)
+    
     manual_scales = {} # if/when scale manually adjusted, per group! like 'mem', 'threads'
 
     # config section
@@ -171,6 +173,7 @@ class myWidget(QWidget):
             self.nkpis.append([])
             self.ndata.append({})
             self.nscales.append({})
+            self.nscalesml.append({})
         
     def calculateMargins(self, scale = 1):
     
@@ -384,6 +387,17 @@ class myWidget(QWidget):
                         scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
                     else:
                         scaleKpi['last_label'] = '-1'
+                        
+                        
+                    subtype = kpiDescriptions.getSubtype(type, kpi)
+                    
+                    if subtype == 'multiline':
+                        for gb in self.nscalesml[h][kpi]:
+                            mx = self.nscalesml[h][kpi][gb]['max']
+                            lst = self.nscalesml[h][kpi][gb]['last']
+                            self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], mx, d), d)
+                            self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], lst, d), d)
+                            
                         
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
@@ -1029,7 +1043,12 @@ class myWidget(QWidget):
                                 gbn = min(len(self.ndata[h][kpi]), kpiStylesNN[type][kpi]['legendCount'])
                                 for i in range(gbn):
                                 
-                                    label = self.ndata[h][kpi][i][0]
+                                    gb = self.ndata[h][kpi][i][0]
+                                    
+                                    label = gb
+                                    
+                                    label += ': max: ' + str(self.nscalesml[h][kpi][gb]['max_label']) + unit
+                                    label += ', last: ' + str(self.nscalesml[h][kpi][gb]['last_label']) + unit
                                 
                                     lkpis.append(kpi)
                                     lkpisl.append(label)
@@ -2033,9 +2052,14 @@ class chartArea(QFrame):
                     log('host: ' + hst, 5)
                 
                     if hst[-1] == ':':
-                        kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
+                        # kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
+                        # use frozenset blackmagic to preserve order, #455
+                        set_2 = frozenset(kpis[hst])
+                        kpis_n = [x for x in set_1 if x in self.hostKPIs]
                     else:
-                        kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
+                        #kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # same
+                        set_2 = frozenset(kpis[hst])
+                        kpis_n = [x for x in set_2 if x in self.srvcKPIs]
                         
                     log(str(kpis_n), 5)
                     
@@ -2516,12 +2540,15 @@ class chartArea(QFrame):
             data = self.widget.ndata[h]
             scales = self.widget.nscales[h]
             
+            scalesml = self.widget.nscalesml[h]
+            
             type = hType(h, self.widget.hosts)
 
             # init zero dicts for scales
             # especially important for the first run
 
             scales.clear()
+            scalesml.clear()
 
             for kpi in data.keys():
                 scales[kpi] = {}
@@ -2590,7 +2617,11 @@ class chartArea(QFrame):
                     scans = 1
                 
                 for sn in range(scans):
+                
+                    max_val = 0
+                
                     if subtype == 'multiline':
+                        gb = data[kpi][sn][0]
                         scan = data[kpi][sn][1]
                     else:
                         scan = data[kpi] # yep, this simple
@@ -2609,8 +2640,8 @@ class chartArea(QFrame):
                                 # continue - to have more details
                             
                             if t >= t_from:
-                                if scales[kpi]['max'] < scan[i]:
-                                    scales[kpi]['max'] = scan[i]
+                                if max_val < scan[i]:
+                                    max_val = scan[i]
 
                             if  t > t_to: #end of window no need to scan further
                                 break
@@ -2636,10 +2667,23 @@ class chartArea(QFrame):
                             
                         raise e
                         
+                    if scales[kpi]['max'] < max_val:
+                        scales[kpi]['max'] = max_val
+                        
                     if i > 0:
                         scales[kpi]['last_value'] = scan[i]
                     else:
                         scales[kpi]['last_value'] = None
+                    
+                    if subtype == 'multiline':
+                        if kpi not in scalesml:
+                            scalesml[kpi] = {}
+
+                        if gb not in scalesml[kpi]:
+                            scalesml[kpi][gb] = {}
+
+                        scalesml[kpi][gb]['last'] = scan[i]
+                        scalesml[kpi][gb]['max'] = max_val
                     
         t1 = time.time()
         

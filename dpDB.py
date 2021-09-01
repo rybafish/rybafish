@@ -661,7 +661,29 @@ class dataProvider():
                         '''
                             the data[k] for multiline kpi will be a list and it will look like this:
                             data[timekey] - usual list
-                            data[mlKpi] - [[][][][][][]]
+                            data[mlKpi] - list of three things 'groupby label', [values (one per timestamp], [max, last]
+                            data[mlKpi][0] - label
+                            data[mlKpi][1] - values array similar to regular kpi
+                            data[mlKpi][2] - list (tuple) of max/last values for the legend
+                            max and last calculated in.... for the consistensy.
+                            
+                            [time:02_memory_components.yaml]
+                                    0 - 1630517953.107
+                                    1 - 1630518009.033
+                                    2 - 1630518069.035
+                                    3 - 1630518129.041
+                                    4 - 1630518189.096
+                                    5 - 1630518253.407
+                                    6 - 1630518309.044
+                                    7 - 1630518369.043
+                                    
+                            [cs-allocator]
+                                    0 - ['Column Store Tables', [464118236, 464118236, 464118236, 464118236, 464118236, 464118236, 464118236, 464118236]]
+                                    1 - ['System', [453584127, 450314181, 450317757, 450578589, 450412413, 431187386, 431186706, 431189802]]
+                                    2 - ['Statement Execution & Intermediate Results', [369756384, 312537013, 312537061, 311471349, 311486077, 288974322, 288897930, 291208874]]
+                                    3 - ['Row Store Tables', [214905584, 214905584, 214905584, 214905584, 214906400, 214905584, 214905584, 214905584]]
+                                    4 - ['Caches', [153347011, 131180488, 131180488, 131180392, 132221968, 133214824, 133399136, 133399232]]
+                                    5 - ['Monitoring & Statistical Data', [67250464, 67251328, 67259376, 67248672, 67288496, 67319056, 67272912, 67314992]]                            
                         '''
                     
                         tCount, gb = multilineStats(rows, kpis)
@@ -725,7 +747,7 @@ class dataProvider():
                             k = gb.index(gbv)
                             
                             # data[kpis_[j]][ii][k] = rawValue # before transponding...
-                            data[kpis_[j]][k][1][ii] = rawValue 
+                            data[kpis_[j]][k][1][ii] = int(rawValue)
                             
                         else:
                     
@@ -756,7 +778,8 @@ class dataProvider():
             log('non-integer kpi value returned: %s' % (str(row[j])))
             raise Exception('Integer only allowed as kpi value')
 
-        #printDump(data)
+        # printDump(data)
+        # exit(0)
 
         t2 = time.time()
 
