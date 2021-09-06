@@ -550,7 +550,7 @@ class dataProvider():
                         print('\t%i -'%(i), r)
                         i += 1
                 
-        def multilineStats(rows, kpis):
+        def multilineStats(rows, kpis, orderby, desc):
             
             #for r in rows:
             #    print(r)
@@ -576,27 +576,43 @@ class dataProvider():
                 if grpby not in gb:
                     gb.append(row[gbi])
                     
-                    
                 v = row[1]
                     
                 if grpby not in gbs:
-                    gbs[grpby] = [v, v]
+                    gbs[grpby] = [v, v, v]
                 else:
-                    if gbs[grpby][0] > v:
+                    if gbs[grpby][0] > v and v != -1:
                         gbs[grpby][0] = v
 
                     if gbs[grpby][1] < v:
                         gbs[grpby][1] = v
+
+                    if gbs[grpby][1] > 0:
+                        gbs[grpby][2] += v
+                        
             
             # not very sure here
             # the idea was to sort gbs based on second list element descending
-            gbsSorted =  sorted(gbs, key=lambda x: (gbs[x][1]), reverse=True)
+            
+            #print(gbs)
+            
+            if orderby == 'max': 
+                gbsSorted =  sorted(gbs, key=lambda x: (gbs[x][1]), reverse=desc)
+            elif orderby == 'avg': 
+                gbsSorted =  sorted(gbs, key=lambda x: (gbs[x][2]), reverse=desc)
+            elif orderby == 'deviation': 
+                gbsSorted =  sorted(gbs, key=lambda x: (gbs[x][1] - gbs[x][0]), reverse=desc)
+            elif orderby == 'name': 
+                gbsSorted =  sorted(gbs, key=lambda x: (x), reverse=desc)
+            else:
+                gbsSorted =  sorted(gbs, key=lambda x: (gbs[x][1]), reverse=desc)
+            
             
             gb.sort()
             
             t1 = time.time()
             
-            log('multilineStats processing: %s' % (str(round(t1-t0, 3))), 4)
+            log('multiline Stats processing: %s' % (str(round(t1-t0, 3))), 4)
             
             return tCount, gbsSorted
 
@@ -612,7 +628,7 @@ class dataProvider():
             
             
         if len(kpis) > 0:
-            print(kpis, kpiSrc)
+            #print(kpis, kpiSrc)
             subtype = kpiDescriptions.getSubtype(type, kpis[0])
         
         trace_lines = len(rows)
@@ -633,6 +649,10 @@ class dataProvider():
         if subtype == 'multiline':
             multiline = True
             
+            stacked = kpiStylesNN[type][kpis[0]]['stacked']
+            orderby = kpiStylesNN[type][kpis[0]]['orderby']
+            orderdesc = kpiStylesNN[type][kpis[0]]['desc']
+            
         i = 0 # just the loop iterration number (row number)
         ii = 0 # data index counter, equals to the row number for regular kpis and very not for multiline...
 
@@ -650,18 +670,19 @@ class dataProvider():
                 for key in data:
                     if key in kpis_:
                         data[key].clear()
-        
+
             for row in rows:
             
-                #print(i, row[0])
+                #print(i, ii, row[0], row[1])
             
                 if i == 0: # allocate memory
                 
                     if multiline:
+                    
                         '''
                             the data[k] for multiline kpi will be a list and it will look like this:
                             data[timekey] - usual list
-                            data[mlKpi] - list of three things 'groupby label', [values (one per timestamp], [max, last]
+                            data[mlKpi] - list of two values 'groupby label', [values (one per timestamp]
                             data[mlKpi][0] - label
                             data[mlKpi][1] - values array similar to regular kpi
                             data[mlKpi][2] - list (tuple) of max/last values for the legend
@@ -686,7 +707,7 @@ class dataProvider():
                                     5 - ['Monitoring & Statistical Data', [67250464, 67251328, 67259376, 67248672, 67288496, 67319056, 67272912, 67314992]]                            
                         '''
                     
-                        tCount, gb = multilineStats(rows, kpis)
+                        tCount, gb = multilineStats(rows, kpis, orderby, orderdesc)
                         
                         gbi = 1 + len(kpis) # groupby index = time + kpis + 1
                         
@@ -695,16 +716,16 @@ class dataProvider():
                         for j in range(0, len(kpis_)):
                             if j == 0: #time
                                 data[timeKey] = [0] * (tCount)
-                                log('allocate data[%s]: %i' %(timeKey, tCount))
+                                log('allocate data[%s]: %i' %(timeKey, tCount), 5)
                             else:
                                 data[kpis_[j]] = [None] * gbc
-                                log('allocate data[%s]: %i' %(kpis_[j], gbc))
+                                log('allocate data[%s]: %i' %(kpis_[j], gbc), 5)
                                 
                                 for k in range(0, gbc):
                                     data[kpis_[j]][k] = [None] * 2
                                     data[kpis_[j]][k][0] = gb[k]
                                     data[kpis_[j]][k][1] = [-1] * (tCount)
-                                    log('allocate data[%s]/%i: %i' %(kpis_[j], k, tCount + 1))
+                                    log('allocate data[%s]/%i: %i' %(kpis_[j], k, tCount + 1), 5)
 
                         t = row[0]
                         #printDump(data)
@@ -730,23 +751,25 @@ class dataProvider():
                 if multiline:
                     if t != row[0]:
                         #next time frame
+                        
                         t = row[0]
                         ii += 1
+                        
                 else:
                     ii = i # it is one step behind for some reason
                     
                 for j in range(0, len(kpis_)):
                     if j == 0: #time column always 1st
                         data[timeKey][ii] = row[j].timestamp()
+                        
                     else:
-                    
+
                         rawValue = row[j]
 
                         if multiline:
                             gbv = row[gbi]
                             k = gb.index(gbv)
                             
-                            # data[kpis_[j]][ii][k] = rawValue # before transponding...
                             data[kpis_[j]][k][1][ii] = int(rawValue)
                             
                         else:
@@ -778,8 +801,43 @@ class dataProvider():
             log('non-integer kpi value returned: %s' % (str(row[j])))
             raise Exception('Integer only allowed as kpi value')
 
-        # printDump(data)
-        # exit(0)
+
+        if multiline and stacked:
+        
+            t00 = time.time()
+
+            #print('kpis_', kpis_)
+            #print('gb', gb)
+            #print('gbi', gbi)
+            #print('gbv', gbv)
+            
+            #printDump(data)
+            
+            for j in range(1, len(kpis_)):
+                kpi = kpis_[j]
+                
+                # print('kpi:', kpi)
+                
+                # print(data.keys())
+                frames = len(data[kpis_[0]]) # must be time line
+                scan = data[kpi]
+                
+                # print('frames', frames)
+                
+                for i in range(frames):
+                    # print(i)
+                    
+                    acc_value = 0
+                    for gbi in range(len(gb)):
+                        acc_value += scan[gbi][1][i]
+                        scan[gbi][1][i] = acc_value
+                        
+            t01 = time.time()
+            
+            log('Stacked processing time: %s' % str(round(t01-t00, 3)), 4)
+
+        #printDump(data)
+        #exit(0)
 
         t2 = time.time()
 

@@ -205,10 +205,26 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         elif 'subtype' in kpi and kpi['subtype'] == 'multiline':
             style['groupby'] = kpi['groupby']
             
+            if 'stacked' in kpi:
+                style['stacked'] = kpi['stacked']
+            else:
+                style['stacked'] = False
+
+            style['orderby'] = 'max'
+            
+            if 'orderby' in kpi:
+                if kpi['orderby'] in ['max', 'avg', 'name', 'deviation']:
+                    style['orderby'] = kpi['orderby']
+            
             if 'multicolor' in kpi:
                 style['multicolor'] = kpi['multicolor']
             else:
                 style['multicolor'] = False
+
+            if 'desc' in kpi:
+                style['desc'] = kpi['desc']
+            else:
+                style['desc'] = True
 
             if 'legendCount' in kpi:
                 style['legendCount'] = kpi['legendCount']

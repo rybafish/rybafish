@@ -78,15 +78,21 @@ class kpiCell(QWidget):
                 pen = kpiDescriptions.getRadugaPen()
                 qp.setPen(pen)
             
-            qp.drawLine(4, self.size().height() / 2 - 2, self.width() - 4, self.size().height()  / 2 - 2)
+            qp.drawLine(4, self.size().height() / 2 - 3, self.width() - 4, self.size().height()  / 2 - 3)
 
             if self.multicolor:
                 pen = kpiDescriptions.getRadugaPen()
                 qp.setPen(pen)
                 
+            qp.drawLine(4, self.size().height() / 2 + 3, self.width() - 4, self.size().height()  / 2 + 3)
+
+            if self.multicolor:
+                pen = kpiDescriptions.getRadugaPen()
+                qp.setPen(pen)
+
                 kpiDescriptions.resetRaduga()
-                
-            qp.drawLine(4, self.size().height() / 2 + 2, self.width() - 4, self.size().height()  / 2 + 2)
+            
+            qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
             
         else:
             qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)

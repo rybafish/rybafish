@@ -1016,6 +1016,7 @@ class myWidget(QWidget):
             
                 gantt = False
                 multiline = False
+                stacked = False
 
                 if self.legend == 'hosts': ## it is either hosts or None now so 'hosts' basically mean it is enabled
                 
@@ -1024,6 +1025,7 @@ class myWidget(QWidget):
                     if  subtype == 'gantt':
                         gantt = True
                     elif subtype == 'multiline':
+                        stacked = kpiStylesNN[type][kpi]['stacked']
                         multiline = True
                         
                     if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
@@ -1035,6 +1037,9 @@ class myWidget(QWidget):
                             if multiline:
                                 kpiDescriptions.resetRaduga()
                                 label += ': ' + self.nscales[h][kpi]['label'] + unit
+                                
+                                if stacked:
+                                    label += ' -- Stacked'
 
                                 lkpis.append(kpi)
                                 lkpisl.append(label)
@@ -2055,7 +2060,7 @@ class chartArea(QFrame):
                         # kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
                         # use frozenset blackmagic to preserve order, #455
                         set_2 = frozenset(kpis[hst])
-                        kpis_n = [x for x in set_1 if x in self.hostKPIs]
+                        kpis_n = [x for x in set_2 if x in self.hostKPIs]
                     else:
                         #kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # same
                         set_2 = frozenset(kpis[hst])
@@ -2606,10 +2611,11 @@ class chartArea(QFrame):
                 scales[timeKey] = {'min': data[timeKey][0], 'max': data[timeKey][array_size-1]}
 
                 if subtype == 'multiline':
+                    pass
                     # need to scan all values, not one set
-                    print('multiline action here, %s' % (kpi))
-                    print('\ttime frames:', len(data[kpi][0]))
-                    print('\tgroupbys:', len(data[kpi]))
+                    # print('multiline action here, %s' % (kpi))
+                    # print('\ttime frames:', len(data[kpi][0]))
+                    # print('\tgroupbys:', len(data[kpi]))
                     
                 if subtype == 'multiline':
                     scans = len(data[kpi])

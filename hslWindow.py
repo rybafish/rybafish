@@ -946,18 +946,18 @@ class hslWindow(QMainWindow):
         reloadConfigAct.triggered.connect(self.menuReloadConfig)
         actionsMenu.addAction(reloadConfigAct)
 
-        reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
-        reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
-        reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
-
-        actionsMenu.addAction(reloadCustomKPIsAct)
-
         if cfg('experimental'):
             reloadCustomSQLsAct = QAction('Reload Context &SQLs', self)
             reloadCustomSQLsAct.setStatusTip('Reload definition of context SQLs')
             reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
             
             actionsMenu.addAction(reloadCustomSQLsAct)
+
+        reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
+        reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
+        reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
+
+        actionsMenu.addAction(reloadCustomKPIsAct)
 
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
