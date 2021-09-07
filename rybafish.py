@@ -15,6 +15,7 @@ from _constants import build_date, version
 
 import traceback
 import sqlConsole
+import kpiDescriptions
 
 '''
     TODO
@@ -106,6 +107,8 @@ if __name__ == '__main__':
     while loadConfig:
 
         ok = utils.loadConfig()
+        
+        kpiDescriptions.generateRaduga(utils.cfg('raduga'))
         
         if not ok:
             try:

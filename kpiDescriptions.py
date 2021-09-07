@@ -13,6 +13,8 @@ import utils
         
 from utils import log, cfg
 
+currentIndex = None
+
 def removeDeadKPIs(kpis, type):
 
     for kpi in kpis:
@@ -35,6 +37,28 @@ def generateRaduga(n):
         
         radugaColors.append(color)
         radugaPens.append(pen)
+        
+    resetRaduga()
+    
+
+def getRadugaPen():
+    global currentIndex
+    
+    n = len(radugaPens)
+    
+    pen = radugaPens[currentIndex]
+
+    currentIndex += 1
+    
+    if currentIndex >= n:
+        currentIndex = 0
+    
+    return pen
+
+def resetRaduga():
+    global currentIndex
+    
+    currentIndex = 0
     
 kpiStylesN = {}
 kpiStylesNN = {'host':{}, 'service':{}}
@@ -168,6 +192,8 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
             style['pen'] = QPen(penColor, 1, penStyle)
             
+            print(kpi, style['pen'])
+            
             if 'y_range' in kpi and kpi['y_range'] != '':
                 yr = kpi['y_range']
                 style['y_range'] = [None]*2
@@ -175,6 +201,44 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['y_range'][1] = 100 - min(100, yr[1])
             else:
                 style['y_range'] = [0, 100]
+                
+        elif 'subtype' in kpi and kpi['subtype'] == 'multiline':
+            style['groupby'] = kpi['splitby']
+            
+            if 'stacked' in kpi:
+                style['stacked'] = kpi['stacked']
+            else:
+                style['stacked'] = False
+
+            style['orderby'] = 'max'
+            
+            if 'orderby' in kpi:
+                if kpi['orderby'] in ['max', 'avg', 'name', 'deviation']:
+                    style['orderby'] = kpi['orderby']
+            
+            if 'multicolor' in kpi:
+                style['multicolor'] = kpi['multicolor']
+            else:
+                style['multicolor'] = False
+
+            if 'desc' in kpi:
+                style['desc'] = kpi['desc']
+            else:
+                style['desc'] = True
+
+            if 'legendCount' in kpi:
+                style['legendCount'] = kpi['legendCount']
+            else:
+                style['legendCount'] = 5
+                
+            if style['multicolor']:
+                style['pen'] = QPen(QColor('#48f'), 1, Qt.SolidLine)
+            else:
+                style['pen'] = QPen(QColor(color), 1, Qt.SolidLine)
+                
+            style['brush'] = None
+            style['style'] = 'multiline'
+            #kpi['groupby'] = None
         else:
             # regular kpis
             style['pen'] = QPen(color, 1, penStyle)
