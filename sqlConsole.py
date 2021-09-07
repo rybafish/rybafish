@@ -1962,12 +1962,44 @@ class sqlConsole(QWidget):
 
         
     def textChangedS(self):
+    
+        if self.cons.lock:
+            return
+            
         if not cfg('noWordHighlighting'):
             if not self.cons.lock:
                 if self.cons.haveHighlighrs:
                     #log('textChangedS, clear highlighting', 5)
                     self.cons.clearHighlighting()
+        '''
+        this does not work because textChanged is called on background change...
+        this can be resolved by a lock, but...
+        it is called after the change, so the issue persists
+        
+        if self.cons.manualSelection:
 
+            self.cons.lock = True
+            
+            start = self.cons.manualSelectionPos[0]
+            stop = self.cons.manualSelectionPos[1]
+            
+            cursor = QTextCursor(self.cons.document())
+            cursor.joinPreviousEditBlock()
+
+            format = cursor.charFormat()
+            format.setBackground(QColor('white'))
+        
+            cursor.setPosition(start,QTextCursor.MoveAnchor)
+            cursor.setPosition(stop,QTextCursor.KeepAnchor)
+            
+            cursor.setCharFormat(format)
+            
+            cursor.endEditBlock() 
+            self.cons.manualSelection = False
+            
+            self.cons.lock = False
+        '''
+        
         '''
         # 2021-05-29
         print('textChangedS')
@@ -2872,7 +2904,7 @@ class sqlConsole(QWidget):
         cursor.setCharFormat(format)
         
         cursor.endEditBlock() 
-
+        
         '''
         
         not sure why it was so complex, 

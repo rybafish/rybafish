@@ -491,6 +491,9 @@ class myWidget(QWidget):
             copyGanttEntity = cmenu.addAction('Copy highlighted gantt entity')
             copyGanttDetails = cmenu.addAction('Copy highlighted gantt details')
             
+        if self.highlightedGBI is not None:
+            cmenu.addSeparator()
+            copyMultilineGB = cmenu.addAction('Copy highlighted multiline KPI name')            
 
         if cfg('developmentMode'):
             cmenu.addSeparator()
@@ -616,7 +619,18 @@ class myWidget(QWidget):
             
             clipboard.setText(predicate)
             
-        if self.highlightedEntity and action == copyGanttDetails:
+        if self.highlightedGBI is not None and action == copyMultilineGB:
+            kpi = self.highlightedKpi
+            host = self.highlightedKpiHost
+            gb = self.highlightedGBI
+            
+            gbv = self.ndata[host][kpi][gb][0]
+            
+            clipboard = QApplication.clipboard()
+            clipboard.setText(gbv)
+            
+            
+        if self.highlightedEntity is not None and action == copyGanttDetails:
         
             entity = self.highlightedEntity
             kpi = self.highlightedKpi
@@ -1036,10 +1050,10 @@ class myWidget(QWidget):
                         if kpi in self.nscales[h]: #if those are scanned already
                             if multiline:
                                 kpiDescriptions.resetRaduga()
-                                label += ': ' + self.nscales[h][kpi]['label'] + unit
+                                label += ': ' + self.nscales[h][kpi]['label'] + unit + ': multiline'
                                 
                                 if stacked:
-                                    label += ' -- Stacked'
+                                    label += ', stacked'
 
                                 lkpis.append(kpi)
                                 lkpisl.append(label)

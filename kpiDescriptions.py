@@ -203,7 +203,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['y_range'] = [0, 100]
                 
         elif 'subtype' in kpi and kpi['subtype'] == 'multiline':
-            style['groupby'] = kpi['groupby']
+            style['groupby'] = kpi['splitby']
             
             if 'stacked' in kpi:
                 style['stacked'] = kpi['stacked']
