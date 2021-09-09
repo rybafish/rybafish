@@ -192,8 +192,6 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
             style['pen'] = QPen(penColor, 1, penStyle)
             
-            print(kpi, style['pen'])
-            
             if 'y_range' in kpi and kpi['y_range'] != '':
                 yr = kpi['y_range']
                 style['y_range'] = [None]*2
@@ -203,6 +201,11 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['y_range'] = [0, 100]
                 
         elif 'subtype' in kpi and kpi['subtype'] == 'multiline':
+        
+            if 'splitby' not in kpi:
+                log('[W] multiline KPI (%s) must have splitby definition, skipping!' % (kpi['name']), 2)
+                return None
+
             style['groupby'] = kpi['splitby']
             
             if 'stacked' in kpi:
