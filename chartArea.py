@@ -477,7 +477,7 @@ class myWidget(QWidget):
 
         else:
             cmenu.addSeparator()
-            putLegend = cmenu.addAction('Add Legend')
+            putLegend = cmenu.addAction('Show Legend')
         
         if self.gotGantt:
             cmenu.addSeparator()
@@ -2049,6 +2049,15 @@ class chartArea(QFrame):
             to be called right after self.chartArea.dp = new dp
         '''
 
+        def myIntersect(l1, l2):
+            l = []
+            
+            for v in l1:
+                if v in l2:
+                    l.append(v)
+                    
+            return l
+            
         log('before cleanup:' + str(kpis))
         self.cleanup()
         log('after cleanup:' + str(kpis))
@@ -2090,12 +2099,19 @@ class chartArea(QFrame):
                     if hst[-1] == ':':
                         # kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
                         # use frozenset blackmagic to preserve order, #455
-                        set_2 = frozenset(kpis[hst])
-                        kpis_n = [x for x in set_2 if x in self.hostKPIs]
+                        
+                        print(kpis[hst])
+                        
+                        #set_2 = frozenset(kpis[hst])
+                        #kpis_n = [x for x in set_2 if x in self.hostKPIs]
+                        kpis_n = kpis_n = myIntersect(kpis[hst], self.hostKPIs)
+                        
                     else:
                         #kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # same
-                        set_2 = frozenset(kpis[hst])
-                        kpis_n = [x for x in set_2 if x in self.srvcKPIs]
+                        #set_2 = frozenset(kpis[hst])
+                        #kpis_n = [x for x in set_2 if x in self.srvcKPIs]
+                        
+                        kpis_n = kpis_n = myIntersect(kpis[hst], self.srvcKPIs)
                         
                     log(str(kpis_n), 5)
                     

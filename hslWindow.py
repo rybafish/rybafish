@@ -182,6 +182,9 @@ class hslWindow(QMainWindow):
         for i in range(self.kpisTable.columnCount()):
             KPIsTableWidth.append(self.kpisTable.columnWidth(i))
 
+        if self.chartArea.widget.legend:
+            self.layout['legend'] = True
+        
         self.layout['hostTableWidth'] = hostTableWidth
         self.layout['KPIsTableWidth'] = KPIsTableWidth
 
@@ -410,6 +413,10 @@ class hslWindow(QMainWindow):
                     if self.layout and 'kpis' in self.layout.lo:
                         log('--> dumplayout, init kpis:' + str(self.layout['kpis']), 5)
                         self.chartArea.initDP(self.layout['kpis'].copy())
+                        
+                        if self.layout['legend']:
+                            self.chartArea.widget.legend = 'hosts'
+                            
                         self.kpisTable.host = None
                     else:
                         log('--> dumplayout, no kpis', 5)
