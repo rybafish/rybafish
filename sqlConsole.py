@@ -294,6 +294,7 @@ class console(QPlainTextEditLN):
         
         self.manualSelection = False
         self.manualSelectionPos = []
+        self.manualStylesRB = [] # rollback styles
 
         self.lastSearch = ''    #for searchDialog
         
@@ -984,6 +985,7 @@ class console(QPlainTextEditLN):
             
             '''
 
+            '''
             cursor.joinPreviousEditBlock()
 
             format = cursor.charFormat()
@@ -996,7 +998,18 @@ class console(QPlainTextEditLN):
             
             cursor.endEditBlock() 
 
+            '''
+            
+            for (lo, af) in self.manualStylesRB:
+                lo.setAdditionalFormats(af)
+                
+            self.manualStylesRB.clear()
+
             self.manualSelection = False
+            self.manualSelectionPos = []
+            
+            self.viewport().repaint()
+            
 
             #self.lineNumbers.fromLine = None
             #self.lineNumbers.repaint()
@@ -2241,7 +2254,7 @@ class sqlConsole(QWidget):
         log('closing sql console...')
         
         if self.unsavedChanges and cancelPossible is not None:
-            answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible)
+            answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible, parent=self)
             
             if answer is None: #cancel button
                 return False
@@ -2905,11 +2918,29 @@ class sqlConsole(QWidget):
         result = self.newResult(self.conn, statement)
         self.executeStatement(statement, result)
         
-    def manualSelect(self, start, stop):
+    def manualSelect(self, start, stop, color):
         
-        #print('manualSelect %i - %i' % (start, stop))
+        print('manualSelect %i - %i (%s)' % (start, stop, color))
         
+        updateMode = False
+        
+        if self.cons.manualSelection:
+            # make sure we add additional formattin INSIDE existing one
+            
+            updateMode = True
+            
+            if start < self.cons.manualSelectionPos[0] or stop > self.cons.manualSelectionPos[1]:
+                log('[W] Attemt to change formatting (%i:%i) outside already existing one (%i:%i)!' % \
+                    (start, stop, self.cons.manualSelectionPos[0], self.cons.manualSelectionPos[1]), 2)
+            
+                return
+            
+
+        '''
+        # modern (incorrect) style from here:
+
         cursor = QTextCursor(self.cons.document())
+
         cursor.joinPreviousEditBlock()
 
         format = cursor.charFormat()
@@ -2922,8 +2953,12 @@ class sqlConsole(QWidget):
         
         cursor.endEditBlock() 
         
+        #to here
         '''
         
+       # old (good) style from here:
+        
+        '''
         not sure why it was so complex, 
         simplified during #478
         
@@ -2931,10 +2966,11 @@ class sqlConsole(QWidget):
         
         low level approach is better as it does not go into the undo/redo history, #482, #485
         but in this case also the exception highlighting must be low-level
+        '''
         
         
         charFmt = QTextCharFormat()
-        charFmt.setBackground(QColor('#ADF'))
+        charFmt.setBackground(QColor(color))
 
         block = tbStart = self.cons.document().findBlock(start)
         tbEnd = self.cons.document().findBlock(stop)
@@ -2942,11 +2978,13 @@ class sqlConsole(QWidget):
         fromTB = block.blockNumber()
         toTB = tbEnd.blockNumber()
         
+        print('from tb, to:', fromTB, toTB)
+        
         curTB = fromTB
 
         while curTB <= toTB and block.isValid():
         
-            #print('block, pos:', curTB, block.position())
+            print('block, pos:', curTB, block.position())
             
             if block == tbStart:
                 delta = start - block.position()
@@ -2968,19 +3006,24 @@ class sqlConsole(QWidget):
             r.format = charFmt
             
             af = lo.additionalFormats()
+            
+            if not updateMode:
+                self.cons.manualStylesRB.append((lo, af))
 
             lo.setAdditionalFormats(af + [r])
             
             block = block.next()
             curTB = block.blockNumber()
-        '''
-         
+
         #cursor.endEditBlock()
-            
-        print('set manualSelectionPos', self.cons.manualSelectionPos)
-        
-        self.cons.manualSelection = True
-        self.cons.manualSelectionPos  = [start, stop]
+
+        if self.cons.manualSelection == False:
+            #only enable it if not set yet
+            #we also never narrow down the manualSelectionPos start/stop (it is checked in procedure start)
+            self.cons.manualSelection = True
+            self.cons.manualSelectionPos  = [start, stop]
+
+        print('manualSelectionPos[] = ', self.cons.manualSelectionPos)
         
         #print('manualSelectionPos', self.cons.manualSelectionPos)
             
@@ -3037,7 +3080,7 @@ class sqlConsole(QWidget):
         
         def selectSingle(start, stop):
             #print('selectSingle', start, stop)
-            self.manualSelect(start, stop)
+            self.manualSelect(start, stop, '#adf')
             
             #cursor = QTextCursor(self.cons.document())
 
@@ -3353,6 +3396,9 @@ class sqlConsole(QWidget):
                         
                         self.cons.lineNumbers.repaint()
                         
+                        # exception text example: sql syntax error: incorrect syntax near "...": line 2 col 4 (at pos 13)
+                        # at pos NNN - absolute number
+                        
                         linePos = self.wrkException.find(': line ')
                         posPos = self.wrkException.find(' pos ')
                         
@@ -3388,7 +3434,7 @@ class sqlConsole(QWidget):
                             if errLine or errPos:
                             
                                 cursor = QTextCursor(doc)
-                                cursor.joinPreviousEditBlock()
+                                #cursor.joinPreviousEditBlock()
 
                                 if errLine and toLine > fromLine:
                                     doc = self.cons.document()
@@ -3403,6 +3449,7 @@ class sqlConsole(QWidget):
                                     
                                     #print('error highlight:', start, stop)
 
+                                    '''
                                     format = cursor.charFormat()
                                     format.setBackground(QColor('#FCC'))
                                 
@@ -3410,11 +3457,15 @@ class sqlConsole(QWidget):
                                     cursor.setPosition(stop,QTextCursor.KeepAnchor)
                                     
                                     cursor.setCharFormat(format)
+                                    '''
+                                    
+                                    self.manualSelect(start, stop, '#fcc')
                                     
                                 if errPos:
                                     
                                     start = self.cons.manualSelectionPos[0] + errPos - 1
                                     
+                                    '''
                                     format = cursor.charFormat()
                                     format.setBackground(QColor('#F66'))
                                 
@@ -3422,8 +3473,10 @@ class sqlConsole(QWidget):
                                     cursor.setPosition(start + 1,QTextCursor.KeepAnchor)
                                     
                                     cursor.setCharFormat(format)
+                                    '''
+                                    self.manualSelect(start, start+1, '#f66')
 
-                                cursor.endEditBlock()
+                                #cursor.endEditBlock()
                 
             else:
                 self.indicator.status = 'disconnected'
