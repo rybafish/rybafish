@@ -1050,14 +1050,14 @@ class myWidget(QWidget):
                         if kpi in self.nscales[h]: #if those are scanned already
                             if multiline:
                                 kpiDescriptions.resetRaduga()
-                                label += ': ' + self.nscales[h][kpi]['label'] + unit + ': multiline'
+                                label += ': ' + self.nscales[h][kpi]['label'] + unit + ': <$b$>multiline'
                                 
                                 if stacked:
                                     label += ', stacked'
 
                                 lkpis.append(kpi)
                                 lkpisl.append(label)
-                                lmeta.append(['multiline', None, 0, 10])
+                                lmeta.append(['multiline', None, 0, 16])
 
                                 gbn = min(len(self.ndata[h][kpi]), kpiStylesNN[type][kpi]['legendCount'])
                                 for i in range(gbn):
@@ -1083,7 +1083,7 @@ class myWidget(QWidget):
                                     else:
                                         pen.setWidth(1)
 
-                                    lmeta.append(['multiline', pen, 10, 44])
+                                    lmeta.append(['multiline', pen, 16, 44])
                             else: 
                                 # regular kpi
                                 label += ': ' + self.nscales[h][kpi]['label'] + unit + ', max: ' + self.nscales[h][kpi]['max_label'] + unit + ', last: ' + self.nscales[h][kpi]['last_label'] + unit
@@ -1202,7 +1202,23 @@ class myWidget(QWidget):
                 ident = 4 + meta[3] 
             
             qp.setPen(QColor('#000'))
-            qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
+            
+            splt = kpi.find('<$b$>') # check if the label has separator...
+            if splt > 0:
+                #dirty multiline text highlighter...
+                black = kpi[:splt]
+                blue = kpi[splt+5:]
+                
+                qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, black)
+                
+                ident2 = fm.width(black)
+                qp.setPen(QColor('#44E'))
+                qp.drawText(leftX + ident + ident2, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, blue)
+                
+            else:
+                #normal regular kpi
+            
+                qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
                         
         if drawTimeScale:
             qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+2) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
@@ -1964,7 +1980,8 @@ class chartArea(QFrame):
                 self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
 
         elif event.key() == Qt.Key_Right:
-            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint is not None:
                 # move highlighted point one step right
                 
                 host = self.widget.highlightedKpiHost
