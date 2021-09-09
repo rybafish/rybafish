@@ -959,6 +959,8 @@ class console(QPlainTextEditLN):
         #log('cursorPositionChangedSignal', 5)
     
         t0 = time.time()
+        
+        #print('cursorPositionChangedSignal', self.lock)
     
         if self.manualSelection:
         
@@ -968,6 +970,20 @@ class console(QPlainTextEditLN):
             stop = self.manualSelectionPos[1]
             
             cursor = QTextCursor(self.document())
+            
+            '''
+            2021-09-08
+            #482
+            
+            this approach clears everything including the syntax highlighter.
+
+            block = self.document().findBlock(start)
+            lo = block.layout()
+            
+            lo.clearAdditionalFormats()
+            
+            '''
+
             cursor.joinPreviousEditBlock()
 
             format = cursor.charFormat()
@@ -979,6 +995,7 @@ class console(QPlainTextEditLN):
             cursor.setCharFormat(format)
             
             cursor.endEditBlock() 
+
             self.manualSelection = False
 
             #self.lineNumbers.fromLine = None
@@ -2835,7 +2852,7 @@ class sqlConsole(QWidget):
             self.log('The console is disconnected...')
             
             #answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect as "%s@%s:%s"?' % (self.config['user'], self.config['host'], str(self.config['port'])))
-            answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect now?')
+            answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect now?', parent = self)
             
             if not answer:
                 return 
@@ -2897,7 +2914,7 @@ class sqlConsole(QWidget):
 
         format = cursor.charFormat()
         format.setBackground(QColor('#ADF'))
-    
+
         cursor.setPosition(start,QTextCursor.MoveAnchor)
         cursor.setPosition(stop,QTextCursor.KeepAnchor)
         
@@ -2909,6 +2926,12 @@ class sqlConsole(QWidget):
         
         not sure why it was so complex, 
         simplified during #478
+        
+        and reverted because issues with removing the highlighted background ...
+        
+        low level approach is better as it does not go into the undo/redo history, #482, #485
+        but in this case also the exception highlighting must be low-level
+        
         
         charFmt = QTextCharFormat()
         charFmt.setBackground(QColor('#ADF'))
@@ -2950,7 +2973,6 @@ class sqlConsole(QWidget):
             
             block = block.next()
             curTB = block.blockNumber()
-            
         '''
          
         #cursor.endEditBlock()
@@ -3343,6 +3365,8 @@ class sqlConsole(QWidget):
                             posPosEnd = self.wrkException.find(')', posPos)
                             
                             errLine = None
+                            errPos = None
+                            
                             if linePosEnd > 0:
                                 errLine = self.wrkException[linePos:linePosEnd]
                                 

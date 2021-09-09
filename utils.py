@@ -218,8 +218,13 @@ def formatTime(t, skipSeconds = False):
     
     return s
 
-def yesNoDialog(title, message, cancel = False, ignore = False):
-    msgBox = QMessageBox()
+def yesNoDialog(title, message, cancel = False, ignore = False, parent = None):
+
+    if parent:
+        msgBox = QMessageBox(parent)
+    else:
+        msgBox = QMessageBox()
+        
     msgBox.setWindowTitle(title)
     msgBox.setText(message)
 
