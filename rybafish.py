@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
         ok = utils.loadConfig()
         
-        kpiDescriptions.generateRaduga(utils.cfg('raduga'))
+        kpiDescriptions.generateRaduga()
         
         if not ok:
             try:

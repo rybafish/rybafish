@@ -98,6 +98,12 @@ class dbException(Exception):
     def __init__ (self, message, type = None):
         self.type = type
         super().__init__(message, type)
+
+class customKPIException(Exception):
+
+    def __init__ (self, message, type = None):
+        self.type = type
+        super().__init__(message, type)
     
 def timestampToStr(ts, trimZeroes = True):
 

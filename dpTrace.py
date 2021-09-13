@@ -297,7 +297,7 @@ class dataProvider:
                         'to':etime
                         })
 
-    def getData(self, host, fromto, kpis, data):
+    def getData(self, host, fromto, kpis, data, wnd=None):
         #log('get data request: %i.%s' % (host, str(kpis)))
         #print('get data request:', host, fromto, kpis)
 

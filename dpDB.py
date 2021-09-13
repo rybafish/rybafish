@@ -20,7 +20,7 @@ import sql
 import db
 
 from utils import cfg, log, yesNoDialog, formatTime
-from utils import dbException
+from utils import dbException, customKPIException
 
 class dataProvider():
     
@@ -221,7 +221,7 @@ class dataProvider():
                 kpisList['-'].append(kpi)
                         
         return kpisList
-    def getData(self, h, fromto, kpiIn, data):
+    def getData(self, h, fromto, kpiIn, data, wnd = None):
         '''
             returns boolean
             False = some kpis were disabled due to sql errors
@@ -403,12 +403,12 @@ class dataProvider():
                     
             except Exception as e:
             
-                reply = False
+                reply = None
                 
                 if customKpi(kpis[0]):
                     if True or str(e)[:22] == '[db]: sql syntax error':
                         log('yesNoDialog ---> disable %s?' % (kpiSrc))
-                        reply = yesNoDialog('Error: custom SQL exception', 'SQL for custom KPIs %s terminated with the following error:\n\n%s\n\n Disable this KPI source (%s)?' % (', '.join(kpis), str(e), kpiSrc))
+                        reply = yesNoDialog('Error: custom SQL exception', 'SQL for custom KPIs %s terminated with the following error:\n\n%s\n\n Disable this KPI source (%s)?' % (', '.join(kpis), str(e), kpiSrc), parent=wnd)
                     else:
                         log('Custom KPI exception: ' + str(e), 2)
                         # ?
@@ -432,7 +432,10 @@ class dataProvider():
 
                             # allOk = False
                             
+                elif reply == False:
+                    log('[W] Custom KPI exception ignored, so we just continue.', 2)
                 else:
+                    #reply = None, it was not a custom KPI, most likely a connection issue
                     self.connection = None
                     
                     log('[!] getHostKpis (%s) failed: %s' % (str(kpis), str(e)))

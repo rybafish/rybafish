@@ -24,7 +24,7 @@ def removeDeadKPIs(kpis, type):
             
     return
 
-def generateRaduga(n):
+def generateRaduga():
 
     #random.seed(cfg('radugaSeed', 1))
 

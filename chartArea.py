@@ -198,6 +198,8 @@ class myWidget(QWidget):
         if utils.cfg('colorize'):
             kpiDescriptions.generateRaduga(utils.cfg('raduga'))
         '''
+        if utils.cfg('colorize'):
+            kpiDescriptions.generateRaduga()
     
         for t in kpiStylesNN:
             self.kpiPen[t] = {}
@@ -1031,6 +1033,9 @@ class myWidget(QWidget):
                 gantt = False
                 multiline = False
                 stacked = False
+                
+                if kpi not in self.nscales[h]:
+                    continue
 
                 if self.legend == 'hosts': ## it is either hosts or None now so 'hosts' basically mean it is enabled
                 
@@ -1098,12 +1103,15 @@ class myWidget(QWidget):
                                     
                                     
                                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
+                                    pen = QPen(pen)
                                     pen.setWidth(2)
+                                else:
+                                    pen.setWidth(1)
                                     
                                 lmeta.append(['', pen, 0, 44])
                                 
                     else:
-                            
+
                         label = kpiStylesNN[type][kpi]['label']
 
                         lkpis.append(kpi)
@@ -2100,8 +2108,6 @@ class chartArea(QFrame):
                         # kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
                         # use frozenset blackmagic to preserve order, #455
                         
-                        print(kpis[hst])
-                        
                         #set_2 = frozenset(kpis[hst])
                         #kpis_n = [x for x in set_2 if x in self.hostKPIs]
                         kpis_n = kpis_n = myIntersect(kpis[hst], self.hostKPIs)
@@ -2294,7 +2300,7 @@ class chartArea(QFrame):
                     log(str(host))
                     log(str(kpis))
                     
-                    self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host])
+                    self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     
                     allOk = True
@@ -2411,7 +2417,7 @@ class chartArea(QFrame):
                                     
                                     if len(kpis[hst]) > 0:
                                         t1 = time.time()
-                                        self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst])
+                                        self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst], wnd=self)
                                         self.widget.nkpis[hst] = kpis[hst]
                                         
                                         t2 = time.time()
@@ -2851,7 +2857,7 @@ class chartArea(QFrame):
                             else:
                                 log('ok')
                         
-                        self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host])
+                        self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host], wnd=self)
                         actualRequest = True
                 allOk = True
 
