@@ -320,6 +320,24 @@ class hslWindow(QMainWindow):
         loadConfig()
         self.statusMessage('Configuration file reloaded.', False)
     
+    def menuLayoutRestore(self):
+        size = self.layout['save_size']
+        spl = self.layout['save_mainSplitter']
+        pos = self.layout['save_pos']
+        
+        if pos and spl and size:
+            self.move(pos[0], pos[1])
+            self.resize(size[0], size[1])
+            self.mainSplitter.setSizes(spl)
+        
+        
+    def menuLayout(self):
+        self.layout['save_size'] = [self.size().width(), self.size().height()]
+        self.layout['save_pos'] = [self.pos().x(), self.pos().y()]
+        self.layout['save_mainSplitter'] = self.mainSplitter.sizes()
+        
+        self.statusMessage('Layout saved', False)
+    
     def menuFont(self):
         id = QInputDialog
 
@@ -946,6 +964,21 @@ class hslWindow(QMainWindow):
             fontAct.triggered.connect(self.menuFont)
             
             actionsMenu.addAction(fontAct)
+
+        if cfg('experimental'):
+            layoutMenu = menubar.addMenu('&Layout')
+            
+            layoutAct = QAction('Save window layout', self)
+            layoutAct.setStatusTip('Saves the window size and position to be able to restore it later')
+            layoutAct.triggered.connect(self.menuLayout)
+            
+            layoutMenu.addAction(layoutAct)
+
+            layoutAct = QAction('Restore window layout', self)
+            layoutAct.setStatusTip('Restores the window size and position')
+            layoutAct.triggered.connect(self.menuLayoutRestore)
+            
+            layoutMenu.addAction(layoutAct)
             
         # issue #255
         reloadConfigAct = QAction('Reload &Config', self)
