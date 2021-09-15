@@ -182,6 +182,9 @@ class hslWindow(QMainWindow):
         for i in range(self.kpisTable.columnCount()):
             KPIsTableWidth.append(self.kpisTable.columnWidth(i))
 
+        if self.chartArea.widget.legend:
+            self.layout['legend'] = True
+        
         self.layout['hostTableWidth'] = hostTableWidth
         self.layout['KPIsTableWidth'] = KPIsTableWidth
 
@@ -317,6 +320,24 @@ class hslWindow(QMainWindow):
         loadConfig()
         self.statusMessage('Configuration file reloaded.', False)
     
+    def menuLayoutRestore(self):
+        size = self.layout['save_size']
+        spl = self.layout['save_mainSplitter']
+        pos = self.layout['save_pos']
+        
+        if pos and spl and size:
+            self.move(pos[0], pos[1])
+            self.resize(size[0], size[1])
+            self.mainSplitter.setSizes(spl)
+        
+        
+    def menuLayout(self):
+        self.layout['save_size'] = [self.size().width(), self.size().height()]
+        self.layout['save_pos'] = [self.pos().x(), self.pos().y()]
+        self.layout['save_mainSplitter'] = self.mainSplitter.sizes()
+        
+        self.statusMessage('Layout saved', False)
+    
     def menuFont(self):
         id = QInputDialog
 
@@ -410,6 +431,10 @@ class hslWindow(QMainWindow):
                     if self.layout and 'kpis' in self.layout.lo:
                         log('--> dumplayout, init kpis:' + str(self.layout['kpis']), 5)
                         self.chartArea.initDP(self.layout['kpis'].copy())
+                        
+                        if self.layout['legend']:
+                            self.chartArea.widget.legend = 'hosts'
+                            
                         self.kpisTable.host = None
                     else:
                         log('--> dumplayout, no kpis', 5)
@@ -436,8 +461,9 @@ class hslWindow(QMainWindow):
 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
                     self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
-                    log('reload from menuConfig #1', 4)
-                    self.chartArea.reloadChart()
+                    if not conf['noreload']:
+                        log('reload from menuConfig #1', 4)
+                        self.chartArea.reloadChart()
                 else:
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
@@ -470,7 +496,7 @@ class hslWindow(QMainWindow):
                 else:
                     log(e)
                     
-                msgBox = QMessageBox()
+                msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
                 iconPath = resourcePath('ico\\favicon.png')
@@ -484,7 +510,7 @@ class hslWindow(QMainWindow):
                 log('Init exception not related to DB')
                 log(str(e))
 
-                msgBox = QMessageBox()
+                msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Error')
                 msgBox.setText('Init failed: %s \n\nSee more deteails in the log file.' % (str(e)))
                 iconPath = resourcePath('ico\\favicon.png')
@@ -498,7 +524,7 @@ class hslWindow(QMainWindow):
             # cancel or parsing error
             
             if ok and conf['ok'] == False: #it's connection string dict in case of [Cancel]
-                msgBox = QMessageBox()
+                msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
                 iconPath = resourcePath('ico\\favicon.png')
@@ -938,6 +964,21 @@ class hslWindow(QMainWindow):
             fontAct.triggered.connect(self.menuFont)
             
             actionsMenu.addAction(fontAct)
+
+        if cfg('experimental'):
+            layoutMenu = menubar.addMenu('&Layout')
+            
+            layoutAct = QAction('Save window layout', self)
+            layoutAct.setStatusTip('Saves the window size and position to be able to restore it later')
+            layoutAct.triggered.connect(self.menuLayout)
+            
+            layoutMenu.addAction(layoutAct)
+
+            layoutAct = QAction('Restore window layout', self)
+            layoutAct.setStatusTip('Restores the window size and position')
+            layoutAct.triggered.connect(self.menuLayoutRestore)
+            
+            layoutMenu.addAction(layoutAct)
             
         # issue #255
         reloadConfigAct = QAction('Reload &Config', self)
@@ -945,18 +986,18 @@ class hslWindow(QMainWindow):
         reloadConfigAct.triggered.connect(self.menuReloadConfig)
         actionsMenu.addAction(reloadConfigAct)
 
-        reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
-        reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
-        reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
-
-        actionsMenu.addAction(reloadCustomKPIsAct)
-
         if cfg('experimental'):
             reloadCustomSQLsAct = QAction('Reload Context &SQLs', self)
             reloadCustomSQLsAct.setStatusTip('Reload definition of context SQLs')
             reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
             
             actionsMenu.addAction(reloadCustomSQLsAct)
+
+        reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
+        reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
+        reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
+
+        actionsMenu.addAction(reloadCustomKPIsAct)
 
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')

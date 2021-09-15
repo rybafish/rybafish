@@ -90,7 +90,7 @@ class dataProvider:
 
             msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
                     
-    def getData(self, host, fromto, kpis, data):
+    def getData(self, host, fromto, kpis, data, wnd=None):
         
         #time.sleep(0.1)
         

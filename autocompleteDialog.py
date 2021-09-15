@@ -25,7 +25,7 @@ class QListWidgetMod(QListWidget):
     
         k = event.text()
 
-        if k.isalnum():
+        if k.isalnum() or k == '_':
             self.filter += k
             self.filterUpdated.emit()
         elif event.key() == Qt.Key_Backspace:
@@ -113,7 +113,7 @@ class autocompleteDialog(QDialog):
         self.linesList.itemDoubleClicked.connect(self.itemOk)
         #vbox.addStretch(1)
         
-        self.filterLabel = QLabel('?')
+        self.filterLabel = QLabel('Start typing to filter...')
         
         self.linesList.filterUpdated.connect(self.updateFilter)
         

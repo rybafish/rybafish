@@ -35,6 +35,8 @@ class kpiCell(QWidget):
         super().__init__()
         self.penStyle = pen
         
+        self.multicolor = False
+        
         if brush:
             self.brushStyle = QBrush(brush)
             
@@ -47,6 +49,13 @@ class kpiCell(QWidget):
         #super().paintEvent(QPaintEvent)
         
         qp.begin(self)
+        
+        if self.penStyle is None:
+            qp.end()
+            return
+            
+        #print(self.penStyle)
+        
         qp.setPen(self.penStyle)
         
         if self.style == 'bar':
@@ -57,8 +66,40 @@ class kpiCell(QWidget):
             qp.drawLine(4, self.size().height() / 2 + 2 , self.width() - 4, self.size().height()  / 2 - 2)
             qp.drawLine(4, self.size().height() / 2 + 3 , 4 , self.size().height()  / 2)
             qp.drawLine(self.width() - 4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2 - 3)
+        elif self.style == 'multiline':
+            '''
+            qp.drawLine(4, self.size().height() / 2 - 3, self.width() - 4, self.size().height()  / 2 - 3)
+            qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
+            qp.drawLine(4, self.size().height() / 2 + 3, self.width() - 4, self.size().height()  / 2 + 3)
+            '''
+            #qp.setPen(QPen(QColor('#48f'), 1, Qt.SolidLine))
+            
+            if self.multicolor:
+                kpiDescriptions.resetRaduga()
+                pen = kpiDescriptions.getRadugaPen()
+                qp.setPen(pen)
+                
+            qp.drawLine(4, self.size().height() / 2 + 3, self.width() - 4, self.size().height()  / 2 + 3)
+
+            if self.multicolor:
+                pen = kpiDescriptions.getRadugaPen()
+                qp.setPen(pen)
+
+                kpiDescriptions.resetRaduga()
+            
+            qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
+
+            if self.multicolor:
+                pen = kpiDescriptions.getRadugaPen()
+                qp.setPen(pen)
+                
+                kpiDescriptions.resetRaduga()
+            
+            qp.drawLine(4, self.size().height() / 2 - 3, self.width() - 4, self.size().height()  / 2 - 3)
+            
         else:
             qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
+            
         qp.end()
 
 class kpiTable(QTableWidget):
@@ -235,7 +276,7 @@ class kpiTable(QTableWidget):
             if kpiName[:1] != '.':
                 #normal kpis
                 
-                log('myCheckBox, %s.%s' % (str(host), kpiName))
+                #log('myCheckBox, %s.%s' % (str(host), kpiName), 5)
                 cb = myCheckBox(host, kpiName)
                 cb.setStyleSheet("QCheckBox::indicator { width: 10px; height: 10px; margin-left:16px;}")
 
@@ -258,7 +299,12 @@ class kpiTable(QTableWidget):
                 self.setCellWidget(i, 0, cb)
                 
                 if 'style' in style:
-                    self.setCellWidget(i, 2, kpiCell(style['pen'], style['brush'], style['style'])) # customized styles
+                    cell = kpiCell(style['pen'], style['brush'], style['style']) # customized styles
+
+                    if 'multicolor' in style :
+                        cell.multicolor = style['multicolor']
+
+                    self.setCellWidget(i, 2, cell) 
                 else:
                     self.setCellWidget(i, 2, kpiCell(style['pen'], )) # kpi pen style
                 

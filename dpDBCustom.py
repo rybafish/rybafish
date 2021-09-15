@@ -91,4 +91,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
         if csName in kpiStylesN[type]:
             log('[W] this custom KPI already exists: %s' % (csName))
         else: 
-            kpiStylesN[type][csName] = createStyle(kpi, True, srcIdx)
+            style = createStyle(kpi, True, srcIdx)
+            
+            if style is not None:
+                kpiStylesN[type][csName] = style

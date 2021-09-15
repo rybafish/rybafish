@@ -8,12 +8,7 @@ RybaFish Charts versioning.
     Hotfix releases. To replace the major release in case of critical/embarrassing bugs.
     Official release date stays the same.
 
-0.1 beta, 0.2 beta
-    Beta builds. May be released, may be not. Will not be published on the site.
-    No update in the dialog will be made for such builds.
-    Builds may be updated, version stays exactly the same.
-    Can be distinguished by the build date.
-
 0.1 beta 1, 0.1 beta 2, etc.
-    Internal beta builds have a beta+number.
-    To be published internally only, not for the public use.
+    Beta builds. May be published, may be not. Might be internal only release for limited usage.
+	Will not be reported as a new available version. 
+

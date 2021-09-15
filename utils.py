@@ -98,6 +98,12 @@ class dbException(Exception):
     def __init__ (self, message, type = None):
         self.type = type
         super().__init__(message, type)
+
+class customKPIException(Exception):
+
+    def __init__ (self, message, type = None):
+        self.type = type
+        super().__init__(message, type)
     
 def timestampToStr(ts, trimZeroes = True):
 
@@ -186,7 +192,7 @@ def formatTimeShort(t):
     
     return s
 
-def formatTime(t):
+def formatTime(t, skipSeconds = False):
     
     (ti, ms) = divmod(t, 1)
     
@@ -213,12 +219,18 @@ def formatTime(t):
         msStr = '.%s' % ms
         s = time.strftime(format, time.gmtime(ti)) + msStr
     
-    s += '   (' + str(round(t, 3)) + ')'
+    if not skipSeconds:
+        s += '   (' + str(round(t, 3)) + ')'
     
     return s
 
-def yesNoDialog(title, message, cancel = False, ignore = False):
-    msgBox = QMessageBox()
+def yesNoDialog(title, message, cancel = False, ignore = False, parent = None):
+
+    if parent:
+        msgBox = QMessageBox(parent)
+    else:
+        msgBox = QMessageBox()
+        
     msgBox.setWindowTitle(title)
     msgBox.setText(message)
 
@@ -334,6 +346,9 @@ def loadConfig():
     try: 
         f = open(cfgFile, 'r')
         config = safe_load(f)
+        
+        if 'raduga' not in config:
+            config['raduga'] = ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00fa9a', '#8a2be2']
     except:
         log('no config file? <-')
         config = {}

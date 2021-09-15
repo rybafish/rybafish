@@ -35,6 +35,8 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 import datetime
 import os
 
+from sqlparse import format
+
 import customSQLs
 
 from PyQt5.QtCore import pyqtSignal
@@ -245,6 +247,8 @@ class console(QPlainTextEditLN):
     
     executionTriggered = pyqtSignal(['QString'])
     
+    log = pyqtSignal(['QString'])
+    
     closeSignal = pyqtSignal()
     goingToCrash = pyqtSignal()
     
@@ -254,6 +258,8 @@ class console(QPlainTextEditLN):
     connectSignal = pyqtSignal()
     disconnectSignal = pyqtSignal()
     abortSignal = pyqtSignal()
+    
+    explainSignal = pyqtSignal(['QString'])
     
     autocompleteSignal = pyqtSignal()
     
@@ -288,6 +294,7 @@ class console(QPlainTextEditLN):
         
         self.manualSelection = False
         self.manualSelectionPos = []
+        self.manualStylesRB = [] # rollback styles
 
         self.lastSearch = ''    #for searchDialog
         
@@ -312,12 +319,25 @@ class console(QPlainTextEditLN):
         self.cursorPositionChanged.connect(self.cursorPositionChangedSignal) # why not just overload?
         self.selectionChanged.connect(self.consSelection)
         
+        self.rehighlightSig.connect(self.rehighlight)
+        
+    def rehighlight(self):
+        #need to force re-highlight manually because of #476
+
+        cursor = self.textCursor()
+        block = self.document().findBlockByLineNumber(cursor.blockNumber())
+        
+        self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
+
+
+    '''
     def insertFromMimeData(self, src):
-        '''
-            for some reason ctrl+v does not trigger highliqter
-            so do it manually
-        '''
+        
+            # for some reason ctrl+v does not trigger highliqter
+            # so do it manually
+        
         a = super().insertFromMimeData(src)
+        print('insertFromMimeData(src)')
         
         cursor = self.textCursor()
         block = self.document().findBlockByLineNumber(cursor.blockNumber())
@@ -325,6 +345,8 @@ class console(QPlainTextEditLN):
         self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
         
         return a
+        
+    '''
 
     '''
     def _cl earHighlighting(self):
@@ -477,6 +499,42 @@ class console(QPlainTextEditLN):
 
         return
         
+    def explainPlan(self):
+    
+        cursor = self.textCursor()
+    
+        if cursor.selection().isEmpty():
+            self.log.emit('You need to select the statement manually first')
+            return
+
+        st = cursor.selection().toPlainText()
+        
+        st = st.strip().rstrip(';')
+        
+        self.explainSignal.emit(st)
+    
+    def formatSelection(self):
+        cursor = self.textCursor()
+
+        if cursor.selection().isEmpty():
+            self.log.emit('Select the statement manually first')
+            return
+            
+        txt = cursor.selection().toPlainText()
+        
+        trailingLN = False
+        
+        if txt[-1:] == '\n':
+            trailingLN = True
+        
+        txt = format(txt, reindent=True, indent_width=4)
+        
+        if trailingLN:
+           txt += '\n' 
+           
+        cursor.insertText(txt)
+        
+        
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
@@ -492,7 +550,12 @@ class console(QPlainTextEditLN):
         menuConnect = cmenu.addAction('(re)connecto to the DB')
         menuAbort = cmenu.addAction('Generate cancel session sql')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
-
+        
+        if cfg('experimental'):
+            cmenu.addSeparator()
+            explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
+            sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
+            
         if cfg('dev'):
             cmenu.addSeparator()
             menuTest = cmenu.addAction('Test menu')
@@ -538,6 +601,12 @@ class console(QPlainTextEditLN):
             cursor.removeSelectedText()
             cursor.insertText('123')
             self.setTextCursor(cursor)
+            
+        if cfg('experimental') and action == sqlFormat:
+            self.formatSelection()
+        
+        if cfg('experimental') and action == explainPlan:
+            self.explainPlan()
             
     def findString(self, str = None):
     
@@ -818,6 +887,10 @@ class console(QPlainTextEditLN):
                 search.exec_()
         elif event.key() == Qt.Key_F3:
             self.findString()
+        elif event.key() == Qt.Key_O and (modifiers == Qt.ControlModifier | Qt.ShiftModifier):
+            self.formatSelection()
+        elif event.key() == Qt.Key_X and (modifiers == Qt.ControlModifier | Qt.ShiftModifier):
+            self.explainPlan()
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
             self.autocompleteSignal.emit()
@@ -835,6 +908,15 @@ class console(QPlainTextEditLN):
                 self.clearHighlighting()
                 
             super().keyPressEvent(event)
+            
+            #if modifiers == Qt.ControlModifier and event.key() == Qt.Key_V:
+                #print('QSyntaxHighlighter::rehighlightBlock')
+            '''
+                cursor = self.textCursor()
+                block = self.document().findBlockByLineNumber(cursor.blockNumber())
+        
+                self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
+            '''
 
     #def clearHighlighting(self, type):
     def clearHighlighting(self):
@@ -878,12 +960,33 @@ class console(QPlainTextEditLN):
         #log('cursorPositionChangedSignal', 5)
     
         t0 = time.time()
+        
+        #print('cursorPositionChangedSignal', self.lock)
     
         if self.manualSelection:
+        
+            print('clear manualSelectionPos', self.manualSelectionPos)
+            
             start = self.manualSelectionPos[0]
             stop = self.manualSelectionPos[1]
             
             cursor = QTextCursor(self.document())
+            
+            '''
+            2021-09-08
+            #482
+            
+            this approach clears everything including the syntax highlighter.
+
+            block = self.document().findBlock(start)
+            lo = block.layout()
+            
+            lo.clearAdditionalFormats()
+            
+            '''
+
+            '''
+            cursor.joinPreviousEditBlock()
 
             format = cursor.charFormat()
             format.setBackground(QColor('white'))
@@ -893,8 +996,23 @@ class console(QPlainTextEditLN):
             
             cursor.setCharFormat(format)
             
-            self.manualSelection = False
+            cursor.endEditBlock() 
 
+            '''
+            
+            for (lo, af) in self.manualStylesRB:
+                lo.setAdditionalFormats(af)
+                
+            self.manualStylesRB.clear()
+
+            self.manualSelection = False
+            self.manualSelectionPos = []
+            
+            self.viewport().repaint()
+            
+
+            #self.lineNumbers.fromLine = None
+            #self.lineNumbers.repaint()
     
         if cfg('noBracketsHighlighting'):
             return
@@ -1348,7 +1466,6 @@ class resultSet(QTableWidget):
             self.triggerAutorefresh.emit(0)
             self.timerSet = False
             
-            
         if action is not None:
             
             key = self.headers[i] + '.' + action.text()
@@ -1370,6 +1487,8 @@ class resultSet(QTableWidget):
                 #sql = customSQLs.sqls[key].replace('$value', value)
                 
                 self.executeSQL.emit(key, value)
+                
+                
         
     def detach(self):
         if self._resultset_id is None:
@@ -1818,6 +1937,8 @@ class sqlConsole(QWidget):
         self.cons.disconnectSignal.connect(self.disconnectDB)
         self.cons.abortSignal.connect(self.cancelSession)
         self.cons.autocompleteSignal.connect(self.autocompleteHint)
+        
+        self.cons.explainSignal.connect(self.explainPlan)
 
         if config is None:
             return
@@ -1871,12 +1992,44 @@ class sqlConsole(QWidget):
 
         
     def textChangedS(self):
+    
+        if self.cons.lock:
+            return
+            
         if not cfg('noWordHighlighting'):
             if not self.cons.lock:
                 if self.cons.haveHighlighrs:
                     #log('textChangedS, clear highlighting', 5)
                     self.cons.clearHighlighting()
+        '''
+        this does not work because textChanged is called on background change...
+        this can be resolved by a lock, but...
+        it is called after the change, so the issue persists
+        
+        if self.cons.manualSelection:
 
+            self.cons.lock = True
+            
+            start = self.cons.manualSelectionPos[0]
+            stop = self.cons.manualSelectionPos[1]
+            
+            cursor = QTextCursor(self.cons.document())
+            cursor.joinPreviousEditBlock()
+
+            format = cursor.charFormat()
+            format.setBackground(QColor('white'))
+        
+            cursor.setPosition(start,QTextCursor.MoveAnchor)
+            cursor.setPosition(stop,QTextCursor.KeepAnchor)
+            
+            cursor.setCharFormat(format)
+            
+            cursor.endEditBlock() 
+            self.cons.manualSelection = False
+            
+            self.cons.lock = False
+        '''
+        
         '''
         # 2021-05-29
         print('textChangedS')
@@ -1982,10 +2135,8 @@ class sqlConsole(QWidget):
             
             self.splitterSizes = backTo
 
-        '''
-        elif event.key() == Qt.Key_F11:
-            #self.manualSelect(23, 42)
-        '''
+        #elif event.key() == Qt.Key_F11:
+            #self.manualSelect(4, 8)
             
                 
         super().keyPressEvent(event)
@@ -2103,7 +2254,7 @@ class sqlConsole(QWidget):
         log('closing sql console...')
         
         if self.unsavedChanges and cancelPossible is not None:
-            answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible)
+            answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible, parent=self)
             
             if answer is None: #cancel button
                 return False
@@ -2143,10 +2294,26 @@ class sqlConsole(QWidget):
         
         return True
             
+    def explainPlan(self, st):
+        sqls = []
+        
+        st_name = 'rf'
+        
+        sqls.append("explain plan set statement_name = '%s' for %s" % (st_name, st))
+        sqls.append("select * from explain_plan_table where statement_name = '%s'" % (st_name))
+        sqls.append("delete from sys.explain_plan_table where statement_name = '%s'" % (st_name))
+            
+        self.stQueue = sqls.copy()
+        self.launchStatementQueue()
+        
     def autocompleteHint(self):
             
             if self.conn is None:
                 self.log('The console is not connected to the DB', True)
+                return
+                
+            if self.sqlRunning:
+                self.log('Autocomplete is blocked while the sql is still running...')
                 return
             
             cursor = self.cons.textCursor()
@@ -2698,7 +2865,7 @@ class sqlConsole(QWidget):
             self.log('The console is disconnected...')
             
             #answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect as "%s@%s:%s"?' % (self.config['user'], self.config['host'], str(self.config['port'])))
-            answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect now?')
+            answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect now?', parent = self)
             
             if not answer:
                 return 
@@ -2751,11 +2918,59 @@ class sqlConsole(QWidget):
         result = self.newResult(self.conn, statement)
         self.executeStatement(statement, result)
         
-    def manualSelect(self, start, stop):
-        charFmt = QTextCharFormat()
-        charFmt.setBackground(QColor('#ADF'))
+    def manualSelect(self, start, stop, color):
         
-        #print('manualSelect %i - %i' % (start, stop))
+        print('manualSelect %i - %i (%s)' % (start, stop, color))
+        
+        updateMode = False
+        
+        if self.cons.manualSelection:
+            # make sure we add additional formattin INSIDE existing one
+            
+            updateMode = True
+            
+            if start < self.cons.manualSelectionPos[0] or stop > self.cons.manualSelectionPos[1]:
+                log('[W] Attemt to change formatting (%i:%i) outside already existing one (%i:%i)!' % \
+                    (start, stop, self.cons.manualSelectionPos[0], self.cons.manualSelectionPos[1]), 2)
+            
+                return
+            
+
+        '''
+        # modern (incorrect) style from here:
+
+        cursor = QTextCursor(self.cons.document())
+
+        cursor.joinPreviousEditBlock()
+
+        format = cursor.charFormat()
+        format.setBackground(QColor('#ADF'))
+
+        cursor.setPosition(start,QTextCursor.MoveAnchor)
+        cursor.setPosition(stop,QTextCursor.KeepAnchor)
+        
+        cursor.setCharFormat(format)
+        
+        cursor.endEditBlock() 
+        
+        #to here
+        '''
+        
+       # old (good) style from here:
+        
+        '''
+        not sure why it was so complex, 
+        simplified during #478
+        
+        and reverted because issues with removing the highlighted background ...
+        
+        low level approach is better as it does not go into the undo/redo history, #482, #485
+        but in this case also the exception highlighting must be low-level
+        '''
+        
+        
+        charFmt = QTextCharFormat()
+        charFmt.setBackground(QColor(color))
 
         block = tbStart = self.cons.document().findBlock(start)
         tbEnd = self.cons.document().findBlock(stop)
@@ -2763,11 +2978,13 @@ class sqlConsole(QWidget):
         fromTB = block.blockNumber()
         toTB = tbEnd.blockNumber()
         
-        curTB = fromTB
+        print('from tb, to:', fromTB, toTB)
         
+        curTB = fromTB
+
         while curTB <= toTB and block.isValid():
         
-            #print('block, pos:', curTB, block.position())
+            print('block, pos:', curTB, block.position())
             
             if block == tbStart:
                 delta = start - block.position()
@@ -2779,8 +2996,6 @@ class sqlConsole(QWidget):
             else:
                 lenght = block.length()
             
-            #print('print range: ', delta, lenght)
-            
             lo = block.layout()
             
             r = lo.FormatRange()
@@ -2791,15 +3006,26 @@ class sqlConsole(QWidget):
             r.format = charFmt
             
             af = lo.additionalFormats()
+            
+            if not updateMode:
+                self.cons.manualStylesRB.append((lo, af))
 
             lo.setAdditionalFormats(af + [r])
             
             block = block.next()
             curTB = block.blockNumber()
-            
-            
-        self.cons.manualSelection = True
-        self.cons.manualSelectionPos  = [start, stop]
+
+        #cursor.endEditBlock()
+
+        if self.cons.manualSelection == False:
+            #only enable it if not set yet
+            #we also never narrow down the manualSelectionPos start/stop (it is checked in procedure start)
+            self.cons.manualSelection = True
+            self.cons.manualSelectionPos  = [start, stop]
+
+        print('manualSelectionPos[] = ', self.cons.manualSelectionPos)
+        
+        #print('manualSelectionPos', self.cons.manualSelectionPos)
             
         self.cons.viewport().repaint()
             
@@ -2853,7 +3079,8 @@ class sqlConsole(QWidget):
                 return False
         
         def selectSingle(start, stop):
-            self.manualSelect(start, stop)
+            #print('selectSingle', start, stop)
+            self.manualSelect(start, stop, '#adf')
             
             #cursor = QTextCursor(self.cons.document())
 
@@ -3102,7 +3329,9 @@ class sqlConsole(QWidget):
                 try:
                     self.log('Reconnecting to %s:%s...' % (self.config['host'], str(self.config['port'])))
                     self.reconnect()
-                    self.log('Connection restored <<')
+                    #self.log('Connection restored <<')
+                    self.logArea.appendHtml('Connection restored. <font color = "blue">You need to restart SQL manually</font>.');
+                    
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
                     
@@ -3147,6 +3376,108 @@ class sqlConsole(QWidget):
 
             if self.conn is not None:
                 self.indicator.status = 'error'
+                
+                if cfg('blockLineNumbers', True) and self.cons.manualSelection:
+                    pos = self.cons.manualSelectionPos
+                    doc = self.cons.document()
+                    
+                    #print('selection: ', pos)
+                    startBlk = doc.findBlock(pos[0])
+                    stopBlk = doc.findBlock(pos[1])
+                    
+                    if startBlk and stopBlk:
+                        fromLine = startBlk.blockNumber() + 1
+                        toLine = stopBlk.blockNumber() + 1
+                    
+                        #print('selection lines:', fromLine, toLine)
+                        
+                        self.cons.lineNumbers.fromLine = fromLine
+                        self.cons.lineNumbers.toLine = toLine
+                        
+                        self.cons.lineNumbers.repaint()
+                        
+                        # exception text example: sql syntax error: incorrect syntax near "...": line 2 col 4 (at pos 13)
+                        # at pos NNN - absolute number
+                        
+                        linePos = self.wrkException.find(': line ')
+                        posPos = self.wrkException.find(' pos ')
+                        
+                        if linePos > 0 or posPos > 0:
+                        
+                            linePos += 7
+                            posPos += 5
+                            
+                            linePosEnd = self.wrkException.find(' ', linePos)
+                            posPosEnd = self.wrkException.find(')', posPos)
+                            
+                            errLine = None
+                            errPos = None
+                            
+                            if linePosEnd > 0:
+                                errLine = self.wrkException[linePos:linePosEnd]
+                                
+                                try:
+                                    errLine = int(errLine)
+                                except ValueError:
+                                    log('[w] ValueError exception: [%s]' % (errLine))
+                                    errLine = None
+                                    
+                            if linePosEnd > 0:
+                                errPos = self.wrkException[posPos:posPosEnd]
+                                try:
+                                    errPos = int(errPos)
+                                except ValueError:
+                                    log('[w] ValueError exception: [%s]' % (errPos))
+                                    errPos = None
+                                    
+
+                            if errLine or errPos:
+                            
+                                cursor = QTextCursor(doc)
+                                #cursor.joinPreviousEditBlock()
+
+                                if errLine and toLine > fromLine:
+                                    doc = self.cons.document()
+                                    
+                                    blk = doc.findBlockByNumber(fromLine - 1 + errLine - 1)
+                                    
+                                    start = blk.position()
+                                    stop = start + blk.length() - 1
+                                    
+                                    if stop > pos[1]:
+                                        stop = pos[1]
+                                    
+                                    #print('error highlight:', start, stop)
+
+                                    '''
+                                    format = cursor.charFormat()
+                                    format.setBackground(QColor('#FCC'))
+                                
+                                    cursor.setPosition(start,QTextCursor.MoveAnchor)
+                                    cursor.setPosition(stop,QTextCursor.KeepAnchor)
+                                    
+                                    cursor.setCharFormat(format)
+                                    '''
+                                    
+                                    self.manualSelect(start, stop, '#fcc')
+                                    
+                                if errPos:
+                                    
+                                    start = self.cons.manualSelectionPos[0] + errPos - 1
+                                    
+                                    '''
+                                    format = cursor.charFormat()
+                                    format.setBackground(QColor('#F66'))
+                                
+                                    cursor.setPosition(start,QTextCursor.MoveAnchor)
+                                    cursor.setPosition(start + 1,QTextCursor.KeepAnchor)
+                                    
+                                    cursor.setCharFormat(format)
+                                    '''
+                                    self.manualSelect(start, start+1, '#f66')
+
+                                #cursor.endEditBlock()
+                
             else:
                 self.indicator.status = 'disconnected'
                 
@@ -3443,6 +3774,7 @@ class sqlConsole(QWidget):
         self.cons._parent = self
         
         self.cons.executionTriggered.connect(self.executeSelection)
+        self.cons.log.connect(self.log)
         
         self.cons.openFileSignal.connect(self.openFile)
         self.cons.goingToCrash.connect(self.delayBackup)
