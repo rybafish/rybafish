@@ -1532,6 +1532,24 @@ class resultSet(QTableWidget):
         self.detachTimer.timeout.connect(self.detachCB)
         self.detachTimer.start(1000 * dtimer)
     
+    def csvVal(self, v, t):
+        '''escapes single value based on type'''
+        
+        if v is None:
+            return utils.cfg('nullStringCSV', '')
+        elif db.ifBLOBType(t):
+            return str(v.encode())
+        else:
+            if db.ifNumericType(t):
+                return utils.numberToStrCSV(v, False)
+            elif db.ifRAWType(t):
+                return v.hex()
+            elif db.ifTSType(t):
+                return utils.timestampToStr(v)
+            else:
+                return str(v)
+        
+    
     def csvRow(self, r):
         
         values = []
@@ -1542,7 +1560,10 @@ class resultSet(QTableWidget):
 
             val = self.rows[r][i]
             vType = self.cols[i][1]
+            
+            values.append(self.csvVal(val, vType))
 
+            '''
             if val is None:
                 values.append(utils.cfg('nullStringCSV', ''))
             elif db.ifBLOBType(vType):
@@ -1557,6 +1578,7 @@ class resultSet(QTableWidget):
                     values.append(utils.timestampToStr(val))
                 else:
                     values.append(str(val))
+            '''
                 
             
         return ';'.join(values)
@@ -1577,13 +1599,50 @@ class resultSet(QTableWidget):
             
                 sm = self.selectionModel()
                 
+                colIndex = []
+                for c in sm.selectedColumns():
+                    colIndex.append(c.column())
+                
                 rowIndex = []
                 for r in sm.selectedRows():
                     rowIndex.append(r.row())
+                
+                
+                if len(rowIndex) >= 1000:
+                    # and len(colIndex) >= 5 ?
+                    # it is to expensive to check
+                    cellsSelection = False
+                else:
+                    #this will be checked right away
+                    cellsSelection = True
+                
+                if (colIndex or rowIndex):
+                    # scan all selected cells to make sure this is pure column or row selection
+                
+                    utils.timerStart()
+                
+                    cellsSelection = False
+                
+                    for cl in sm.selectedIndexes():
+                        r = cl.row()
+                        c = cl.column()
+                        
+                        if (colIndex and c not in colIndex) or (rowIndex and r not in rowIndex):
+                            # okay, something is not really inside the column (row), full stop and make regular copy
+                        
+                            cellsSelection = True
+                            break
+                            
+                    utils.timeLap()
+                    s = utils.timePrint()
                     
-                if rowIndex: 
+                    log('Selection model check: %s' % s[0], 5)
+                    
+                if not cellsSelection and rowIndex: 
                     # process rows
+                    #print('rows copy')
                     
+                    utils.timerStart()
                     rowIndex.sort()
                     
                     if len(self.headers) > 1:
@@ -1594,10 +1653,42 @@ class resultSet(QTableWidget):
                     for r in rowIndex:
                         csv += self.csvRow(r) + '\n'
                         
+                        
+                    utils.timeLap()
+                    s = utils.timePrint()
+                    
+                    log('Clipboard formatting took: %s' % s[0], 5)
+                    QApplication.clipboard().setText(csv)
+
+                elif not cellsSelection and colIndex: 
+                    # process columns
+                    #print('cols copy')
+                    colIndex.sort()
+                    
+                    hdrrow = []
+                    
+                    for c in colIndex:
+                        hdrrow.append(self.headers[c])
+                        
+                    if len(hdrrow) > 0:
+                        csv = ';'.join(hdrrow) + '\n'
+                    else:
+                        csv = ''
+                        
+                    for r in range(self.rowCount()):
+                    
+                        values = []
+                        
+                        for c in colIndex:
+                            values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                            
+                        csv += ';'.join(values) + '\n'
+                        
                     QApplication.clipboard().setText(csv)
                     
                 else:
                     # copy column
+                    #print('just copy')
                     
                     rowIndex = []
                     colIndex = {}

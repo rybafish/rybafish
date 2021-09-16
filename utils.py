@@ -46,6 +46,8 @@ def timePrint():
     
     for i in range(1, len(timers)):
         s.append('%s:%s' % (timers[i][1], str(round(timers[i][0]-timers[i-1][0], 3))))
+        
+    return s
 
 class Layout():
     
