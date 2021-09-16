@@ -1667,6 +1667,11 @@ class resultSet(QTableWidget):
                     
                     hdrrow = []
                     
+                    maxWidth = 32
+                    widths = []
+                    
+                    copypaste = []
+                    
                     for c in colIndex:
                         hdrrow.append(self.headers[c])
                         
@@ -1674,6 +1679,8 @@ class resultSet(QTableWidget):
                         csv = ';'.join(hdrrow) + '\n'
                     else:
                         csv = ''
+                        
+                    copypaste.append(hdrrow)
                         
                     for r in range(self.rowCount()):
                     
@@ -1684,6 +1691,64 @@ class resultSet(QTableWidget):
                             
                         csv += ';'.join(values) + '\n'
                         
+                        copypaste.append(values)
+                        
+                    if cfg('abapCopy', True):
+                    
+                        widths = [0]*len(colIndex)
+                        types = [0]*len(colIndex)
+                        
+                        for c in range(len(colIndex)):
+                        
+                            types[c] = self.cols[colIndex[c]][1]
+                        
+                            for r in range(len(copypaste)):
+                            
+                                if widths[c] < len(copypaste[r][c]):
+                                    if len(copypaste[r][c]) >= maxWidth:
+                                        widths[c] = maxWidth
+                                        break
+                                    else:
+                                        widths[c] = len(copypaste[r][c])
+                                        
+                                        
+                        tableWidth = 0
+                        
+                        for c in widths:
+                            tableWidth += c + 1
+                            
+                        tableWidth -= 1
+                            
+                        topLine = '-' + '-'.rjust(tableWidth, '-') + '-'
+                        mdlLine = '|' + '-'.rjust(tableWidth, '-') + '|'
+                                        
+                        csv = topLine + '\n'
+                        
+                        
+
+                        i = 0
+                        for r in copypaste:
+                            for c in range(len(colIndex)):
+                                val = r[c][:maxWidth]
+                                
+                                if db.ifNumericType(types[c]) and i > 0:
+                                    val = val.rjust(widths[c], ' ')
+                                else:
+                                    val = val.ljust(widths[c], ' ')
+                                
+                                csv += '|' + val
+                                
+                            csv += '|\n'
+
+                            if i == 0:
+                                csv += mdlLine + '\n'
+                                i += 1
+                            
+                        csv += topLine + '\n'
+                        
+                    else:
+                        pass
+                    
                     QApplication.clipboard().setText(csv)
                     
                 else:
