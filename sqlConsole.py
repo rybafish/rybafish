@@ -1344,7 +1344,7 @@ class resultSet(QTableWidget):
         cmenu.addSeparator()
         insertColumnName = cmenu.addAction('Insert Column Name(s)')
         copyFilter = cmenu.addAction('Generate Filter Condition')
-
+        
         cmenu.addSeparator()
         
         refreshTimerStart = None
@@ -1358,6 +1358,10 @@ class resultSet(QTableWidget):
             highlightColCh = cmenu.addAction('Highlight changes')
             highlightColVal = cmenu.addAction('Highlight this value')
             
+        cmenu.addSeparator()
+        
+        abapCopy = cmenu.addAction('ABAP-style copy')
+
         cmenu.addSeparator()
         
         if not self.timerSet:
@@ -1465,6 +1469,9 @@ class resultSet(QTableWidget):
             log('disabeling the timer...')
             self.triggerAutorefresh.emit(0)
             self.timerSet = False
+
+        if action == abapCopy:
+            self.copyCells(abapMode=True)
             
         if action is not None:
             
@@ -1550,7 +1557,7 @@ class resultSet(QTableWidget):
                 return str(v)
         
     
-    def csvRow(self, r):
+    def csvRow_deprecado(self, r):
         
         values = []
         
@@ -1582,6 +1589,253 @@ class resultSet(QTableWidget):
                 
             
         return ';'.join(values)
+        
+    def copyCells(self, abapMode = False):
+        '''
+            copy cells or rows or columns implementation
+        '''
+        
+        def abapCopy():
+
+            maxWidth = 32
+            widths = []
+            
+            widths = [0]*len(colIndex)
+            types = [0]*len(colIndex)
+            
+            for c in range(len(colIndex)):
+            
+                types[c] = self.cols[colIndex[c]][1]
+            
+                for r in range(len(copypaste)):
+                
+                    if widths[c] < len(copypaste[r][c]):
+                        if len(copypaste[r][c]) >= maxWidth:
+                            widths[c] = maxWidth
+                            break
+                        else:
+                            widths[c] = len(copypaste[r][c])
+                            
+                            
+            tableWidth = 0
+            
+            for c in widths:
+                tableWidth += c + 1
+                
+            tableWidth -= 1
+                
+            topLine = '-' + '-'.rjust(tableWidth, '-') + '-'
+            mdlLine = '|' + '-'.rjust(tableWidth, '-') + '|'
+                            
+            csv = topLine + '\n'
+            
+            i = 0
+            for r in copypaste:
+                for c in range(len(colIndex)):
+                    #val = r[c][:maxWidth]
+                    
+                    if len(r[c]) > maxWidth:
+                        val = r[c][:maxWidth-1] + '…'
+                    else:
+                        val = r[c][:maxWidth]
+                    
+                    if db.ifNumericType(types[c]) and i > 0:
+                        val = val.rjust(widths[c], ' ')
+                    else:
+                        val = val.ljust(widths[c], ' ')
+                    
+                    csv += '|' + val
+                    
+                csv += '|\n'
+
+                if i == 0:
+                    csv += mdlLine + '\n'
+                    i += 1
+                
+            csv += topLine + '\n'
+            
+            return csv
+        
+    
+        sm = self.selectionModel()
+        
+        colIndex = []
+        for c in sm.selectedColumns():
+            colIndex.append(c.column())
+        
+        rowIndex = []
+        for r in sm.selectedRows():
+            rowIndex.append(r.row())
+            
+        copypaste = []
+        
+        if len(rowIndex) >= 1000:
+            # and len(colIndex) >= 5 ?
+            # it is to expensive to check
+            cellsSelection = False
+        else:
+            #this will be checked right away
+            cellsSelection = True
+        
+        if (colIndex or rowIndex):
+            # scan all selected cells to make sure this is pure column or row selection
+        
+            utils.timerStart()
+        
+            cellsSelection = False
+        
+            for cl in sm.selectedIndexes():
+                r = cl.row()
+                c = cl.column()
+                
+                if (colIndex and c not in colIndex) or (rowIndex and r not in rowIndex):
+                    # okay, something is not really inside the column (row), full stop and make regular copy
+                
+                    cellsSelection = True
+                    break
+                    
+            utils.timeLap()
+            s = utils.timePrint()
+            
+            log('Selection model check: %s' % s[0], 5)
+            
+        if cellsSelection and abapMode:
+            self.log('ABAP mode is only available when rows or columns are selected.', True)
+            
+        if not cellsSelection and rowIndex: 
+            # process rows
+            
+            utils.timerStart()
+            rowIndex.sort()
+            
+            colIndex = []
+                
+            cc = self.columnCount()
+                
+            hdrrow = []
+            
+            i = 0
+            
+            for h in self.headers:
+            
+                if len(self.headers) > 1 or abapMode:
+                    hdrrow.append(h)
+                    
+                colIndex.append(i)
+                i+=1
+                    
+            if hdrrow:
+                copypaste.append(hdrrow)
+    
+    
+            for r in rowIndex:
+                values = []
+                for c in range(cc):
+                    values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                    
+                copypaste.append(values)
+                
+            if abapMode:
+                csv = abapCopy()
+            else:
+                csv = ''
+                for r in copypaste:
+                    csv += ';'.join(r) + '\n'
+            
+            QApplication.clipboard().setText(csv)
+
+            utils.timeLap()
+            s = utils.timePrint()
+            
+            log('Clipboard formatting took: %s' % s[0], 5)
+            QApplication.clipboard().setText(csv)
+
+        elif not cellsSelection and colIndex: 
+            # process columns
+            colIndex.sort()
+            
+            hdrrow = []
+            
+            for c in colIndex:
+                hdrrow.append(self.headers[c])
+                
+            copypaste.append(hdrrow)
+                
+            for r in range(self.rowCount()):
+                values = []
+                
+                for c in colIndex:
+                    values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                
+                copypaste.append(values)
+            
+            if abapMode:
+                csv = abapCopy()
+            else:
+                csv = ''
+                for r in copypaste:
+                    csv += ';'.join(r) + '\n'
+            
+            QApplication.clipboard().setText(csv)
+            
+        else:
+            # copy column
+            #print('just copy')
+            
+            rowIndex = []
+            colIndex = {}
+
+            # very likely not the best way to order list of pairs...
+            
+            for c in sm.selectedIndexes():
+            
+                r = c.row() 
+            
+                if r not in rowIndex:
+                    rowIndex.append(r)
+                    
+                if r in colIndex.keys():
+                    colIndex[r].append(c.column())
+                else:
+                    colIndex[r] = []
+                    colIndex[r].append(c.column())
+            
+            rowIndex.sort()
+            
+            rows = []
+            
+            for r in rowIndex:
+                colIndex[r].sort()
+
+                values = []
+                
+                for c in colIndex[r]:
+                
+                    value = self.rows[r][c]
+                    vType = self.cols[c][1]
+                    
+                    if value is None:
+                        values.append(utils.cfg('nullStringCSV', ''))
+                    else:
+                        if db.ifBLOBType(vType):
+                            values.append(str(value.encode()))
+                        else:
+                            if db.ifNumericType(vType):
+                                values.append(utils.numberToStrCSV(value, False))
+                            elif db.ifRAWType(vType):
+                                values.append(value.hex())
+                            elif db.ifTSType(vType):
+                                #values.append(value.isoformat(' ', timespec='milliseconds'))
+                                values.append(utils.timestampToStr(value))
+                            else:
+                                values.append(str(value))
+                                
+                rows.append( ';'.join(values))
+
+            result = '\n'.join(rows)
+            
+            QApplication.clipboard().setText(result)
+        
 
     def resultKeyPressHandler(self, event):
     
@@ -1592,222 +1846,7 @@ class resultSet(QTableWidget):
                 self.selectAll()
             
             if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
-            
-                '''
-                    copy cells or rows implementation
-                '''
-            
-                sm = self.selectionModel()
-                
-                colIndex = []
-                for c in sm.selectedColumns():
-                    colIndex.append(c.column())
-                
-                rowIndex = []
-                for r in sm.selectedRows():
-                    rowIndex.append(r.row())
-                
-                
-                if len(rowIndex) >= 1000:
-                    # and len(colIndex) >= 5 ?
-                    # it is to expensive to check
-                    cellsSelection = False
-                else:
-                    #this will be checked right away
-                    cellsSelection = True
-                
-                if (colIndex or rowIndex):
-                    # scan all selected cells to make sure this is pure column or row selection
-                
-                    utils.timerStart()
-                
-                    cellsSelection = False
-                
-                    for cl in sm.selectedIndexes():
-                        r = cl.row()
-                        c = cl.column()
-                        
-                        if (colIndex and c not in colIndex) or (rowIndex and r not in rowIndex):
-                            # okay, something is not really inside the column (row), full stop and make regular copy
-                        
-                            cellsSelection = True
-                            break
-                            
-                    utils.timeLap()
-                    s = utils.timePrint()
-                    
-                    log('Selection model check: %s' % s[0], 5)
-                    
-                if not cellsSelection and rowIndex: 
-                    # process rows
-                    #print('rows copy')
-                    
-                    utils.timerStart()
-                    rowIndex.sort()
-                    
-                    if len(self.headers) > 1:
-                        csv = ';'.join(self.headers) + '\n'
-                    else:
-                        csv = ''
-                        
-                    for r in rowIndex:
-                        csv += self.csvRow(r) + '\n'
-                        
-                        
-                    utils.timeLap()
-                    s = utils.timePrint()
-                    
-                    log('Clipboard formatting took: %s' % s[0], 5)
-                    QApplication.clipboard().setText(csv)
-
-                elif not cellsSelection and colIndex: 
-                    # process columns
-                    #print('cols copy')
-                    colIndex.sort()
-                    
-                    hdrrow = []
-                    
-                    maxWidth = 32
-                    widths = []
-                    
-                    copypaste = []
-                    
-                    for c in colIndex:
-                        hdrrow.append(self.headers[c])
-                        
-                    if len(hdrrow) > 0:
-                        csv = ';'.join(hdrrow) + '\n'
-                    else:
-                        csv = ''
-                        
-                    copypaste.append(hdrrow)
-                        
-                    for r in range(self.rowCount()):
-                    
-                        values = []
-                        
-                        for c in colIndex:
-                            values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
-                            
-                        csv += ';'.join(values) + '\n'
-                        
-                        copypaste.append(values)
-                        
-                    if cfg('abapCopy', True):
-                    
-                        widths = [0]*len(colIndex)
-                        types = [0]*len(colIndex)
-                        
-                        for c in range(len(colIndex)):
-                        
-                            types[c] = self.cols[colIndex[c]][1]
-                        
-                            for r in range(len(copypaste)):
-                            
-                                if widths[c] < len(copypaste[r][c]):
-                                    if len(copypaste[r][c]) >= maxWidth:
-                                        widths[c] = maxWidth
-                                        break
-                                    else:
-                                        widths[c] = len(copypaste[r][c])
-                                        
-                                        
-                        tableWidth = 0
-                        
-                        for c in widths:
-                            tableWidth += c + 1
-                            
-                        tableWidth -= 1
-                            
-                        topLine = '-' + '-'.rjust(tableWidth, '-') + '-'
-                        mdlLine = '|' + '-'.rjust(tableWidth, '-') + '|'
-                                        
-                        csv = topLine + '\n'
-                        
-                        
-
-                        i = 0
-                        for r in copypaste:
-                            for c in range(len(colIndex)):
-                                val = r[c][:maxWidth]
-                                
-                                if db.ifNumericType(types[c]) and i > 0:
-                                    val = val.rjust(widths[c], ' ')
-                                else:
-                                    val = val.ljust(widths[c], ' ')
-                                
-                                csv += '|' + val
-                                
-                            csv += '|\n'
-
-                            if i == 0:
-                                csv += mdlLine + '\n'
-                                i += 1
-                            
-                        csv += topLine + '\n'
-                        
-                    else:
-                        pass
-                    
-                    QApplication.clipboard().setText(csv)
-                    
-                else:
-                    # copy column
-                    #print('just copy')
-                    
-                    rowIndex = []
-                    colIndex = {}
-
-                    # very likely not the best way to order list of pairs...
-                    
-                    for c in sm.selectedIndexes():
-                    
-                        r = c.row() 
-                    
-                        if r not in rowIndex:
-                            rowIndex.append(r)
-                            
-                        if r in colIndex.keys():
-                            colIndex[r].append(c.column())
-                        else:
-                            colIndex[r] = []
-                            colIndex[r].append(c.column())
-                    
-                    rowIndex.sort()
-                    
-                    rows = []
-                    
-                    for r in rowIndex:
-                        colIndex[r].sort()
-
-                        values = []
-                        
-                        for c in colIndex[r]:
-                        
-                            value = self.rows[r][c]
-                            vType = self.cols[c][1]
-                            
-                            if value is None:
-                                values.append(utils.cfg('nullStringCSV', ''))
-                            else:
-                                if db.ifBLOBType(vType):
-                                    values.append(str(value.encode()))
-                                else:
-                                    if db.ifNumericType(vType):
-                                        values.append(utils.numberToStrCSV(value, False))
-                                    elif db.ifRAWType(vType):
-                                        values.append(value.hex())
-                                    elif db.ifTSType(vType):
-                                        #values.append(value.isoformat(' ', timespec='milliseconds'))
-                                        values.append(utils.timestampToStr(value))
-                                    else:
-                                        values.append(str(value))
-                                        
-                        rows.append( ';'.join(values))
-
-                    result = '\n'.join(rows)
-                    
-                    QApplication.clipboard().setText(result)
+                self.copyCells()
         
         else:
             super().keyPressEvent(event)
