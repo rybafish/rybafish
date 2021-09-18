@@ -1600,12 +1600,12 @@ class resultSet(QTableWidget):
             maxWidth = 32
             widths = []
             
-            widths = [0]*len(colIndex)
-            types = [0]*len(colIndex)
+            widths = [0]*len(colList)
+            types = [0]*len(colList)
             
-            for c in range(len(colIndex)):
+            for c in range(len(colList)):
             
-                types[c] = self.cols[colIndex[c]][1]
+                types[c] = self.cols[colList[c]][1]
             
                 for r in range(len(copypaste)):
                 
@@ -1631,7 +1631,7 @@ class resultSet(QTableWidget):
             
             i = 0
             for r in copypaste:
-                for c in range(len(colIndex)):
+                for c in range(len(colList)):
                     #val = r[c][:maxWidth]
                     
                     if len(r[c]) > maxWidth:
@@ -1660,6 +1660,8 @@ class resultSet(QTableWidget):
         sm = self.selectionModel()
         
         colIndex = []
+        colList = []
+        
         for c in sm.selectedColumns():
             colIndex.append(c.column())
         
@@ -1699,7 +1701,7 @@ class resultSet(QTableWidget):
             
             log('Selection model check: %s' % s[0], 5)
             
-        if cellsSelection and abapMode:
+        if False and cellsSelection and abapMode:
             self.log('ABAP mode is only available when rows or columns are selected.', True)
             
         if not cellsSelection and rowIndex: 
@@ -1708,8 +1710,6 @@ class resultSet(QTableWidget):
             utils.timerStart()
             rowIndex.sort()
             
-            colIndex = []
-                
             cc = self.columnCount()
                 
             hdrrow = []
@@ -1719,9 +1719,12 @@ class resultSet(QTableWidget):
             for h in self.headers:
             
                 if len(self.headers) > 1 or abapMode:
-                    hdrrow.append(h)
+                
+                    if self.columnWidth(i) > 4:
+                        hdrrow.append(h)
+                        
+                        colList.append(i) # important for abapCopy
                     
-                colIndex.append(i)
                 i+=1
                     
             if hdrrow:
@@ -1731,7 +1734,9 @@ class resultSet(QTableWidget):
             for r in rowIndex:
                 values = []
                 for c in range(cc):
-                    values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                
+                    if self.columnWidth(c) > 4:
+                        values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
                     
                 copypaste.append(values)
                 
@@ -1757,7 +1762,11 @@ class resultSet(QTableWidget):
             hdrrow = []
             
             for c in colIndex:
-                hdrrow.append(self.headers[c])
+
+                if self.columnWidth(c) > 4:
+                    hdrrow.append(self.headers[c])
+                    colList.append(c)
+
                 
             copypaste.append(hdrrow)
                 
@@ -1765,7 +1774,8 @@ class resultSet(QTableWidget):
                 values = []
                 
                 for c in colIndex:
-                    values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                    if self.columnWidth(c) > 4:
+                        values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
                 
                 copypaste.append(values)
             
@@ -1801,6 +1811,48 @@ class resultSet(QTableWidget):
                     colIndex[r].append(c.column())
             
             rowIndex.sort()
+
+            if abapMode:
+                # check if the square area selected first
+                
+                colList = colIndex[rowIndex[0]].copy()
+                
+                abapNotPossible = False
+                
+                for ci in colIndex:
+                    
+                    if colList != colIndex[ci]:
+                        abapNotPossible = True
+                        break
+                        
+                if abapNotPossible:
+                    self.log('ABAP-style copy is only possible for rectangular selections.', True)
+                    return
+                        
+                values = []
+                for c in colList:
+                    if self.columnWidth(c) > 4:
+                        values.append(self.headers[c])
+                        
+                copypaste.append(values)
+
+                for r in rowIndex:
+                    values = []
+
+                    for c in colList:
+                    
+                        if self.columnWidth(c) > 4:
+                            values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                        
+                    copypaste.append(values)
+                    
+                    
+                csv = abapCopy()
+                
+                QApplication.clipboard().setText(csv)
+                
+                return
+                
             
             rows = []
             
