@@ -884,21 +884,27 @@ class myWidget(QWidget):
                 y_min = scan[i]
                 y_max = scan[i]
 
+                print('\nok, scan')
                 while i < array_size and timeline[i] <= trgt_time + time_delta:
                     # note: for really zoomed in time scales there's a possibility
                     # that this loop will not be execuded even once
                     
+                    print('i, j, ymin, ymax, value', i, j, y_min, y_max, scan[i])
+                    
                     if timeline[j] < trgt_time:
                         j+=1 # scan for exact value in closest point
 
-                    if y_min > scan[i]:
-                        y_min = scan[i]
+                    if y_min > scan[j]:
+                        y_min = scan[j]
 
-                    if y_max < scan[i]:
-                        y_max = scan[i]
+                    if y_max < scan[j]:
+                        y_max = scan[j]
+                        
+                    print('i, j, ymin, ymax, value', i, j, y_min, y_max, scan[i])
 
                     i+=1
                     
+                #if y_min != y_max:
                 j -= 1 # THIS is the point right before the trgt_time
             
                 found_some = False
@@ -923,6 +929,10 @@ class myWidget(QWidget):
                 #log('on screen %i/%i, from click: %i' % (ymin, ymax, pos.y()))
                 
                 #if abs(y - pos.y()) <= 2:
+                
+                print('ymin, ymax', ymin, ymax)
+                print('y:', pos.y())
+                
                 if pos.y() <= ymin + tolerance and pos.y() >= ymax - tolerance: #it's reversed in Y calculation...
                     if (self.highlightedKpi):
                     

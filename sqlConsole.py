@@ -3104,11 +3104,11 @@ class sqlConsole(QWidget):
         
     def executeSelection(self, mode):
     
-        if not cfg('dev-') and self.config is None:
+        if not cfg('dev') and self.config is None:
             self.log('No connection, connect RybaFish to the DB first.')
             return
             
-        if self.conn is None:
+        if not cfg('dev') and self.conn is None:
             self.log('The console is disconnected...')
             
             #answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect as "%s@%s:%s"?' % (self.config['user'], self.config['host'], str(self.config['port'])))
@@ -3390,6 +3390,8 @@ class sqlConsole(QWidget):
         # startDelta = 0
         # clearDelta = False
         
+        print('from, to', scanFrom, scanTo)
+        
         for i in range(scanFrom, scanTo):
             c = txt[i]
             
@@ -3403,13 +3405,17 @@ class sqlConsole(QWidget):
             if not insideString and c == ';':
                 #print(i)
                 if not insideProc:
+                    print("str = '' #1")
                     str = ''
-                    stop = i
+                    
+                    if stop < start: # this is to resolve #486
+                        stop = i
                     # clearDelta = True
                     continue
                 else:
                     if isItEnd(str[-10:]):
                         insideProc = False
+                        print("str = '' #2")
                         str = ''
                         stop = i
                         # clearDelta = True
@@ -3427,6 +3433,7 @@ class sqlConsole(QWidget):
                 elif not leadingComment and c == '-' and i < scanTo and txt[i] == '-':
                     leadingComment = True
                 elif leadingComment:
+                    print(c, i, start, stop)
                     if c == '\n':
                         leadingComment = False
                     else:
@@ -3438,6 +3445,7 @@ class sqlConsole(QWidget):
                         #print('start <= cursorPos <= stop:', start, cursorPos, stop)
                         #print('warning! selectSingle used to be here, but removed 05.02.2021')
                         #selectSingle(start, stop)
+                        print('stop detected')
                         break
                     else:
                         if not F9:
@@ -3445,9 +3453,10 @@ class sqlConsole(QWidget):
                         
                     start = i
                     str = str + c
+                    print(i, 'sTr:', str, start, stop)
             else:
                 str = str + c
-                #print(str)
+                print(i, 'str:', str, start, stop)
 
             if not insideString and c == '\'':
                 insideString = True
@@ -3459,6 +3468,8 @@ class sqlConsole(QWidget):
                 
             if not insideProc and isItCreate(str[:64]):
                 insideProc = True
+                
+        print('[just stop]')
 
 
         '''

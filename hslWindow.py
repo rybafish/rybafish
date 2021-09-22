@@ -709,6 +709,15 @@ class hslWindow(QMainWindow):
         console.indicator.repaint()
             
     
+    def menuColorize(self):
+        if cfg('colorize', False) == False:
+            utils.cfgSet('colorize', True)
+            
+        else:
+            utils.cfgSet('colorize', False)
+            
+        self.chartArea.widget.update()
+    
     def menuEss(self):
     
         if cfg('ess', False) == False:
@@ -998,6 +1007,12 @@ class hslWindow(QMainWindow):
         reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
 
         actionsMenu.addAction(reloadCustomKPIsAct)
+
+        self.colorizeAct = QAction('Colorize KPIs', self)
+        self.colorizeAct.setStatusTip('Ignore standard KPI styles and use raduga colors instead')
+        self.colorizeAct.triggered.connect(self.menuColorize)
+
+        actionsMenu.addAction(self.colorizeAct)
 
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
