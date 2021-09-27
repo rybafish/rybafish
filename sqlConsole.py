@@ -3408,7 +3408,8 @@ class sqlConsole(QWidget):
                     ### print("str = '' #1")
                     str = ''
                     
-                    if stop < start: # this is to resolve #486
+                    #if stop < start: # this is to resolve #486
+                    if stop < start or (start == 0 and stop == 0): # this is to resolve # 486, 2 
                         stop = i
                     # clearDelta = True
                     continue
