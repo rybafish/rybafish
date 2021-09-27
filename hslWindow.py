@@ -476,6 +476,11 @@ class hslWindow(QMainWindow):
                     windowStr = ('%s %s@%s' % (conf['user'], tenant, self.chartArea.dp.dbProperties['sid']))
                 else:
                     windowStr = propStr
+                    
+                dbver = self.chartArea.dp.dbProperties.get('version')
+                    
+                if dbver:
+                    windowStr += ', ' + dbver
                 
                 self.tabs.setTabText(0, propStr)
                 self.setWindowTitle('RybaFish Charts [%s]' % windowStr)

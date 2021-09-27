@@ -27,6 +27,7 @@ import kpiDescriptions
 import sql
 
 import sys
+import re
 
 from utils import log, cfg, hextostr
 from utils import dbException
@@ -67,7 +68,7 @@ def create_connection (server, dbProperties = None):
 
     if dbProperties is not None:
     
-        rows = execute_query(connection, 'select distinct key, value from m_host_information where key in (?, ?)', ['timezone_offset', 'sid'])
+        rows = execute_query(connection, 'select distinct key, value from m_host_information where key in (?, ?, ?)', ['timezone_offset', 'sid', 'build_version'])
         
         for row in rows:
             if row[0] == 'timezone_offset':
@@ -83,6 +84,25 @@ def create_connection (server, dbProperties = None):
                     dbProperties['sid'] = row[1].replace(sm[0], sm[1])
                 else:
                     dbProperties['sid'] = row[1]
+            elif row[0] == 'build_version':
+                ver = row[1]
+                # example: 2.00.045.00.1575639312
+                
+                m = re.match('^\s*(\d\.\d+\.\d+)', ver)
+                
+                if m:
+                    ver = m.group(1)
+                    
+                print(ver)
+                print(ver)
+                print(ver)
+                print(ver)
+                print(ver)
+                print(ver)
+                print(ver)
+                print(ver)
+
+                dbProperties['version'] = ver
 
         if 'timeZoneDelta' not in dbProperties:
             dbProperties['timeZoneDelta'] = 0
