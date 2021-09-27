@@ -3390,7 +3390,7 @@ class sqlConsole(QWidget):
         # startDelta = 0
         # clearDelta = False
         
-        print('from, to', scanFrom, scanTo)
+        ### print('from, to', scanFrom, scanTo)
         
         for i in range(scanFrom, scanTo):
             c = txt[i]
@@ -3405,7 +3405,7 @@ class sqlConsole(QWidget):
             if not insideString and c == ';':
                 #print(i)
                 if not insideProc:
-                    print("str = '' #1")
+                    ### print("str = '' #1")
                     str = ''
                     
                     if stop < start: # this is to resolve #486
@@ -3415,7 +3415,7 @@ class sqlConsole(QWidget):
                 else:
                     if isItEnd(str[-10:]):
                         insideProc = False
-                        print("str = '' #2")
+                        ### print("str = '' #2")
                         str = ''
                         stop = i
                         # clearDelta = True
@@ -3433,7 +3433,7 @@ class sqlConsole(QWidget):
                 elif not leadingComment and c == '-' and i < scanTo and txt[i] == '-':
                     leadingComment = True
                 elif leadingComment:
-                    print(c, i, start, stop)
+                    ### print(c, i, start, stop)
                     if c == '\n':
                         leadingComment = False
                     else:
@@ -3445,7 +3445,7 @@ class sqlConsole(QWidget):
                         #print('start <= cursorPos <= stop:', start, cursorPos, stop)
                         #print('warning! selectSingle used to be here, but removed 05.02.2021')
                         #selectSingle(start, stop)
-                        print('stop detected')
+                        ### print('stop detected')
                         break
                     else:
                         if not F9:
@@ -3453,10 +3453,10 @@ class sqlConsole(QWidget):
                         
                     start = i
                     str = str + c
-                    print(i, 'sTr:', str, start, stop)
+                    ### print(i, 'sTr:', str, start, stop)
             else:
                 str = str + c
-                print(i, 'str:', str, start, stop)
+                ### print(i, 'str:', str, start, stop)
 
             if not insideString and c == '\'':
                 insideString = True
@@ -3469,7 +3469,7 @@ class sqlConsole(QWidget):
             if not insideProc and isItCreate(str[:64]):
                 insideProc = True
                 
-        print('[just stop]')
+        ### print('[just stop]')
 
 
         '''
