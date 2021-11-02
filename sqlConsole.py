@@ -1685,16 +1685,20 @@ class resultSet(QTableWidget):
             utils.timerStart()
         
             cellsSelection = False
-        
-            for cl in sm.selectedIndexes():
-                r = cl.row()
-                c = cl.column()
-                
-                if (colIndex and c not in colIndex) or (rowIndex and r not in rowIndex):
-                    # okay, something is not really inside the column (row), full stop and make regular copy
-                
-                    cellsSelection = True
-                    break
+            
+            if len(sm.selectedIndexes()) == 1:
+                #single cell selected, no need header for this
+                cellsSelection = True
+            else:
+                for cl in sm.selectedIndexes():
+                    r = cl.row()
+                    c = cl.column()
+                    
+                    if (colIndex and c not in colIndex) or (rowIndex and r not in rowIndex):
+                        # okay, something is not really inside the column (row), full stop and make regular copy
+                    
+                        cellsSelection = True
+                        break
                     
             utils.timeLap()
             s = utils.timePrint()
@@ -1703,7 +1707,7 @@ class resultSet(QTableWidget):
             
         if False and cellsSelection and abapMode:
             self.log('ABAP mode is only available when rows or columns are selected.', True)
-            
+        
         if not cellsSelection and rowIndex: 
             # process rows
             
@@ -1768,7 +1772,8 @@ class resultSet(QTableWidget):
                     colList.append(c)
 
                 
-            copypaste.append(hdrrow)
+            if self.rowCount() > 1 or abapMode:
+                copypaste.append(hdrrow)
                 
             for r in range(self.rowCount()):
                 values = []

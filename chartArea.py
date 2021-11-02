@@ -2806,10 +2806,16 @@ class chartArea(QFrame):
         else:
             try:
                 
+                '''
                 if len(fromTime) == 10:
                     self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d')
                     
                     fromTime += ' 00:00:00'
+                    self.fromEdit.setText(fromTime)
+                '''
+                if len(fromTime) >= 10:
+                    lt = 19 - len(fromTime)
+                    fromTime += ' 00:00:00'[9 - lt:]
                     self.fromEdit.setText(fromTime)
 
                 self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')

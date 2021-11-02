@@ -93,15 +93,6 @@ def create_connection (server, dbProperties = None):
                 if m:
                     ver = m.group(1)
                     
-                print(ver)
-                print(ver)
-                print(ver)
-                print(ver)
-                print(ver)
-                print(ver)
-                print(ver)
-                print(ver)
-
                 dbProperties['version'] = ver
 
         if 'timeZoneDelta' not in dbProperties:
