@@ -316,6 +316,8 @@ class myWidget(QWidget):
                     scaleKpi['label'] = '%i' % (self.nscales[h][kpi]['entities'])
                     scaleKpi['yScale'] = ''
                     scaleKpi['unit'] = ''
+                    scaleKpi['avg'] = ''
+                    scaleKpi['avg_label'] = ''
                     continue
                 
                 #log(scaleKpi)
@@ -334,6 +336,7 @@ class myWidget(QWidget):
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = str(scaleKpi['max'])
+                    scaleKpi['avg_label'] = str(scaleKpi['avg'])
                     
                     if 'last_value' in scaleKpi:
                         scaleKpi['last_label'] = str(scaleKpi['last_value']) 
@@ -385,6 +388,12 @@ class myWidget(QWidget):
                     d = kpiStylesNN[type][kpi].get('decimal', 0) # defined couple lines above
                     
                     scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d), d)
+                    
+                    if scaleKpi['avg'] is not None:
+                        scaleKpi['avg_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['avg'], d), d)
+                    else:
+                        scaleKpi['avg_label'] = ''
+                        
                     if 'last_value' in scaleKpi and scaleKpi['last_value'] is not None:
                         scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
                     else:
@@ -399,6 +408,7 @@ class myWidget(QWidget):
                             lst = self.nscalesml[h][kpi][gb]['last']
                             self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], mx, d), d)
                             self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], lst, d), d)
+                            self.nscalesml[h][kpi][gb]['avg_label'] = ''
                             
                         
                     # scaleKpi['y_max'] = max_value
@@ -2591,6 +2601,8 @@ class chartArea(QFrame):
             defines max and last_value keys
             
             this one ignores groups/scales at all, just raw values
+            
+            2021-11-09 also scan for AVG
         '''
     
         log('renewMaxValues()', 5)
@@ -2625,6 +2637,7 @@ class chartArea(QFrame):
             
             for kpi in data.keys():
                 scales[kpi]['max'] = 0
+                scales[kpi]['avg'] = None
                 
             #scan for max
 
@@ -2688,12 +2701,14 @@ class chartArea(QFrame):
                 for sn in range(scans):
                 
                     max_val = 0
+                    sum_val = 0
                 
                     if subtype == 'multiline':
                         gb = data[kpi][sn][0]
                         scan = data[kpi][sn][1]
                     else:
                         scan = data[kpi] # yep, this simple
+                        
                         
                     anti_crash_len = len(scan)
                 
@@ -2714,6 +2729,16 @@ class chartArea(QFrame):
 
                             if  t > t_to: #end of window no need to scan further
                                 break
+                               
+                            sum_val += scan[i]
+                            
+                        print(kpi, i)
+                        print(kpi, i)
+                        print(kpi, i)
+                        if i > 0:
+                            avg_val = sum_val/(i+1)
+                        else:
+                            avg_val = None
 
                     except ValueError as e:
                         log('error: i = %i, array_size = %i' % (i, array_size))
@@ -2724,6 +2749,8 @@ class chartArea(QFrame):
                         log('scales[kpi] = %s' % str(scales[kpi]))
 
                         log('exception text: %s' % (str(e)))
+                        
+                        log('sum_val value = %s' % (str(sum_val)))
                         
                         for j in range(10):
                             log('data[%i] = %s' % (j, str(data[kpi][j])))
@@ -2753,6 +2780,13 @@ class chartArea(QFrame):
 
                         scalesml[kpi][gb]['last'] = scan[i]
                         scalesml[kpi][gb]['max'] = max_val
+
+                        scales[kpi]['avg'] = None
+                    else:
+                        if avg_val is not None:
+                            scales[kpi]['avg'] = int(avg_val)
+                        else:
+                            scales[kpi]['avg'] = None
                     
         t1 = time.time()
         

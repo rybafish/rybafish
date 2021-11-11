@@ -10,6 +10,10 @@ from PyQt5.QtCore import Qt, QSize
 
 from PyQt5.QtCore import QObject, QThread
 
+# crazy sound alert imports
+from PyQt5.QtMultimedia import QSoundEffect
+from PyQt5.QtCore import QUrl
+
 import time, sys
 
 #import shiboken2
@@ -838,7 +842,6 @@ class console(QPlainTextEditLN):
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
 
-            
             if modifiers & Qt.AltModifier:
                 self.executionTriggered.emit('no parsing')
             elif modifiers & Qt.ControlModifier:
@@ -1183,6 +1186,7 @@ class resultSet(QTableWidget):
         Table never refilled.
     '''
     
+    alertSignal = pyqtSignal(['QString'])
     insertText = pyqtSignal(['QString'])
     executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
@@ -1214,6 +1218,8 @@ class resultSet(QTableWidget):
         self.timerDelay = None
         
         self.timerSet = None        # autorefresh menu switch flag
+        
+        self.alerted = None         # one time alarm signal flag
         
         super().__init__()
         
@@ -1994,6 +2000,15 @@ class resultSet(QTableWidget):
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
+                        
+                    if cfg('experimental') and val == '{alert}':
+                    
+                        if not self.alerted:
+                            self.alerted = True
+                            
+                            item.setBackground(QBrush(QColor('#FAC')))
+                            self.alertSignal.emit('')
+
                 
                 elif db.ifTSType(cols[c][1]):
                     #val = val.isoformat(' ', timespec='milliseconds') 
@@ -2815,6 +2830,23 @@ class sqlConsole(QWidget):
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
             self.log('Autorefresh is already running? Ignoring the new one...', True)
             
+    def alertSignal(self, fileName):
+    
+        if fileName == '':
+            fileName = 'alert.wav'
+    
+        if self.timerAutorefresh:
+            log('console %s, alert...' % self.tabname.rstrip(' *'), 3)
+            ts = datetime.datetime.now().strftime('%H:%M:%S') + ' '
+            self.logArea.appendHtml(ts + '<font color = "#E4E">Alert detected</font>.');
+            
+        self.sound = QSoundEffect()
+        soundFile = QUrl.fromLocalFile(fileName)
+        self.sound.setSource(soundFile)
+        self.sound.setVolume(0.8)
+        self.indicator.status = 'alert'
+        self.sound.play()
+    
     def newResult(self, conn, st):
         
         result = resultSet(conn)
@@ -2826,6 +2858,7 @@ class sqlConsole(QWidget):
         
         result.insertText.connect(self.cons.insertTextS)
         result.executeSQL.connect(self.surprizeSQL)
+        result.alertSignal.connect(self.alertSignal)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:
@@ -3104,6 +3137,8 @@ class sqlConsole(QWidget):
                 result.detachTimer = None
                 
             result.detach()
+            
+        result.alerted = False
 
         self.executeStatement(result.statement, result, True)
         
@@ -3882,7 +3917,9 @@ class sqlConsole(QWidget):
                 #log('cols %i:%i' % (i, len(cols_list[0])))
                 del cols_list[0]
             
-        self.indicator.status = 'idle'
+        if self.indicator.status != 'alert':
+            self.indicator.status = 'idle'
+            
         self.indicator.runtime = None
         self.updateRuntime('off')
         self.indicator.repaint()

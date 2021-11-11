@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 
 import locale
+
 from decimal import Decimal
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
@@ -19,6 +20,15 @@ config = {}
 timers = []
 
 localeCfg = None
+
+def pwdunhash(pwdhsh):
+    pwd = pwdhsh[5:]
+    print('------', pwd)
+    return pwd
+    
+def pwdtohash(pwd):
+    pwdhsh = 'hash!' + pwd
+    return pwdhsh
 
 def hextostr(value):
     if value:
@@ -79,6 +89,7 @@ class Layout():
             return None
 
     def __setitem__(self, name, value):
+        print('----> ', name, value)
         self.lo[name] = value
         
     def dump(self):

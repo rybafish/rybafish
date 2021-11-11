@@ -170,6 +170,13 @@ class hslWindow(QMainWindow):
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
         
+        # block the position on topof the file
+        
+        '''
+        if 'pwdhash' not in self.layout.lo:
+            self.layout['pwdhash'] = None
+        '''
+        
         self.layout['mainSplitter'] = self.mainSplitter.sizes()
         self.layout['kpiSplitter'] = self.kpiSplitter.sizes()
 
@@ -380,6 +387,13 @@ class hslWindow(QMainWindow):
         else:
             connConf = self.connectionConf
             
+        '''
+        if self.layout.lo.get('pwdhash') :
+            pwd = utils.pwdunhash(self.layout['pwdhash'])
+            connConf['password'] = pwd
+            connConf['pwdhash'] = True
+        '''
+            
         conf, ok = configDialog.Config.getConfig(connConf, self)
         
         if ok:
@@ -464,6 +478,15 @@ class hslWindow(QMainWindow):
                     if not conf['noreload']:
                         log('reload from menuConfig #1', 4)
                         self.chartArea.reloadChart()
+                        
+                    '''
+                    if conf['savepwd']:
+                        pwhash = utils.pwdtohash(conf['password'])
+                        log('saving the pwd... %s' % pwhash)
+                        self.layout['pwdhash'] = pwhash
+                    else:
+                        self.layout['pwdhash'] = None
+                    '''                    
                 else:
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()

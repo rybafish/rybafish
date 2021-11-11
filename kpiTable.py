@@ -340,12 +340,14 @@ class kpiTable(QTableWidget):
                 self.setItem(i, 3, QTableWidgetItem(str(kpiScale['label']))) # Y-Scale
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
                 self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))
+                self.setItem(i, 6, QTableWidgetItem(str(kpiScale['avg_label'])))
                 self.setItem(i, 8, QTableWidgetItem(str(kpiScale['last_label'])))
             else:
                 #cleanup 
                 self.setItem(i, 3, QTableWidgetItem())
                 self.setItem(i, 4, QTableWidgetItem())
                 self.setItem(i, 5, QTableWidgetItem())
+                self.setItem(i, 6, QTableWidgetItem())
                 self.setItem(i, 8, QTableWidgetItem())
             
             i+=1
@@ -400,6 +402,7 @@ class kpiTable(QTableWidget):
                 self.setItem(i, 3, QTableWidgetItem(str(kpiScale['label']))) # Y-Scale
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
                 self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))
+                self.setItem(i, 6, QTableWidgetItem(str(kpiScale['avg_label'])))
                 self.setItem(i, 8, QTableWidgetItem(str(kpiScale['last_label'])))
         
         self.silentMode = False

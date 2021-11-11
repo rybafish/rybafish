@@ -21,12 +21,18 @@ class Config(QDialog):
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         self.initUI()
         
+        print(conf)
         try:
             if conf:
                 hostport = conf['host'] + ':' + str(conf['port'])
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
                 self.pwdEdit.setText(conf['password'])
+                
+                '''
+                if conf.get('pwdhash'):
+                    self.savePwd.setChecked(True)
+                '''
             else:
                 self.hostportEdit.setFocus()
         except:
@@ -58,6 +64,7 @@ class Config(QDialog):
         cf.config['password'] = cf.pwdEdit.text().strip()
         
         cf.config['noreload'] = cf.noReload.isChecked()
+        # cf.config['savepwd'] = cf.savePwd.isChecked()
         
         return (cf.config, result == QDialog.Accepted)
 
@@ -84,6 +91,7 @@ class Config(QDialog):
         
         checkButton = QPushButton("Check")
         
+        # self.savePwd = QCheckBox('Save the password into layout.aml');
         self.noReload = QCheckBox('Skip initial KPIs load');
 
         self.buttons = QDialogButtonBox(
@@ -99,6 +107,7 @@ class Config(QDialog):
         vbox.addStretch(1)
         # vbox.addLayout(hbox)
         
+        # vbox.addWidget(self.savePwd)
         vbox.addWidget(self.noReload)
         vbox.addWidget(self.buttons)
         
