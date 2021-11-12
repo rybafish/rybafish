@@ -477,7 +477,10 @@ class console(QPlainTextEditLN):
         return
         
     def consSelection(self):
-    
+        #512 
+        if self.manualSelection:
+            self.clearManualSelection()
+
         if cfg('noWordHighlighting'):
             return
     
@@ -959,6 +962,25 @@ class console(QPlainTextEditLN):
             self.haveHighlighrs = False
         '''
 
+    def clearManualSelection(self):
+        #print('clear manualSelectionPos', self.manualSelectionPos)
+        
+        start = self.manualSelectionPos[0]
+        stop = self.manualSelectionPos[1]
+        
+        cursor = QTextCursor(self.document())
+        
+        for (lo, af) in self.manualStylesRB:
+            lo.setAdditionalFormats(af)
+            
+        self.manualStylesRB.clear()
+
+        self.manualSelection = False
+        self.manualSelectionPos = []
+        
+        self.viewport().repaint()
+        
+
     def cursorPositionChangedSignal(self):
         #log('cursorPositionChangedSignal', 5)
     
@@ -967,55 +989,7 @@ class console(QPlainTextEditLN):
         #print('cursorPositionChangedSignal', self.lock)
     
         if self.manualSelection:
-        
-            print('clear manualSelectionPos', self.manualSelectionPos)
-            
-            start = self.manualSelectionPos[0]
-            stop = self.manualSelectionPos[1]
-            
-            cursor = QTextCursor(self.document())
-            
-            '''
-            2021-09-08
-            #482
-            
-            this approach clears everything including the syntax highlighter.
-
-            block = self.document().findBlock(start)
-            lo = block.layout()
-            
-            lo.clearAdditionalFormats()
-            
-            '''
-
-            '''
-            cursor.joinPreviousEditBlock()
-
-            format = cursor.charFormat()
-            format.setBackground(QColor('white'))
-        
-            cursor.setPosition(start,QTextCursor.MoveAnchor)
-            cursor.setPosition(stop,QTextCursor.KeepAnchor)
-            
-            cursor.setCharFormat(format)
-            
-            cursor.endEditBlock() 
-
-            '''
-            
-            for (lo, af) in self.manualStylesRB:
-                lo.setAdditionalFormats(af)
-                
-            self.manualStylesRB.clear()
-
-            self.manualSelection = False
-            self.manualSelectionPos = []
-            
-            self.viewport().repaint()
-            
-
-            #self.lineNumbers.fromLine = None
-            #self.lineNumbers.repaint()
+            self.clearManualSelection()
     
         if cfg('noBracketsHighlighting'):
             return
@@ -2198,6 +2172,8 @@ class sqlConsole(QWidget):
 
         self.cons.textChanged.connect(self.textChangedS)
         
+        #self.cons.selectionChanged.connect(self.selectionChangedS)
+        
         self.cons.updateRequest.connect(self.updateRequestS)
         
         self.cons.connectSignal.connect(self.connectDB)
@@ -2234,6 +2210,12 @@ class sqlConsole(QWidget):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
 
+    '''
+    def selectionChangedS(self):
+        if self.cons.manualSelection:
+            self.cons.clearManualSelection()
+    '''
+        
     def updateRequestS(self, rect):
         '''
             okay all this logic below is a workaround for #382

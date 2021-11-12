@@ -89,7 +89,6 @@ class Layout():
             return None
 
     def __setitem__(self, name, value):
-        print('----> ', name, value)
         self.lo[name] = value
         
     def dump(self):
