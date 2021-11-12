@@ -279,9 +279,11 @@ class hslWindow(QMainWindow):
                     del(kpiStylesNN[type][kpiName])
                     
                     if type == 'host':
-                        self.chartArea.hostKPIs.remove(kpiName)
+                        if kpiName in self.chartArea.hostKPIs:
+                            self.chartArea.hostKPIs.remove(kpiName)
                     else:
-                        self.chartArea.srvcKPIs.remove(kpiName)
+                        if kpiName in self.chartArea.srvcKPIs:
+                            self.chartArea.srvcKPIs.remove(kpiName)
         
         # del host custom groups
         kpis_len = len(self.chartArea.hostKPIs)
