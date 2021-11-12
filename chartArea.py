@@ -2069,6 +2069,12 @@ class chartArea(QFrame):
         self.widget.nscales.clear()
         self.widget.ndata.clear()
         
+        # 2021-11-12
+        
+        # need to clear the kpis list as it will be reloaded anyhow
+        kpiStylesNN['host'].clear()
+        kpiStylesNN['service'].clear()
+        
         log('cleanup complete')
         
     def initDP(self, kpis = None, message = None):
@@ -2107,6 +2113,7 @@ class chartArea(QFrame):
             
         self.repaint()
         
+        print('----> here go ----->')
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
         self.widget.allocate(len(self.widget.hosts))
         self.widget.initPens()

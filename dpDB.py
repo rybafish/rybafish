@@ -185,6 +185,9 @@ class dataProvider():
         t1 = time.time()
 
         try:
+        
+            print('=====', kpiDescriptions.kpiStylesNN)
+        
             dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
         except Exception as e:
             log('[e] error loading custom kpis')

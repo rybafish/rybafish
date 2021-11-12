@@ -433,7 +433,6 @@ class hslWindow(QMainWindow):
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
                 self.chartArea.setStatus('idle')
 
-
                 for i in range(self.tabs.count()):
                 
                     w = self.tabs.widget(i)
