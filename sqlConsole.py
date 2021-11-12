@@ -1796,11 +1796,14 @@ class resultSet(QTableWidget):
                     colIndex[r].append(c.column())
             
             rowIndex.sort()
-
+            
             if abapMode:
                 # check if the square area selected first
                 
-                colList = colIndex[rowIndex[0]].copy()
+                if len(colIndex) > 0:
+                    colList = colIndex[rowIndex[0]].copy()
+                else:
+                    colList = range(len(self.cols)) #fake 'all columns selected' list when the selection is empty
                 
                 abapNotPossible = False
                 
