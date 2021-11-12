@@ -1243,6 +1243,9 @@ class resultSet(QTableWidget):
         rows = self.rowCount()
         cols = self.columnCount()
 
+        if col == -1 or rows == 0:
+            return
+
         hl = False
 
         clr = QColor(cfg('highlightColor', '#def'))
@@ -1258,8 +1261,6 @@ class resultSet(QTableWidget):
             val = self.item(0, col).text()
         else:
             val = self.item(row, col).text()
-            
-            
             
         lobCols = []
         
