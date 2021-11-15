@@ -827,7 +827,7 @@ class hslWindow(QMainWindow):
                 #answer = utils.yesNoDialog('Warning', 'RybaFish is already running or crashed last time, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 
                 if answer == True or answer is None:
-                    exit(0)
+                    sys.exit(0)
                 
                 if answer == 'ignore':
                     log('Ignoring the layout')

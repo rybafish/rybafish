@@ -47,9 +47,6 @@ layout.yaml
 # log file 
 .log
 
-# sound files, temporal change
-.wav
-
 # custom sql folder
 sql/
 
