@@ -1979,7 +1979,8 @@ class resultSet(QTableWidget):
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
-                    if cfg('experimental') and val == '{alert}':
+                    if cfg('experimental') and val == cfg('soundsTriggerOn'):
+                        #'{alert}'
                     
                         if not self.alerted:
                             self.alerted = True
@@ -2818,18 +2819,50 @@ class sqlConsole(QWidget):
             
     def alertSignal(self, fileName):
     
-        if fileName == '':
-            fileName = 'alert.wav'
+        if fileName == '' or fileName is None:
+            fileName = cfg('soundsDefault', 'default.wav')
+        else:
+            pass
+            
+        if '/' in fileName or '\\' in fileName:
+            #must be a path to some file...
+            pass
+        else:
+            #try open normal file first
+            fileName = 'snd\\' + fileName
+            if os.path.isfile(fileName):
+                log('seems to be a regular file in the rybafish snd folder', 4)
+            else:
+                #okay, take it from the build then...
+                fileName = resourcePath(fileName)
+
+        #log('Sound file name: %s' % fileName, 4)
+        
+        if os.path.isfile(fileName):
+            log('sound file exists', 4)
+        else:
+            log('sound file does not exist', 2)
+            return
     
         if self.timerAutorefresh:
             log('console %s, alert...' % self.tabname.rstrip(' *'), 3)
             ts = datetime.datetime.now().strftime('%H:%M:%S') + ' '
-            self.logArea.appendHtml(ts + '<font color = "#E4E">Alert detected</font>.');
+            self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
+            
+            
+        vol = cfg('soundsVolume', 80)
+        
+        try:
+            vol = int(vol)
+        except ValueError:
+            vol = 80
+            
+        vol /= 100
             
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
-        self.sound.setVolume(0.8)
+        self.sound.setVolume(vol)
         self.indicator.status = 'alert'
         self.sound.play()
     
