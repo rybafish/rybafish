@@ -13,6 +13,7 @@ from PyQt5.QtCore import QObject, QThread
 # crazy sound alert imports
 from PyQt5.QtMultimedia import QSoundEffect
 from PyQt5.QtCore import QUrl
+#from PyQt5.QtCore import WindowState
 
 import time, sys
 
@@ -1979,7 +1980,7 @@ class resultSet(QTableWidget):
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
-                    if cfg('experimental') and val == cfg('soundsTriggerOn'):
+                    if cfg('experimental') and val == cfg('alertTriggerOn'):
                         #'{alert}'
                     
                         if not self.alerted:
@@ -2104,6 +2105,7 @@ class sqlConsole(QWidget):
     nameChanged = pyqtSignal(['QString'])
     statusMessage = pyqtSignal(['QString', bool])
     selfRaise = pyqtSignal(object)
+    alertSignal = pyqtSignal()
 
     def __init__(self, window, config, tabname = None):
     
@@ -2817,10 +2819,10 @@ class sqlConsole(QWidget):
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
             self.log('Autorefresh is already running? Ignoring the new one...', True)
             
-    def alertSignal(self, fileName):
+    def alertProcessing(self, fileName):
     
         if fileName == '' or fileName is None:
-            fileName = cfg('soundsDefault', 'default.wav')
+            fileName = cfg('alertSound', 'default.wav')
         else:
             pass
             
@@ -2850,7 +2852,7 @@ class sqlConsole(QWidget):
             self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
             
             
-        vol = cfg('soundsVolume', 80)
+        vol = cfg('alertVolume', 80)
         
         try:
             vol = int(vol)
@@ -2865,6 +2867,12 @@ class sqlConsole(QWidget):
         self.sound.setVolume(vol)
         self.indicator.status = 'alert'
         self.sound.play()
+        
+        if cfg('alertAutoPopup', True):
+            if not self.isActiveWindow():
+                self.selfRaise.emit(self)
+            
+            self.alertSignal.emit()
     
     def newResult(self, conn, st):
         
@@ -2877,7 +2885,7 @@ class sqlConsole(QWidget):
         
         result.insertText.connect(self.cons.insertTextS)
         result.executeSQL.connect(self.surprizeSQL)
-        result.alertSignal.connect(self.alertSignal)
+        result.alertSignal.connect(self.alertProcessing)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:

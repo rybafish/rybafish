@@ -636,6 +636,8 @@ class hslWindow(QMainWindow):
             console.selfRaise.connect(self.raiseTab)
             console.statusMessage.connect(self.statusMessage)
             
+            console.alertSignal.connect(self.popUp)
+            
             ind = indicator()
             console.indicator = ind
             
@@ -722,6 +724,8 @@ class hslWindow(QMainWindow):
         console.selfRaise.connect(self.raiseTab)
         console.statusMessage.connect(self.statusMessage)
         
+        console.alertSignal.connect(self.popUp)
+        
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
         if console.unsavedChanges:
@@ -798,6 +802,15 @@ class hslWindow(QMainWindow):
             
             self.chartArea.reloadChart()
         
+    def popUp(self):
+    
+        state = self.windowState()
+
+        self.setWindowState(state & ~Qt.WindowMinimized | Qt.WindowActive)
+        
+        if not self.isActiveWindow():
+            self.activateWindow()
+    
     def raiseTab(self, tab):
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
@@ -929,7 +942,7 @@ class hslWindow(QMainWindow):
         
         self.chartArea.selfRaise.connect(self.raiseTab)
         ind.iClicked.connect(self.chartArea.indicatorSignal)
-
+        
         # as console is fully sync it does not have runtime and corresponding signals
         
         self.setCentralWidget(self.tabs)
@@ -1136,6 +1149,8 @@ class hslWindow(QMainWindow):
                 console.selfRaise.connect(self.raiseTab)
                 console.statusMessage.connect(self.statusMessage)
                 
+                console.alertSignal.connect(self.popUp)
+                
                 ind.iClicked.connect(console.reportRuntime)
                 
                 ind.iToggle.connect(console.updateRuntime)
@@ -1247,6 +1262,8 @@ class hslWindow(QMainWindow):
             
             console.selfRaise.connect(self.raiseTab)
             console.statusMessage.connect(self.statusMessage)
+            
+            console.alertSignal.connect(self.popUp)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
