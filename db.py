@@ -48,6 +48,7 @@ def create_connection (server, dbProperties = None):
     t0 = time.time()
     try: 
         # normal connection
+        
         connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
         connection.large_sql = False
         

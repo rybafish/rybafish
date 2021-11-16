@@ -2113,49 +2113,25 @@ class chartArea(QFrame):
             
         self.repaint()
         
-        print('----> here go ----->')
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
         self.widget.allocate(len(self.widget.hosts))
         self.widget.initPens()
         
         if kpis:
             log('initDP processing', 5)
-            log(str(kpis), 5)
             for i in range(len(self.widget.hosts)):
                 host = self.widget.hosts[i]
                 hst = '%s:%s' % (host['host'], host['port'])
                 
-                log(hst, 5)
-                
                 if hst in kpis:
-                
-                    log('host: ' + hst, 5)
-                
                     if hst[-1] == ':':
-                        # kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
-                        # use frozenset blackmagic to preserve order, #455
-                        
-                        #set_2 = frozenset(kpis[hst])
-                        #kpis_n = [x for x in set_2 if x in self.hostKPIs]
                         kpis_n = kpis_n = myIntersect(kpis[hst], self.hostKPIs)
-                        
                     else:
-                        #kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # same
-                        #set_2 = frozenset(kpis[hst])
-                        #kpis_n = [x for x in set_2 if x in self.srvcKPIs]
-                        
                         kpis_n = kpis_n = myIntersect(kpis[hst], self.srvcKPIs)
                         
-                    log(str(kpis_n), 5)
-                    
                     self.widget.nkpis[i] = kpis_n
 
-            #self.statusMessage('Loading saved kpis...')
-            #self.repaint()
-
             log('reload from init dp', 4)
-            # removed for the sake #372
-            # self.reloadChart()
 
         self.hostsUpdated.emit()
         
@@ -2739,9 +2715,6 @@ class chartArea(QFrame):
                                
                             sum_val += scan[i]
                             
-                        print(kpi, i)
-                        print(kpi, i)
-                        print(kpi, i)
                         if i > 0:
                             avg_val = sum_val/(i+1)
                         else:

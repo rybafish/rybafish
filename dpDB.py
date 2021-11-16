@@ -137,6 +137,8 @@ class dataProvider():
         
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
     
+        tenant = self.dbProperties.get('tenant')
+    
         kpis_sql = sql.kpis_info
 
         if not self.connection:
@@ -147,6 +149,20 @@ class dataProvider():
         log('init hosts, hostKPIs: %s' % str(hostKPIs))
         log('init hosts, srvcKPIs: %s' % str(srvcKPIs))
 
+        if tenant.lower() == 'systemdb':
+            sql_string = 'select host, port, database_name, service_name from sys_databases.m_services order by host, port'
+        else:
+            sql_string = 'select host, port, null database_name, service_name from m_services order by host, port'
+            
+        rows = db.execute_query(self.connection, sql_string, [])
+        
+        services = {}
+        
+        for r in rows:
+            host, port, ten, srv = r
+            skey = '%s:%s' % (host, port)
+            services[skey] = [ten, srv]
+            
         sql_string = sql.hosts_info
 
         if cfg('ess'):
@@ -171,8 +187,17 @@ class dataProvider():
                             })
         else:
             for i in range(0, len(rows)):
+                skey = '%s:%s' % (rows[i][0], rows[i][1])
+                
+                if skey in services:
+                    ten, srv = services[skey]
+                else:
+                    ten, srv = None, None
+                    
                 hosts.append({
+                            'db':ten,
                             'host':rows[i][0],
+                            'service':srv,
                             'port':rows[i][1],
                             'from':rows[i][2],
                             'to':rows[i][3]
@@ -185,9 +210,6 @@ class dataProvider():
         t1 = time.time()
 
         try:
-        
-            print('=====', kpiDescriptions.kpiStylesNN)
-        
             dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
         except Exception as e:
             log('[e] error loading custom kpis')

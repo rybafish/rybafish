@@ -87,7 +87,6 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
         
         while csName + errorSuffix in kpiStylesN[type]:
             errorSuffix += '#'
-            print(csName, errorSuffix)
 
         if type == 'host': 
             hostKPIs.append(csName + errorSuffix)
