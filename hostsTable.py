@@ -42,8 +42,8 @@ class hostsTable(QTableWidget):
             
             self.setItem(i, 2, QTableWidgetItem(host['host']))
             self.setItem(i, 4, QTableWidgetItem(host['port']))
-            self.setItem(i, 5, QTableWidgetItem(host['from'].strftime('%Y-%m-%d %H:%M:%S')))
-            self.setItem(i, 6, QTableWidgetItem(host['to'].strftime('%Y-%m-%d %H:%M:%S')))
+            #self.setItem(i, 5, QTableWidgetItem(host['from'].strftime('%Y-%m-%d %H:%M:%S')))
+            #self.setItem(i, 6, QTableWidgetItem(host['to'].strftime('%Y-%m-%d %H:%M:%S')))
             
             if 'db' in host:
                 self.setItem(i, 1, QTableWidgetItem(host['db']))
@@ -70,14 +70,16 @@ class hostsTable(QTableWidget):
         self.setRowCount(1)
         self.setRowHeight(0, 10)
         
-        self.setColumnCount(7)
+        #self.setColumnCount(7)
+        self.setColumnCount(5)
 
         self.horizontalHeader().setFont(QFont('SansSerif', 8))
         self.setFont(QFont('SansSerif', 8))
         
         self.verticalHeader().setVisible(False)
         
-        self.setHorizontalHeaderLabels(['', 'DB', 'host', 'service', 'port', 'from', 'to'])
+        #self.setHorizontalHeaderLabels(['', 'DB', 'host', 'service', 'port', 'from', 'to'])
+        self.setHorizontalHeaderLabels(['', 'DB', 'host', 'service', 'port'])
         
         self.horizontalHeader().setMinimumSectionSize(8)
         
@@ -86,5 +88,5 @@ class hostsTable(QTableWidget):
         self.setColumnWidth(2, 80) # host
         self.setColumnWidth(3, 50) # Service
         self.setColumnWidth(4, 40) # port
-        self.setColumnWidth(5, 120) # from
-        self.setColumnWidth(6, 120) # to
+        #self.setColumnWidth(5, 120) # from
+        #self.setColumnWidth(6, 120) # to

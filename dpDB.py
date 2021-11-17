@@ -149,7 +149,7 @@ class dataProvider():
         log('init hosts, hostKPIs: %s' % str(hostKPIs))
         log('init hosts, srvcKPIs: %s' % str(srvcKPIs))
 
-        if tenant.lower() == 'systemdb':
+        if tenant and tenant.lower() == 'systemdb':
             sql_string = 'select host, port, database_name, service_name from sys_databases.m_services order by host, port'
         else:
             sql_string = 'select host, port, null database_name, service_name from m_services order by host, port'
@@ -160,6 +160,10 @@ class dataProvider():
         
         for r in rows:
             host, port, ten, srv = r
+            
+            if tenant and tenant.lower() != 'systemdb':
+                ten = tenant
+            
             skey = '%s:%s' % (host, port)
             services[skey] = [ten, srv]
             
@@ -173,17 +177,27 @@ class dataProvider():
         
         rows = db.execute_query(self.connection, sql_string, [])
         
+        print(1)
         if cfg('hostmapping'):
             for i in range(0, len(rows)):
             
                 hm = cfg('hostmapping')
                 pm = cfg('portmapping')
             
+                skey = '%s:%s' % (rows[i][0], rows[i][1])
+                
+                if skey in services:
+                    ten, srv = services[skey]
+                else:
+                    ten, srv = None, None
+
                 hosts.append({
+                            'db':ten,
                             'host':rows[i][0].replace(hm[0], hm[1]),
+                            'service':srv,
                             'port':rows[i][1].replace(pm[0], pm[1]),
-                            'from':rows[i][2],
-                            'to':rows[i][3]
+                            #'from':rows[i][2],
+                            #'to':rows[i][3]
                             })
         else:
             for i in range(0, len(rows)):
@@ -199,10 +213,11 @@ class dataProvider():
                             'host':rows[i][0],
                             'service':srv,
                             'port':rows[i][1],
-                            'from':rows[i][2],
-                            'to':rows[i][3]
+                            #'from':rows[i][2],
+                            #'to':rows[i][3]
                             })
 
+        print(2)
         rows = db.execute_query(self.connection, kpis_sql, [])
         
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)

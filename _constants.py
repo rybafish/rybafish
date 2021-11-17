@@ -1,4 +1,4 @@
-# getarated automaticaly based on myryba.spec
+# generated automaticaly based on myryba.spec
 
-build_date = "2021-11-16 00:04:55"
-version = "0.9 beta 6"
+build_date = "2021-11-17 00:05:58"
+version = "0.9 beta 7"

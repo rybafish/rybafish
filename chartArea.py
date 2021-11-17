@@ -1136,17 +1136,9 @@ class myWidget(QWidget):
 
                         lkpis.append(kpi)
                         lkpisl.append(label)
-                        lmeta.append(['gantt', [QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]], 0, 40])
+                        lmeta.append(['gantt', [QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]], 0, 44])
                     
                 # print(self.highlightedKpi, self.highlightedKpiHost)
-                
-                '''
-                if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
-                    if multiline:
-                        pass
-                    else:
-                        highlightedIndex = len(lkpisl) - 1 # this also includes hostname separators without corresponding pen style
-                '''
 
         # calculates longest label width
         
@@ -1207,6 +1199,9 @@ class myWidget(QWidget):
                 qp.setBrush(kpiPen[0])
                 qp.setPen(kpiPen[1])
                 qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
+                
+                ident = 4  + meta[3]
+                
             elif meta[0] != 'host':
                 if kpiPen:
                 
@@ -1246,6 +1241,7 @@ class myWidget(QWidget):
             else:
                 #normal regular kpi
             
+                print('ident:', ident)
                 qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
                         
         if drawTimeScale:
