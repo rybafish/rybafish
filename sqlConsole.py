@@ -1351,7 +1351,7 @@ class resultSet(QTableWidget):
         else:
             refreshTimerStop = cmenu.addAction('Stop autorefresh')
         
-        if self.headers[i] in customSQLs.columns:
+        if i >= 0 and self.headers[i] in customSQLs.columns:
             cmenu.addSeparator()
 
             for m in customSQLs.menu[self.headers[i]]:
@@ -2796,6 +2796,11 @@ class sqlConsole(QWidget):
         if interval == 0:
             log('Stopping the autorefresh: %s' % self.tabname.rstrip(' *'))
             self.log('--> Stopping the autorefresh')
+
+            if self.indicator.status in ('autorefresh', 'alert'):
+                self.indicator.status = 'idle'
+                self.indicator.bkpStatus = 'idle'
+                self.indicator.repaint()
             
             if self.timerAutorefresh is not None:
                 self.timerAutorefresh.stop()
@@ -2808,6 +2813,9 @@ class sqlConsole(QWidget):
             self.log('Autorefresh only possible for single resultset output.', True)
             return
         
+        self.indicator.status = 'autorefresh'
+        self.indicator.repaint()
+
         self.log('\n--> Scheduling autorefresh, logging will be supressed. Autorefresh will stop on manual query execution or context menu -> stop autorefresh')
         log('Scheduling autorefresh %i (%s)' % (interval, self.tabname.rstrip(' *')))
             
@@ -3189,7 +3197,7 @@ class sqlConsole(QWidget):
         if self.timerAutorefresh:
             self.log('--> Stopping the autorefresh...')
             self.setupAutorefresh(0)
-    
+            
         if mode == 'normal':
             self.executeSelectionParse()
         elif mode == 'no parsing':
@@ -3945,7 +3953,10 @@ class sqlConsole(QWidget):
                 del cols_list[0]
             
         if self.indicator.status != 'alert':
-            self.indicator.status = 'idle'
+            if self.indicator.bkpStatus == 'autorefresh':
+                self.indicator.status = self.indicator.bkpStatus
+            else:
+                self.indicator.status = 'idle'
             
         self.indicator.runtime = None
         self.updateRuntime('off')
@@ -4004,6 +4015,7 @@ class sqlConsole(QWidget):
         self.t0 = time.time()
         self.sqlRunning = True
         
+        self.indicator.bkpStatus = self.indicator.status
         self.indicator.status = 'running'
         self.indicator.repaint()
         
