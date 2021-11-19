@@ -1240,8 +1240,6 @@ class myWidget(QWidget):
                 
             else:
                 #normal regular kpi
-            
-                print('ident:', ident)
                 qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
                         
         if drawTimeScale:
@@ -1421,9 +1419,15 @@ class myWidget(QWidget):
                     log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
                     self.nkpis[h].remove(kpi)
                     continue
+                    
                 if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
                     gantt = True
                     self.gotGantt = True
+                    
+                    if kpiStylesNN[type][kpi].get('title'):
+                        title = True
+                    else:
+                        title = False
                 else:
                     gantt = False
                 
@@ -1440,10 +1444,13 @@ class myWidget(QWidget):
                     #gFont = QFont ('SansSerif', 8)
                     
                     gFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['font'])
-                    qp.setFont(gFont)
+                    gtFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['font'] - 1)
                     
                     fm = QFontMetrics(gFont)
+                    tfm = QFontMetrics(gFont)
+                    
                     fontHeight = fm.height()
+                    tFontHeight = tfm.height()
                     
                     fontWidth = 0
                     
@@ -1479,7 +1486,10 @@ class myWidget(QWidget):
                     
                     for entity in gc:
                     
+                        qp.setFont(gtFont)
+                    
                         y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
+                                                                           # not true, this is the top edge (when corrected with top_margin) 
                     
                         range_i = 0
                         for t in gc[entity]:
@@ -1500,21 +1510,49 @@ class myWidget(QWidget):
                             
                             ganttPen = kpiStylesNN[type][kpi]['pen']
                             
+                            clr = ganttPen.color()
+                            
+                            rgb = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+                            titlePen = QPen(rgb)
+                            
                             if highlight == True:
                                 ganttPen.setWidth(2)
                             else:
                                 ganttPen.setWidth(1)
                             
+
                             qp.setPen(ganttPen)
                             
                             if kpiStylesNN[type][kpi]['style'] == 'bar':
                                 qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
+                                
+                                if title:
+                                    tv = t[4]
+                                    
+                                    tWidth = tfm.width(tv)
+                                    
+                                    qp.setPen(titlePen)
+                                    
+                                    if tWidth+2 < width:
+                                        #qp.drawText(x + width/2 - tWidth/2, y + top_margin - 2, tv)
+                                        qp.drawText(x + width/2 - tWidth/2, y + top_margin + (height + tFontHeight - 4)/2, tv)
+                                        
+                                        '''
+                                        qp.drawLine(x-16, y + top_margin, x+16, y + top_margin)
+                                        qp.drawLine(x-16, y + top_margin + height, x+16, y + top_margin + height)
+                                        
+                                        qp.drawLine(x-16, y + top_margin + height - 2, x+16, y + top_margin + height - 2)
+                                        
+                                        print('draw:', y, top_margin, height/2, tFontHeight, top_margin + height/2 + (tFontHeight - 6)/2)
+                                        '''
+                                        
                             else:
                                 qp.drawLine(x, y + top_margin + 8, x + width, y + top_margin)
                                 
                                 qp.drawLine(x + width, y + top_margin + 8, x + width, y + top_margin)
                                 qp.drawLine(x, y + top_margin, x, y + top_margin + 8)
                                 
+                            qp.setPen(ganttPen)
 
                             #highlighting
                             if highlight:
@@ -1544,6 +1582,8 @@ class myWidget(QWidget):
                             range_i += 1
 
 
+                        qp.setFont(gFont)
+                        
                         if stopX - startX > 400 and not self.hideGanttLabels:
                         
                             # only draw labels in case of significant refresh

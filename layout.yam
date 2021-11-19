@@ -1,0 +1,12 @@
+pos: [503, 182]
+size: [1405, 803]
+mainSplitter: [562, 169]
+kpiSplitter: [273, 1103]
+hostTableWidth: [8, 26, 62, 37, 64]
+KPIsTableWidth: [35, 140, 35, 70, 50, 80, 50, 35, 80, 220, 40]
+currentTab: 0
+legend: true
+tabs:
+- [null, 'C:\home\dug\rybafish\rybafish\bkp\sql.sqbkp', 95, 0]
+kpis:
+  mdfmk2021:30003: [cpu, memory_used]

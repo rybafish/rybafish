@@ -186,6 +186,11 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['style'] = kpi['style']
             else:
                 style['style'] = 'bar'
+
+            if 'title' in kpi:
+                style['title'] = kpi['title']
+            else:
+                style['title'] = None
                 
             clr = QColor(color)
             style['brush'] = clr

@@ -809,7 +809,8 @@ class hslWindow(QMainWindow):
         self.setWindowState(state & ~Qt.WindowMinimized | Qt.WindowActive)
         
         if not self.isActiveWindow():
-            self.activateWindow()
+            self.show()           # this one really brings to foreground
+            self.activateWindow() # this one supposed to move focus
     
     def raiseTab(self, tab):
         for i in range(self.tabs.count()):
@@ -882,8 +883,7 @@ class hslWindow(QMainWindow):
         self.kpiSplitter = QSplitter(Qt.Horizontal)
         self.kpiSplitter.addWidget(self.hostTable)
         self.kpiSplitter.addWidget(kpisTable)
-        self.kpiSplitter.setSizes([200, 380])
-        
+        self.kpiSplitter.setSizes([200, 500])
         
         self.tabs = QTabWidget()
         
@@ -908,7 +908,7 @@ class hslWindow(QMainWindow):
             if self.layout['kpiSplitter']:
                 self.kpiSplitter.setSizes(self.layout['kpiSplitter'])
             else:
-                self.kpiSplitter.setSizes([200, 380])
+                self.kpiSplitter.setSizes([200, 500])
             
             
             if self.layout['hostTableWidth']:

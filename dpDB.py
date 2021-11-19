@@ -431,8 +431,13 @@ class dataProvider():
                         # there is a filter so we have to add ' AND ' before the time filter...
                         # tfilter_mod = ' and ' + tfilter_mod
                         gtfilter_now = ' and ' + gtfilter_now
+                        
+                    title = ''
+                    
+                    if kpiDescriptions.kpiStylesNN[type][kpi].get('title') == True:
+                        title = ', title'
                       
-                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity desc, "START"' % (fromTable, hfilter_now, gtfilter_now)
+                    sql = 'select entity, "START", "STOP", details%s %s %s%s order by entity desc, "START"' % (title, fromTable, hfilter_now, gtfilter_now)
                     gantt = True                    
 
             try:
@@ -514,6 +519,11 @@ class dataProvider():
         
         data[kpi] = {}
         
+        t0 = time.time()
+        
+        title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
+        titleValue = None
+        
         for r in rows:
             
             entity = str(r[0])
@@ -522,6 +532,9 @@ class dataProvider():
             
             dur = formatTime((stop - start).total_seconds(), skipSeconds=True)
             desc = str(r[3]).replace('$duration', dur)
+
+            if title:
+                titleValue = r[4]
                
             #print ('curr: %s: %s - %s' % (desc, str(start), str(stop)))
             
@@ -563,10 +576,15 @@ class dataProvider():
                         print('(no)')
                 '''
                     
-                data[kpi][entity].append([start, stop, desc, shift])
+                data[kpi][entity].append([start, stop, desc, shift, titleValue])
             else:
-                data[kpi][entity] = [[start, stop, desc, 0]]
-                
+                data[kpi][entity] = [[start, stop, desc, 0, titleValue]]
+        
+        t1 = time.time()
+        
+        if t1 - t0 > 1:
+            log('Gantt render time: %s' % (str(round(t1-t0, 3))), 5)
+        
         '''
         for e in data[kpi]:
             print('entity:', e)

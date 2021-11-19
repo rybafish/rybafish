@@ -2648,6 +2648,7 @@ class sqlConsole(QWidget):
 
             t1 = time.time()
 
+            print('idle 1')
             self.indicator.status = 'idle'
             self.indicator.repaint()
             
@@ -2754,6 +2755,7 @@ class sqlConsole(QWidget):
             self.log('close() exception: '+ str(e), True)
 
 
+        print('idle 2')
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
@@ -2798,6 +2800,7 @@ class sqlConsole(QWidget):
             self.log('--> Stopping the autorefresh')
 
             if self.indicator.status in ('autorefresh', 'alert'):
+                print('idle 3')
                 self.indicator.status = 'idle'
                 self.indicator.bkpStatus = 'idle'
                 self.indicator.repaint()
@@ -3030,6 +3033,7 @@ class sqlConsole(QWidget):
             t0 = time.time()
             db.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
+            print('idle 4')
             self.indicator.status = 'idle'
             self.indicator.repaint()
             
@@ -3666,6 +3670,7 @@ class sqlConsole(QWidget):
                     #self.log('Connection restored <<')
                     self.logArea.appendHtml('Connection restored. <font color = "blue">You need to restart SQL manually</font>.');
                     
+                    print('idle 5')
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
                     
@@ -3953,8 +3958,14 @@ class sqlConsole(QWidget):
                 del cols_list[0]
             
         if self.indicator.status != 'alert':
+            print(self.indicator.bkpStatus)
+            '''
             if self.indicator.bkpStatus == 'autorefresh':
                 self.indicator.status = self.indicator.bkpStatus
+            else:
+            '''
+            if self.timerAutorefresh:
+                self.indicator.status = 'autorefresh'
             else:
                 self.indicator.status = 'idle'
             
