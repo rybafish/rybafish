@@ -204,7 +204,7 @@ def formatTimeShort(t):
     
     return s
 
-def formatTime(t, skipSeconds = False):
+def formatTime(t, skipSeconds = False, skipMs = False):
     
     (ti, ms) = divmod(t, 1)
     
@@ -223,12 +223,12 @@ def formatTime(t, skipSeconds = False):
     elif ti < 3600:
         format = '%M:%S'
 
-        msStr = '.%s' % ms
+        msStr = '.%s' % ms if not skipMs else ''
             
         s = time.strftime(format, time.gmtime(ti)) + msStr
     else:
         format = '%H:%M:%S'
-        msStr = '.%s' % ms
+        msStr = '.%s' % ms if not skipMs else ''
         s = time.strftime(format, time.gmtime(ti)) + msStr
     
     if not skipSeconds:

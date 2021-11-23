@@ -1203,7 +1203,6 @@ class resultSet(QTableWidget):
         
         scale = 1
 
-        
         fontSize = utils.cfg('result-fontSize', 10)
         
         font = QFont ()
@@ -1441,11 +1440,13 @@ class resultSet(QTableWidget):
 
             id = QInputDialog
 
-            value, ok = id.getInt(self, 'Refresh interval', 'Input the refresh interval in seconds                          ', 10, 0, 3600, 5)
+            value, ok = id.getInt(self, 'Refresh interval', 'Input the refresh interval in seconds                          ', self.defaultTimer[0], 0, 3600, 5)
             
             if ok:
                 self.triggerAutorefresh.emit(value)
                 self.timerSet = True
+                
+                self.defaultTimer[0] = value
 
         if action == refreshTimerStop:
             log('disabeling the timer...')
@@ -1925,6 +1926,13 @@ class resultSet(QTableWidget):
 
         #return -- it leaks even before this point
         
+        alert_str = cfg('alertTriggerOn')
+        
+        if alert_str:
+            if alert_str[0:1] == '{' and alert_str[-1:] == '}':
+                alert_prefix = alert_str[:-1]
+                alert_len = len(alert_str)
+        
         #fill the result table
         for r in range(len(rows)):
             for c in range(len(row0)):
@@ -1980,14 +1988,27 @@ class resultSet(QTableWidget):
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
-                    if cfg('experimental') and val == cfg('alertTriggerOn'):
+                    if cfg('experimental'):
+                        #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
-                    
-                        if not self.alerted:
+                        
+                        sound = None
+                        
+                        if val[:alert_len - 1] == alert_prefix:
+                            # okay this looks like alert
+                            if val == alert_str: 
+                                # simple one
+                                sound = ''
+                            else:
+                                # might be a customized one?
+                                if val[-1:] == '}' and val[alert_len-1:alert_len] == ':':
+                                    sound = val[alert_len:-1]
+                                    
+                        if sound is not None and not self.alerted:
                             self.alerted = True
                             
                             item.setBackground(QBrush(QColor('#FAC')))
-                            self.alertSignal.emit('')
+                            self.alertSignal.emit(sound)
 
                 
                 elif db.ifTSType(cols[c][1]):
@@ -2157,6 +2178,8 @@ class sqlConsole(QWidget):
         # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
         
         self.timerAutorefresh = None
+        
+        self.defaultTimer = [60]
         
         super().__init__()
         self.initUI()
@@ -2648,7 +2671,6 @@ class sqlConsole(QWidget):
 
             t1 = time.time()
 
-            print('idle 1')
             self.indicator.status = 'idle'
             self.indicator.repaint()
             
@@ -2755,7 +2777,6 @@ class sqlConsole(QWidget):
             self.log('close() exception: '+ str(e), True)
 
 
-        print('idle 2')
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
@@ -2800,7 +2821,6 @@ class sqlConsole(QWidget):
             self.log('--> Stopping the autorefresh')
 
             if self.indicator.status in ('autorefresh', 'alert'):
-                print('idle 3')
                 self.indicator.status = 'idle'
                 self.indicator.bkpStatus = 'idle'
                 self.indicator.repaint()
@@ -2833,9 +2853,12 @@ class sqlConsole(QWidget):
     def alertProcessing(self, fileName):
     
         if fileName == '' or fileName is None:
-            fileName = cfg('alertSound', 'default.wav')
+            fileName = cfg('alertSound', 'default')
         else:
             pass
+            
+        if fileName.find('.') == -1:
+            fileName += '.wav'
             
         if '/' in fileName or '\\' in fileName:
             #must be a path to some file...
@@ -2851,10 +2874,8 @@ class sqlConsole(QWidget):
 
         #log('Sound file name: %s' % fileName, 4)
         
-        if os.path.isfile(fileName):
-            log('sound file exists', 4)
-        else:
-            log('sound file does not exist', 2)
+        if not os.path.isfile(fileName):
+            log('warning: sound file does not exist: %s' % fileName, 2)
             return
     
         if self.timerAutorefresh:
@@ -2889,6 +2910,8 @@ class sqlConsole(QWidget):
         
         result = resultSet(conn)
         result.statement = st
+        
+        result.defaultTimer = self.defaultTimer
         
         result._connection = conn
         
@@ -3033,7 +3056,7 @@ class sqlConsole(QWidget):
             t0 = time.time()
             db.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
-            print('idle 4')
+
             self.indicator.status = 'idle'
             self.indicator.repaint()
             
@@ -3670,7 +3693,6 @@ class sqlConsole(QWidget):
                     #self.log('Connection restored <<')
                     self.logArea.appendHtml('Connection restored. <font color = "blue">You need to restart SQL manually</font>.');
                     
-                    print('idle 5')
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
                     
@@ -3958,7 +3980,6 @@ class sqlConsole(QWidget):
                 del cols_list[0]
             
         if self.indicator.status != 'alert':
-            print(self.indicator.bkpStatus)
             '''
             if self.indicator.bkpStatus == 'autorefresh':
                 self.indicator.status = self.indicator.bkpStatus

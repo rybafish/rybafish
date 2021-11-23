@@ -1444,13 +1444,15 @@ class myWidget(QWidget):
                     #gFont = QFont ('SansSerif', 8)
                     
                     gFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['font'])
-                    gtFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['font'] - 1)
+                    gtFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['tfont'])
                     
                     fm = QFontMetrics(gFont)
-                    tfm = QFontMetrics(gFont)
+                    tfm = QFontMetrics(gtFont)
                     
                     fontHeight = fm.height()
                     tFontHeight = tfm.height()
+                    
+                    #print('font', kpiStylesNN[type][kpi]['tfont'], 'height', tFontHeight)
                     
                     fontWidth = 0
                     
@@ -1534,17 +1536,15 @@ class myWidget(QWidget):
                                     qp.setPen(titlePen)
                                     
                                     if tWidth+2 < width:
-                                        #qp.drawText(x + width/2 - tWidth/2, y + top_margin - 2, tv)
-                                        qp.drawText(x + width/2 - tWidth/2, y + top_margin + (height + tFontHeight - 4)/2, tv)
+                                    
+                                        halfFont = int(tFontHeight/1.625/2) + 1 #this is considering that fontHeight is 1.625 higher actual height
+                                        fontOffset = int(height/2) + halfFont
                                         
-                                        '''
-                                        qp.drawLine(x-16, y + top_margin, x+16, y + top_margin)
-                                        qp.drawLine(x-16, y + top_margin + height, x+16, y + top_margin + height)
+                                        #qp.drawLine(x - 10, y + top_margin, x - 1, y + top_margin)
+                                        #qp.drawLine(x - 10, y + top_margin - halfFont, x - 1, y + top_margin - halfFont)
+                                        #qp.drawText(x, y + top_margin, 'X123X')
                                         
-                                        qp.drawLine(x-16, y + top_margin + height - 2, x+16, y + top_margin + height - 2)
-                                        
-                                        print('draw:', y, top_margin, height/2, tFontHeight, top_margin + height/2 + (tFontHeight - 6)/2)
-                                        '''
+                                        qp.drawText(x + width/2 - tWidth/2, y + top_margin + fontOffset - t[3]*ganttShift, tv)
                                         
                             else:
                                 qp.drawLine(x, y + top_margin + 8, x + width, y + top_margin)

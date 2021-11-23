@@ -530,7 +530,7 @@ class dataProvider():
             start = r[1]
             stop = r[2]
             
-            dur = formatTime((stop - start).total_seconds(), skipSeconds=True)
+            dur = formatTime((stop - start).total_seconds(), skipSeconds=True, skipMs=True)
             desc = str(r[3]).replace('$duration', dur)
 
             if title:
