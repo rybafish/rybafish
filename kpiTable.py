@@ -84,8 +84,6 @@ class kpiCell(QWidget):
             if self.multicolor:
                 pen = kpiDescriptions.getRadugaPen()
                 qp.setPen(pen)
-
-                kpiDescriptions.resetRaduga()
             
             qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
 
@@ -342,12 +340,14 @@ class kpiTable(QTableWidget):
                 self.setItem(i, 3, QTableWidgetItem(str(kpiScale['label']))) # Y-Scale
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
                 self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))
+                self.setItem(i, 6, QTableWidgetItem(str(kpiScale['avg_label'])))
                 self.setItem(i, 8, QTableWidgetItem(str(kpiScale['last_label'])))
             else:
                 #cleanup 
                 self.setItem(i, 3, QTableWidgetItem())
                 self.setItem(i, 4, QTableWidgetItem())
                 self.setItem(i, 5, QTableWidgetItem())
+                self.setItem(i, 6, QTableWidgetItem())
                 self.setItem(i, 8, QTableWidgetItem())
             
             i+=1
@@ -402,6 +402,7 @@ class kpiTable(QTableWidget):
                 self.setItem(i, 3, QTableWidgetItem(str(kpiScale['label']))) # Y-Scale
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
                 self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))
+                self.setItem(i, 6, QTableWidgetItem(str(kpiScale['avg_label'])))
                 self.setItem(i, 8, QTableWidgetItem(str(kpiScale['last_label'])))
         
         self.silentMode = False
@@ -416,10 +417,7 @@ class kpiTable(QTableWidget):
         self.setWordWrap(False)
         self.verticalHeader().setVisible(False)
 
-        self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', 'Sum', 'Last', 'Description', 'Group'])
-        
-        # self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', 'Sum', 'Last', 'Description', 'mntr'])
-        #self.updateScales()
+        self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', ' ', 'Last', 'Description', 'Group'])
         
         self.setColumnWidth(0, 1)
         self.setColumnWidth(1, 140) #kpi
@@ -428,7 +426,7 @@ class kpiTable(QTableWidget):
         self.setColumnWidth(4, 50) # Unit
         self.setColumnWidth(5, 80) # Max 
         self.setColumnWidth(6, 50) # AVG
-        self.setColumnWidth(7, 20) # Sum
+        self.setColumnWidth(7, 20) # Sum -- remove
         self.setColumnWidth(8, 80) # Last
         self.setColumnWidth(9, 220) # desc
         self.setColumnWidth(10, 40) # group
@@ -436,25 +434,3 @@ class kpiTable(QTableWidget):
         
         self.itemChanged.connect(self.itemChange)
         
-    def initTable_old(self):
-        
-        kpis = len(self.kpiStyles)
-
-        self.setRowCount(kpis)
-        
-        for i in range(0, kpis): 
-            self.setRowHeight(i, 10)
-            
-            self.kpiNames.append(self.kpiStyles[i][2])
-            
-            #dummy check box, as no action assigned
-            cb = myCheckBox(self.kpiStyles[i][2])
-            cb.setStyleSheet("QCheckBox::indicator { width: 10px; height: 10px; margin-left:16px;}")
-            cb.stateChanged.connect(self.checkBoxChanged)
-            self.setCellWidget(i, 0, cb)
-            
-            #meaningful properties
-            self.setItem(i, 1, QTableWidgetItem(self.kpiStyles[i][4])) # text name
-            self.setCellWidget(i, 2, kpiCell(self.kpiStyles[i][3])) # kpi name
-            
-            self.setItem(i, 9, QTableWidgetItem(self.kpiStyles[i][6])) # descr

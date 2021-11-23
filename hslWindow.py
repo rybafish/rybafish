@@ -170,6 +170,13 @@ class hslWindow(QMainWindow):
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
         
+        # block the position on topof the file
+        
+        '''
+        if 'pwdhash' not in self.layout.lo:
+            self.layout['pwdhash'] = None
+        '''
+        
         self.layout['mainSplitter'] = self.mainSplitter.sizes()
         self.layout['kpiSplitter'] = self.kpiSplitter.sizes()
 
@@ -272,9 +279,11 @@ class hslWindow(QMainWindow):
                     del(kpiStylesNN[type][kpiName])
                     
                     if type == 'host':
-                        self.chartArea.hostKPIs.remove(kpiName)
+                        if kpiName in self.chartArea.hostKPIs:
+                            self.chartArea.hostKPIs.remove(kpiName)
                     else:
-                        self.chartArea.srvcKPIs.remove(kpiName)
+                        if kpiName in self.chartArea.srvcKPIs:
+                            self.chartArea.srvcKPIs.remove(kpiName)
         
         # del host custom groups
         kpis_len = len(self.chartArea.hostKPIs)
@@ -380,6 +389,13 @@ class hslWindow(QMainWindow):
         else:
             connConf = self.connectionConf
             
+        '''
+        if self.layout.lo.get('pwdhash') :
+            pwd = utils.pwdunhash(self.layout['pwdhash'])
+            connConf['password'] = pwd
+            connConf['pwdhash'] = True
+        '''
+            
         conf, ok = configDialog.Config.getConfig(connConf, self)
         
         if ok:
@@ -418,7 +434,6 @@ class hslWindow(QMainWindow):
                 self.chartArea.setStatus('sync', True)
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
                 self.chartArea.setStatus('idle')
-
 
                 for i in range(self.tabs.count()):
                 
@@ -464,6 +479,15 @@ class hslWindow(QMainWindow):
                     if not conf['noreload']:
                         log('reload from menuConfig #1', 4)
                         self.chartArea.reloadChart()
+                        
+                    '''
+                    if conf['savepwd']:
+                        pwhash = utils.pwdtohash(conf['password'])
+                        log('saving the pwd... %s' % pwhash)
+                        self.layout['pwdhash'] = pwhash
+                    else:
+                        self.layout['pwdhash'] = None
+                    '''                    
                 else:
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
@@ -476,6 +500,11 @@ class hslWindow(QMainWindow):
                     windowStr = ('%s %s@%s' % (conf['user'], tenant, self.chartArea.dp.dbProperties['sid']))
                 else:
                     windowStr = propStr
+                    
+                dbver = self.chartArea.dp.dbProperties.get('version')
+                    
+                if dbver:
+                    windowStr += ', ' + dbver
                 
                 self.tabs.setTabText(0, propStr)
                 self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
@@ -607,6 +636,8 @@ class hslWindow(QMainWindow):
             console.selfRaise.connect(self.raiseTab)
             console.statusMessage.connect(self.statusMessage)
             
+            console.alertSignal.connect(self.popUp)
+            
             ind = indicator()
             console.indicator = ind
             
@@ -693,6 +724,8 @@ class hslWindow(QMainWindow):
         console.selfRaise.connect(self.raiseTab)
         console.statusMessage.connect(self.statusMessage)
         
+        console.alertSignal.connect(self.popUp)
+        
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
         if console.unsavedChanges:
@@ -708,6 +741,15 @@ class hslWindow(QMainWindow):
         console.indicator.status = 'idle'
         console.indicator.repaint()
             
+    
+    def menuColorize(self):
+        if cfg('colorize', False) == False:
+            utils.cfgSet('colorize', True)
+            
+        else:
+            utils.cfgSet('colorize', False)
+            
+        self.chartArea.widget.update()
     
     def menuEss(self):
     
@@ -760,6 +802,16 @@ class hslWindow(QMainWindow):
             
             self.chartArea.reloadChart()
         
+    def popUp(self):
+    
+        state = self.windowState()
+
+        self.setWindowState(state & ~Qt.WindowMinimized | Qt.WindowActive)
+        
+        if not self.isActiveWindow():
+            self.show()           # this one really brings to foreground
+            self.activateWindow() # this one supposed to move focus
+    
     def raiseTab(self, tab):
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
@@ -789,7 +841,7 @@ class hslWindow(QMainWindow):
                 #answer = utils.yesNoDialog('Warning', 'RybaFish is already running or crashed last time, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 
                 if answer == True or answer is None:
-                    exit(0)
+                    sys.exit(0)
                 
                 if answer == 'ignore':
                     log('Ignoring the layout')
@@ -831,8 +883,7 @@ class hslWindow(QMainWindow):
         self.kpiSplitter = QSplitter(Qt.Horizontal)
         self.kpiSplitter.addWidget(self.hostTable)
         self.kpiSplitter.addWidget(kpisTable)
-        self.kpiSplitter.setSizes([200, 380])
-        
+        self.kpiSplitter.setSizes([200, 500])
         
         self.tabs = QTabWidget()
         
@@ -857,7 +908,7 @@ class hslWindow(QMainWindow):
             if self.layout['kpiSplitter']:
                 self.kpiSplitter.setSizes(self.layout['kpiSplitter'])
             else:
-                self.kpiSplitter.setSizes([200, 380])
+                self.kpiSplitter.setSizes([200, 500])
             
             
             if self.layout['hostTableWidth']:
@@ -891,7 +942,7 @@ class hslWindow(QMainWindow):
         
         self.chartArea.selfRaise.connect(self.raiseTab)
         ind.iClicked.connect(self.chartArea.indicatorSignal)
-
+        
         # as console is fully sync it does not have runtime and corresponding signals
         
         self.setCentralWidget(self.tabs)
@@ -999,6 +1050,12 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
+        self.colorizeAct = QAction('Colorize KPIs', self)
+        self.colorizeAct.setStatusTip('Ignore standard KPI styles and use raduga colors instead')
+        self.colorizeAct.triggered.connect(self.menuColorize)
+
+        actionsMenu.addAction(self.colorizeAct)
+
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
         self.essAct.triggered.connect(self.menuEss)
@@ -1091,6 +1148,8 @@ class hslWindow(QMainWindow):
                 
                 console.selfRaise.connect(self.raiseTab)
                 console.statusMessage.connect(self.statusMessage)
+                
+                console.alertSignal.connect(self.popUp)
                 
                 ind.iClicked.connect(console.reportRuntime)
                 
@@ -1203,6 +1262,8 @@ class hslWindow(QMainWindow):
             
             console.selfRaise.connect(self.raiseTab)
             console.statusMessage.connect(self.statusMessage)
+            
+            console.alertSignal.connect(self.popUp)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 

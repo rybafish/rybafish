@@ -316,6 +316,8 @@ class myWidget(QWidget):
                     scaleKpi['label'] = '%i' % (self.nscales[h][kpi]['entities'])
                     scaleKpi['yScale'] = ''
                     scaleKpi['unit'] = ''
+                    scaleKpi['avg'] = ''
+                    scaleKpi['avg_label'] = ''
                     continue
                 
                 #log(scaleKpi)
@@ -334,6 +336,7 @@ class myWidget(QWidget):
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = str(scaleKpi['max'])
+                    scaleKpi['avg_label'] = str(scaleKpi['avg'])
                     
                     if 'last_value' in scaleKpi:
                         scaleKpi['last_label'] = str(scaleKpi['last_value']) 
@@ -385,6 +388,12 @@ class myWidget(QWidget):
                     d = kpiStylesNN[type][kpi].get('decimal', 0) # defined couple lines above
                     
                     scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d), d)
+                    
+                    if scaleKpi['avg'] is not None:
+                        scaleKpi['avg_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['avg'], d), d)
+                    else:
+                        scaleKpi['avg_label'] = ''
+                        
                     if 'last_value' in scaleKpi and scaleKpi['last_value'] is not None:
                         scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
                     else:
@@ -399,6 +408,7 @@ class myWidget(QWidget):
                             lst = self.nscalesml[h][kpi][gb]['last']
                             self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], mx, d), d)
                             self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], lst, d), d)
+                            self.nscalesml[h][kpi][gb]['avg_label'] = ''
                             
                         
                     # scaleKpi['y_max'] = max_value
@@ -884,21 +894,27 @@ class myWidget(QWidget):
                 y_min = scan[i]
                 y_max = scan[i]
 
+                #print('\nok, scan')
                 while i < array_size and timeline[i] <= trgt_time + time_delta:
                     # note: for really zoomed in time scales there's a possibility
                     # that this loop will not be execuded even once
                     
-                    if timeline[j] < trgt_time:
+                    #print('i, j, ymin, ymax, value', i, j, y_min, y_max, scan[i])
+                    
+                    if timeline[j] < trgt_time and j < array_size - 1:
                         j+=1 # scan for exact value in closest point
 
-                    if y_min > scan[i]:
-                        y_min = scan[i]
+                    if y_min > scan[j]:
+                        y_min = scan[j]
 
-                    if y_max < scan[i]:
-                        y_max = scan[i]
+                    if y_max < scan[j]:
+                        y_max = scan[j]
+                        
+                    #print('i, j, ymin, ymax, value', i, j, y_min, y_max, scan[i])
 
                     i+=1
                     
+                #if y_min != y_max:
                 j -= 1 # THIS is the point right before the trgt_time
             
                 found_some = False
@@ -923,6 +939,10 @@ class myWidget(QWidget):
                 #log('on screen %i/%i, from click: %i' % (ymin, ymax, pos.y()))
                 
                 #if abs(y - pos.y()) <= 2:
+                
+                #print('ymin, ymax', ymin, ymax)
+                #print('y:', pos.y())
+                
                 if pos.y() <= ymin + tolerance and pos.y() >= ymax - tolerance: #it's reversed in Y calculation...
                     if (self.highlightedKpi):
                     
@@ -1116,17 +1136,9 @@ class myWidget(QWidget):
 
                         lkpis.append(kpi)
                         lkpisl.append(label)
-                        lmeta.append(['gantt', [QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]], 0, 40])
+                        lmeta.append(['gantt', [QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]], 0, 44])
                     
                 # print(self.highlightedKpi, self.highlightedKpiHost)
-                
-                '''
-                if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
-                    if multiline:
-                        pass
-                    else:
-                        highlightedIndex = len(lkpisl) - 1 # this also includes hostname separators without corresponding pen style
-                '''
 
         # calculates longest label width
         
@@ -1187,6 +1199,9 @@ class myWidget(QWidget):
                 qp.setBrush(kpiPen[0])
                 qp.setPen(kpiPen[1])
                 qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
+                
+                ident = 4  + meta[3]
+                
             elif meta[0] != 'host':
                 if kpiPen:
                 
@@ -1225,7 +1240,6 @@ class myWidget(QWidget):
                 
             else:
                 #normal regular kpi
-            
                 qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
                         
         if drawTimeScale:
@@ -1405,9 +1419,15 @@ class myWidget(QWidget):
                     log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
                     self.nkpis[h].remove(kpi)
                     continue
+                    
                 if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
                     gantt = True
                     self.gotGantt = True
+                    
+                    if kpiStylesNN[type][kpi].get('title'):
+                        title = True
+                    else:
+                        title = False
                 else:
                     gantt = False
                 
@@ -1424,10 +1444,15 @@ class myWidget(QWidget):
                     #gFont = QFont ('SansSerif', 8)
                     
                     gFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['font'])
-                    qp.setFont(gFont)
+                    gtFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['tfont'])
                     
                     fm = QFontMetrics(gFont)
+                    tfm = QFontMetrics(gtFont)
+                    
                     fontHeight = fm.height()
+                    tFontHeight = tfm.height()
+                    
+                    #print('font', kpiStylesNN[type][kpi]['tfont'], 'height', tFontHeight)
                     
                     fontWidth = 0
                     
@@ -1463,7 +1488,10 @@ class myWidget(QWidget):
                     
                     for entity in gc:
                     
+                        qp.setFont(gtFont)
+                    
                         y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
+                                                                           # not true, this is the top edge (when corrected with top_margin) 
                     
                         range_i = 0
                         for t in gc[entity]:
@@ -1484,21 +1512,47 @@ class myWidget(QWidget):
                             
                             ganttPen = kpiStylesNN[type][kpi]['pen']
                             
+                            clr = ganttPen.color()
+                            
+                            rgb = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+                            titlePen = QPen(rgb)
+                            
                             if highlight == True:
                                 ganttPen.setWidth(2)
                             else:
                                 ganttPen.setWidth(1)
                             
+
                             qp.setPen(ganttPen)
                             
                             if kpiStylesNN[type][kpi]['style'] == 'bar':
                                 qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
+                                
+                                if title:
+                                    tv = t[4]
+                                    
+                                    tWidth = tfm.width(tv)
+                                    
+                                    qp.setPen(titlePen)
+                                    
+                                    if tWidth+2 < width:
+                                    
+                                        halfFont = int(tFontHeight/1.625/2) + 1 #this is considering that fontHeight is 1.625 higher actual height
+                                        fontOffset = int(height/2) + halfFont
+                                        
+                                        #qp.drawLine(x - 10, y + top_margin, x - 1, y + top_margin)
+                                        #qp.drawLine(x - 10, y + top_margin - halfFont, x - 1, y + top_margin - halfFont)
+                                        #qp.drawText(x, y + top_margin, 'X123X')
+                                        
+                                        qp.drawText(x + width/2 - tWidth/2, y + top_margin + fontOffset - t[3]*ganttShift, tv)
+                                        
                             else:
                                 qp.drawLine(x, y + top_margin + 8, x + width, y + top_margin)
                                 
                                 qp.drawLine(x + width, y + top_margin + 8, x + width, y + top_margin)
                                 qp.drawLine(x, y + top_margin, x, y + top_margin + 8)
                                 
+                            qp.setPen(ganttPen)
 
                             #highlighting
                             if highlight:
@@ -1528,6 +1582,8 @@ class myWidget(QWidget):
                             range_i += 1
 
 
+                        qp.setFont(gFont)
+                        
                         if stopX - startX > 400 and not self.hideGanttLabels:
                         
                             # only draw labels in case of significant refresh
@@ -2049,6 +2105,12 @@ class chartArea(QFrame):
         self.widget.nscales.clear()
         self.widget.ndata.clear()
         
+        # 2021-11-12
+        
+        # need to clear the kpis list as it will be reloaded anyhow
+        kpiStylesNN['host'].clear()
+        kpiStylesNN['service'].clear()
+        
         log('cleanup complete')
         
     def initDP(self, kpis = None, message = None):
@@ -2093,42 +2155,19 @@ class chartArea(QFrame):
         
         if kpis:
             log('initDP processing', 5)
-            log(str(kpis), 5)
             for i in range(len(self.widget.hosts)):
                 host = self.widget.hosts[i]
                 hst = '%s:%s' % (host['host'], host['port'])
                 
-                log(hst, 5)
-                
                 if hst in kpis:
-                
-                    log('host: ' + hst, 5)
-                
                     if hst[-1] == ':':
-                        # kpis_n = list(set(self.hostKPIs) & set(kpis[hst])) # intersect to aviod non-existing kpis
-                        # use frozenset blackmagic to preserve order, #455
-                        
-                        #set_2 = frozenset(kpis[hst])
-                        #kpis_n = [x for x in set_2 if x in self.hostKPIs]
                         kpis_n = kpis_n = myIntersect(kpis[hst], self.hostKPIs)
-                        
                     else:
-                        #kpis_n = list(set(self.srvcKPIs) & set(kpis[hst])) # same
-                        #set_2 = frozenset(kpis[hst])
-                        #kpis_n = [x for x in set_2 if x in self.srvcKPIs]
-                        
                         kpis_n = kpis_n = myIntersect(kpis[hst], self.srvcKPIs)
                         
-                    log(str(kpis_n), 5)
-                    
                     self.widget.nkpis[i] = kpis_n
 
-            #self.statusMessage('Loading saved kpis...')
-            #self.repaint()
-
             log('reload from init dp', 4)
-            # removed for the sake #372
-            # self.reloadChart()
 
         self.hostsUpdated.emit()
         
@@ -2581,6 +2620,8 @@ class chartArea(QFrame):
             defines max and last_value keys
             
             this one ignores groups/scales at all, just raw values
+            
+            2021-11-09 also scan for AVG
         '''
     
         log('renewMaxValues()', 5)
@@ -2615,6 +2656,7 @@ class chartArea(QFrame):
             
             for kpi in data.keys():
                 scales[kpi]['max'] = 0
+                scales[kpi]['avg'] = None
                 
             #scan for max
 
@@ -2678,12 +2720,14 @@ class chartArea(QFrame):
                 for sn in range(scans):
                 
                     max_val = 0
+                    sum_val = 0
                 
                     if subtype == 'multiline':
                         gb = data[kpi][sn][0]
                         scan = data[kpi][sn][1]
                     else:
                         scan = data[kpi] # yep, this simple
+                        
                         
                     anti_crash_len = len(scan)
                 
@@ -2704,6 +2748,13 @@ class chartArea(QFrame):
 
                             if  t > t_to: #end of window no need to scan further
                                 break
+                               
+                            sum_val += scan[i]
+                            
+                        if i > 0:
+                            avg_val = sum_val/(i+1)
+                        else:
+                            avg_val = None
 
                     except ValueError as e:
                         log('error: i = %i, array_size = %i' % (i, array_size))
@@ -2714,6 +2765,8 @@ class chartArea(QFrame):
                         log('scales[kpi] = %s' % str(scales[kpi]))
 
                         log('exception text: %s' % (str(e)))
+                        
+                        log('sum_val value = %s' % (str(sum_val)))
                         
                         for j in range(10):
                             log('data[%i] = %s' % (j, str(data[kpi][j])))
@@ -2743,6 +2796,13 @@ class chartArea(QFrame):
 
                         scalesml[kpi][gb]['last'] = scan[i]
                         scalesml[kpi][gb]['max'] = max_val
+
+                        scales[kpi]['avg'] = None
+                    else:
+                        if avg_val is not None:
+                            scales[kpi]['avg'] = int(avg_val)
+                        else:
+                            scales[kpi]['avg'] = None
                     
         t1 = time.time()
         
@@ -2796,10 +2856,16 @@ class chartArea(QFrame):
         else:
             try:
                 
+                '''
                 if len(fromTime) == 10:
                     self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d')
                     
                     fromTime += ' 00:00:00'
+                    self.fromEdit.setText(fromTime)
+                '''
+                if len(fromTime) >= 10:
+                    lt = 19 - len(fromTime)
+                    fromTime += ' 00:00:00'[9 - lt:]
                     self.fromEdit.setText(fromTime)
 
                 self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')

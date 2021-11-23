@@ -10,6 +10,11 @@ from PyQt5.QtCore import Qt, QSize
 
 from PyQt5.QtCore import QObject, QThread
 
+# crazy sound alert imports
+from PyQt5.QtMultimedia import QSoundEffect
+from PyQt5.QtCore import QUrl
+#from PyQt5.QtCore import WindowState
+
 import time, sys
 
 #import shiboken2
@@ -473,7 +478,10 @@ class console(QPlainTextEditLN):
         return
         
     def consSelection(self):
-    
+        #512 
+        if self.manualSelection:
+            self.clearManualSelection()
+
         if cfg('noWordHighlighting'):
             return
     
@@ -838,7 +846,6 @@ class console(QPlainTextEditLN):
 
         if event.key() == Qt.Key_F8 or  event.key() == Qt.Key_F9:
 
-            
             if modifiers & Qt.AltModifier:
                 self.executionTriggered.emit('no parsing')
             elif modifiers & Qt.ControlModifier:
@@ -956,6 +963,25 @@ class console(QPlainTextEditLN):
             self.haveHighlighrs = False
         '''
 
+    def clearManualSelection(self):
+        #print('clear manualSelectionPos', self.manualSelectionPos)
+        
+        start = self.manualSelectionPos[0]
+        stop = self.manualSelectionPos[1]
+        
+        cursor = QTextCursor(self.document())
+        
+        for (lo, af) in self.manualStylesRB:
+            lo.setAdditionalFormats(af)
+            
+        self.manualStylesRB.clear()
+
+        self.manualSelection = False
+        self.manualSelectionPos = []
+        
+        self.viewport().repaint()
+        
+
     def cursorPositionChangedSignal(self):
         #log('cursorPositionChangedSignal', 5)
     
@@ -964,55 +990,7 @@ class console(QPlainTextEditLN):
         #print('cursorPositionChangedSignal', self.lock)
     
         if self.manualSelection:
-        
-            print('clear manualSelectionPos', self.manualSelectionPos)
-            
-            start = self.manualSelectionPos[0]
-            stop = self.manualSelectionPos[1]
-            
-            cursor = QTextCursor(self.document())
-            
-            '''
-            2021-09-08
-            #482
-            
-            this approach clears everything including the syntax highlighter.
-
-            block = self.document().findBlock(start)
-            lo = block.layout()
-            
-            lo.clearAdditionalFormats()
-            
-            '''
-
-            '''
-            cursor.joinPreviousEditBlock()
-
-            format = cursor.charFormat()
-            format.setBackground(QColor('white'))
-        
-            cursor.setPosition(start,QTextCursor.MoveAnchor)
-            cursor.setPosition(stop,QTextCursor.KeepAnchor)
-            
-            cursor.setCharFormat(format)
-            
-            cursor.endEditBlock() 
-
-            '''
-            
-            for (lo, af) in self.manualStylesRB:
-                lo.setAdditionalFormats(af)
-                
-            self.manualStylesRB.clear()
-
-            self.manualSelection = False
-            self.manualSelectionPos = []
-            
-            self.viewport().repaint()
-            
-
-            #self.lineNumbers.fromLine = None
-            #self.lineNumbers.repaint()
+            self.clearManualSelection()
     
         if cfg('noBracketsHighlighting'):
             return
@@ -1183,6 +1161,7 @@ class resultSet(QTableWidget):
         Table never refilled.
     '''
     
+    alertSignal = pyqtSignal(['QString'])
     insertText = pyqtSignal(['QString'])
     executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
@@ -1215,6 +1194,8 @@ class resultSet(QTableWidget):
         
         self.timerSet = None        # autorefresh menu switch flag
         
+        self.alerted = None         # one time alarm signal flag
+        
         super().__init__()
         
         verticalHeader = self.verticalHeader()
@@ -1222,7 +1203,6 @@ class resultSet(QTableWidget):
         
         scale = 1
 
-        
         fontSize = utils.cfg('result-fontSize', 10)
         
         font = QFont ()
@@ -1263,6 +1243,9 @@ class resultSet(QTableWidget):
         rows = self.rowCount()
         cols = self.columnCount()
 
+        if col == -1 or rows == 0:
+            return
+
         hl = False
 
         clr = QColor(cfg('highlightColor', '#def'))
@@ -1278,8 +1261,6 @@ class resultSet(QTableWidget):
             val = self.item(0, col).text()
         else:
             val = self.item(row, col).text()
-            
-            
             
         lobCols = []
         
@@ -1344,7 +1325,7 @@ class resultSet(QTableWidget):
         cmenu.addSeparator()
         insertColumnName = cmenu.addAction('Insert Column Name(s)')
         copyFilter = cmenu.addAction('Generate Filter Condition')
-
+        
         cmenu.addSeparator()
         
         refreshTimerStart = None
@@ -1360,12 +1341,16 @@ class resultSet(QTableWidget):
             
         cmenu.addSeparator()
         
+        abapCopy = cmenu.addAction('ABAP-style copy')
+
+        cmenu.addSeparator()
+        
         if not self.timerSet:
             refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
         else:
             refreshTimerStop = cmenu.addAction('Stop autorefresh')
         
-        if self.headers[i] in customSQLs.columns:
+        if i >= 0 and self.headers[i] in customSQLs.columns:
             cmenu.addSeparator()
 
             for m in customSQLs.menu[self.headers[i]]:
@@ -1455,16 +1440,21 @@ class resultSet(QTableWidget):
 
             id = QInputDialog
 
-            value, ok = id.getInt(self, 'Refresh interval', 'Input the refresh interval in seconds                          ', 10, 0, 3600, 5)
+            value, ok = id.getInt(self, 'Refresh interval', 'Input the refresh interval in seconds                          ', self.defaultTimer[0], 0, 3600, 5)
             
             if ok:
                 self.triggerAutorefresh.emit(value)
                 self.timerSet = True
+                
+                self.defaultTimer[0] = value
 
         if action == refreshTimerStop:
             log('disabeling the timer...')
             self.triggerAutorefresh.emit(0)
             self.timerSet = False
+
+        if action == abapCopy:
+            self.copyCells(abapMode=True)
             
         if action is not None:
             
@@ -1532,7 +1522,25 @@ class resultSet(QTableWidget):
         self.detachTimer.timeout.connect(self.detachCB)
         self.detachTimer.start(1000 * dtimer)
     
-    def csvRow(self, r):
+    def csvVal(self, v, t):
+        '''escapes single value based on type'''
+        
+        if v is None:
+            return utils.cfg('nullStringCSV', '')
+        elif db.ifBLOBType(t):
+            return str(v.encode())
+        else:
+            if db.ifNumericType(t):
+                return utils.numberToStrCSV(v, False)
+            elif db.ifRAWType(t):
+                return v.hex()
+            elif db.ifTSType(t):
+                return utils.timestampToStr(v)
+            else:
+                return str(v)
+        
+    
+    def csvRow_deprecado(self, r):
         
         values = []
         
@@ -1542,7 +1550,10 @@ class resultSet(QTableWidget):
 
             val = self.rows[r][i]
             vType = self.cols[i][1]
+            
+            values.append(self.csvVal(val, vType))
 
+            '''
             if val is None:
                 values.append(utils.cfg('nullStringCSV', ''))
             elif db.ifBLOBType(vType):
@@ -1557,9 +1568,317 @@ class resultSet(QTableWidget):
                     values.append(utils.timestampToStr(val))
                 else:
                     values.append(str(val))
+            '''
                 
             
         return ';'.join(values)
+        
+    def copyCells(self, abapMode = False):
+        '''
+            copy cells or rows or columns implementation
+        '''
+        
+        def abapCopy():
+
+            maxWidth = 32
+            widths = []
+            
+            widths = [0]*len(colList)
+            types = [0]*len(colList)
+            
+            for c in range(len(colList)):
+            
+                types[c] = self.cols[colList[c]][1]
+            
+                for r in range(len(copypaste)):
+                
+                    if widths[c] < len(copypaste[r][c]):
+                        if len(copypaste[r][c]) >= maxWidth:
+                            widths[c] = maxWidth
+                            break
+                        else:
+                            widths[c] = len(copypaste[r][c])
+                            
+                            
+            tableWidth = 0
+            
+            for c in widths:
+                tableWidth += c + 1
+                
+            tableWidth -= 1
+                
+            topLine = '-' + '-'.rjust(tableWidth, '-') + '-'
+            mdlLine = '|' + '-'.rjust(tableWidth, '-') + '|'
+                            
+            csv = topLine + '\n'
+            
+            i = 0
+            for r in copypaste:
+                for c in range(len(colList)):
+                    #val = r[c][:maxWidth]
+                    
+                    if len(r[c]) > maxWidth:
+                        val = r[c][:maxWidth-1] + '…'
+                    else:
+                        val = r[c][:maxWidth]
+                    
+                    if db.ifNumericType(types[c]) and i > 0:
+                        val = val.rjust(widths[c], ' ')
+                    else:
+                        val = val.ljust(widths[c], ' ')
+                    
+                    csv += '|' + val
+                    
+                csv += '|\n'
+
+                if i == 0:
+                    csv += mdlLine + '\n'
+                    i += 1
+                
+            csv += topLine + '\n'
+            
+            return csv
+        
+    
+        sm = self.selectionModel()
+        
+        colIndex = []
+        colList = []
+        
+        for c in sm.selectedColumns():
+            colIndex.append(c.column())
+        
+        rowIndex = []
+        for r in sm.selectedRows():
+            rowIndex.append(r.row())
+            
+        copypaste = []
+        
+        if len(rowIndex) >= 1000:
+            # and len(colIndex) >= 5 ?
+            # it is to expensive to check
+            cellsSelection = False
+        else:
+            #this will be checked right away
+            cellsSelection = True
+        
+        if (colIndex or rowIndex):
+            # scan all selected cells to make sure this is pure column or row selection
+        
+            utils.timerStart()
+        
+            cellsSelection = False
+            
+            if len(sm.selectedIndexes()) == 1:
+                #single cell selected, no need header for this
+                cellsSelection = True
+            else:
+                for cl in sm.selectedIndexes():
+                    r = cl.row()
+                    c = cl.column()
+                    
+                    if (colIndex and c not in colIndex) or (rowIndex and r not in rowIndex):
+                        # okay, something is not really inside the column (row), full stop and make regular copy
+                    
+                        cellsSelection = True
+                        break
+                    
+            utils.timeLap()
+            s = utils.timePrint()
+            
+            log('Selection model check: %s' % s[0], 5)
+            
+        if False and cellsSelection and abapMode:
+            self.log('ABAP mode is only available when rows or columns are selected.', True)
+        
+        if not cellsSelection and rowIndex: 
+            # process rows
+            
+            utils.timerStart()
+            rowIndex.sort()
+            
+            cc = self.columnCount()
+                
+            hdrrow = []
+            
+            i = 0
+            
+            for h in self.headers:
+            
+                if len(self.headers) > 1 or abapMode:
+                
+                    if self.columnWidth(i) > 4:
+                        hdrrow.append(h)
+                        
+                        colList.append(i) # important for abapCopy
+                    
+                i+=1
+                    
+            if hdrrow:
+                copypaste.append(hdrrow)
+    
+    
+            for r in rowIndex:
+                values = []
+                for c in range(cc):
+                
+                    if self.columnWidth(c) > 4:
+                        values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                    
+                copypaste.append(values)
+                
+            if abapMode:
+                csv = abapCopy()
+            else:
+                csv = ''
+                for r in copypaste:
+                    csv += ';'.join(r) + '\n'
+            
+            QApplication.clipboard().setText(csv)
+
+            utils.timeLap()
+            s = utils.timePrint()
+            
+            log('Clipboard formatting took: %s' % s[0], 5)
+            QApplication.clipboard().setText(csv)
+
+        elif not cellsSelection and colIndex: 
+            # process columns
+            colIndex.sort()
+            
+            hdrrow = []
+            
+            for c in colIndex:
+
+                if self.columnWidth(c) > 4:
+                    hdrrow.append(self.headers[c])
+                    colList.append(c)
+
+                
+            if self.rowCount() > 1 or abapMode:
+                copypaste.append(hdrrow)
+                
+            for r in range(self.rowCount()):
+                values = []
+                
+                for c in colIndex:
+                    if self.columnWidth(c) > 4:
+                        values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                
+                copypaste.append(values)
+            
+            if abapMode:
+                csv = abapCopy()
+            else:
+                csv = ''
+                for r in copypaste:
+                    csv += ';'.join(r) + '\n'
+            
+            QApplication.clipboard().setText(csv)
+            
+        else:
+            # copy column
+            #print('just copy')
+            
+            rowIndex = []
+            colIndex = {}
+
+            # very likely not the best way to order list of pairs...
+            
+            for c in sm.selectedIndexes():
+            
+                r = c.row() 
+            
+                if r not in rowIndex:
+                    rowIndex.append(r)
+                    
+                if r in colIndex.keys():
+                    colIndex[r].append(c.column())
+                else:
+                    colIndex[r] = []
+                    colIndex[r].append(c.column())
+            
+            rowIndex.sort()
+            
+            if abapMode:
+                # check if the square area selected first
+                
+                if len(colIndex) > 0:
+                    colList = colIndex[rowIndex[0]].copy()
+                else:
+                    colList = range(len(self.cols)) #fake 'all columns selected' list when the selection is empty
+                
+                abapNotPossible = False
+                
+                for ci in colIndex:
+                    
+                    if colList != colIndex[ci]:
+                        abapNotPossible = True
+                        break
+                        
+                if abapNotPossible:
+                    self.log('ABAP-style copy is only possible for rectangular selections.', True)
+                    return
+                        
+                values = []
+                for c in colList:
+                    if self.columnWidth(c) > 4:
+                        values.append(self.headers[c])
+                        
+                copypaste.append(values)
+
+                for r in rowIndex:
+                    values = []
+
+                    for c in colList:
+                    
+                        if self.columnWidth(c) > 4:
+                            values.append(self.csvVal(self.rows[r][c], self.cols[c][1]))
+                        
+                    copypaste.append(values)
+                    
+                    
+                csv = abapCopy()
+                
+                QApplication.clipboard().setText(csv)
+                
+                return
+                
+            
+            rows = []
+            
+            for r in rowIndex:
+                colIndex[r].sort()
+
+                values = []
+                
+                for c in colIndex[r]:
+                
+                    value = self.rows[r][c]
+                    vType = self.cols[c][1]
+                    
+                    if value is None:
+                        values.append(utils.cfg('nullStringCSV', ''))
+                    else:
+                        if db.ifBLOBType(vType):
+                            values.append(str(value.encode()))
+                        else:
+                            if db.ifNumericType(vType):
+                                values.append(utils.numberToStrCSV(value, False))
+                            elif db.ifRAWType(vType):
+                                values.append(value.hex())
+                            elif db.ifTSType(vType):
+                                #values.append(value.isoformat(' ', timespec='milliseconds'))
+                                values.append(utils.timestampToStr(value))
+                            else:
+                                values.append(str(value))
+                                
+                rows.append( ';'.join(values))
+
+            result = '\n'.join(rows)
+            
+            QApplication.clipboard().setText(result)
+        
 
     def resultKeyPressHandler(self, event):
     
@@ -1570,88 +1889,7 @@ class resultSet(QTableWidget):
                 self.selectAll()
             
             if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
-            
-                '''
-                    copy cells or rows implementation
-                '''
-            
-                sm = self.selectionModel()
-                
-                rowIndex = []
-                for r in sm.selectedRows():
-                    rowIndex.append(r.row())
-                    
-                if rowIndex: 
-                    # process rows
-                    
-                    rowIndex.sort()
-                    
-                    if len(self.headers) > 1:
-                        csv = ';'.join(self.headers) + '\n'
-                    else:
-                        csv = ''
-                        
-                    for r in rowIndex:
-                        csv += self.csvRow(r) + '\n'
-                        
-                    QApplication.clipboard().setText(csv)
-                    
-                else:
-                    # copy column
-                    
-                    rowIndex = []
-                    colIndex = {}
-
-                    # very likely not the best way to order list of pairs...
-                    
-                    for c in sm.selectedIndexes():
-                    
-                        r = c.row() 
-                    
-                        if r not in rowIndex:
-                            rowIndex.append(r)
-                            
-                        if r in colIndex.keys():
-                            colIndex[r].append(c.column())
-                        else:
-                            colIndex[r] = []
-                            colIndex[r].append(c.column())
-                    
-                    rowIndex.sort()
-                    
-                    rows = []
-                    
-                    for r in rowIndex:
-                        colIndex[r].sort()
-
-                        values = []
-                        
-                        for c in colIndex[r]:
-                        
-                            value = self.rows[r][c]
-                            vType = self.cols[c][1]
-                            
-                            if value is None:
-                                values.append(utils.cfg('nullStringCSV', ''))
-                            else:
-                                if db.ifBLOBType(vType):
-                                    values.append(str(value.encode()))
-                                else:
-                                    if db.ifNumericType(vType):
-                                        values.append(utils.numberToStrCSV(value, False))
-                                    elif db.ifRAWType(vType):
-                                        values.append(value.hex())
-                                    elif db.ifTSType(vType):
-                                        #values.append(value.isoformat(' ', timespec='milliseconds'))
-                                        values.append(utils.timestampToStr(value))
-                                    else:
-                                        values.append(str(value))
-                                        
-                        rows.append( ';'.join(values))
-
-                    result = '\n'.join(rows)
-                    
-                    QApplication.clipboard().setText(result)
+                self.copyCells()
         
         else:
             super().keyPressEvent(event)
@@ -1687,6 +1925,13 @@ class resultSet(QTableWidget):
         adjRow = 10 if len(rows) >= 10 else len(rows)
 
         #return -- it leaks even before this point
+        
+        alert_str = cfg('alertTriggerOn')
+        
+        if alert_str:
+            if alert_str[0:1] == '{' and alert_str[-1:] == '}':
+                alert_prefix = alert_str[:-1]
+                alert_len = len(alert_str)
         
         #fill the result table
         for r in range(len(rows)):
@@ -1742,6 +1987,29 @@ class resultSet(QTableWidget):
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
+                        
+                    if cfg('experimental'):
+                        #and val == cfg('alertTriggerOn'): # this is old, not flexible style
+                        #'{alert}'
+                        
+                        sound = None
+                        
+                        if val[:alert_len - 1] == alert_prefix:
+                            # okay this looks like alert
+                            if val == alert_str: 
+                                # simple one
+                                sound = ''
+                            else:
+                                # might be a customized one?
+                                if val[-1:] == '}' and val[alert_len-1:alert_len] == ':':
+                                    sound = val[alert_len:-1]
+                                    
+                        if sound is not None and not self.alerted:
+                            self.alerted = True
+                            
+                            item.setBackground(QBrush(QColor('#FAC')))
+                            self.alertSignal.emit(sound)
+
                 
                 elif db.ifTSType(cols[c][1]):
                     #val = val.isoformat(' ', timespec='milliseconds') 
@@ -1858,6 +2126,7 @@ class sqlConsole(QWidget):
     nameChanged = pyqtSignal(['QString'])
     statusMessage = pyqtSignal(['QString', bool])
     selfRaise = pyqtSignal(object)
+    alertSignal = pyqtSignal()
 
     def __init__(self, window, config, tabname = None):
     
@@ -1910,6 +2179,8 @@ class sqlConsole(QWidget):
         
         self.timerAutorefresh = None
         
+        self.defaultTimer = [60]
+        
         super().__init__()
         self.initUI()
         
@@ -1930,6 +2201,8 @@ class sqlConsole(QWidget):
             '''
 
         self.cons.textChanged.connect(self.textChangedS)
+        
+        #self.cons.selectionChanged.connect(self.selectionChangedS)
         
         self.cons.updateRequest.connect(self.updateRequestS)
         
@@ -1967,6 +2240,12 @@ class sqlConsole(QWidget):
             keepalive = int(cfg('keepalive-cons'))
             self.enableKeepAlive(self, keepalive)
 
+    '''
+    def selectionChangedS(self):
+        if self.cons.manualSelection:
+            self.cons.clearManualSelection()
+    '''
+        
     def updateRequestS(self, rect):
         '''
             okay all this logic below is a workaround for #382
@@ -2540,6 +2819,11 @@ class sqlConsole(QWidget):
         if interval == 0:
             log('Stopping the autorefresh: %s' % self.tabname.rstrip(' *'))
             self.log('--> Stopping the autorefresh')
+
+            if self.indicator.status in ('autorefresh', 'alert'):
+                self.indicator.status = 'idle'
+                self.indicator.bkpStatus = 'idle'
+                self.indicator.repaint()
             
             if self.timerAutorefresh is not None:
                 self.timerAutorefresh.stop()
@@ -2552,6 +2836,9 @@ class sqlConsole(QWidget):
             self.log('Autorefresh only possible for single resultset output.', True)
             return
         
+        self.indicator.status = 'autorefresh'
+        self.indicator.repaint()
+
         self.log('\n--> Scheduling autorefresh, logging will be supressed. Autorefresh will stop on manual query execution or context menu -> stop autorefresh')
         log('Scheduling autorefresh %i (%s)' % (interval, self.tabname.rstrip(' *')))
             
@@ -2563,10 +2850,68 @@ class sqlConsole(QWidget):
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
             self.log('Autorefresh is already running? Ignoring the new one...', True)
             
+    def alertProcessing(self, fileName):
+    
+        if fileName == '' or fileName is None:
+            fileName = cfg('alertSound', 'default')
+        else:
+            pass
+            
+        if fileName.find('.') == -1:
+            fileName += '.wav'
+            
+        if '/' in fileName or '\\' in fileName:
+            #must be a path to some file...
+            pass
+        else:
+            #try open normal file first
+            fileName = 'snd\\' + fileName
+            if os.path.isfile(fileName):
+                log('seems to be a regular file in the rybafish snd folder', 4)
+            else:
+                #okay, take it from the build then...
+                fileName = resourcePath(fileName)
+
+        #log('Sound file name: %s' % fileName, 4)
+        
+        if not os.path.isfile(fileName):
+            log('warning: sound file does not exist: %s' % fileName, 2)
+            return
+    
+        if self.timerAutorefresh:
+            log('console %s, alert...' % self.tabname.rstrip(' *'), 3)
+            ts = datetime.datetime.now().strftime('%H:%M:%S') + ' '
+            self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
+            
+            
+        vol = cfg('alertVolume', 80)
+        
+        try:
+            vol = int(vol)
+        except ValueError:
+            vol = 80
+            
+        vol /= 100
+            
+        self.sound = QSoundEffect()
+        soundFile = QUrl.fromLocalFile(fileName)
+        self.sound.setSource(soundFile)
+        self.sound.setVolume(vol)
+        self.indicator.status = 'alert'
+        self.sound.play()
+        
+        if cfg('alertAutoPopup', True):
+            if not self.isActiveWindow():
+                self.selfRaise.emit(self)
+            
+            self.alertSignal.emit()
+    
     def newResult(self, conn, st):
         
         result = resultSet(conn)
         result.statement = st
+        
+        result.defaultTimer = self.defaultTimer
         
         result._connection = conn
         
@@ -2574,6 +2919,7 @@ class sqlConsole(QWidget):
         
         result.insertText.connect(self.cons.insertTextS)
         result.executeSQL.connect(self.surprizeSQL)
+        result.alertSignal.connect(self.alertProcessing)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:
@@ -2710,6 +3056,7 @@ class sqlConsole(QWidget):
             t0 = time.time()
             db.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
+
             self.indicator.status = 'idle'
             self.indicator.repaint()
             
@@ -2852,16 +3199,18 @@ class sqlConsole(QWidget):
                 result.detachTimer = None
                 
             result.detach()
+            
+        result.alerted = False
 
         self.executeStatement(result.statement, result, True)
         
     def executeSelection(self, mode):
     
-        if not cfg('dev-') and self.config is None:
+        if not cfg('dev') and self.config is None:
             self.log('No connection, connect RybaFish to the DB first.')
             return
             
-        if self.conn is None:
+        if not cfg('dev') and self.conn is None:
             self.log('The console is disconnected...')
             
             #answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect as "%s@%s:%s"?' % (self.config['user'], self.config['host'], str(self.config['port'])))
@@ -2875,7 +3224,7 @@ class sqlConsole(QWidget):
         if self.timerAutorefresh:
             self.log('--> Stopping the autorefresh...')
             self.setupAutorefresh(0)
-    
+            
         if mode == 'normal':
             self.executeSelectionParse()
         elif mode == 'no parsing':
@@ -3143,6 +3492,8 @@ class sqlConsole(QWidget):
         # startDelta = 0
         # clearDelta = False
         
+        ### print('from, to', scanFrom, scanTo)
+        
         for i in range(scanFrom, scanTo):
             c = txt[i]
             
@@ -3156,13 +3507,18 @@ class sqlConsole(QWidget):
             if not insideString and c == ';':
                 #print(i)
                 if not insideProc:
+                    ### print("str = '' #1")
                     str = ''
-                    stop = i
+                    
+                    #if stop < start: # this is to resolve #486
+                    if stop < start or (start == 0 and stop == 0): # this is to resolve # 486, 2 
+                        stop = i
                     # clearDelta = True
                     continue
                 else:
                     if isItEnd(str[-10:]):
                         insideProc = False
+                        ### print("str = '' #2")
                         str = ''
                         stop = i
                         # clearDelta = True
@@ -3180,6 +3536,7 @@ class sqlConsole(QWidget):
                 elif not leadingComment and c == '-' and i < scanTo and txt[i] == '-':
                     leadingComment = True
                 elif leadingComment:
+                    ### print(c, i, start, stop)
                     if c == '\n':
                         leadingComment = False
                     else:
@@ -3191,6 +3548,7 @@ class sqlConsole(QWidget):
                         #print('start <= cursorPos <= stop:', start, cursorPos, stop)
                         #print('warning! selectSingle used to be here, but removed 05.02.2021')
                         #selectSingle(start, stop)
+                        ### print('stop detected')
                         break
                     else:
                         if not F9:
@@ -3198,9 +3556,10 @@ class sqlConsole(QWidget):
                         
                     start = i
                     str = str + c
+                    ### print(i, 'sTr:', str, start, stop)
             else:
                 str = str + c
-                #print(str)
+                ### print(i, 'str:', str, start, stop)
 
             if not insideString and c == '\'':
                 insideString = True
@@ -3212,6 +3571,8 @@ class sqlConsole(QWidget):
                 
             if not insideProc and isItCreate(str[:64]):
                 insideProc = True
+                
+        ### print('[just stop]')
 
 
         '''
@@ -3618,7 +3979,17 @@ class sqlConsole(QWidget):
                 #log('cols %i:%i' % (i, len(cols_list[0])))
                 del cols_list[0]
             
-        self.indicator.status = 'idle'
+        if self.indicator.status != 'alert':
+            '''
+            if self.indicator.bkpStatus == 'autorefresh':
+                self.indicator.status = self.indicator.bkpStatus
+            else:
+            '''
+            if self.timerAutorefresh:
+                self.indicator.status = 'autorefresh'
+            else:
+                self.indicator.status = 'idle'
+            
         self.indicator.runtime = None
         self.updateRuntime('off')
         self.indicator.repaint()
@@ -3676,6 +4047,7 @@ class sqlConsole(QWidget):
         self.t0 = time.time()
         self.sqlRunning = True
         
+        self.indicator.bkpStatus = self.indicator.status
         self.indicator.status = 'running'
         self.indicator.repaint()
         

@@ -15,6 +15,8 @@ class indicator(QWidget):
         'error': '#CCC',
         'render': '#FFF',
         'disconnected': '#FCC',
+        'alert': '#FAC',
+        'autorefresh': '#cfc',
     }
 
 
@@ -25,6 +27,8 @@ class indicator(QWidget):
     
     def __init__(self, parent = None):
         self.active = False
+        
+        self.bkpStatus = 'idle'
         self.status = 'idle'
         
         self.runtime = None

@@ -172,10 +172,15 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             else:
                 style['width'] = 8
 
-            if 'font' in kpi:
-                style['font'] = int(kpi['font'])
+            if 'fontSize' in kpi:
+                style['font'] = int(kpi['fontSize'])
             else:
                 style['font'] = 8
+
+            if 'titleFontSize' in kpi:
+                style['tfont'] = int(kpi['titleFontSize'])
+            else:
+                style['tfont'] = style['font'] - 1 
 
             if 'shift' in kpi:
                 style['shift'] = int(kpi['shift'])
@@ -186,6 +191,11 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['style'] = kpi['style']
             else:
                 style['style'] = 'bar'
+
+            if 'title' in kpi:
+                style['title'] = kpi['title']
+            else:
+                style['title'] = None
                 
             clr = QColor(color)
             style['brush'] = clr

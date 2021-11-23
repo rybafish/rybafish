@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 
 import locale
+
 from decimal import Decimal
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
@@ -19,6 +20,15 @@ config = {}
 timers = []
 
 localeCfg = None
+
+def pwdunhash(pwdhsh):
+    pwd = pwdhsh[5:]
+    print('------', pwd)
+    return pwd
+    
+def pwdtohash(pwd):
+    pwdhsh = 'hash!' + pwd
+    return pwdhsh
 
 def hextostr(value):
     if value:
@@ -46,6 +56,8 @@ def timePrint():
     
     for i in range(1, len(timers)):
         s.append('%s:%s' % (timers[i][1], str(round(timers[i][0]-timers[i-1][0], 3))))
+        
+    return s
 
 class Layout():
     
@@ -192,7 +204,7 @@ def formatTimeShort(t):
     
     return s
 
-def formatTime(t, skipSeconds = False):
+def formatTime(t, skipSeconds = False, skipMs = False):
     
     (ti, ms) = divmod(t, 1)
     
@@ -211,12 +223,12 @@ def formatTime(t, skipSeconds = False):
     elif ti < 3600:
         format = '%M:%S'
 
-        msStr = '.%s' % ms
+        msStr = '.%s' % ms if not skipMs else ''
             
         s = time.strftime(format, time.gmtime(ti)) + msStr
     else:
         format = '%H:%M:%S'
-        msStr = '.%s' % ms
+        msStr = '.%s' % ms if not skipMs else ''
         s = time.strftime(format, time.gmtime(ti)) + msStr
     
     if not skipSeconds:

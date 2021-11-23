@@ -83,15 +83,28 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
                 srvcKPIs.append(grpname)
         
 
+        errorSuffix = ''
+        
+        while csName + errorSuffix in kpiStylesN[type]:
+            errorSuffix += '#'
+
         if type == 'host': 
-            hostKPIs.append(csName)
+            hostKPIs.append(csName + errorSuffix)
         else:
-            srvcKPIs.append(csName)
+            srvcKPIs.append(csName + errorSuffix)
+
+
+        if errorSuffix != '':
+            log('[W] custom KPI with this already exists: %s, disabeling' % (csName))
+
+            kpi['label'] = '[E] the KPI name must be unique! (label: %s, name: %s)' % (kpi['label'], kpi['name'])
+            kpi['description'] = 'change the KPI name in YAML definition: ' + file
             
-        if csName in kpiStylesN[type]:
-            log('[W] this custom KPI already exists: %s' % (csName))
-        else: 
-            style = createStyle(kpi, True, srcIdx)
             
-            if style is not None:
-                kpiStylesN[type][csName] = style
+        style = createStyle(kpi, True, srcIdx)
+        
+        if style is not None:
+            kpiStylesN[type][csName + errorSuffix] = style
+            
+            if errorSuffix != '':
+                style['disabled'] = True

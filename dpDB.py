@@ -137,6 +137,8 @@ class dataProvider():
         
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
     
+        tenant = self.dbProperties.get('tenant')
+    
         kpis_sql = sql.kpis_info
 
         if not self.connection:
@@ -147,6 +149,24 @@ class dataProvider():
         log('init hosts, hostKPIs: %s' % str(hostKPIs))
         log('init hosts, srvcKPIs: %s' % str(srvcKPIs))
 
+        if tenant and tenant.lower() == 'systemdb':
+            sql_string = 'select host, port, database_name, service_name from sys_databases.m_services order by host, port'
+        else:
+            sql_string = 'select host, port, null database_name, service_name from m_services order by host, port'
+            
+        rows = db.execute_query(self.connection, sql_string, [])
+        
+        services = {}
+        
+        for r in rows:
+            host, port, ten, srv = r
+            
+            if tenant and tenant.lower() != 'systemdb':
+                ten = tenant
+            
+            skey = '%s:%s' % (host, port)
+            services[skey] = [ten, srv]
+            
         sql_string = sql.hosts_info
 
         if cfg('ess'):
@@ -157,27 +177,47 @@ class dataProvider():
         
         rows = db.execute_query(self.connection, sql_string, [])
         
+        print(1)
         if cfg('hostmapping'):
             for i in range(0, len(rows)):
             
                 hm = cfg('hostmapping')
                 pm = cfg('portmapping')
             
+                skey = '%s:%s' % (rows[i][0], rows[i][1])
+                
+                if skey in services:
+                    ten, srv = services[skey]
+                else:
+                    ten, srv = None, None
+
                 hosts.append({
+                            'db':ten,
                             'host':rows[i][0].replace(hm[0], hm[1]),
+                            'service':srv,
                             'port':rows[i][1].replace(pm[0], pm[1]),
-                            'from':rows[i][2],
-                            'to':rows[i][3]
+                            #'from':rows[i][2],
+                            #'to':rows[i][3]
                             })
         else:
             for i in range(0, len(rows)):
+                skey = '%s:%s' % (rows[i][0], rows[i][1])
+                
+                if skey in services:
+                    ten, srv = services[skey]
+                else:
+                    ten, srv = None, None
+                    
                 hosts.append({
+                            'db':ten,
                             'host':rows[i][0],
+                            'service':srv,
                             'port':rows[i][1],
-                            'from':rows[i][2],
-                            'to':rows[i][3]
+                            #'from':rows[i][2],
+                            #'to':rows[i][3]
                             })
 
+        print(2)
         rows = db.execute_query(self.connection, kpis_sql, [])
         
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
@@ -391,8 +431,13 @@ class dataProvider():
                         # there is a filter so we have to add ' AND ' before the time filter...
                         # tfilter_mod = ' and ' + tfilter_mod
                         gtfilter_now = ' and ' + gtfilter_now
+                        
+                    title = ''
+                    
+                    if kpiDescriptions.kpiStylesNN[type][kpi].get('title') == True:
+                        title = ', title'
                       
-                    sql = 'select entity, "START", "STOP", details %s %s%s order by entity desc, "START"' % (fromTable, hfilter_now, gtfilter_now)
+                    sql = 'select entity, "START", "STOP", details%s %s %s%s order by entity desc, "START"' % (title, fromTable, hfilter_now, gtfilter_now)
                     gantt = True                    
 
             try:
@@ -474,14 +519,22 @@ class dataProvider():
         
         data[kpi] = {}
         
+        t0 = time.time()
+        
+        title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
+        titleValue = None
+        
         for r in rows:
             
             entity = str(r[0])
             start = r[1]
             stop = r[2]
             
-            dur = formatTime((stop - start).total_seconds(), skipSeconds=True)
+            dur = formatTime((stop - start).total_seconds(), skipSeconds=True, skipMs=True)
             desc = str(r[3]).replace('$duration', dur)
+
+            if title:
+                titleValue = r[4]
                
             #print ('curr: %s: %s - %s' % (desc, str(start), str(stop)))
             
@@ -523,10 +576,15 @@ class dataProvider():
                         print('(no)')
                 '''
                     
-                data[kpi][entity].append([start, stop, desc, shift])
+                data[kpi][entity].append([start, stop, desc, shift, titleValue])
             else:
-                data[kpi][entity] = [[start, stop, desc, 0]]
-                
+                data[kpi][entity] = [[start, stop, desc, 0, titleValue]]
+        
+        t1 = time.time()
+        
+        if t1 - t0 > 1:
+            log('Gantt render time: %s' % (str(round(t1-t0, 3))), 5)
+        
         '''
         for e in data[kpi]:
             print('entity:', e)

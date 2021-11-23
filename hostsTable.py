@@ -40,10 +40,16 @@ class hostsTable(QTableWidget):
 
             self.setRowHeight(i, 10)
             
-            self.setItem(i, 1, QTableWidgetItem(host['host']))
-            self.setItem(i, 2, QTableWidgetItem(host['port']))
-            self.setItem(i, 3, QTableWidgetItem(host['from'].strftime('%Y-%m-%d %H:%M:%S')))
-            self.setItem(i, 4, QTableWidgetItem(host['to'].strftime('%Y-%m-%d %H:%M:%S')))
+            self.setItem(i, 2, QTableWidgetItem(host['host']))
+            self.setItem(i, 3, QTableWidgetItem(host['port']))
+            #self.setItem(i, 5, QTableWidgetItem(host['from'].strftime('%Y-%m-%d %H:%M:%S')))
+            #self.setItem(i, 6, QTableWidgetItem(host['to'].strftime('%Y-%m-%d %H:%M:%S')))
+            
+            if 'db' in host:
+                self.setItem(i, 1, QTableWidgetItem(host['db']))
+                
+            if 'service' in host:
+                self.setItem(i, 4, QTableWidgetItem(host['service']))
             
             i+=1
             
@@ -64,6 +70,7 @@ class hostsTable(QTableWidget):
         self.setRowCount(1)
         self.setRowHeight(0, 10)
         
+        #self.setColumnCount(7)
         self.setColumnCount(5)
 
         self.horizontalHeader().setFont(QFont('SansSerif', 8))
@@ -71,12 +78,15 @@ class hostsTable(QTableWidget):
         
         self.verticalHeader().setVisible(False)
         
-        self.setHorizontalHeaderLabels(['', 'host', 'port', 'from', 'to'])
+        #self.setHorizontalHeaderLabels(['', 'DB', 'host', 'service', 'port', 'from', 'to'])
+        self.setHorizontalHeaderLabels(['', 'DB', 'host', 'port', 'service'])
         
         self.horizontalHeader().setMinimumSectionSize(8)
         
         self.setColumnWidth(0, 1)  # checkbox
-        self.setColumnWidth(1, 80) # host
-        self.setColumnWidth(2, 40) # port
-        self.setColumnWidth(3, 120) # from
-        self.setColumnWidth(4, 120) # to
+        self.setColumnWidth(1, 30) # DB
+        self.setColumnWidth(2, 80) # host
+        self.setColumnWidth(3, 40) # port
+        self.setColumnWidth(4, 60) # Service
+        #self.setColumnWidth(5, 120) # from
+        #self.setColumnWidth(6, 120) # to
