@@ -21,7 +21,6 @@ class Config(QDialog):
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         self.initUI()
         
-        print(conf)
         try:
             if conf:
                 hostport = conf['host'] + ':' + str(conf['port'])

@@ -969,6 +969,11 @@ class myWidget(QWidget):
                     self.highlightedKpiHost = host
                     self.highlightedPoint = j
                     
+                    if self.highlightedEntity is not None:
+                        #gantt to be unhighlighted
+                        self.highlightedEntity = None
+                        self.highlightedRange = None
+                    
                     if reportDelta:
                         deltaVal = normVal - self.highlightedNormVal
                         deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
@@ -2150,6 +2155,7 @@ class chartArea(QFrame):
         self.repaint()
         
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
+        
         self.widget.allocate(len(self.widget.hosts))
         self.widget.initPens()
         

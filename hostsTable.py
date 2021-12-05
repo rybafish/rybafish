@@ -36,21 +36,37 @@ class hostsTable(QTableWidget):
         self.setRowCount(len(self.hosts))
         
         i = 0
+        
         for host in self.hosts:
-
+        
             self.setRowHeight(i, 10)
             
             self.setItem(i, 2, QTableWidgetItem(host['host']))
             self.setItem(i, 3, QTableWidgetItem(host['port']))
-            #self.setItem(i, 5, QTableWidgetItem(host['from'].strftime('%Y-%m-%d %H:%M:%S')))
-            #self.setItem(i, 6, QTableWidgetItem(host['to'].strftime('%Y-%m-%d %H:%M:%S')))
             
             if 'db' in host:
                 self.setItem(i, 1, QTableWidgetItem(host['db']))
+            else:
+                self.setItem(i, 1, QTableWidgetItem(''))
                 
             if 'service' in host:
                 self.setItem(i, 4, QTableWidgetItem(host['service']))
-            
+            else:
+                self.setItem(i, 4, QTableWidgetItem(''))
+
+            if 'from' in host:
+                if self.columnCount() == 5:
+                    self.setColumnCount(7)
+                    self.setHorizontalHeaderLabels(['', 'DB', 'host', 'port', 'service', 'from', 'to'])
+                
+                self.setItem(i, 5, QTableWidgetItem(host['from'].strftime('%Y-%m-%d %H:%M:%S')))
+                self.setItem(i, 6, QTableWidgetItem(host['to'].strftime('%Y-%m-%d %H:%M:%S')))
+                    
+
+            if 'from' not in host:
+                if self.columnCount() == 7:
+                    self.setColumnCount(5)
+
             i+=1
             
         self.resizeColumnsToContents();
