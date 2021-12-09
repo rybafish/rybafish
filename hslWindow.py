@@ -211,8 +211,6 @@ class hslWindow(QMainWindow):
                     if w.fileName is not None or w.backup is not None:
                         pos = w.cons.textCursor().position()
                         block = w.cons.edit.verticalScrollBar().value()
-                        #print('scroll position:', block)
-                        #block = w.cons.firstVisibleBlock().position()
                         
                         if w.backup:
                             bkp = os.path.abspath(w.backup)
@@ -220,8 +218,6 @@ class hslWindow(QMainWindow):
                             bkp = None
                         
                         tabs.append([w.fileName, bkp, pos, block])
-                        #tabs.append([w.fileName, bkp, pos])
-                        
                         
                     if closeTabs:
                         w.close(None) # can not abort (and dont need to any more!)
@@ -492,12 +488,14 @@ class hslWindow(QMainWindow):
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
                     
-                propStr = conf['user'] + '@' + self.chartArea.dp.dbProperties['sid']
+                sid = self.chartArea.dp.dbProperties['sid']
+                
+                propStr = conf['user'] + '@' + sid
                 
                 tenant = self.chartArea.dp.dbProperties.get('tenant')
                 
                 if tenant:
-                    windowStr = ('%s %s@%s' % (conf['user'], tenant, self.chartArea.dp.dbProperties['sid']))
+                    windowStr = ('%s %s@%s' % (conf['user'], tenant, sid))
                 else:
                     windowStr = propStr
                     
@@ -606,6 +604,8 @@ class hslWindow(QMainWindow):
                     openfiles[fn] = i
 
         for filename in fname[0]:
+        
+            filename = os.path.abspath(filename)
 
             if filename in openfiles:
                 # the file is already open
@@ -650,6 +650,15 @@ class hslWindow(QMainWindow):
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
             
             console.openFile(filename)
+
+            '''
+            path, file = os.path.split(filename)
+            file, ext = os.path.splitext(file)
+
+            print(path, file, ext)
+            print(os.path.join(path, file))
+            print('open file', filename)
+            '''
 
             if self.layout == None:
                 # no backups to avoid conflicts...

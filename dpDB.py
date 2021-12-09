@@ -187,11 +187,13 @@ class dataProvider():
             
                 hm = cfg('hostmapping')
                 pm = cfg('portmapping')
+                dm = cfg('dbmapping')
             
                 skey = '%s:%s' % (rows[i][0], rows[i][1])
                 
                 if skey in services:
                     ten, srv = services[skey]
+                    ten = ten.replace(dm[0], dm[1])
                 else:
                     ten, srv = None, None
 

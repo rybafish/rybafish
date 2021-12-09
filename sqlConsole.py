@@ -1456,7 +1456,7 @@ class resultSet(QTableWidget):
         if action == abapCopy:
             self.copyCells(abapMode=True)
             
-        if action is not None:
+        if action is not None and i >= 0:
             
             key = self.headers[i] + '.' + action.text()
             
@@ -2369,6 +2369,7 @@ class sqlConsole(QWidget):
             path, file = os.path.split(script)
             
             bkpFile = os.path.join(path, 'bkp', filename)
+            bkpFile = os.path.abspath(bkpFile)
             
             self.backup = bkpFile
             

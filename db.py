@@ -110,7 +110,11 @@ def create_connection (server, dbProperties = None):
                 rows = execute_query(connection, 'select database_name from m_database', [])
 
                 if len(rows) == 1:
-                    dbProperties['tenant'] = rows[0][0]
+                    if cfg('dbmapping'):
+                        dbmap = cfg('dbmapping')
+                        dbProperties['tenant'] = rows[0][0].replace(dbmap[0], dbmap[1])
+                    else:
+                        dbProperties['tenant'] = rows[0][0]
                 else:
                     dbProperties['tenant'] = '???'
                     log('[w] tenant cannot be identitied')
