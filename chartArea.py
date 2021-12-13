@@ -748,7 +748,12 @@ class myWidget(QWidget):
         
         found_some = False
         
+        log('scanForHint very top', 5)
+
         for kpi in kpis:
+        
+            log('', 5)
+            log('scanForHint kpi: %s' %(kpi), 5)
         
             if kpi[:4] == 'time':
                 continue
@@ -861,6 +866,8 @@ class myWidget(QWidget):
             timeline = data[timeKey]
             array_size = len(timeline)
             
+            log('scanForHint array_size: %i' %(array_size), 5)
+            
             i = 0
         
             time_delta = tolerance*(self.t_scale/self.step_size)
@@ -868,9 +875,13 @@ class myWidget(QWidget):
             while i < array_size and timeline[i] < trgt_time - time_delta:
                 i+=1
 
+            log('scanForHint array_size/i: %i/%i' %(array_size, i), 5)
             if i == array_size:
+                log('scanForHint continue...', 5)
                 #kpi not found but we still need to check others! 2021-07-15, #386
                 continue
+            else:
+                log('scanForHint dont continue?..', 5)
 
 
             if subtype == 'multiline':
@@ -879,8 +890,12 @@ class myWidget(QWidget):
                 rounds = 1
                 
             bubbleStop = False
+            
+            log('scanForHint [%s], rounds : %i' %(subtype, rounds), 5)
                 
             for rc in range(rounds):
+            
+                log('scanForHint rc: %i' %(rc), 5)
 
                 if subtype == 'multiline':
                     scan = data[kpi][rc][1]
@@ -891,7 +906,13 @@ class myWidget(QWidget):
 
                 j = i
                 
-                y_min = scan[i]
+                log('scanForHint len(scan) %i' %(len(scan)), 5)
+                log('scanForHint i: %i' %(i), 5)
+                
+                if i == array_size: # crash #538
+                    continue
+
+                y_min = scan[i] # crash here, #538 
                 y_max = scan[i]
 
                 #print('\nok, scan')
