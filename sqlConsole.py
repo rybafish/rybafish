@@ -1456,7 +1456,7 @@ class resultSet(QTableWidget):
         if action == abapCopy:
             self.copyCells(abapMode=True)
             
-        if action is not None:
+        if action is not None and i >= 0:
             
             key = self.headers[i] + '.' + action.text()
             
@@ -1988,7 +1988,7 @@ class resultSet(QTableWidget):
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
-                    if cfg('experimental'):
+                    if cfg('experimental') and alert_str:
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
                         
@@ -2369,6 +2369,7 @@ class sqlConsole(QWidget):
             path, file = os.path.split(script)
             
             bkpFile = os.path.join(path, 'bkp', filename)
+            bkpFile = os.path.abspath(bkpFile)
             
             self.backup = bkpFile
             
@@ -3269,7 +3270,7 @@ class sqlConsole(QWidget):
         
     def manualSelect(self, start, stop, color):
         
-        print('manualSelect %i - %i (%s)' % (start, stop, color))
+        #print('manualSelect %i - %i (%s)' % (start, stop, color))
         
         updateMode = False
         
@@ -3327,13 +3328,13 @@ class sqlConsole(QWidget):
         fromTB = block.blockNumber()
         toTB = tbEnd.blockNumber()
         
-        print('from tb, to:', fromTB, toTB)
+        #print('from tb, to:', fromTB, toTB)
         
         curTB = fromTB
 
         while curTB <= toTB and block.isValid():
         
-            print('block, pos:', curTB, block.position())
+            #print('block, pos:', curTB, block.position())
             
             if block == tbStart:
                 delta = start - block.position()
@@ -3372,7 +3373,7 @@ class sqlConsole(QWidget):
             self.cons.manualSelection = True
             self.cons.manualSelectionPos  = [start, stop]
 
-        print('manualSelectionPos[] = ', self.cons.manualSelectionPos)
+        #print('manualSelectionPos[] = ', self.cons.manualSelectionPos)
         
         #print('manualSelectionPos', self.cons.manualSelectionPos)
             

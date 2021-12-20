@@ -177,17 +177,23 @@ class dataProvider():
         
         rows = db.execute_query(self.connection, sql_string, [])
         
-        print(1)
+        if len(rows) <= 1:
+            log('[W] no/limited telemetry available', 1)
+            log('[W] try checking m_load_history views if there any data', 1)
+            log('[W] potential reason: missing MONITORING role', 1)
+        
         if cfg('hostmapping'):
             for i in range(0, len(rows)):
             
                 hm = cfg('hostmapping')
                 pm = cfg('portmapping')
+                dm = cfg('dbmapping')
             
                 skey = '%s:%s' % (rows[i][0], rows[i][1])
                 
                 if skey in services:
                     ten, srv = services[skey]
+                    ten = ten.replace(dm[0], dm[1])
                 else:
                     ten, srv = None, None
 
@@ -217,7 +223,6 @@ class dataProvider():
                             #'to':rows[i][3]
                             })
 
-        print(2)
         rows = db.execute_query(self.connection, kpis_sql, [])
         
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)

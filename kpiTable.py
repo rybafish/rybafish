@@ -225,8 +225,6 @@ class kpiTable(QTableWidget):
         
         self.host = host
         
-        #print('replace this by hType?')
-
         if self.hosts[host]['port'] == '':
             t = 'h'
             usedKPIs = self.hostKPIs
