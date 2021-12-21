@@ -485,7 +485,7 @@ class myWidget(QWidget):
         if self.legend:
             cmenu.addSeparator()
             copyLegend = cmenu.addAction('Copy Legend to clipboard')
-            putLegend = cmenu.addAction('Remove Legend')
+            putLegend = cmenu.addAction('Hide Legend')
 
         else:
             cmenu.addSeparator()
