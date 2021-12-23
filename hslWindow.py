@@ -355,7 +355,7 @@ class hslWindow(QMainWindow):
             self.chartArea.adjustScale(sf)
         
     def menuAbout(self):
-        abt = aboutDialog.About()
+        abt = aboutDialog.About(self)
         abt.exec_()
         
     def menuConfHelp(self):

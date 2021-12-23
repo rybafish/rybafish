@@ -18,11 +18,11 @@ from _constants import build_date, version
 
 class About(QDialog):
 
-    def __init__(self):
+    def __init__(self, hwnd):
     
         #QtGui.QDialog(None, QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint)
         #super().__init__(None, Qt.WindowSystemMenuHint | Qt.WindowTitleHint)
-        super().__init__()
+        super().__init__(hwnd)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         
         self.initUI()
