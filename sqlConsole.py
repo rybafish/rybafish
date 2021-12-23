@@ -3207,11 +3207,11 @@ class sqlConsole(QWidget):
         
     def executeSelection(self, mode):
     
-        if not cfg('dev') and self.config is None:
+        if self.config is None:
             self.log('No connection, connect RybaFish to the DB first.')
             return
             
-        if not cfg('dev') and self.conn is None:
+        if self.conn is None:
             self.log('The console is disconnected...')
             
             #answer = utils.yesNoDialog('Connect to db', 'The console is not connected to the DB. Connect as "%s@%s:%s"?' % (self.config['user'], self.config['host'], str(self.config['port'])))
