@@ -626,7 +626,9 @@ class myWidget(QWidget):
         if between and action == copyTSbetween:
             ts2 = time.strftime('%Y-%m-%d %H:%M:%S')
             
-            predicate = ts1
+            if ts1 > ts2:
+                ts1, ts2 = ts2, ts1
+            
             predicate = "between '%s' and '%s'" % (ts1, ts2)
             
             clipboard.setText(predicate)
