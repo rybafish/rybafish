@@ -1668,7 +1668,8 @@ class myWidget(QWidget):
                 time_array = self.ndata[h][timeKey]
 
                 if utils.cfg('colorize'):
-                    kpiPen = kpiDescriptions.radugaPens[raduga_i % 32]
+                    radugaSize = len(kpiDescriptions.radugaPens)
+                    kpiPen = kpiDescriptions.radugaPens[raduga_i % radugaSize]
                     raduga_i += 1
                 else:
                     kpiPen = self.kpiPen[type][kpi]
