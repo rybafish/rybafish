@@ -1072,9 +1072,22 @@ class myWidget(QWidget):
         
             type = hType(h, self.hosts)
             
+            dbinfo = ''
+            
+            if 'db' in self.hosts[h] and 'service' in self.hosts[h] and type == 'service':
+
+                if cfg('legendTenantName'):
+                    dbinfo += self.hosts[h]['db'] + ' '
+
+                if cfg('legendServiceName'):
+                    dbinfo += self.hosts[h]['service']
+                    
+            if dbinfo != '':
+                dbinfo = ', ' + dbinfo
+            
             if self.legend == 'hosts' and len(self.nkpis[h]) > 0:
                 # put a host label
-                lkpisl.append('%s:%s' % (self.hosts[h]['host'], self.hosts[h]['port']))
+                lkpisl.append('%s:%s%s' % (self.hosts[h]['host'], self.hosts[h]['port'], dbinfo))
                 lmeta.append(['host', None, 0, 0])
         
             for kpi in self.nkpis[h]:
@@ -1176,7 +1189,7 @@ class myWidget(QWidget):
             
             if ll > lLen:
                 lLen = ll
-                    
+
         fontHeight = fm.height()
         
         qp.setPen(QColor('#888'))

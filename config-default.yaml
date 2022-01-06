@@ -25,6 +25,10 @@ keepalive: 1200
 # uncomment to disable time scale on chart legend
 # legendTimeScale: False
 
+# uncomment to include tenant name and/or service name in legend
+#legendTenantName: True
+#legendServiceName: True
+
 ## uncomment to have experimental stuff (like sql console)
 #experimental: True
 

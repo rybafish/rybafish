@@ -64,6 +64,10 @@ class About(QDialog):
         if 'version' in ver and 'date' in ver:
             verStr = 'Last published version is %s, build %s.' % (ver['version'], ver['date'])
             self.updatesLabel.setText(verStr)
+
+        if 'versionBeta' in ver and 'dateBeta' in ver:
+            verStrBeta = 'Last <i>beta</i> is %s, %s.' % (ver['versionBeta'], ver['dateBeta'])
+            self.updatesLabelBeta.setText(verStrBeta)
         
         
     def checkUpdates(self):
@@ -96,6 +100,8 @@ class About(QDialog):
         img.setToolTip('You are more than the sum of what you consume.')
         
         self.updatesLabel = QLabel()
+        self.updatesLabelBeta = QLabel()
+        
         #self.updatesLabel.setText('To report bugs or check for updates please visit <a href="https://www.rybafish.net">https://rybafish.net</a>.')
 
         self.infoLabel = QLabel()
@@ -115,6 +121,7 @@ Current version: %s, build %s.
         vbox2.addWidget(txt)
         vbox2.addWidget(checkButton)
         vbox2.addWidget(self.updatesLabel)
+        vbox2.addWidget(self.updatesLabelBeta)
         vbox2.addWidget(QLabel())
         vbox2.addWidget(self.infoLabel)
         vbox2.addStretch(1)
