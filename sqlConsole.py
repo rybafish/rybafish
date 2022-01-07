@@ -1165,7 +1165,7 @@ class resultSet(QTableWidget):
     insertText = pyqtSignal(['QString'])
     executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
-
+    
     def __init__(self, conn):
     
         self._resultset_id = None    # filled manually right after execute_query
@@ -1239,9 +1239,16 @@ class resultSet(QTableWidget):
         #self.setStyleSheet('QTableWidget::item {padding: 2px; border: 1px; selection-background-color}')
         #self.setStyleSheet('QTableWidget::item:selected {padding: 2px; border: 1px; background-color: #08D}')
         
-    def highlightColumn(self, col, row = None):
+        self.highlightColumn = None     # column index to highlight
+        self.highlightValue = None      # value to highlight, when None - changes will be highlighted
+
+        
+    def highlightRefresh(self):
         rows = self.rowCount()
         cols = self.columnCount()
+        
+        col = self.highlightColumn
+        value = self.highlightValue
 
         if col == -1 or rows == 0:
             return
@@ -1257,10 +1264,10 @@ class resultSet(QTableWidget):
         wBrush = QBrush(QColor('#ffffff'))
         wBrushLOB = QBrush(QColor('#f4f4f4'))
         
-        if row is None:
+        if value is None:
             val = self.item(0, col).text()
         else:
-            val = self.item(row, col).text()
+            val = value
             
         lobCols = []
         
@@ -1270,7 +1277,7 @@ class resultSet(QTableWidget):
             
         for i in range(rows):
         
-            if row is None:
+            if value is None:
                 if val != self.item(i, col).text():
                     hl = not hl
             else:
@@ -1292,7 +1299,7 @@ class resultSet(QTableWidget):
                     else:
                         self.item(i, j).setBackground(wBrush)
                     
-            if row is None:
+            if value is None:
                 val = self.item(i, col).text()
     
     def contextMenuEvent(self, event):
@@ -1368,10 +1375,13 @@ class resultSet(QTableWidget):
         '''
         
         if cfg('experimental') and action == highlightColCh:
-            self.highlightColumn(i)
+            self.highlightColumn = i
+            self.highlightRefresh()
 
         if cfg('experimental') and action == highlightColVal:
-            self.highlightColumn(i, self.currentRow())
+            self.highlightColumn = i
+            self.highlightValue = self.item(self.currentRow(), i).text()
+            self.highlightRefresh()
         
         if action == insertColumnName:
             headers_norm = prepareColumns()
@@ -3967,7 +3977,9 @@ class sqlConsole(QWidget):
 
             result.populate(refreshMode)
             
-            
+            if result.highlightColumn:
+                result.highlightRefresh()
+
         if not self.timerAutorefresh:
             self.log(logText)
 
