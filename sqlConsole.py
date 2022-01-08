@@ -46,6 +46,8 @@ import customSQLs
 
 from PyQt5.QtCore import pyqtSignal
 
+reExpPlan = re.compile('explain\s+plan\s+for\s+sql\s+plan\s+cache\s+entry\s+(\d+)\s*$', re.I)
+
 class sqlWorker(QObject):
     finished = pyqtSignal()
 
@@ -3440,6 +3442,7 @@ class sqlConsole(QWidget):
         
         def selectSingle(start, stop):
             #print('selectSingle', start, stop)
+            
             self.manualSelect(start, stop, '#adf')
             
             #cursor = QTextCursor(self.cons.document())
@@ -3918,6 +3921,8 @@ class sqlConsole(QWidget):
             # self.results.remove(result) ?
             
             i = self.resultTabs.count()
+            log ('no resultset, so kill the tab #%i...' % i, 4)
+            
             self.resultTabs.removeTab(i-1)
             
             #return 2021-08-01
@@ -4029,6 +4034,29 @@ class sqlConsole(QWidget):
             triggers thread to execute the string without any analysis
             result populated in callback signal sqlFinished
         '''
+        
+        m = reExpPlan.search(sql)
+        
+        if m is not None:
+
+            plan_id = m.group(1)
+        
+            if len(self.stQueue) > 0:
+                self.log('explain plan not possible in queue, please run by itesf', True)
+                return
+
+            i = self.resultTabs.count()
+            log ('Normal statement execution flow aborted, so kill the tab #%i' % i, 4)
+            
+            self.resultTabs.removeTab(i-1)
+
+            sqls = []
+            
+            sqls.append("explain plan set statement_name = 'st$%s' for sql plan cache entry %s" % (plan_id, plan_id))
+            sqls.append("select * from explain_plan_table where statement_name = 'st%s';" % (plan_id))
+                
+            self.stQueue = sqls.copy()
+            self.launchStatementQueue()
         
         if self.sqlRunning:
             self.log('SQL still running...')

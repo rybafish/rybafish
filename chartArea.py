@@ -1184,11 +1184,29 @@ class myWidget(QWidget):
 
         # calculates longest label width
         
+        if len(lkpisl) != len(lmeta):
+            
+            log('[W] lkpisl != lmeta', 2)
+
+            log('[W] dumping lkpisl array', 2)
+            for z in lkpisl:
+                log('[W] %s' % str(z), 2)
+
+            log('[W] dumping lmeta array', 2)
+            for z in lmeta:
+                log('[W] %s' % str(z), 2)
+        
+        i = 0
         for label in lkpisl:
-            ll = fm.width(label)
+        
+            ident = 4  + lmeta[i][3]
+        
+            ll = fm.width(label) + ident + 8
             
             if ll > lLen:
                 lLen = ll
+                
+            i += 1
 
         fontHeight = fm.height()
         
@@ -1213,7 +1231,8 @@ class myWidget(QWidget):
         else:
             self.legendHeight = fontHeight * (len(lkpisl))+8
             
-        self.legendWidth = lLen + 58
+        #self.legendWidth = lLen + 58
+        self.legendWidth = lLen
 
         qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth, self.legendHeight)
         
