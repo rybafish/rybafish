@@ -54,8 +54,6 @@ class kpiCell(QWidget):
             qp.end()
             return
             
-        #print(self.penStyle)
-        
         qp.setPen(self.penStyle)
         
         if self.style == 'bar':
@@ -159,6 +157,10 @@ class kpiTable(QTableWidget):
             self.silentMode = True
             
             kpi = self.kpiNames[index.row()]
+            
+            if kpi not in self.kpiScales[self.host]:
+                return False
+            
             scale = self.kpiScales[self.host][kpi]
             
             scaleValue = scale['yScale']
@@ -181,7 +183,8 @@ class kpiTable(QTableWidget):
         try:
             newScale = int(item.text())
         except:
-            log('exception, not an integer value: %s' % (item.text()))
+            log('Not an integer value: %s, removing the manual scale' % (item.text()))
+            self.setScale.emit(self.host, self.kpiNames[item.row()], -1)
             return
         
         #log('kpiScales: %s' % (str(self.kpiScales[self.host])), 5)
@@ -335,7 +338,12 @@ class kpiTable(QTableWidget):
                 
                 kpiScale = self.kpiScales[self.host][kpiName]
                 
-                self.setItem(i, 3, QTableWidgetItem(str(kpiScale['label']))) # Y-Scale
+                scaleItem = QTableWidgetItem(str(kpiScale['label']))
+                
+                if kpiScale.get('manual'):
+                    scaleItem.setForeground(QBrush(QColor(0, 0, 255)))
+
+                self.setItem(i, 3, QTableWidgetItem(scaleItem)) # Y-Scale
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
                 self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))
                 self.setItem(i, 6, QTableWidgetItem(str(kpiScale['avg_label'])))
@@ -397,7 +405,13 @@ class kpiTable(QTableWidget):
                 else:
                     self.setItem(i, 1, QTableWidgetItem(style['label']))
 
-                self.setItem(i, 3, QTableWidgetItem(str(kpiScale['label']))) # Y-Scale
+                scaleItem = QTableWidgetItem(str(kpiScale['label']))
+                
+                if kpiScale.get('manual'):
+                    scaleItem.setForeground(QBrush(QColor(0, 0, 255)))
+                    
+                self.setItem(i, 3, scaleItem) # Y-Scale
+                
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
                 self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))
                 self.setItem(i, 6, QTableWidgetItem(str(kpiScale['avg_label'])))

@@ -294,6 +294,9 @@ class myWidget(QWidget):
             # for kpi in self.nkpis[h]:
             for kpi in self.nscales[h].keys():
             
+            
+                manualScale = False
+            
                 if kpi[:4] == 'time':
                     continue
                     
@@ -354,6 +357,7 @@ class myWidget(QWidget):
                     
                     if groupName == 0:
                         if 'manual_scale' in kpiStylesNN[type][kpi]:
+                            manualScale = True
                             max_value = kpiStylesNN[type][kpi]['manual_scale']
                             yScale = max_value_n = max_value
                         else:
@@ -369,6 +373,8 @@ class myWidget(QWidget):
                             #yScale = max_value_n = max_value # 2021-07-15, #429
                             yScale = max_value                # 2021-07-15, #429
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value) #429
+                            
+                            manualScale = True
                         else:
                             max_value = groupMax[groupName]
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
@@ -426,6 +432,11 @@ class myWidget(QWidget):
                     scaleKpi['yScale'] = yScale
                     scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
                     
+                    if manualScale:
+                        scaleKpi['manual'] = True
+                    else:
+                        scaleKpi['manual'] = False
+                        
                     if 'perSample' in kpiStylesNN[type][kpi]:
                         scaleKpi['unit'] = dUnit + '/sec'
                     else:
@@ -2295,9 +2306,17 @@ class chartArea(QFrame):
         group = kpiStylesNN[type][kpi]['group']
         
         if  group == 0:
-            kpiStylesNN[type][kpi]['manual_scale'] = newScale
+            if newScale == -1:
+                if 'manual_scale' in kpiStylesNN[type][kpi]:
+                    kpiStylesNN[type][kpi].pop('manual_scale')
+            else:
+                kpiStylesNN[type][kpi]['manual_scale'] = newScale
         else:
-            self.widget.manual_scales[group] = newScale
+            if newScale == -1:
+                if group in self.widget.manual_scales:
+                    self.widget.manual_scales.pop(group)
+            else:
+                self.widget.manual_scales[group] = newScale
             
         self.widget.alignScales()
         log('self.scalesUpdated.emit() #5', 5)
