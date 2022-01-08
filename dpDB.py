@@ -565,22 +565,6 @@ class dataProvider():
                     else:
                         i += 1
 
-                '''
-                
-                # old implementation , with errors 100%
-                
-                for i in range(len(data[kpi][entity])):
-                    print('gantt ', i)
-                    print('compare if 1 < 2?:', start, data[kpi][entity][i][1])
-                    # if start < data[kpi][entity][i][1]:
-                    if start < data[kpi][entity][i][1] and shift == data[kpi][entity][i][3]:
-                        print('(yes)')
-                    #    i = 0
-                        shift += 1
-                    else:
-                        print('(no)')
-                '''
-                    
                 data[kpi][entity].append([start, stop, desc, shift, titleValue])
             else:
                 data[kpi][entity] = [[start, stop, desc, 0, titleValue]]
