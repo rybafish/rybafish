@@ -529,50 +529,119 @@ class dataProvider():
         title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
         titleValue = None
         
+        j = 0
+        
+        t1 = time.time()
+        t1000 = t1
+        
+        lastShift = {}      #last index for each shift per entity, lastShift[entity][shift] = some index in data[kpi][entity] array
+
         for r in rows:
-            
             entity = str(r[0])
             start = r[1]
             stop = r[2]
+            #print('row:', j, r[3], start.strftime('%H:%M:%S'), stop.strftime('%H:%M:%S'))
             
             dur = formatTime((stop - start).total_seconds(), skipSeconds=True, skipMs=True)
             desc = str(r[3]).replace('$duration', dur)
 
             if title:
                 titleValue = r[4]
-               
-            #print ('curr: %s: %s - %s' % (desc, str(start), str(stop)))
             
             # go through entities
-            if entity in data[kpi]:
+            t1 = time.time()
             
+            if entity in data[kpi]:
                 shift = 0
                 i = 0
+                
+                ls = lastShift[entity]
+                #print('initial ls:', ls)
 
+                # old approach description:
                 # now for each bar inside the entity we check if there is something
                 # still runing with the same shift
                 
                 # we are sure if something ends after start of current bar it is an intersection
                 # because data is sorted by start ascending
                 
-                while i < len(data[kpi][entity]):
-                    #print('gantt ', i)
-                    #print('compare if 1 < 2?:', start, data[kpi][entity][i][1])
+                dataSize = len(data[kpi][entity])
+                
+                entry = data[kpi][entity]
+                
+                
+                # shift calculator here:
+                
+                    
+                #print('shift is: ', shift)
 
-                    if shift == data[kpi][entity][i][3] and start < data[kpi][entity][i][1]:
-                        shift += 1
-                        i = 0   # and we need to check from the scratch
+                if cfg('ganttOldImplementation', False):
+                    # performance inefficient one
+                    bkp = 0
+                    while i < dataSize:
+                        #print('%i/%i,  test if %s < %s' % (i, dataSize, start.strftime('%H:%M:%S'), data[kpi][entity][i][1].strftime('%H:%M:%S')))
+
+                        if shift == entry[i][3] and start < entry[i][1]:
+                            shift += 1
+                            
+                            i = 0   # and we need to check from the scratch
+                        else:
+                            i += 1
+                else:
+                    for shift in ls:
+                        i = ls[shift]
+                        
+                        #t = start < entry[i][1] #intersect?
+                        #print('%i,  test if %s < %s -->' % (shift, start.strftime('%H:%M:%S'), entry[i][1].strftime('%H:%M:%S')), t)
+                        
+                        if start < entry[i][1]: #we got an intersection, shift up!
+                            #print('continue')
+                            continue
+                        else:
+                            # no intersection in this shift, stop
+                            break
                     else:
-                        i += 1
+                        # did not detect any empty slot --> generate new entry
+                        shift += 1
+                        pass
 
+                '''
+                    #not a very improving attempt:
+                    
+                    bkp = 0
+                    while i < dataSize:
+                        if start < entry[i][1]: # if intersects...
+                            if shift == entry[i][3]:
+                                shift += 1
+                                i = bkp
+                        else:
+                            bkp = i
+
+                        i += 1
+                '''
+
+                ls[shift] = dataSize
+                
+                #print('final ls: ', ls)
+                
                 data[kpi][entity].append([start, stop, desc, shift, titleValue])
             else:
                 data[kpi][entity] = [[start, stop, desc, 0, titleValue]]
+                lastShift[entity] = {}
+                lastShift[entity][0] = 0
+                
+            t2 = time.time()
+            
+            j += 1
+            
+            if t2 - t0 > 10 and j % 1000 == 0:
+                log('Gantt render time per row: %i, %s, per 1000 = %s, cumulative: %s, and still running...' % (j, str(round(t2-t1, 3)), str(round(t2 - t1000, 3)), str(round(t2-t0, 3))), 2)
+                t1000 = t2
         
-        t1 = time.time()
+        t2 = time.time()
         
-        if t1 - t0 > 1:
-            log('Gantt render time: %s' % (str(round(t1-t0, 3))), 5)
+        if t2 - t0 > 1:
+            log('Gantt render time: %s' % (str(round(t2-t0, 3))), 3)
         
         '''
         for e in data[kpi]:
