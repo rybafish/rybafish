@@ -196,6 +196,16 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['title'] = kpi['title']
             else:
                 style['title'] = None
+
+            if 'brightness' in kpi:
+                style['brightness'] = kpi['brightness']
+            else:
+                style['brightness'] = None
+
+            if 'brightnessFromTo' in kpi:
+                style['brightnessFromTo'] = kpi['brightnessFromTo']
+            else:
+                style['brightnessFromTo'] = (0, 100)
                 
             clr = QColor(color)
             style['brush'] = clr

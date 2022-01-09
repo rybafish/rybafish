@@ -323,9 +323,16 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     
     scalarOutput = False
     
-    if len(metadata) > 0:
+    if len(metadata) > len(params):
         #scalar output detected so now do this dirty parameters preparation and even fake result fetch later....
         scalarOutput = True
+        
+        
+        if resultSize is not None:
+            log('[E] resultSize is None in scope of execute_query_desc only supposed for Gantt chart extraction')
+            log('[E] it does not support scalar output!')
+            raise dbException('Unsupported use of execute_query_desc, check logs.')
+            
         for p in metadata:
             # p - ParameterMetadata object
             log('Okay, Scalar output parameter: [%s]' % (str(p)), 3)
@@ -379,13 +386,19 @@ def execute_query_desc(connection, sql_string, params, resultSize):
             log('results to fetch: %i' % len(cursor.description_list), 5)
             
             scalar_shift = 1 if scalarOutput else 0
-            
+
             for i in range(len(cursor.description_list)):
                 #log('fetch many %i' % (i + scalar_shift), 5)
-                rows = cursor.fetchmany(resultSize, i+scalar_shift)
+                
+                if resultSize is not None:
+                    rows = cursor.fetchmany(resultSize, i+scalar_shift)
+                else:
+                    # unlimited fetch for gantt charts
+                    # all this scalar tricks are not supported here
+                    rows = cursor.fetchall()
                 
                 rows_list.append(rows)
-            
+                
             # cursor.close() does nothing anyway...
 
     except pyhdb.exceptions.DatabaseError as e:

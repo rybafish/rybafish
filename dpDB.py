@@ -22,6 +22,9 @@ import db
 from utils import cfg, log, yesNoDialog, formatTime
 from utils import dbException, customKPIException
 
+import traceback
+from os import getcwd
+
 class dataProvider():
     
     connection = None
@@ -440,7 +443,10 @@ class dataProvider():
                     title = ''
                     
                     if kpiDescriptions.kpiStylesNN[type][kpi].get('title') == True:
-                        title = ', title'
+                        title += ', title'
+                        
+                    if kpiDescriptions.kpiStylesNN[type][kpi].get('brightness') is not None:
+                        title += ', ' + kpiDescriptions.kpiStylesNN[type][kpi].get('brightness')
                       
                     sql = 'select entity, "START", "STOP", details%s %s %s%s order by entity desc, "START"' % (title, fromTable, hfilter_now, gtfilter_now)
                     gantt = True                    
@@ -455,6 +461,16 @@ class dataProvider():
             
                 reply = None
                 
+                
+                #details = '>>' + s.replace('\\n', '\n').replace(cwd, '..')
+                
+                cwd = getcwd()
+                
+                details = traceback.format_exc()
+                details = '>>' + details.replace('\\n', '\n').replace(cwd, '..')
+                
+                log(details, nots = True)
+
                 if customKpi(kpis[0]):
                     if True or str(e)[:22] == '[db]: sql syntax error':
                         log('yesNoDialog ---> disable %s?' % (kpiSrc))
@@ -513,21 +529,58 @@ class dataProvider():
 
     def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
         
+        def normalizeBrightness(brMin, brMax, fromTo):
+
+            #(targetMin, targetMax) = fromTo
+            (targetMax, targetMin) = fromTo # I like it reversed...
+            
+            delta = brMin
+            
+            if brMax != brMin:
+                k = (targetMax - targetMin)/(brMax - brMin)
+            else:
+                k = 1
+            
+            for entity in data[kpi]:
+                for i in range(len(data[kpi][entity])):
+                    data[kpi][entity][i][5] = ((data[kpi][entity][i][5] - delta) * k + targetMin)/100
+        
         try:
-            rows = db.execute_query(self.connection, sql, params)
+            #rows = db.execute_query(self.connection, sql, params)
+            rows_list, cols_list, dbCursor, psid = db.execute_query_desc(self.connection, sql, params, None)
         except Exception as e:
             log('[!] execute_query: %s' % str(e))
             #raise dbException('Database Exception')
             raise dbException('[db]: ' + str(e))
+
+
+        tIndex = None
+        brIndex = None
+        
+        rows = rows_list[0]
+
+        for i in range(len(cols_list[0])):
+            col = cols_list[0][i]
             
+            if col[0] == 'BRIGHTNESS':
+                brIndex = i
+                
+                brMin = rows[0][brIndex]
+                brMax = rows[0][brIndex]
+                
+            if col[0] == 'TITLE':
+                tIndex = i
+
+        
         log('Executed okay, %i rows' % len(rows))
         
         data[kpi] = {}
         
         t0 = time.time()
         
-        title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
+        #title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
         titleValue = None
+        brValue = None
         
         j = 0
         
@@ -545,8 +598,17 @@ class dataProvider():
             dur = formatTime((stop - start).total_seconds(), skipSeconds=True, skipMs=True)
             desc = str(r[3]).replace('$duration', dur)
 
-            if title:
-                titleValue = r[4]
+            if tIndex:
+                titleValue = r[tIndex]
+
+            if brIndex:
+                brValue = r[brIndex]
+                
+                if brValue > brMax:
+                    brMax = brValue
+
+                if brValue < brMin:
+                    brMin = brValue
             
             # go through entities
             t1 = time.time()
@@ -624,9 +686,9 @@ class dataProvider():
                 
                 #print('final ls: ', ls)
                 
-                data[kpi][entity].append([start, stop, desc, shift, titleValue])
+                data[kpi][entity].append([start, stop, desc, shift, titleValue, brValue])
             else:
-                data[kpi][entity] = [[start, stop, desc, 0, titleValue]]
+                data[kpi][entity] = [[start, stop, desc, 0, titleValue, brValue]]
                 lastShift[entity] = {}
                 lastShift[entity][0] = 0
                 
@@ -642,6 +704,13 @@ class dataProvider():
         
         if t2 - t0 > 1:
             log('Gantt render time: %s' % (str(round(t2-t0, 3))), 3)
+        
+        if brIndex:
+            fromTo = kpiDescriptions.kpiStylesNN[type][kpi].get('brightnessFromTo')
+            normalizeBrightness(brMin, brMax, fromTo)
+        
+        t3 = time.time()
+        log('Gantt brightness normalization time: %s' % (str(round(t3-t2, 3))), 3)
         
         '''
         for e in data[kpi]:

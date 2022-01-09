@@ -1324,6 +1324,21 @@ class myWidget(QWidget):
             scales need to be calculated/adjusted beforehand
         '''
     
+        def adjustBrightness(clr, v):
+        
+            #print(v)
+            #print(clr.red(), clr.green(), clr.blue())
+            
+            r = 255 - (255 - clr.red()) * v
+            g = 255 - (255 - clr.green()) * v
+            b = 255 - (255 - clr.blue()) * v
+            
+            clr = QColor(r, g, b)
+            
+            #print(clr.red(), clr.green(), clr.blue())
+            
+            return clr
+            
         def longestStr(str):
         
             l = 0
@@ -1500,6 +1515,11 @@ class myWidget(QWidget):
                         title = True
                     else:
                         title = False
+
+                    if kpiStylesNN[type][kpi].get('brightness'):
+                        brightness = True
+                    else:
+                        brightness = False
                 else:
                     gantt = False
                 
@@ -1541,6 +1561,8 @@ class myWidget(QWidget):
                     x_scale = self.step_size / self.t_scale
 
                     qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
+                    
+                    ganttBaseColor = kpiStylesNN[type][kpi]['brush']
                     
                     #print(kpiStylesNN[type][kpi])
                     
@@ -1594,14 +1616,25 @@ class myWidget(QWidget):
                             else:
                                 ganttPen.setWidth(1)
                             
-
                             qp.setPen(ganttPen)
                             
                             if kpiStylesNN[type][kpi]['style'] == 'bar':
+
+                                if brightness:
+                                    bv = t[5]
+                                    
+                                    if bv is not None:
+                                        rgb = adjustBrightness(ganttBaseColor, bv)
+                                        qp.setBrush(rgb)
+                                    
+                                    #rgb = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+                                    #qp.setPen(QPen(rgb))
+
                                 qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
-                                
+                                    
                                 if title:
                                     tv = t[4]
+                                    #print(tv)
                                     
                                     tWidth = tfm.width(tv)
                                     
