@@ -328,7 +328,7 @@ def execute_query_desc(connection, sql_string, params, resultSize):
         scalarOutput = True
         
         
-        if resultSize is not None:
+        if resultSize is None:
             log('[E] resultSize is None in scope of execute_query_desc only supposed for Gantt chart extraction')
             log('[E] it does not support scalar output!')
             raise dbException('Unsupported use of execute_query_desc, check logs.')
