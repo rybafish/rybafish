@@ -558,6 +558,11 @@ class dataProvider():
         brIndex = None
         
         rows = rows_list[0]
+        
+        log('Executed okay, %i rows' % len(rows))
+
+        if len(rows) == 0:
+            return
 
         for i in range(len(cols_list[0])):
             col = cols_list[0][i]
@@ -571,9 +576,6 @@ class dataProvider():
             if col[0] == 'TITLE':
                 tIndex = i
 
-        
-        log('Executed okay, %i rows' % len(rows))
-        
         data[kpi] = {}
         
         t0 = time.time()
