@@ -4,6 +4,9 @@ server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 ## Chart related stuff here
 ##
 
+## uncomment to have experimental stuff
+#experimental: True
+
 # loglevel, 3 is default, 0 - no log at all, 5 - log all messages (including SQL strings)
 loglevel: 3
 
@@ -29,8 +32,9 @@ keepalive: 1200
 #legendTenantName: True
 #legendServiceName: True
 
-## uncomment to have experimental stuff (like sql console)
-#experimental: True
+# uncomment to enable old gantt render algorithm (potentially slow, see .log file for measurements)
+#ganttOldImplementation: True
+
 
 ##
 ## SQL Console related section

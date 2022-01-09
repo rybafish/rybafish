@@ -4053,7 +4053,9 @@ class sqlConsole(QWidget):
             sqls = []
             
             sqls.append("explain plan set statement_name = 'st$%s' for sql plan cache entry %s" % (plan_id, plan_id))
-            sqls.append("select * from explain_plan_table where statement_name = 'st%s';" % (plan_id))
+            sqls.append("select * from explain_plan_table where statement_name = 'st$%s'" % (plan_id))
+            sqls.append("delete from explain_plan_table where statement_name = 'st$%s'" % (plan_id))
+            sqls.append("commit")
                 
             self.stQueue = sqls.copy()
             self.launchStatementQueue()
