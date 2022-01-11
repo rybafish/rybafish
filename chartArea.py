@@ -1176,9 +1176,9 @@ class myWidget(QWidget):
                                     
                                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
                                     pen = QPen(pen)
-                                    pen.setWidth(2)
+                                    pen.setWidth(cfg('chartWidth', 1)*2)
                                 else:
-                                    pen.setWidth(1)
+                                    pen.setWidth(cfg('chartWidth', 1))
                                     
                                 lmeta.append(['', pen, 0, 44])
                                 
@@ -1779,10 +1779,10 @@ class myWidget(QWidget):
                             kpiPen = kpiDescriptions.getRadugaPen()
 
                     if highlight and (subtype != 'multiline' or self.highlightedGBI == rn):
-                        kpiPen.setWidth(2)
+                        kpiPen.setWidth(cfg('chartWidth', 1)*2)
                         qp.setPen(kpiPen)
                     else:
-                        kpiPen.setWidth(1)
+                        kpiPen.setWidth(cfg('chartWidth', 1))
                         qp.setPen(kpiPen)
 
                     points_to_draw = calculateOne()
