@@ -35,6 +35,8 @@ keepalive: 1200
 # uncomment to enable old gantt render algorithm (potentially slow, see .log file for measurements)
 #ganttOldImplementation: True
 
+# optional limit for autorefresh: if autorefresh takes longer - it will disabled.
+#autorefreshThreshold: 60
 
 ##
 ## SQL Console related section

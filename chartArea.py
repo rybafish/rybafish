@@ -2050,6 +2050,8 @@ class chartArea(QFrame):
     fromTime = None
     toTime = None
     
+    suppressStatus = None # supress status update, intended for autorefresh theshold vialation message
+    
     def indicatorSignal(self):
         self.selfRaise.emit(self.parentWidget())
     
@@ -2652,7 +2654,9 @@ class chartArea(QFrame):
             self.timer = None
 
         if txtValue == 'none':
-            self.statusMessage('Autorefresh disabled.')
+            if self.suppressStatus is None:
+                self.statusMessage('Autorefresh disabled.')
+                
             log('Autorefresh disabled.')
             return
         
@@ -3070,10 +3074,24 @@ class chartArea(QFrame):
         
         if actualRequest:
             self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
+            
+            arThreshold = cfg('autorefreshThreshold', 0)
+            
+            if timerF and arThreshold > 0 and (t1-t0) > arThreshold:
+
+                log('Stopping autorefresh as last refresh took too long: %s > autorefreshThreshold = %i' % (str(round(t1-t0, 3)), arThreshold), 2)
+                self.statusMessage('Stopping autorefresh as last refresh took too long %s > autorefreshThreshold = %i' % (str(round(t1-t0, 3)), arThreshold))
+                
+                self.suppressStatus = True
+                self.refreshCB.setCurrentIndex(0)
+                self.suppressStatus = None
+
+                timerF = False
+                
         else:
             self.statusMessage('Ready')
         
-        if timerF == True:
+        if timerF == True and self.timer is not None:
             self.timer.start(1000 * self.refreshTime)
 
         self.reloadLock = False

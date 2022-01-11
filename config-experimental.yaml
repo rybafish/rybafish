@@ -30,6 +30,9 @@ experimental: True
 
 longdate: True
 
+# optional limit for autorefresh: if autorefresh takes longer - it will disabled.
+#autorefreshThreshold: 60
+
 ##
 ## SQL Console related section
 ##
