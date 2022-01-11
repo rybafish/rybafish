@@ -408,14 +408,13 @@ class myWidget(QWidget):
                         
                     subtype = kpiDescriptions.getSubtype(type, kpi)
                     
-                    if subtype == 'multiline':
+                    if subtype == 'multiline' and kpi in self.nscalesml[h]:
                         for gb in self.nscalesml[h][kpi]:
                             mx = self.nscalesml[h][kpi][gb]['max']
                             lst = self.nscalesml[h][kpi][gb]['last']
                             self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], mx, d), d)
                             self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], lst, d), d)
                             self.nscalesml[h][kpi][gb]['avg_label'] = ''
-                            
                         
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)

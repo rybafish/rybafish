@@ -530,6 +530,9 @@ class dataProvider():
     def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
         
         def normalizeBrightness(brMin, brMax, fromTo):
+        
+            if cfg('dev'):
+                log('Gantt brightness normalization', 5)
 
             #(targetMin, targetMax) = fromTo
             (targetMax, targetMin) = fromTo # I like it reversed...
@@ -543,6 +546,9 @@ class dataProvider():
             
             for entity in data[kpi]:
                 for i in range(len(data[kpi][entity])):
+                    if cfg('dev'):
+                        log('  %i -> %i' % (data[kpi][entity][i][5], ((data[kpi][entity][i][5] - delta) * k + targetMin)/100), 5)
+                        
                     data[kpi][entity][i][5] = ((data[kpi][entity][i][5] - delta) * k + targetMin)/100
         
         try:
@@ -567,7 +573,9 @@ class dataProvider():
         for i in range(len(cols_list[0])):
             col = cols_list[0][i]
             
-            if col[0] == 'BRIGHTNESS':
+            br = kpiDescriptions.kpiStylesNN[type][kpi].get('brightness')
+            
+            if br and col[0] == br.upper(): #'BRIGHTNESS'
                 brIndex = i
                 
                 brMin = rows[0][brIndex]
@@ -603,7 +611,7 @@ class dataProvider():
             if tIndex:
                 titleValue = r[tIndex]
 
-            if brIndex:
+            if brIndex is not None:
                 brValue = r[brIndex]
                 
                 if brValue > brMax:
@@ -707,12 +715,12 @@ class dataProvider():
         if t2 - t0 > 1:
             log('Gantt render time: %s' % (str(round(t2-t0, 3))), 3)
         
-        if brIndex:
+        if brIndex is not None:
             fromTo = kpiDescriptions.kpiStylesNN[type][kpi].get('brightnessFromTo')
             normalizeBrightness(brMin, brMax, fromTo)
         
-        t3 = time.time()
-        log('Gantt brightness normalization time: %s' % (str(round(t3-t2, 3))), 3)
+            t3 = time.time()
+            log('Gantt brightness normalization time: %s' % (str(round(t3-t2, 3))), 3)
         
         '''
         for e in data[kpi]:
@@ -992,7 +1000,8 @@ class dataProvider():
             raise Exception('Integer only allowed as kpi value')
 
 
-        if multiline and stacked:
+        if multiline and stacked and kpis_[0] in data:
+            # kpis_[0] in data actually checks if the data dict actuallny not empty, otherwise fails in "frames = len(data[kpis_[0]]) # must be time line"
         
             t00 = time.time()
 
@@ -1009,6 +1018,7 @@ class dataProvider():
                 # print('kpi:', kpi)
                 
                 # print(data.keys())
+                
                 frames = len(data[kpis_[0]]) # must be time line
                 scan = data[kpi]
                 
