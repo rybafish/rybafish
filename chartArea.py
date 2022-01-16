@@ -1323,14 +1323,19 @@ class myWidget(QWidget):
             scales need to be calculated/adjusted beforehand
         '''
     
-        def adjustBrightness(clr, v):
+        def adjustGradient(clr, clrTo, v):
         
+            #clrTo = QColor('#F00')
+            
+            (toR, toG, toB) = (clrTo.red(), clrTo.green(), clrTo.blue())
+            (frR, frG, frB) = (clr.red(), clr.green(), clr.blue())
+            
             #print(v)
             #print(clr.red(), clr.green(), clr.blue())
             
-            r = 255 - (255 - clr.red()) * v
-            g = 255 - (255 - clr.green()) * v
-            b = 255 - (255 - clr.blue()) * v
+            r = frR + (toR - frR) * v
+            g = frG + (toG - frG) * v
+            b = frB + (toB - frB) * v
             
             clr = QColor(r, g, b)
             
@@ -1515,10 +1520,10 @@ class myWidget(QWidget):
                     else:
                         title = False
 
-                    if kpiStylesNN[type][kpi].get('brightness'):
-                        brightness = True
+                    if kpiStylesNN[type][kpi].get('gradient'):
+                        gradient = True
                     else:
-                        brightness = False
+                        gradient = False
                 else:
                     gantt = False
                 
@@ -1562,6 +1567,7 @@ class myWidget(QWidget):
                     qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
                     
                     ganttBaseColor = kpiStylesNN[type][kpi]['brush']
+                    ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']
                     
                     #print(kpiStylesNN[type][kpi])
                     
@@ -1619,11 +1625,11 @@ class myWidget(QWidget):
                             
                             if kpiStylesNN[type][kpi]['style'] == 'bar':
 
-                                if brightness:
+                                if gradient:
                                     bv = t[5]
                                     
                                     if bv is not None:
-                                        rgb = adjustBrightness(ganttBaseColor, bv)
+                                        rgb = adjustGradient(ganttBaseColor, ganttFadeColor, bv)
                                         qp.setBrush(rgb)
                                     
                                     #rgb = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)

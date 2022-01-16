@@ -445,8 +445,8 @@ class dataProvider():
                     if kpiDescriptions.kpiStylesNN[type][kpi].get('title') == True:
                         title += ', title'
                         
-                    if kpiDescriptions.kpiStylesNN[type][kpi].get('brightness') is not None:
-                        title += ', ' + kpiDescriptions.kpiStylesNN[type][kpi].get('brightness')
+                    if kpiDescriptions.kpiStylesNN[type][kpi].get('gradient') == True:
+                        title += ', gradient'
                       
                     sql = 'select entity, "START", "STOP", details%s %s %s%s order by entity desc, "START"' % (title, fromTable, hfilter_now, gtfilter_now)
                     gantt = True                    
@@ -529,13 +529,14 @@ class dataProvider():
 
     def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
         
-        def normalizeBrightness(brMin, brMax, fromTo):
+        def normalizeGradient(brMin, brMax, fromTo = (0, 100)):
         
+            (targetMin, targetMax) = fromTo
+            #(targetMax, targetMin) = fromTo # I like it reversed...
+            
             if cfg('dev'):
-                log('Gantt brightness normalization', 5)
-
-            #(targetMin, targetMax) = fromTo
-            (targetMax, targetMin) = fromTo # I like it reversed...
+                log('Gantt gradient normalization', 5)
+                log('targetMax %i,  targetMin %i' % (targetMax, targetMin), 5)
             
             delta = brMin
             
@@ -547,7 +548,7 @@ class dataProvider():
             for entity in data[kpi]:
                 for i in range(len(data[kpi][entity])):
                     if cfg('dev'):
-                        log('  %i -> %i' % (data[kpi][entity][i][5], ((data[kpi][entity][i][5] - delta) * k + targetMin)/100), 5)
+                        log('  %i -> %.2f' % (data[kpi][entity][i][5], ((data[kpi][entity][i][5] - delta) * k + targetMin)/100), 5)
                         
                     data[kpi][entity][i][5] = ((data[kpi][entity][i][5] - delta) * k + targetMin)/100
         
@@ -573,9 +574,9 @@ class dataProvider():
         for i in range(len(cols_list[0])):
             col = cols_list[0][i]
             
-            br = kpiDescriptions.kpiStylesNN[type][kpi].get('brightness')
+            br = kpiDescriptions.kpiStylesNN[type][kpi].get('gradient')
             
-            if br and col[0] == br.upper(): #'BRIGHTNESS'
+            if br and col[0] == 'GRADIENT': #'GRADIENT'
                 brIndex = i
                 
                 brMin = rows[0][brIndex]
@@ -716,11 +717,10 @@ class dataProvider():
             log('Gantt render time: %s' % (str(round(t2-t0, 3))), 3)
         
         if brIndex is not None:
-            fromTo = kpiDescriptions.kpiStylesNN[type][kpi].get('brightnessFromTo')
-            normalizeBrightness(brMin, brMax, fromTo)
+            normalizeGradient(brMin, brMax)
         
             t3 = time.time()
-            log('Gantt brightness normalization time: %s' % (str(round(t3-t2, 3))), 3)
+            log('Gantt gradient normalization time: %s' % (str(round(t3-t2, 3))), 3)
         
         '''
         for e in data[kpi]:
