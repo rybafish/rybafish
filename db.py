@@ -300,6 +300,9 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     
     log('[SQL]: %s' % sql_string, 5)
 
+    if len(params) > 0:
+        log('[PRMS]: %s' % str(params), 5)
+
     try:
         psid = cursor.prepare(sql_string)
     except pyhdb.exceptions.DatabaseError as e:
@@ -345,6 +348,9 @@ def execute_query_desc(connection, sql_string, params, resultSize):
     try:
         ps = cursor.get_prepared_statement(psid)
 
+        if len(params) > 0:
+            log('[PRMS]: %s' % str(params), 5)
+            
         cursor.execute_prepared(ps, [params])
         
         columns_list = cursor.description_list.copy()

@@ -569,6 +569,17 @@ class dataProvider():
         log('Executed okay, %i rows' % len(rows))
 
         if len(rows) == 0:
+            data[kpi] = {}
+            
+            '''
+            we need to check if kpi is in data at all first, then...
+            
+            # should we iterrate through the entities and clear?... not sure
+            
+            if len(data[kpi]) > 0:
+                data[kpi].clear() 
+            '''
+                
             return
 
         for i in range(len(cols_list[0])):
