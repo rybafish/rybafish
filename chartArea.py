@@ -80,6 +80,7 @@ class myWidget(QWidget):
     nscalesml = [] # min and max values for multiline groupbys, list of dicts (per host)
     
     manual_scales = {} # if/when scale manually adjusted, per group! like 'mem', 'threads'
+                       # since #562 it is two values: from - to. From in 99% is 0
 
     # config section
     # to be filled during __init__ somehow
@@ -355,10 +356,14 @@ class myWidget(QWidget):
                     # 0 group means no groupping at all, individual scales
                     # != 0 means some type of group (not mem and not cpu)
                     
+                    yScaleLow = 0
+                    
                     if groupName == 0:
                         if 'manual_scale' in kpiStylesNN[type][kpi]:
                             manualScale = True
-                            max_value = kpiStylesNN[type][kpi]['manual_scale']
+                            min_value = kpiStylesNN[type][kpi]['manual_scale'][0]
+                            max_value = kpiStylesNN[type][kpi]['manual_scale'][1]
+                            yScaleLow = min_value
                             yScale = max_value_n = max_value
                         else:
                             max_value = self.nscales[h][kpi]['max']
@@ -369,9 +374,11 @@ class myWidget(QWidget):
                         if groupName in self.manual_scales:
                             #print('manual scale')
                             #print(kpiStylesNN[type][kpi]['sUnit'], '-->', kpiStylesNN[type][kpi]['dUnit'])
-                            max_value = self.manual_scales[groupName] 
+                            min_value = self.manual_scales[groupName][0]
+                            max_value = self.manual_scales[groupName][1]
                             #yScale = max_value_n = max_value # 2021-07-15, #429
-                            yScale = max_value                # 2021-07-15, #429
+                            yScaleLow = min_value             # 2022-01-19  #562
+                            yScale = max_value                # 2021-07-15, #429 
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value) #429
                             
                             manualScale = True
@@ -385,6 +392,11 @@ class myWidget(QWidget):
                                 kpiStylesNN[type][kpi]['decimal'] = 1
 
                             yScale = self.ceiling(int(max_value_n))
+                     
+                    # later:
+                    #scaleKpi['yScale'] = yScale
+                    #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
+                            
                     
                     '''
                         max_value_n, yScale must be defined by this line
@@ -419,6 +431,9 @@ class myWidget(QWidget):
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
                     
+                    if yScaleLow != 0:
+                        scaleKpi['y_min'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScaleLow)
+                    
                     dUnit = kpiStylesNN[type][kpi]['sUnit'] # not converted
 
                     if max_value_n == max_value:
@@ -429,8 +444,13 @@ class myWidget(QWidget):
                     
                     #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value_n / 10), utils.numberToStr(max_value_n)))
                     scaleKpi['yScale'] = yScale
-                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
                     
+                    if yScaleLow == 0:
+                        scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
+                    else:
+                        scaleKpi['yScaleLow'] = yScaleLow
+                        scaleKpi['label'] = ('%s / %s - %s' % (utils.numberToStr((yScale - yScaleLow)/ 10), utils.numberToStr(yScaleLow), utils.numberToStr(yScale)))
+                        
                     if manualScale:
                         scaleKpi['manual'] = True
                     else:
@@ -959,13 +979,19 @@ class myWidget(QWidget):
                     break
                 
                 y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
+                
+                #y = self.nscales[h][kpi]['y_min'] + y*y_scale #562
+                #y = (y - self.nscales[h][kpi]['y_min']) * y_scale #562
+
 
                 ymin = y_min
-                ymin = scales[kpi]['y_min'] + ymin*y_scale
+                #ymin = scales[kpi]['y_min'] + ymin*y_scale                     #562
+                ymin = (ymin - scales[kpi]['y_min']) *y_scale                   #562
                 ymin = round(wsize.height() - self.bottom_margin - ymin) - 2
 
                 ymax = y_max
-                ymax = scales[kpi]['y_min'] + ymax*y_scale
+                #ymax = scales[kpi]['y_min'] + ymax*y_scale                     #562
+                ymax = (ymax - scales[kpi]['y_min'])*y_scale                    #562
                 ymax = round(wsize.height() - self.bottom_margin - ymax) - 2
                 
                 #log('%s = %i' % (kpi, self.scan[i]))
@@ -1368,7 +1394,7 @@ class myWidget(QWidget):
                 y_scale = 0
             else:
                 y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(self.nscales[h][kpi]['y_max'] - self.nscales[h][kpi]['y_min'])
-            
+                
             x_scale = self.step_size / self.t_scale
 
 
@@ -1420,7 +1446,8 @@ class myWidget(QWidget):
                 if y < 0:
                     y = wsize.height() - self.bottom_margin - 1
                 else:
-                    y = self.nscales[h][kpi]['y_min'] + y*y_scale
+                    #y = self.nscales[h][kpi]['y_min'] + y*y_scale #562
+                    y = (y - self.nscales[h][kpi]['y_min']) * y_scale #562
                     y = round(wsize.height() - self.bottom_margin - y) - 2
 
                 if False and x0 == int(x) and y0 == int(y): # it's same point no need to draw
@@ -1440,6 +1467,11 @@ class myWidget(QWidget):
                 x0 = int(x)
                 y0 = int(y)
                     
+                    
+                #print(x, y)
+                points[points_to_draw] = QPoint(x, y)
+                points_to_draw += 1
+                '''
                 try: 
                     points[points_to_draw] = QPoint(x, y)
                     points_to_draw += 1
@@ -1447,6 +1479,7 @@ class myWidget(QWidget):
                     log('failed: %s %i = %i, x, y = (%i, %i)' % (kpi, i, self.data[kpi][i], x, y))
                     log('scales: %s' % (str(self.scales[kpi])))
                     break
+                '''
 
             #if start_point == 0:
             #   t1 = time.time()
@@ -1504,8 +1537,6 @@ class myWidget(QWidget):
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
 
 
-                #print(kpiStylesNN[type][kpi]['subtype'])
-                
                 if kpi not in kpiStylesNN[type]:
                     log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
                     self.nkpis[h].remove(kpi)
@@ -1569,8 +1600,7 @@ class myWidget(QWidget):
                     ganttBaseColor = kpiStylesNN[type][kpi]['brush']
                     ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']
                     
-                    #print(kpiStylesNN[type][kpi])
-                    
+                                        
                     if len(gc) > 0:
                         yr = kpiStylesNN[type][kpi]['y_range']
                         
@@ -2335,34 +2365,35 @@ class chartArea(QFrame):
         self.toEdit.setStyleSheet("color: blue;")
         self.fromEdit.setFocus()
         
-    def setScale(self, host, kpi, newScale):
+    def setScale(self, host, kpi, yMin, yMax):
         '''
             scale changed to manual value
         '''
-        log('setScale signal: %s -> %i' % (kpi, newScale))
+        log('setScale signal: %s -> %i-%i' % (kpi, yMin, yMax))
         
         type = hType(host, self.widget.hosts)
         
         group = kpiStylesNN[type][kpi]['group']
         
         if  group == 0:
-            if newScale == -1:
+            if yMax == -1:
                 if 'manual_scale' in kpiStylesNN[type][kpi]:
                     kpiStylesNN[type][kpi].pop('manual_scale')
             else:
-                kpiStylesNN[type][kpi]['manual_scale'] = newScale
+                kpiStylesNN[type][kpi]['manual_scale'] = (yMin, yMax)
         else:
-            if newScale == -1:
+            if yMax == -1:
                 if group in self.widget.manual_scales:
                     self.widget.manual_scales.pop(group)
             else:
-                self.widget.manual_scales[group] = newScale
+                self.widget.manual_scales[group]= (yMin, yMax)
             
         self.widget.alignScales()
         log('self.scalesUpdated.emit() #5', 5)
         self.scalesUpdated.emit()
         self.widget.update()
         
+    '''
     def adjustScale(self, mode, kpi):
         log('increaseScale signal: %s' % (kpi))
         
@@ -2382,6 +2413,7 @@ class chartArea(QFrame):
         log('self.scalesUpdated.emit() #6', 5)
         self.scalesUpdated.emit()
         self.widget.update()
+    '''
         
     def connectionLost(self, err_str = ''):
         '''
