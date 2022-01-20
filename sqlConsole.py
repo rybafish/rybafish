@@ -3081,7 +3081,13 @@ class sqlConsole(QWidget):
             db.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
 
-            self.indicator.status = 'idle'
+            #self.indicator.status = 'idle'
+            
+            if self.timerAutorefresh:
+                self.indicator.status = 'autorefresh'
+            else:
+                self.indicator.status = 'idle'
+            
             self.indicator.repaint()
             
             log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
