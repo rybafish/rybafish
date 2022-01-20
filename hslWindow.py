@@ -1219,7 +1219,7 @@ class hslWindow(QMainWindow):
         kpisTable.checkboxToggle.connect(self.chartArea.checkboxToggle)
         
         # bind change scales signal
-        kpisTable.adjustScale.connect(self.chartArea.adjustScale)
+        #kpisTable.adjustScale.connect(self.chartArea.adjustScale)
         kpisTable.setScale.connect(self.chartArea.setScale)
 
         # host table row change signal

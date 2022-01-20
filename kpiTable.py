@@ -106,7 +106,7 @@ class kpiTable(QTableWidget):
 
     adjustScale = pyqtSignal(['QString', 'QString'])
     
-    setScale = pyqtSignal([int, 'QString', int])
+    setScale = pyqtSignal([int, 'QString', int, int])
 
     def __init__(self):
 
@@ -164,7 +164,14 @@ class kpiTable(QTableWidget):
             scale = self.kpiScales[self.host][kpi]
             
             scaleValue = scale['yScale']
-            self.item(index.row(), 3).setText(str(scaleValue))
+            scaleValueLow = scale.get('yScaleLow')
+            
+            if scaleValueLow and scale.get('manual'):
+                label = '%i-%i' % (scaleValueLow, scaleValue)
+            else:
+                label = str(scaleValue)
+                
+            self.item(index.row(), 3).setText(label)
             
             self.silentMode = False
             
@@ -176,21 +183,25 @@ class kpiTable(QTableWidget):
             
             need to check if correct column changed, btw
         '''
-
+        
         if self.silentMode:
             return
         
         try:
-            newScale = int(item.text())
+            s = item.text()
+            
+            if s.find('-') > 0:
+                yMin = int(s[:s.find('-')].strip())
+                yMax = int(s[s.find('-')+1:].strip())
+            else:
+                yMin = 0
+                yMax = int(item.text())
         except:
             log('Not an integer value: %s, removing the manual scale' % (item.text()))
-            self.setScale.emit(self.host, self.kpiNames[item.row()], -1)
+            self.setScale.emit(self.host, self.kpiNames[item.row()], -1, -1)
             return
-        
-        #log('kpiScales: %s' % (str(self.kpiScales[self.host])), 5)
-        self.setScale.emit(self.host, self.kpiNames[item.row()], newScale)
-        
-        #self.setFont(QFont('SansSerif', 8, QFont.Bold))
+
+        self.setScale.emit(self.host, self.kpiNames[item.row()], yMin, yMax)
         
     def loadScales(self):
         # for kpi in scales: log(kpi)

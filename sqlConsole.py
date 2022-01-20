@@ -2865,13 +2865,19 @@ class sqlConsole(QWidget):
             
     def alertProcessing(self, fileName):
     
+        #print('alertProcessing')
+    
         if fileName == '' or fileName is None:
             fileName = cfg('alertSound', 'default')
         else:
             pass
             
+        #print('filename:', fileName)
+            
         if fileName.find('.') == -1:
             fileName += '.wav'
+            
+        #print('filename:', fileName)
             
         if '/' in fileName or '\\' in fileName:
             #must be a path to some file...
@@ -2884,6 +2890,8 @@ class sqlConsole(QWidget):
             else:
                 #okay, take it from the build then...
                 fileName = resourcePath(fileName)
+                
+        #print('filename:', fileName)
 
         #log('Sound file name: %s' % fileName, 4)
         
@@ -2906,6 +2914,9 @@ class sqlConsole(QWidget):
             
         vol /= 100
             
+            
+        print('play!')
+        
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
@@ -3053,7 +3064,7 @@ class sqlConsole(QWidget):
             return
             
         if self.sqlRunning:
-            log('SQL still running, need to skip keep-alive') # #362
+            log('SQL still running, skip keep-alive') # #362
             self.timer.stop()
             self.timer.start(1000 * self.timerkeepalive)
             return
@@ -3070,12 +3081,19 @@ class sqlConsole(QWidget):
             db.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
 
-            self.indicator.status = 'idle'
+            #self.indicator.status = 'idle'
+            
+            if self.timerAutorefresh:
+                self.indicator.status = 'autorefresh'
+            else:
+                self.indicator.status = 'idle'
+            
             self.indicator.repaint()
             
             log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
         except dbException as e:
             log('Trigger autoreconnect...')
+            self.log('Connection lost, trigger autoreconnect...')
             try:
                 conn = db.console_connection(self.config)
                 if conn is not None:
@@ -3105,6 +3123,10 @@ class sqlConsole(QWidget):
                 self.stopKeepAlive()
                 self.conn = None
                 self.connection_id = None
+                
+                if self.timerAutorefresh is not None and cfg('alertDisconnected'):
+                    self.alertProcessing(cfg('alertDisconnected'))
+                
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
             log('[!] %s' % str(e))
@@ -3692,6 +3714,9 @@ class sqlConsole(QWidget):
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
+        if self.timerAutorefresh is not None and cfg('alertDisconnected'):
+            self.alertProcessing(cfg('alertDisconnected'))
+            
         reply = None
         
         while reply != QMessageBox.No and self.conn is None:
