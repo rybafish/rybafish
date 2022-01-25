@@ -3045,6 +3045,10 @@ class chartArea(QFrame):
                     toTime += ' 23:59:59'
                     self.toEdit.setText(toTime)
                     #self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+                elif len(toTime) > 11 and len(toTime) <19:
+                    lt = 19 - len(toTime)
+                    toTime += ' 00:00:00'[9 - lt:]
+                    self.toEdit.setText(toTime)
 
                 self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
                     

@@ -1040,7 +1040,10 @@ class dataProvider():
                     
                     acc_value = 0
                     for gbi in range(len(gb)):
-                        acc_value += scan[gbi][1][i]
+                    
+                        if scan[gbi][1][i] > 0:             # otherwise it decreases the stacked values, #568
+                            acc_value += scan[gbi][1][i]
+                            
                         scan[gbi][1][i] = acc_value
                         
             t01 = time.time()
