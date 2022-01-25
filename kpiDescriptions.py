@@ -196,9 +196,23 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['title'] = kpi['title']
             else:
                 style['title'] = None
+
+            if 'gradient' in kpi:
+                style['gradient'] = kpi['gradient']
+            else:
+                style['gradient'] = None
+
+            if 'gradientTo' in kpi:
+                brightnessTo = kpi['gradientTo']
+            else:
+                brightnessTo = '#F00'
                 
             clr = QColor(color)
             style['brush'] = clr
+
+            clrFade = QColor(brightnessTo)
+            style['gradientTo'] = clrFade
+
             penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
             style['pen'] = QPen(penColor, 1, penStyle)
             

@@ -80,6 +80,7 @@ class myWidget(QWidget):
     nscalesml = [] # min and max values for multiline groupbys, list of dicts (per host)
     
     manual_scales = {} # if/when scale manually adjusted, per group! like 'mem', 'threads'
+                       # since #562 it is two values: from - to. From in 99% is 0
 
     # config section
     # to be filled during __init__ somehow
@@ -294,6 +295,9 @@ class myWidget(QWidget):
             # for kpi in self.nkpis[h]:
             for kpi in self.nscales[h].keys():
             
+            
+                manualScale = False
+            
                 if kpi[:4] == 'time':
                     continue
                     
@@ -352,9 +356,14 @@ class myWidget(QWidget):
                     # 0 group means no groupping at all, individual scales
                     # != 0 means some type of group (not mem and not cpu)
                     
+                    yScaleLow = 0
+                    
                     if groupName == 0:
                         if 'manual_scale' in kpiStylesNN[type][kpi]:
-                            max_value = kpiStylesNN[type][kpi]['manual_scale']
+                            manualScale = True
+                            min_value = kpiStylesNN[type][kpi]['manual_scale'][0]
+                            max_value = kpiStylesNN[type][kpi]['manual_scale'][1]
+                            yScaleLow = min_value
                             yScale = max_value_n = max_value
                         else:
                             max_value = self.nscales[h][kpi]['max']
@@ -365,10 +374,14 @@ class myWidget(QWidget):
                         if groupName in self.manual_scales:
                             #print('manual scale')
                             #print(kpiStylesNN[type][kpi]['sUnit'], '-->', kpiStylesNN[type][kpi]['dUnit'])
-                            max_value = self.manual_scales[groupName] 
+                            min_value = self.manual_scales[groupName][0]
+                            max_value = self.manual_scales[groupName][1]
                             #yScale = max_value_n = max_value # 2021-07-15, #429
-                            yScale = max_value                # 2021-07-15, #429
+                            yScaleLow = min_value             # 2022-01-19  #562
+                            yScale = max_value                # 2021-07-15, #429 
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value) #429
+                            
+                            manualScale = True
                         else:
                             max_value = groupMax[groupName]
                             max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
@@ -379,6 +392,11 @@ class myWidget(QWidget):
                                 kpiStylesNN[type][kpi]['decimal'] = 1
 
                             yScale = self.ceiling(int(max_value_n))
+                     
+                    # later:
+                    #scaleKpi['yScale'] = yScale
+                    #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
+                            
                     
                     '''
                         max_value_n, yScale must be defined by this line
@@ -402,17 +420,19 @@ class myWidget(QWidget):
                         
                     subtype = kpiDescriptions.getSubtype(type, kpi)
                     
-                    if subtype == 'multiline':
+                    if subtype == 'multiline' and kpi in self.nscalesml[h]:
                         for gb in self.nscalesml[h][kpi]:
                             mx = self.nscalesml[h][kpi][gb]['max']
                             lst = self.nscalesml[h][kpi][gb]['last']
                             self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], mx, d), d)
                             self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], lst, d), d)
                             self.nscalesml[h][kpi][gb]['avg_label'] = ''
-                            
                         
                     # scaleKpi['y_max'] = max_value
                     scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
+                    
+                    if yScaleLow != 0:
+                        scaleKpi['y_min'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScaleLow)
                     
                     dUnit = kpiStylesNN[type][kpi]['sUnit'] # not converted
 
@@ -424,8 +444,18 @@ class myWidget(QWidget):
                     
                     #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value_n / 10), utils.numberToStr(max_value_n)))
                     scaleKpi['yScale'] = yScale
-                    scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
                     
+                    if yScaleLow == 0:
+                        scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
+                    else:
+                        scaleKpi['yScaleLow'] = yScaleLow
+                        scaleKpi['label'] = ('%s / %s - %s' % (utils.numberToStr((yScale - yScaleLow)/ 10), utils.numberToStr(yScaleLow), utils.numberToStr(yScale)))
+                        
+                    if manualScale:
+                        scaleKpi['manual'] = True
+                    else:
+                        scaleKpi['manual'] = False
+                        
                     if 'perSample' in kpiStylesNN[type][kpi]:
                         scaleKpi['unit'] = dUnit + '/sec'
                     else:
@@ -949,13 +979,19 @@ class myWidget(QWidget):
                     break
                 
                 y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(scales[kpi]['y_max'] - scales[kpi]['y_min'])
+                
+                #y = self.nscales[h][kpi]['y_min'] + y*y_scale #562
+                #y = (y - self.nscales[h][kpi]['y_min']) * y_scale #562
+
 
                 ymin = y_min
-                ymin = scales[kpi]['y_min'] + ymin*y_scale
+                #ymin = scales[kpi]['y_min'] + ymin*y_scale                     #562
+                ymin = (ymin - scales[kpi]['y_min']) *y_scale                   #562
                 ymin = round(wsize.height() - self.bottom_margin - ymin) - 2
 
                 ymax = y_max
-                ymax = scales[kpi]['y_min'] + ymax*y_scale
+                #ymax = scales[kpi]['y_min'] + ymax*y_scale                     #562
+                ymax = (ymax - scales[kpi]['y_min'])*y_scale                    #562
                 ymax = round(wsize.height() - self.bottom_margin - ymax) - 2
                 
                 #log('%s = %i' % (kpi, self.scan[i]))
@@ -1072,9 +1108,22 @@ class myWidget(QWidget):
         
             type = hType(h, self.hosts)
             
+            dbinfo = ''
+            
+            if 'db' in self.hosts[h] and 'service' in self.hosts[h] and type == 'service':
+
+                if cfg('legendTenantName'):
+                    dbinfo += self.hosts[h]['db'] + ' '
+
+                if cfg('legendServiceName'):
+                    dbinfo += self.hosts[h]['service']
+                    
+            if dbinfo != '':
+                dbinfo = ', ' + dbinfo
+            
             if self.legend == 'hosts' and len(self.nkpis[h]) > 0:
                 # put a host label
-                lkpisl.append('%s:%s' % (self.hosts[h]['host'], self.hosts[h]['port']))
+                lkpisl.append('%s:%s%s' % (self.hosts[h]['host'], self.hosts[h]['port'], dbinfo))
                 lmeta.append(['host', None, 0, 0])
         
             for kpi in self.nkpis[h]:
@@ -1153,9 +1202,9 @@ class myWidget(QWidget):
                                     
                                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
                                     pen = QPen(pen)
-                                    pen.setWidth(2)
+                                    pen.setWidth(cfg('chartWidth', 1)*2)
                                 else:
-                                    pen.setWidth(1)
+                                    pen.setWidth(cfg('chartWidth', 1))
                                     
                                 lmeta.append(['', pen, 0, 44])
                                 
@@ -1171,12 +1220,30 @@ class myWidget(QWidget):
 
         # calculates longest label width
         
+        if len(lkpisl) != len(lmeta):
+            
+            log('[W] lkpisl != lmeta', 2)
+
+            log('[W] dumping lkpisl array', 2)
+            for z in lkpisl:
+                log('[W] %s' % str(z), 2)
+
+            log('[W] dumping lmeta array', 2)
+            for z in lmeta:
+                log('[W] %s' % str(z), 2)
+        
+        i = 0
         for label in lkpisl:
-            ll = fm.width(label)
+        
+            ident = 4  + lmeta[i][3]
+        
+            ll = fm.width(label) + ident + 8
             
             if ll > lLen:
                 lLen = ll
-                    
+                
+            i += 1
+
         fontHeight = fm.height()
         
         qp.setPen(QColor('#888'))
@@ -1200,7 +1267,8 @@ class myWidget(QWidget):
         else:
             self.legendHeight = fontHeight * (len(lkpisl))+8
             
-        self.legendWidth = lLen + 58
+        #self.legendWidth = lLen + 58
+        self.legendWidth = lLen
 
         qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth, self.legendHeight)
         
@@ -1281,6 +1349,26 @@ class myWidget(QWidget):
             scales need to be calculated/adjusted beforehand
         '''
     
+        def adjustGradient(clr, clrTo, v):
+        
+            #clrTo = QColor('#F00')
+            
+            (toR, toG, toB) = (clrTo.red(), clrTo.green(), clrTo.blue())
+            (frR, frG, frB) = (clr.red(), clr.green(), clr.blue())
+            
+            #print(v)
+            #print(clr.red(), clr.green(), clr.blue())
+            
+            r = frR + (toR - frR) * v
+            g = frG + (toG - frG) * v
+            b = frB + (toB - frB) * v
+            
+            clr = QColor(r, g, b)
+            
+            #print(clr.red(), clr.green(), clr.blue())
+            
+            return clr
+            
         def longestStr(str):
         
             l = 0
@@ -1306,7 +1394,7 @@ class myWidget(QWidget):
                 y_scale = 0
             else:
                 y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)/(self.nscales[h][kpi]['y_max'] - self.nscales[h][kpi]['y_min'])
-            
+                
             x_scale = self.step_size / self.t_scale
 
 
@@ -1358,7 +1446,8 @@ class myWidget(QWidget):
                 if y < 0:
                     y = wsize.height() - self.bottom_margin - 1
                 else:
-                    y = self.nscales[h][kpi]['y_min'] + y*y_scale
+                    #y = self.nscales[h][kpi]['y_min'] + y*y_scale #562
+                    y = (y - self.nscales[h][kpi]['y_min']) * y_scale #562
                     y = round(wsize.height() - self.bottom_margin - y) - 2
 
                 if False and x0 == int(x) and y0 == int(y): # it's same point no need to draw
@@ -1378,6 +1467,11 @@ class myWidget(QWidget):
                 x0 = int(x)
                 y0 = int(y)
                     
+                    
+                #print(x, y)
+                points[points_to_draw] = QPoint(x, y)
+                points_to_draw += 1
+                '''
                 try: 
                     points[points_to_draw] = QPoint(x, y)
                     points_to_draw += 1
@@ -1385,6 +1479,7 @@ class myWidget(QWidget):
                     log('failed: %s %i = %i, x, y = (%i, %i)' % (kpi, i, self.data[kpi][i], x, y))
                     log('scales: %s' % (str(self.scales[kpi])))
                     break
+                '''
 
             #if start_point == 0:
             #   t1 = time.time()
@@ -1442,8 +1537,6 @@ class myWidget(QWidget):
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
 
 
-                #print(kpiStylesNN[type][kpi]['subtype'])
-                
                 if kpi not in kpiStylesNN[type]:
                     log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
                     self.nkpis[h].remove(kpi)
@@ -1457,6 +1550,11 @@ class myWidget(QWidget):
                         title = True
                     else:
                         title = False
+
+                    if kpiStylesNN[type][kpi].get('gradient'):
+                        gradient = True
+                    else:
+                        gradient = False
                 else:
                     gantt = False
                 
@@ -1499,8 +1597,10 @@ class myWidget(QWidget):
 
                     qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
                     
-                    #print(kpiStylesNN[type][kpi])
+                    ganttBaseColor = kpiStylesNN[type][kpi]['brush']
+                    ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']
                     
+                                        
                     if len(gc) > 0:
                         yr = kpiStylesNN[type][kpi]['y_range']
                         
@@ -1551,14 +1651,25 @@ class myWidget(QWidget):
                             else:
                                 ganttPen.setWidth(1)
                             
-
                             qp.setPen(ganttPen)
                             
                             if kpiStylesNN[type][kpi]['style'] == 'bar':
+
+                                if gradient:
+                                    bv = t[5]
+                                    
+                                    if bv is not None:
+                                        rgb = adjustGradient(ganttBaseColor, ganttFadeColor, bv)
+                                        qp.setBrush(rgb)
+                                    
+                                    #rgb = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+                                    #qp.setPen(QPen(rgb))
+
                                 qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
-                                
+                                    
                                 if title:
                                     tv = t[4]
+                                    #print(tv)
                                     
                                     tWidth = tfm.width(tv)
                                     
@@ -1655,7 +1766,8 @@ class myWidget(QWidget):
                 time_array = self.ndata[h][timeKey]
 
                 if utils.cfg('colorize'):
-                    kpiPen = kpiDescriptions.radugaPens[raduga_i % 32]
+                    radugaSize = len(kpiDescriptions.radugaPens)
+                    kpiPen = kpiDescriptions.radugaPens[raduga_i % radugaSize]
                     raduga_i += 1
                 else:
                     kpiPen = self.kpiPen[type][kpi]
@@ -1703,10 +1815,10 @@ class myWidget(QWidget):
                             kpiPen = kpiDescriptions.getRadugaPen()
 
                     if highlight and (subtype != 'multiline' or self.highlightedGBI == rn):
-                        kpiPen.setWidth(2)
+                        kpiPen.setWidth(cfg('chartWidth', 1)*2)
                         qp.setPen(kpiPen)
                     else:
-                        kpiPen.setWidth(1)
+                        kpiPen.setWidth(cfg('chartWidth', 1))
                         qp.setPen(kpiPen)
 
                     points_to_draw = calculateOne()
@@ -1973,6 +2085,8 @@ class chartArea(QFrame):
     #last refresh time range
     fromTime = None
     toTime = None
+    
+    suppressStatus = None # supress status update, intended for autorefresh theshold vialation message
     
     def indicatorSignal(self):
         self.selfRaise.emit(self.parentWidget())
@@ -2251,26 +2365,35 @@ class chartArea(QFrame):
         self.toEdit.setStyleSheet("color: blue;")
         self.fromEdit.setFocus()
         
-    def setScale(self, host, kpi, newScale):
+    def setScale(self, host, kpi, yMin, yMax):
         '''
             scale changed to manual value
         '''
-        log('setScale signal: %s -> %i' % (kpi, newScale))
+        log('setScale signal: %s -> %i-%i' % (kpi, yMin, yMax))
         
         type = hType(host, self.widget.hosts)
         
         group = kpiStylesNN[type][kpi]['group']
         
         if  group == 0:
-            kpiStylesNN[type][kpi]['manual_scale'] = newScale
+            if yMax == -1:
+                if 'manual_scale' in kpiStylesNN[type][kpi]:
+                    kpiStylesNN[type][kpi].pop('manual_scale')
+            else:
+                kpiStylesNN[type][kpi]['manual_scale'] = (yMin, yMax)
         else:
-            self.widget.manual_scales[group] = newScale
+            if yMax == -1:
+                if group in self.widget.manual_scales:
+                    self.widget.manual_scales.pop(group)
+            else:
+                self.widget.manual_scales[group]= (yMin, yMax)
             
         self.widget.alignScales()
         log('self.scalesUpdated.emit() #5', 5)
         self.scalesUpdated.emit()
         self.widget.update()
         
+    '''
     def adjustScale(self, mode, kpi):
         log('increaseScale signal: %s' % (kpi))
         
@@ -2290,6 +2413,7 @@ class chartArea(QFrame):
         log('self.scalesUpdated.emit() #6', 5)
         self.scalesUpdated.emit()
         self.widget.update()
+    '''
         
     def connectionLost(self, err_str = ''):
         '''
@@ -2568,7 +2692,9 @@ class chartArea(QFrame):
             self.timer = None
 
         if txtValue == 'none':
-            self.statusMessage('Autorefresh disabled.')
+            if self.suppressStatus is None:
+                self.statusMessage('Autorefresh disabled.')
+                
             log('Autorefresh disabled.')
             return
         
@@ -2919,6 +3045,10 @@ class chartArea(QFrame):
                     toTime += ' 23:59:59'
                     self.toEdit.setText(toTime)
                     #self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+                elif len(toTime) > 11 and len(toTime) <19:
+                    lt = 19 - len(toTime)
+                    toTime += ' 00:00:00'[9 - lt:]
+                    self.toEdit.setText(toTime)
 
                 self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
                     
@@ -2986,10 +3116,24 @@ class chartArea(QFrame):
         
         if actualRequest:
             self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
+            
+            arThreshold = cfg('autorefreshThreshold', 0)
+            
+            if timerF and arThreshold > 0 and (t1-t0) > arThreshold:
+
+                log('Stopping autorefresh as last refresh took too long: %s > autorefreshThreshold = %i' % (str(round(t1-t0, 3)), arThreshold), 2)
+                self.statusMessage('Stopping autorefresh as last refresh took too long %s > autorefreshThreshold = %i' % (str(round(t1-t0, 3)), arThreshold))
+                
+                self.suppressStatus = True
+                self.refreshCB.setCurrentIndex(0)
+                self.suppressStatus = None
+
+                timerF = False
+                
         else:
             self.statusMessage('Ready')
         
-        if timerF == True:
+        if timerF == True and self.timer is not None:
             self.timer.start(1000 * self.refreshTime)
 
         self.reloadLock = False

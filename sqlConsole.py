@@ -46,6 +46,8 @@ import customSQLs
 
 from PyQt5.QtCore import pyqtSignal
 
+reExpPlan = re.compile('explain\s+plan\s+for\s+sql\s+plan\s+cache\s+entry\s+(\d+)\s*$', re.I)
+
 class sqlWorker(QObject):
     finished = pyqtSignal()
 
@@ -1165,7 +1167,7 @@ class resultSet(QTableWidget):
     insertText = pyqtSignal(['QString'])
     executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
-
+    
     def __init__(self, conn):
     
         self._resultset_id = None    # filled manually right after execute_query
@@ -1239,9 +1241,16 @@ class resultSet(QTableWidget):
         #self.setStyleSheet('QTableWidget::item {padding: 2px; border: 1px; selection-background-color}')
         #self.setStyleSheet('QTableWidget::item:selected {padding: 2px; border: 1px; background-color: #08D}')
         
-    def highlightColumn(self, col, row = None):
+        self.highlightColumn = None     # column index to highlight
+        self.highlightValue = None      # value to highlight, when None - changes will be highlighted
+
+        
+    def highlightRefresh(self):
         rows = self.rowCount()
         cols = self.columnCount()
+        
+        col = self.highlightColumn
+        value = self.highlightValue
 
         if col == -1 or rows == 0:
             return
@@ -1257,10 +1266,10 @@ class resultSet(QTableWidget):
         wBrush = QBrush(QColor('#ffffff'))
         wBrushLOB = QBrush(QColor('#f4f4f4'))
         
-        if row is None:
+        if value is None:
             val = self.item(0, col).text()
         else:
-            val = self.item(row, col).text()
+            val = value
             
         lobCols = []
         
@@ -1270,7 +1279,7 @@ class resultSet(QTableWidget):
             
         for i in range(rows):
         
-            if row is None:
+            if value is None:
                 if val != self.item(i, col).text():
                     hl = not hl
             else:
@@ -1292,7 +1301,7 @@ class resultSet(QTableWidget):
                     else:
                         self.item(i, j).setBackground(wBrush)
                     
-            if row is None:
+            if value is None:
                 val = self.item(i, col).text()
     
     def contextMenuEvent(self, event):
@@ -1368,10 +1377,13 @@ class resultSet(QTableWidget):
         '''
         
         if cfg('experimental') and action == highlightColCh:
-            self.highlightColumn(i)
+            self.highlightColumn = i
+            self.highlightRefresh()
 
         if cfg('experimental') and action == highlightColVal:
-            self.highlightColumn(i, self.currentRow())
+            self.highlightColumn = i
+            self.highlightValue = self.item(self.currentRow(), i).text()
+            self.highlightRefresh()
         
         if action == insertColumnName:
             headers_norm = prepareColumns()
@@ -2853,13 +2865,19 @@ class sqlConsole(QWidget):
             
     def alertProcessing(self, fileName):
     
+        #print('alertProcessing')
+    
         if fileName == '' or fileName is None:
             fileName = cfg('alertSound', 'default')
         else:
             pass
             
+        #print('filename:', fileName)
+            
         if fileName.find('.') == -1:
             fileName += '.wav'
+            
+        #print('filename:', fileName)
             
         if '/' in fileName or '\\' in fileName:
             #must be a path to some file...
@@ -2872,6 +2890,8 @@ class sqlConsole(QWidget):
             else:
                 #okay, take it from the build then...
                 fileName = resourcePath(fileName)
+                
+        #print('filename:', fileName)
 
         #log('Sound file name: %s' % fileName, 4)
         
@@ -2894,6 +2914,9 @@ class sqlConsole(QWidget):
             
         vol /= 100
             
+            
+        print('play!')
+        
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
@@ -3041,7 +3064,7 @@ class sqlConsole(QWidget):
             return
             
         if self.sqlRunning:
-            log('SQL still running, need to skip keep-alive') # #362
+            log('SQL still running, skip keep-alive') # #362
             self.timer.stop()
             self.timer.start(1000 * self.timerkeepalive)
             return
@@ -3058,12 +3081,19 @@ class sqlConsole(QWidget):
             db.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
 
-            self.indicator.status = 'idle'
+            #self.indicator.status = 'idle'
+            
+            if self.timerAutorefresh:
+                self.indicator.status = 'autorefresh'
+            else:
+                self.indicator.status = 'idle'
+            
             self.indicator.repaint()
             
             log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
         except dbException as e:
             log('Trigger autoreconnect...')
+            self.log('Connection lost, trigger autoreconnect...')
             try:
                 conn = db.console_connection(self.config)
                 if conn is not None:
@@ -3093,6 +3123,10 @@ class sqlConsole(QWidget):
                 self.stopKeepAlive()
                 self.conn = None
                 self.connection_id = None
+                
+                if self.timerAutorefresh is not None and cfg('alertDisconnected'):
+                    self.alertProcessing(cfg('alertDisconnected'))
+                
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
             log('[!] %s' % str(e))
@@ -3430,6 +3464,7 @@ class sqlConsole(QWidget):
         
         def selectSingle(start, stop):
             #print('selectSingle', start, stop)
+            
             self.manualSelect(start, stop, '#adf')
             
             #cursor = QTextCursor(self.cons.document())
@@ -3679,6 +3714,10 @@ class sqlConsole(QWidget):
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
+        if self.timerAutorefresh is not None and cfg('alertDisconnected'):
+            log('play the disconnect sound...', 4)
+            self.alertProcessing(cfg('alertDisconnected'))
+            
         reply = None
         
         while reply != QMessageBox.No and self.conn is None:
@@ -3908,6 +3947,8 @@ class sqlConsole(QWidget):
             # self.results.remove(result) ?
             
             i = self.resultTabs.count()
+            log ('no resultset, so kill the tab #%i...' % i, 4)
+            
             self.resultTabs.removeTab(i-1)
             
             #return 2021-08-01
@@ -3967,7 +4008,9 @@ class sqlConsole(QWidget):
 
             result.populate(refreshMode)
             
-            
+            if result.highlightColumn:
+                result.highlightRefresh()
+
         if not self.timerAutorefresh:
             self.log(logText)
 
@@ -4017,6 +4060,31 @@ class sqlConsole(QWidget):
             triggers thread to execute the string without any analysis
             result populated in callback signal sqlFinished
         '''
+        
+        m = reExpPlan.search(sql)
+        
+        if m is not None:
+
+            plan_id = m.group(1)
+        
+            if len(self.stQueue) > 0:
+                self.log('explain plan not possible in queue, please run by itesf', True)
+                return
+
+            i = self.resultTabs.count()
+            log ('Normal statement execution flow aborted, so kill the tab #%i' % i, 4)
+            
+            self.resultTabs.removeTab(i-1)
+
+            sqls = []
+            
+            sqls.append("explain plan set statement_name = 'st$%s' for sql plan cache entry %s" % (plan_id, plan_id))
+            sqls.append("select * from explain_plan_table where statement_name = 'st$%s'" % (plan_id))
+            sqls.append("delete from explain_plan_table where statement_name = 'st$%s'" % (plan_id))
+            sqls.append("commit")
+                
+            self.stQueue = sqls.copy()
+            self.launchStatementQueue()
         
         if self.sqlRunning:
             self.log('SQL still running...')

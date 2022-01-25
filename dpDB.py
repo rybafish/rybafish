@@ -22,6 +22,9 @@ import db
 from utils import cfg, log, yesNoDialog, formatTime
 from utils import dbException, customKPIException
 
+import traceback
+from os import getcwd
+
 class dataProvider():
     
     connection = None
@@ -440,7 +443,10 @@ class dataProvider():
                     title = ''
                     
                     if kpiDescriptions.kpiStylesNN[type][kpi].get('title') == True:
-                        title = ', title'
+                        title += ', title'
+                        
+                    if kpiDescriptions.kpiStylesNN[type][kpi].get('gradient') == True:
+                        title += ', gradient'
                       
                     sql = 'select entity, "START", "STOP", details%s %s %s%s order by entity desc, "START"' % (title, fromTable, hfilter_now, gtfilter_now)
                     gantt = True                    
@@ -455,6 +461,16 @@ class dataProvider():
             
                 reply = None
                 
+                
+                #details = '>>' + s.replace('\\n', '\n').replace(cwd, '..')
+                
+                cwd = getcwd()
+                
+                details = traceback.format_exc()
+                details = '>>' + details.replace('\\n', '\n').replace(cwd, '..')
+                
+                log(details, nots = True)
+
                 if customKpi(kpis[0]):
                     if True or str(e)[:22] == '[db]: sql syntax error':
                         log('yesNoDialog ---> disable %s?' % (kpiSrc))
@@ -513,82 +529,209 @@ class dataProvider():
 
     def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
         
+        def normalizeGradient(brMin, brMax, fromTo = (0, 100)):
+        
+            (targetMin, targetMax) = fromTo
+            #(targetMax, targetMin) = fromTo # I like it reversed...
+            
+            if cfg('dev'):
+                log('Gantt gradient normalization', 5)
+                log('targetMax %i,  targetMin %i' % (targetMax, targetMin), 5)
+            
+            delta = brMin
+            
+            if brMax != brMin:
+                k = (targetMax - targetMin)/(brMax - brMin)
+            else:
+                k = 1
+            
+            for entity in data[kpi]:
+                for i in range(len(data[kpi][entity])):
+                    if cfg('dev'):
+                        log('  %i -> %.2f' % (data[kpi][entity][i][5], ((data[kpi][entity][i][5] - delta) * k + targetMin)/100), 5)
+                        
+                    data[kpi][entity][i][5] = ((data[kpi][entity][i][5] - delta) * k + targetMin)/100
+        
         try:
-            rows = db.execute_query(self.connection, sql, params)
+            #rows = db.execute_query(self.connection, sql, params)
+            rows_list, cols_list, dbCursor, psid = db.execute_query_desc(self.connection, sql, params, None)
         except Exception as e:
             log('[!] execute_query: %s' % str(e))
             #raise dbException('Database Exception')
             raise dbException('[db]: ' + str(e))
-            
-        log('Executed okay, %i rows' % len(rows))
+
+
+        tIndex = None
+        brIndex = None
         
+        rows = rows_list[0]
+        
+        log('Executed okay, %i rows' % len(rows))
+
+        if len(rows) == 0:
+            data[kpi] = {}
+            
+            '''
+            we need to check if kpi is in data at all first, then...
+            
+            # should we iterrate through the entities and clear?... not sure
+            
+            if len(data[kpi]) > 0:
+                data[kpi].clear() 
+            '''
+                
+            return
+
+        for i in range(len(cols_list[0])):
+            col = cols_list[0][i]
+            
+            br = kpiDescriptions.kpiStylesNN[type][kpi].get('gradient')
+            
+            if br and col[0] == 'GRADIENT': #'GRADIENT'
+                brIndex = i
+                
+                brMin = rows[0][brIndex]
+                brMax = rows[0][brIndex]
+                
+            if col[0] == 'TITLE':
+                tIndex = i
+
         data[kpi] = {}
         
         t0 = time.time()
         
-        title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
+        #title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
         titleValue = None
+        brValue = None
         
+        j = 0
+        
+        t1 = time.time()
+        t1000 = t1
+        
+        lastShift = {}      #last index for each shift per entity, lastShift[entity][shift] = some index in data[kpi][entity] array
+
         for r in rows:
-            
             entity = str(r[0])
             start = r[1]
             stop = r[2]
+            #print('row:', j, r[3], start.strftime('%H:%M:%S'), stop.strftime('%H:%M:%S'))
             
             dur = formatTime((stop - start).total_seconds(), skipSeconds=True, skipMs=True)
             desc = str(r[3]).replace('$duration', dur)
 
-            if title:
-                titleValue = r[4]
-               
-            #print ('curr: %s: %s - %s' % (desc, str(start), str(stop)))
+            if tIndex:
+                titleValue = r[tIndex]
+
+            if brIndex is not None:
+                brValue = r[brIndex]
+                
+                if brValue > brMax:
+                    brMax = brValue
+
+                if brValue < brMin:
+                    brMin = brValue
             
             # go through entities
-            if entity in data[kpi]:
+            t1 = time.time()
             
+            if entity in data[kpi]:
                 shift = 0
                 i = 0
+                
+                ls = lastShift[entity]
+                #print('initial ls:', ls)
 
+                # old approach description:
                 # now for each bar inside the entity we check if there is something
                 # still runing with the same shift
                 
                 # we are sure if something ends after start of current bar it is an intersection
                 # because data is sorted by start ascending
                 
-                while i < len(data[kpi][entity]):
-                    #print('gantt ', i)
-                    #print('compare if 1 < 2?:', start, data[kpi][entity][i][1])
-
-                    if shift == data[kpi][entity][i][3] and start < data[kpi][entity][i][1]:
-                        shift += 1
-                        i = 0   # and we need to check from the scratch
-                    else:
-                        i += 1
-
-                '''
+                dataSize = len(data[kpi][entity])
                 
-                # old implementation , with errors 100%
+                entry = data[kpi][entity]
                 
-                for i in range(len(data[kpi][entity])):
-                    print('gantt ', i)
-                    print('compare if 1 < 2?:', start, data[kpi][entity][i][1])
-                    # if start < data[kpi][entity][i][1]:
-                    if start < data[kpi][entity][i][1] and shift == data[kpi][entity][i][3]:
-                        print('(yes)')
-                    #    i = 0
-                        shift += 1
-                    else:
-                        print('(no)')
-                '''
+                
+                # shift calculator here:
+                
                     
-                data[kpi][entity].append([start, stop, desc, shift, titleValue])
+                #print('shift is: ', shift)
+
+                if cfg('ganttOldImplementation', False):
+                    # performance inefficient one
+                    bkp = 0
+                    while i < dataSize:
+                        #print('%i/%i,  test if %s < %s' % (i, dataSize, start.strftime('%H:%M:%S'), data[kpi][entity][i][1].strftime('%H:%M:%S')))
+
+                        if shift == entry[i][3] and start < entry[i][1]:
+                            shift += 1
+                            
+                            i = 0   # and we need to check from the scratch
+                        else:
+                            i += 1
+                else:
+                    for shift in ls:
+                        i = ls[shift]
+                        
+                        #t = start < entry[i][1] #intersect?
+                        #print('%i,  test if %s < %s -->' % (shift, start.strftime('%H:%M:%S'), entry[i][1].strftime('%H:%M:%S')), t)
+                        
+                        if start < entry[i][1]: #we got an intersection, shift up!
+                            #print('continue')
+                            continue
+                        else:
+                            # no intersection in this shift, stop
+                            break
+                    else:
+                        # did not detect any empty slot --> generate new entry
+                        shift += 1
+                        pass
+
+                '''
+                    #not a very improving attempt:
+                    
+                    bkp = 0
+                    while i < dataSize:
+                        if start < entry[i][1]: # if intersects...
+                            if shift == entry[i][3]:
+                                shift += 1
+                                i = bkp
+                        else:
+                            bkp = i
+
+                        i += 1
+                '''
+
+                ls[shift] = dataSize
+                
+                #print('final ls: ', ls)
+                
+                data[kpi][entity].append([start, stop, desc, shift, titleValue, brValue])
             else:
-                data[kpi][entity] = [[start, stop, desc, 0, titleValue]]
+                data[kpi][entity] = [[start, stop, desc, 0, titleValue, brValue]]
+                lastShift[entity] = {}
+                lastShift[entity][0] = 0
+                
+            t2 = time.time()
+            
+            j += 1
+            
+            if t2 - t0 > 10 and j % 1000 == 0:
+                log('Gantt render time per row: %i, %s, per 1000 = %s, cumulative: %s, and still running...' % (j, str(round(t2-t1, 3)), str(round(t2 - t1000, 3)), str(round(t2-t0, 3))), 2)
+                t1000 = t2
         
-        t1 = time.time()
+        t2 = time.time()
         
-        if t1 - t0 > 1:
-            log('Gantt render time: %s' % (str(round(t1-t0, 3))), 5)
+        if t2 - t0 > 1:
+            log('Gantt render time: %s' % (str(round(t2-t0, 3))), 3)
+        
+        if brIndex is not None:
+            normalizeGradient(brMin, brMax)
+        
+            t3 = time.time()
+            log('Gantt gradient normalization time: %s' % (str(round(t3-t2, 3))), 3)
         
         '''
         for e in data[kpi]:
@@ -868,7 +1011,8 @@ class dataProvider():
             raise Exception('Integer only allowed as kpi value')
 
 
-        if multiline and stacked:
+        if multiline and stacked and kpis_[0] in data:
+            # kpis_[0] in data actually checks if the data dict actuallny not empty, otherwise fails in "frames = len(data[kpis_[0]]) # must be time line"
         
             t00 = time.time()
 
@@ -885,6 +1029,7 @@ class dataProvider():
                 # print('kpi:', kpi)
                 
                 # print(data.keys())
+                
                 frames = len(data[kpis_[0]]) # must be time line
                 scan = data[kpi]
                 
@@ -895,7 +1040,10 @@ class dataProvider():
                     
                     acc_value = 0
                     for gbi in range(len(gb)):
-                        acc_value += scan[gbi][1][i]
+                    
+                        if scan[gbi][1][i] > 0:             # otherwise it decreases the stacked values, #568
+                            acc_value += scan[gbi][1][i]
+                            
                         scan[gbi][1][i] = acc_value
                         
             t01 = time.time()

@@ -4,6 +4,9 @@ server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 ## Chart related stuff here
 ##
 
+## uncomment to have experimental stuff
+#experimental: True
+
 # loglevel, 3 is default, 0 - no log at all, 5 - log all messages (including SQL strings)
 loglevel: 3
 
@@ -25,8 +28,15 @@ keepalive: 1200
 # uncomment to disable time scale on chart legend
 # legendTimeScale: False
 
-## uncomment to have experimental stuff (like sql console)
-#experimental: True
+# uncomment to include tenant name and/or service name in legend
+#legendTenantName: True
+#legendServiceName: True
+
+# uncomment to enable old gantt render algorithm (potentially slow, see .log file for measurements)
+#ganttOldImplementation: True
+
+# optional limit for autorefresh: if autorefresh takes longer - it will disabled.
+#autorefreshThreshold: 60
 
 ##
 ## SQL Console related section
