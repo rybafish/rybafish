@@ -3715,6 +3715,7 @@ class sqlConsole(QWidget):
         msgBox.setIcon(QMessageBox.Warning)
 
         if self.timerAutorefresh is not None and cfg('alertDisconnected'):
+            log('play the disconnect sound...', 4)
             self.alertProcessing(cfg('alertDisconnected'))
             
         reply = None

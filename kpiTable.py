@@ -353,12 +353,30 @@ class kpiTable(QTableWidget):
                 
                 if kpiScale.get('manual'):
                     scaleItem.setForeground(QBrush(QColor(0, 0, 255)))
+                    
+                scaleItem.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
                 self.setItem(i, 3, QTableWidgetItem(scaleItem)) # Y-Scale
-                self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
-                self.setItem(i, 5, QTableWidgetItem(str(kpiScale['max_label'])))
-                self.setItem(i, 6, QTableWidgetItem(str(kpiScale['avg_label'])))
-                self.setItem(i, 8, QTableWidgetItem(str(kpiScale['last_label'])))
+                
+                # Unit
+                item = QTableWidgetItem(str(kpiScale['unit']))
+                item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+                self.setItem(i, 4, item)
+
+                # MAX value
+                item = QTableWidgetItem(str(kpiScale['max_label']))
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.setItem(i, 5, item)
+                
+                # AVG value
+                item = QTableWidgetItem(str(kpiScale['avg_label']))
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.setItem(i, 6, item)
+
+                # Last value
+                item = QTableWidgetItem(str(kpiScale['last_label']))
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.setItem(i, 8, item)
             else:
                 #cleanup 
                 self.setItem(i, 3, QTableWidgetItem())
