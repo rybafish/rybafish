@@ -3727,7 +3727,7 @@ class sqlConsole(QWidget):
 
         if disconnectAlert:
             log('play the disconnect sound...', 4)
-            self.alertProcessing(cfg('alertDisconnected'))
+            self.alertProcessing(cfg('alertDisconnected'), True)
             
         reply = None
         
