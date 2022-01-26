@@ -2863,7 +2863,7 @@ class sqlConsole(QWidget):
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
             self.log('Autorefresh is already running? Ignoring the new one...', True)
             
-    def alertProcessing(self, fileName):
+    def alertProcessing(self, fileName, manual = False):
     
         #print('alertProcessing')
     
@@ -2886,7 +2886,7 @@ class sqlConsole(QWidget):
             #try open normal file first
             fileName = 'snd\\' + fileName
             if os.path.isfile(fileName):
-                log('seems to be a regular file in the rybafish snd folder', 4)
+                log('seems there is a file in the rybafish snd folder: %s' % (fileName), 4)
             else:
                 #okay, take it from the build then...
                 fileName = resourcePath(fileName)
@@ -2899,8 +2899,8 @@ class sqlConsole(QWidget):
             log('warning: sound file does not exist: %s' % fileName, 2)
             return
     
-        if self.timerAutorefresh:
-            log('console %s, alert...' % self.tabname.rstrip(' *'), 3)
+        if self.timerAutorefresh and not manual:
+            log('console [%s], alert...' % self.tabname.rstrip(' *'), 3)
             ts = datetime.datetime.now().strftime('%H:%M:%S') + ' '
             self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
             
@@ -2913,15 +2913,15 @@ class sqlConsole(QWidget):
             vol = 80
             
         vol /= 100
-            
-            
-        print('play!')
         
+        if not manual:
+            self.indicator.status = 'alert'
+
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
         self.sound.setVolume(vol)
-        self.indicator.status = 'alert'
+            
         self.sound.play()
         
         if cfg('alertAutoPopup', True):
@@ -3124,8 +3124,12 @@ class sqlConsole(QWidget):
                 self.conn = None
                 self.connection_id = None
                 
-                if self.timerAutorefresh is not None and cfg('alertDisconnected'):
-                    self.alertProcessing(cfg('alertDisconnected'))
+                if self.timerAutorefresh is not None:
+                    self.log('--> Stopping the autorefresh on keep-alive fail...', True)
+                    self.setupAutorefresh(0)
+                
+                    if cfg('alertDisconnected'):
+                        self.alertProcessing(cfg('alertDisconnected'), True)
                 
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
@@ -3700,8 +3704,15 @@ class sqlConsole(QWidget):
         '''
             very synchronous call, it holds controll until connection status resolved
         '''
+        disconnectAlert = None
         
         log('Connection Lost...')
+
+        if self.timerAutorefresh is not None and cfg('alertDisconnected'):      # Need to do this before stopResults as it resets timerAutorefresh
+            log('disconnectAlert = True', 5)
+            disconnectAlert = True
+        else:
+            log('disconnectAlert -- None', 5)
         
         self.stopResults()
         
@@ -3714,7 +3725,7 @@ class sqlConsole(QWidget):
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
-        if self.timerAutorefresh is not None and cfg('alertDisconnected'):
+        if disconnectAlert:
             log('play the disconnect sound...', 4)
             self.alertProcessing(cfg('alertDisconnected'))
             
