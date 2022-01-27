@@ -2827,11 +2827,13 @@ class sqlConsole(QWidget):
         
         self.timerAutorefresh.start()
     
-    def setupAutorefresh(self, interval):
+    def setupAutorefresh(self, interval, suppressLog = False):
     
         if interval == 0:
             log('Stopping the autorefresh: %s' % self.tabname.rstrip(' *'))
-            self.log('--> Stopping the autorefresh')
+            
+            if suppressLog == False:
+                self.log('--> Stopping the autorefresh')
 
             if self.indicator.status in ('autorefresh', 'alert'):
                 self.indicator.status = 'idle'
@@ -3126,7 +3128,7 @@ class sqlConsole(QWidget):
                 
                 if self.timerAutorefresh is not None:
                     self.log('--> Stopping the autorefresh on keep-alive fail...', True)
-                    self.setupAutorefresh(0)
+                    self.setupAutorefresh(0, suppressLog=True)
                 
                     if cfg('alertDisconnected'):
                         self.alertProcessing(cfg('alertDisconnected'), True)
@@ -3261,7 +3263,6 @@ class sqlConsole(QWidget):
             self.connectDB()
     
         if self.timerAutorefresh:
-            self.log('--> Stopping the autorefresh...')
             self.setupAutorefresh(0)
             
         if mode == 'normal':
