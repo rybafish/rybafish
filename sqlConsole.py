@@ -2790,6 +2790,7 @@ class sqlConsole(QWidget):
             self.log('close() exception: '+ str(e), True)
 
 
+        log('connectDB, indicator idle?', 4)
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
@@ -3765,6 +3766,7 @@ class sqlConsole(QWidget):
         if reply == QMessageBox.Yes:
             return True
         else:
+            self.indicator.status = 'disconnected'
             return False
             
     def sqlFinished(self):
