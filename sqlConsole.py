@@ -2970,6 +2970,7 @@ class sqlConsole(QWidget):
             # stop autorefresh if any
             if self.timerAutorefresh is not None:
                 log('Stopping autorefresh as it was enabled')
+                result.log('--> Stopping the autorefresh...', True)
                 self.timerAutorefresh.stop()
                 self.timerAutorefresh = None
 
