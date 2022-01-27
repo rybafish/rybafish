@@ -3103,6 +3103,7 @@ class sqlConsole(QWidget):
                 if conn is not None:
                     self.conn = conn
                     log('Connection restored automatically')
+                    self.indicator.status = 'idle'
 
                     rows = db.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
                     
