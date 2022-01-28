@@ -2985,9 +2985,15 @@ class sqlConsole(QWidget):
 
             if self.conn is not None:
                 try:
+                    self.indicator.status = 'sync'
+                    self.indicator.repaint()
                     db.drop_statement(self.conn, result.psid)
+                    self.indicator.status = 'idle'
+                    self.indicator.repaint()
                 except Exception as e:
                     log('[E] exeption during console close/drop statement: %s' % str(e), 2)
+                    self.indicator.status = 'error'
+                    self.indicator.repaint()
     
     def closeResults(self):
         '''
