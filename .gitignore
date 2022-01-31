@@ -50,8 +50,8 @@ layout.yaml
 # custom sql folder
 sql/
 
-# custom KPIs folder
-CustomKPIs/
+# custom KPIs folder - now included into build
+# CustomKPIs/
 
 # custom sql folder
 ContextSQLs/
