@@ -378,6 +378,9 @@ def execute_query_desc(connection, sql_string, params, resultSize):
                 
                 log('row with scalar output(s): %s' % str(rows), 5)
                 
+                if len(rows[0]) != len(cols):
+                    raise dbException('Inconsistent metadata for scalar output row, some HANA revisions are affected, some are not, see RybaFish issue #555')
+                
                 rows_list.append(rows)
         
                 log('columns_list with scalar(s)  ----> %s' % str(columns_list), 4)

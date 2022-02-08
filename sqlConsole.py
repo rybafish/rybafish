@@ -1946,10 +1946,7 @@ class resultSet(QTableWidget):
                 alert_len = len(alert_str)
         
         #fill the result table
-        
-        print('rows (thats values for this result set):', rows)
-        print('row0 (thats headers)', row0)
-        
+                
         for r in range(len(rows)):
             log('populate result: %i' % r, 5)
             for c in range(len(row0)):
