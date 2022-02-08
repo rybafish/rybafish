@@ -374,19 +374,17 @@ def execute_query_desc(connection, sql_string, params, resultSize):
                 if cursor.description_list:
                     columns_list.append(cursor.description_list[0])
                     
-                rows = cursor.fetchmany(1, 0) # what is the number of scalar output?
+                rows = cursor.fetchmany(1, 0) # we always expect just one line, and we hardcode the resultset number for scalars to be the first one (zero)
                 
-                log('scalar row: %s' % str(rows), 5)
+                log('row with scalar output(s): %s' % str(rows), 5)
                 
                 rows_list.append(rows)
         
-                log('scalar detected... is it truth? does it harm', 5)
-                log('columns_list (with scalar!)  ----> %s' % str(columns_list), 5)
+                log('columns_list with scalar(s)  ----> %s' % str(columns_list), 4)
                 
             
             for clmn in columns_list:
-                #log('--> %s' % str(clmn), 5)
-                #log('--> %s' % str(clmn), 5)
+                log('--> %s' % str(clmn), 5)
                 pass
             
             log('results to fetch: %i' % len(cursor.description_list), 5)
