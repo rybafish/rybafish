@@ -103,13 +103,13 @@ end;
 
 call test04_combo1(1, ?);
 
--- table output + 2 scalar outputs
+-- table output + 2 scalar outputs: should drop an exception
 drop procedure test04_combo2;
 create procedure test04_combo2(in c integer, out d integer, e varchar(7))
 as
 begin
 
-    select * from dummy;
+    select 1, 2, 3 from dummy;
 
     d:= 11;
     e:= '11';
@@ -118,3 +118,7 @@ end;
 
 call test04_combo2(1, ?, ?);
 
+
+-- make sure lobs scalar work
+select top 1 host || ':' || port host from m_load_history_service where port like '%03';
+call sys.management_console_proc('profiler clear', '...', ?);
