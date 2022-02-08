@@ -1951,7 +1951,6 @@ class resultSet(QTableWidget):
             log('populate result: %i' % r, 5)
             for c in range(len(row0)):
                 
-                print('r, c:', r, c)
                 val = rows[r][c]
                 
                 if val is None:
