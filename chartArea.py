@@ -3224,8 +3224,7 @@ class chartArea(QFrame):
         
         self.scaleCB = QComboBox()
         
-        if cfg('experimental'):
-            self.scaleCB.addItem('1 second')
+        self.scaleCB.addItem('1 second')
             
         self.scaleCB.addItem('10 seconds')
         self.scaleCB.addItem('1 minute')
@@ -3248,7 +3247,8 @@ class chartArea(QFrame):
         
         if cfg('experimental'):
             self.refreshCB.addItem('10 seconds')
-            self.refreshCB.addItem('30 seconds')
+        
+        self.refreshCB.addItem('30 seconds')
             
         self.refreshCB.addItem('1 minute')
         self.refreshCB.addItem('5 minutes')

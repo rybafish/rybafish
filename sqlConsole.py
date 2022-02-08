@@ -561,10 +561,10 @@ class console(QPlainTextEditLN):
         menuAbort = cmenu.addAction('Generate cancel session sql')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
         
-        if cfg('experimental'):
-            cmenu.addSeparator()
-            explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
-            sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
+        #if cfg('experimental'):
+        cmenu.addSeparator()
+        explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
+        sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
             
         if cfg('dev'):
             cmenu.addSeparator()
@@ -612,10 +612,11 @@ class console(QPlainTextEditLN):
             cursor.insertText('123')
             self.setTextCursor(cursor)
             
-        if cfg('experimental') and action == sqlFormat:
+        #if cfg('experimental') and action == sqlFormat:
+        if action == sqlFormat:
             self.formatSelection()
         
-        if cfg('experimental') and action == explainPlan:
+        if action == explainPlan:
             self.explainPlan()
             
     def findString(self, str = None):
@@ -1342,11 +1343,11 @@ class resultSet(QTableWidget):
         
         i = self.currentColumn()
         
-        if cfg('experimental'):
-            cmenu.addSeparator()
-        
-            highlightColCh = cmenu.addAction('Highlight changes')
-            highlightColVal = cmenu.addAction('Highlight this value')
+        #if cfg('experimental'):
+        cmenu.addSeparator()
+    
+        highlightColCh = cmenu.addAction('Highlight changes')
+        highlightColVal = cmenu.addAction('Highlight this value')
             
         cmenu.addSeparator()
         
@@ -1376,11 +1377,13 @@ class resultSet(QTableWidget):
             clipboard.setText(self.cols[i][0])
         '''
         
-        if cfg('experimental') and action == highlightColCh:
+        #if cfg('experimental') and action == highlightColCh:
+        if action == highlightColCh:
             self.highlightColumn = i
             self.highlightRefresh()
 
-        if cfg('experimental') and action == highlightColVal:
+        #if cfg('experimental') and action == highlightColVal:
+        if action == highlightColVal:
             self.highlightColumn = i
             self.highlightValue = self.item(self.currentRow(), i).text()
             self.highlightRefresh()
