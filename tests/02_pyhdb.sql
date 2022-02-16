@@ -1,0 +1,6 @@
+-- should result in 40k rows...
+select top 40000 * from m_load_history_host;
+
+-- longdates...
+select * from m_service_thread_samples order by timestamp desc;
+select * from m_service_thread_samples where timestamp = '2022-02-08 00:31:21.900946'; -- should return data

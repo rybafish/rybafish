@@ -2293,6 +2293,17 @@ class chartArea(QFrame):
         self.repaint()
         
         self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
+
+        if len(self.widget.hosts) == 0 and cfg('noAccessWarning', False) == False:
+            msgBox = QMessageBox(self)
+            msgBox.setWindowTitle('Connection init error')
+            msgBox.setText('Initial connection did not return any data from m_load_history* views.\n\nCheck if your user has proper access:\nMONITORING role?\n\nYou can disable this message by setting "noAccessWarning: True" in config.yaml\n\nYou still can open SQL console (Alt+S) and check manually:\nselect * from m_load_history_host;')
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            iconPath = resourcePath('ico\\favicon.png')
+            msgBox.setWindowIcon(QIcon(iconPath))
+            msgBox.setIcon(QMessageBox.Warning)
+
+            reply = msgBox.exec_()
         
         self.widget.allocate(len(self.widget.hosts))
         self.widget.initPens()
@@ -3213,8 +3224,7 @@ class chartArea(QFrame):
         
         self.scaleCB = QComboBox()
         
-        if cfg('experimental'):
-            self.scaleCB.addItem('1 second')
+        self.scaleCB.addItem('1 second')
             
         self.scaleCB.addItem('10 seconds')
         self.scaleCB.addItem('1 minute')
@@ -3237,7 +3247,8 @@ class chartArea(QFrame):
         
         if cfg('experimental'):
             self.refreshCB.addItem('10 seconds')
-            self.refreshCB.addItem('30 seconds')
+        
+        self.refreshCB.addItem('30 seconds')
             
         self.refreshCB.addItem('1 minute')
         self.refreshCB.addItem('5 minutes')

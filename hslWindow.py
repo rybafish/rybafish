@@ -254,8 +254,14 @@ class hslWindow(QMainWindow):
                     return
         '''
         
+        log('Exit request...')
+        
+        log('before dump layout', 5)
+        
         if cfg('saveLayout', True):
             self.dumpLayout()
+            
+        log('dump layout done', 5)
                     
         self.close()
 

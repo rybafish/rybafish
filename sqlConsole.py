@@ -561,10 +561,10 @@ class console(QPlainTextEditLN):
         menuAbort = cmenu.addAction('Generate cancel session sql')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
         
-        if cfg('experimental'):
-            cmenu.addSeparator()
-            explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
-            sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
+        #if cfg('experimental'):
+        cmenu.addSeparator()
+        explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
+        sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
             
         if cfg('dev'):
             cmenu.addSeparator()
@@ -612,10 +612,11 @@ class console(QPlainTextEditLN):
             cursor.insertText('123')
             self.setTextCursor(cursor)
             
-        if cfg('experimental') and action == sqlFormat:
+        #if cfg('experimental') and action == sqlFormat:
+        if action == sqlFormat:
             self.formatSelection()
         
-        if cfg('experimental') and action == explainPlan:
+        if action == explainPlan:
             self.explainPlan()
             
     def findString(self, str = None):
@@ -1342,11 +1343,11 @@ class resultSet(QTableWidget):
         
         i = self.currentColumn()
         
-        if cfg('experimental'):
-            cmenu.addSeparator()
-        
-            highlightColCh = cmenu.addAction('Highlight changes')
-            highlightColVal = cmenu.addAction('Highlight this value')
+        #if cfg('experimental'):
+        cmenu.addSeparator()
+    
+        highlightColCh = cmenu.addAction('Highlight changes')
+        highlightColVal = cmenu.addAction('Highlight this value')
             
         cmenu.addSeparator()
         
@@ -1376,11 +1377,13 @@ class resultSet(QTableWidget):
             clipboard.setText(self.cols[i][0])
         '''
         
-        if cfg('experimental') and action == highlightColCh:
+        #if cfg('experimental') and action == highlightColCh:
+        if action == highlightColCh:
             self.highlightColumn = i
             self.highlightRefresh()
 
-        if cfg('experimental') and action == highlightColVal:
+        #if cfg('experimental') and action == highlightColVal:
+        if action == highlightColVal:
             self.highlightColumn = i
             self.highlightValue = self.item(self.currentRow(), i).text()
             self.highlightRefresh()
@@ -1946,7 +1949,9 @@ class resultSet(QTableWidget):
                 alert_len = len(alert_str)
         
         #fill the result table
+                
         for r in range(len(rows)):
+            log('populate result: %i' % r, 5)
             for c in range(len(row0)):
                 
                 val = rows[r][c]
@@ -2544,6 +2549,7 @@ class sqlConsole(QWidget):
     def close(self, cancelPossible = True):
     
         log('closing sql console...')
+        log('indicator:' + self.indicator.status, 4)
         
         if self.unsavedChanges and cancelPossible is not None:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible, parent=self)
@@ -2565,13 +2571,19 @@ class sqlConsole(QWidget):
             if answer == True:
                 self.saveFile()
                 
+        log('closing results...', 5)
+        
         self.closeResults()
 
         try: 
             self.stopKeepAlive()
             
             if self.conn is not None:
+                log('close the connection...', 5)
+                self.indicator.status = 'sync'
+                self.indicator.repaint()
                 db.close_connection(self.conn)
+                
         except dbException as e:
             log('close() db exception: '+ str(e))
             super().close()
@@ -2581,8 +2593,11 @@ class sqlConsole(QWidget):
             super().close()
             return True
         
+        log('super().close()...', 5)
 
         super().close()
+        
+        log('super().close() done', 5)
         
         return True
             
@@ -2790,6 +2805,7 @@ class sqlConsole(QWidget):
             self.log('close() exception: '+ str(e), True)
 
 
+        log('connectDB, indicator idle?', 4)
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
@@ -2827,11 +2843,13 @@ class sqlConsole(QWidget):
         
         self.timerAutorefresh.start()
     
-    def setupAutorefresh(self, interval):
+    def setupAutorefresh(self, interval, suppressLog = False):
     
         if interval == 0:
             log('Stopping the autorefresh: %s' % self.tabname.rstrip(' *'))
-            self.log('--> Stopping the autorefresh')
+            
+            if suppressLog == False:
+                self.log('--> Stopping the autorefresh')
 
             if self.indicator.status in ('autorefresh', 'alert'):
                 self.indicator.status = 'idle'
@@ -2863,7 +2881,7 @@ class sqlConsole(QWidget):
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
             self.log('Autorefresh is already running? Ignoring the new one...', True)
             
-    def alertProcessing(self, fileName):
+    def alertProcessing(self, fileName, manual = False):
     
         #print('alertProcessing')
     
@@ -2886,7 +2904,7 @@ class sqlConsole(QWidget):
             #try open normal file first
             fileName = 'snd\\' + fileName
             if os.path.isfile(fileName):
-                log('seems to be a regular file in the rybafish snd folder', 4)
+                log('seems there is a file in the rybafish snd folder: %s' % (fileName), 4)
             else:
                 #okay, take it from the build then...
                 fileName = resourcePath(fileName)
@@ -2899,8 +2917,8 @@ class sqlConsole(QWidget):
             log('warning: sound file does not exist: %s' % fileName, 2)
             return
     
-        if self.timerAutorefresh:
-            log('console %s, alert...' % self.tabname.rstrip(' *'), 3)
+        if self.timerAutorefresh and not manual:
+            log('console [%s], alert...' % self.tabname.rstrip(' *'), 3)
             ts = datetime.datetime.now().strftime('%H:%M:%S') + ' '
             self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
             
@@ -2913,15 +2931,15 @@ class sqlConsole(QWidget):
             vol = 80
             
         vol /= 100
-            
-            
-        print('play!')
         
+        if not manual:
+            self.indicator.status = 'alert'
+
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
         self.sound.setVolume(vol)
-        self.indicator.status = 'alert'
+            
         self.sound.play()
         
         if cfg('alertAutoPopup', True):
@@ -2968,6 +2986,7 @@ class sqlConsole(QWidget):
             # stop autorefresh if any
             if self.timerAutorefresh is not None:
                 log('Stopping autorefresh as it was enabled')
+                result.log('--> Stopping the autorefresh...', True)
                 self.timerAutorefresh.stop()
                 self.timerAutorefresh = None
 
@@ -2981,9 +3000,15 @@ class sqlConsole(QWidget):
 
             if self.conn is not None:
                 try:
+                    self.indicator.status = 'sync'
+                    self.indicator.repaint()
                     db.drop_statement(self.conn, result.psid)
+                    self.indicator.status = 'idle'
+                    self.indicator.repaint()
                 except Exception as e:
                     log('[E] exeption during console close/drop statement: %s' % str(e), 2)
+                    self.indicator.status = 'error'
+                    self.indicator.repaint()
     
     def closeResults(self):
         '''
@@ -3099,6 +3124,7 @@ class sqlConsole(QWidget):
                 if conn is not None:
                     self.conn = conn
                     log('Connection restored automatically')
+                    self.indicator.status = 'idle'
 
                     rows = db.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
                     
@@ -3124,8 +3150,12 @@ class sqlConsole(QWidget):
                 self.conn = None
                 self.connection_id = None
                 
-                if self.timerAutorefresh is not None and cfg('alertDisconnected'):
-                    self.alertProcessing(cfg('alertDisconnected'))
+                if self.timerAutorefresh is not None:
+                    self.log('--> Stopping the autorefresh on keep-alive fail...', True)
+                    self.setupAutorefresh(0, suppressLog=True)
+                
+                    if cfg('alertDisconnected'):
+                        self.alertProcessing(cfg('alertDisconnected'), True)
                 
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
@@ -3257,7 +3287,6 @@ class sqlConsole(QWidget):
             self.connectDB()
     
         if self.timerAutorefresh:
-            self.log('--> Stopping the autorefresh...')
             self.setupAutorefresh(0)
             
         if mode == 'normal':
@@ -3700,8 +3729,15 @@ class sqlConsole(QWidget):
         '''
             very synchronous call, it holds controll until connection status resolved
         '''
+        disconnectAlert = None
         
         log('Connection Lost...')
+
+        if self.timerAutorefresh is not None and cfg('alertDisconnected'):      # Need to do this before stopResults as it resets timerAutorefresh
+            log('disconnectAlert = True', 5)
+            disconnectAlert = True
+        else:
+            log('disconnectAlert -- None', 5)
         
         self.stopResults()
         
@@ -3714,9 +3750,9 @@ class sqlConsole(QWidget):
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
-        if self.timerAutorefresh is not None and cfg('alertDisconnected'):
+        if disconnectAlert:
             log('play the disconnect sound...', 4)
-            self.alertProcessing(cfg('alertDisconnected'))
+            self.alertProcessing(cfg('alertDisconnected'), True)
             
         reply = None
         
@@ -3752,6 +3788,7 @@ class sqlConsole(QWidget):
         if reply == QMessageBox.Yes:
             return True
         else:
+            self.indicator.status = 'disconnected'
             return False
             
     def sqlFinished(self):
