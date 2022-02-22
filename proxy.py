@@ -23,9 +23,13 @@ if connection is not None:
     print('connected to DB')
 else:
     exit(1)
+   
+
+while True:   
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind(('127.0.0.1', 5000))
+    print('Listening...')
     
     s.listen()
     
@@ -37,7 +41,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print('Connected by', addr)
         
         while True:
-            data = conn.recv(1024)
+        
+            try:
+                data = conn.recv(1024)
+            except ConnectionResetError:
+                print('Disconnected, listen again...')
+                break
             
             if not data:
                 break
@@ -48,6 +57,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             if sql[-2:] == '\n\n':
                 print('\nsql:', sql[:-1])
                 
+                if len(sql) == 2:
+                    print('Double-\\n, exiting...')
+                    exit(0)
                 
                 try:
                     cursor = connection.cursor()
