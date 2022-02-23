@@ -9,7 +9,7 @@ import os
 
 from utils import log
 
-from kpiDescriptions import createStyle, customSql, kpiGroup
+from kpiDescriptions import createStyle, customSql, kpiGroup, addVars
 #from kpiDescriptions import createStyle, customSql, kpiGroup
 
 grouplist = {}
@@ -63,11 +63,19 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
         
         raise e
         
+        
+    srcIdx = file
+    grpname = '.' + grpname
+
+    vrs = {}
+    
+    if 'variables' in kpiFile:
+        addVars(srcIdx, kpiFile['variables'])
+    
     kpis = kpiFile['kpis']
     
-    grpname = '.' + grpname
-    srcIdx = file
-    customSql[srcIdx] = kpiFile['sql']
+    #customSql[srcIdx] = srcIdx, kpiFile['sql']
+    customSql[srcIdx] = srcIdx, kpiFile['sql']
     
     for kpi in kpis:
         type = kpi['type']

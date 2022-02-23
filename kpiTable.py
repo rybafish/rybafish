@@ -147,8 +147,13 @@ class kpiTable(QTableWidget):
            
     def edit(self, index, trigger, event):
     
+        if index.column() == 11:
+            # variables
+            return super(kpiTable, self).edit(index, trigger, event)
+        
         if index.column() != 3:
             # Not Y-Scale
+            # and not Variables
             return False
             
         result = super(kpiTable, self).edit(index, trigger, event)
@@ -186,22 +191,47 @@ class kpiTable(QTableWidget):
         
         if self.silentMode:
             return
-        
-        try:
-            s = item.text()
-            
-            if s.find('-') > 0:
-                yMin = int(s[:s.find('-')].strip())
-                yMax = int(s[s.find('-')+1:].strip())
-            else:
-                yMin = 0
-                yMax = int(item.text())
-        except:
-            log('Not an integer value: %s, removing the manual scale' % (item.text()))
-            self.setScale.emit(self.host, self.kpiNames[item.row()], -1, -1)
-            return
 
-        self.setScale.emit(self.host, self.kpiNames[item.row()], yMin, yMax)
+        if item.column() == 3:
+        
+            try:
+                s = item.text()
+                
+                if s.find('-') > 0:
+                    yMin = int(s[:s.find('-')].strip())
+                    yMax = int(s[s.find('-')+1:].strip())
+                else:
+                    yMin = 0
+                    yMax = int(item.text())
+            except:
+                log('Not an integer value: %s, removing the manual scale' % (item.text()))
+                self.setScale.emit(self.host, self.kpiNames[item.row()], -1, -1)
+                return
+
+            self.setScale.emit(self.host, self.kpiNames[item.row()], yMin, yMax)
+        
+        elif item.column() == 11:
+            print('okay, need to readjust to the folowing: %s' % (item.text()))
+            
+            kpiName = self.kpiNames[item.row()]
+        
+            if self.hosts[self.host]['port'] == '':
+                kpiType = 'host'
+            else:
+                kpiType = 'service'
+                
+            #print(kpiType, kpiName)
+            style = kpiDescriptions.kpiStylesNN[kpiType][kpiName]
+            
+            if 'sql' in style:
+                idx = style['sql']
+            else:
+                log('Not a custom KPI? %s' % (kpiName), 2)
+                return
+                
+            #kpiDescriptions.addVars(idx, item.text())
+            
+            
         
     def loadScales(self):
         # for kpi in scales: log(kpi)
@@ -279,6 +309,7 @@ class kpiTable(QTableWidget):
         self.kpiNames = [] # index for right mouse click events
         
         for kpiName in kpis:
+        
             self.setRowHeight(i, 10)
             
             self.kpiNames.append(kpiName) # index for right mouse click events
@@ -305,6 +336,7 @@ class kpiTable(QTableWidget):
                     continue
                     
                 style = kpiStyles[kpiName]
+                
                 cb.stateChanged.connect(self.checkBoxChanged)
                 self.setCellWidget(i, 0, cb)
                 
@@ -325,6 +357,10 @@ class kpiTable(QTableWidget):
                 else:
                     self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
                 
+                
+                print(style)
+                print(style['desc'])
+                
                 self.setItem(i, 9, QTableWidgetItem(style['desc'])) # descr
                 
                 grp = str(style['group'])
@@ -333,6 +369,13 @@ class kpiTable(QTableWidget):
                     grp = ''
                 
                 self.setItem(i, 10, QTableWidgetItem(grp)) # group
+
+
+                if 'sql' in style and style['sql'] in kpiDescriptions.vrsStr:
+                    print(style['sql'])
+                    print(kpiDescriptions.vrsStr[style['sql']])
+                    self.setItem(i, 11, QTableWidgetItem(kpiDescriptions.vrsStr[style['sql']])) # variables
+
                 
             else:
                 # kpi groups
@@ -449,7 +492,7 @@ class kpiTable(QTableWidget):
         self.silentMode = False
         
     def initTable(self):
-        self.setColumnCount(11)
+        self.setColumnCount(12)
         self.SelectionMode(QAbstractItemView.NoSelection) #doesn't work for some reason
 
         self.horizontalHeader().setFont(QFont('SansSerif', 8))
@@ -458,7 +501,7 @@ class kpiTable(QTableWidget):
         self.setWordWrap(False)
         self.verticalHeader().setVisible(False)
 
-        self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', ' ', 'Last', 'Description', 'Group'])
+        self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', ' ', 'Last', 'Description', 'Group', 'Variables'])
         
         self.setColumnWidth(0, 1)
         self.setColumnWidth(1, 140) #kpi
@@ -471,6 +514,7 @@ class kpiTable(QTableWidget):
         self.setColumnWidth(8, 80) # Last
         self.setColumnWidth(9, 220) # desc
         self.setColumnWidth(10, 40) # group
+        self.setColumnWidth(11, 80) # variables
         #self.setColumnWidth(10, 30) # threshold
         
         self.itemChanged.connect(self.itemChange)

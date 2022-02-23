@@ -15,6 +15,49 @@ from utils import log, cfg
 
 currentIndex = None
 
+vrsStr = {}
+vrs = {}
+
+def addVars(sqlIdx, vStr):
+    global vrs
+    global vrsStr
+    
+    if sqlIdx not in vrs:
+        vrs[sqlIdx] = {}
+        vrsStr[sqlIdx] = vStr
+
+    vlist = [s.strip() for s in vStr.split(',')]
+    
+    for v in vlist:
+        p = v.find('=')
+        if p > 0:
+            vName = v[:p].strip()
+            vVal = v[p+1:].strip()
+        else:
+            vName = v
+            vVal = ''
+            
+        if vName in vrs[sqlIdx]:
+            log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 2)
+
+        vrs[sqlIdx][vName] = vVal
+        
+    log('addVars result: %s' % (str(vrs)), 5)
+            
+def processVars(sqlIdx, s):
+    global vrs
+    
+    print('processVars: ', s)
+    
+    if sqlIdx is None:
+        return
+
+    if sqlIdx in vrs:
+        for v in vrs[sqlIdx]:
+            s = s.replace('$'+v, vrs[sqlIdx][v])
+        
+    return s
+
 def removeDeadKPIs(kpis, type):
 
     for kpi in kpis:
@@ -113,7 +156,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         style['group'] = ''
         
     if 'description' in kpi:
-        style['desc'] = kpi['description']
+        style['desc'] = sqlIdx, kpi['description']
     else:
         style['desc'] = ''
 
@@ -271,6 +314,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['pen'] = QPen(color, 1, penStyle)
 
     style['sql'] = sqlIdx
+    
     '''
     except Exception as e:
         log(str(kpi))
