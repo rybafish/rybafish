@@ -220,7 +220,6 @@ class kpiTable(QTableWidget):
             else:
                 kpiType = 'service'
                 
-            #print(kpiType, kpiName)
             style = kpiDescriptions.kpiStylesNN[kpiType][kpiName]
             
             if 'sql' in style:
@@ -229,9 +228,9 @@ class kpiTable(QTableWidget):
                 log('Not a custom KPI? %s' % (kpiName), 2)
                 return
                 
-            #kpiDescriptions.addVars(idx, item.text())
+            kpiDescriptions.addVars(idx, item.text())
             
-            
+            self.refill(self.host)
         
     def loadScales(self):
         # for kpi in scales: log(kpi)
@@ -357,11 +356,13 @@ class kpiTable(QTableWidget):
                 else:
                     self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
                 
+                if 'sql' in style:
+                    idx = style['sql']
+                    desc = kpiDescriptions.processVars(idx, style['desc'])
+                else:
+                    desc = style['desc']
                 
-                print(style)
-                print(style['desc'])
-                
-                self.setItem(i, 9, QTableWidgetItem(style['desc'])) # descr
+                self.setItem(i, 9, QTableWidgetItem(desc)) # descr
                 
                 grp = str(style['group'])
                 

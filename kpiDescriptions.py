@@ -18,13 +18,17 @@ currentIndex = None
 vrsStr = {}
 vrs = {}
 
+
 def addVars(sqlIdx, vStr):
+
     global vrs
     global vrsStr
     
     if sqlIdx not in vrs:
         vrs[sqlIdx] = {}
-        vrsStr[sqlIdx] = vStr
+
+    vrsStr[sqlIdx] = vStr
+    
 
     vlist = [s.strip() for s in vStr.split(',')]
     
@@ -43,11 +47,11 @@ def addVars(sqlIdx, vStr):
         vrs[sqlIdx][vName] = vVal
         
     log('addVars result: %s' % (str(vrs)), 5)
-            
+
+
 def processVars(sqlIdx, s):
+
     global vrs
-    
-    print('processVars: ', s)
     
     if sqlIdx is None:
         return
@@ -156,7 +160,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         style['group'] = ''
         
     if 'description' in kpi:
-        style['desc'] = sqlIdx, kpi['description']
+        style['desc'] = kpi['description']
     else:
         style['desc'] = ''
 
