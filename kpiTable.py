@@ -371,12 +371,10 @@ class kpiTable(QTableWidget):
                 
                 self.setItem(i, 10, QTableWidgetItem(grp)) # group
 
-
                 if 'sql' in style and style['sql'] in kpiDescriptions.vrsStr:
-                    print(style['sql'])
-                    print(kpiDescriptions.vrsStr[style['sql']])
                     self.setItem(i, 11, QTableWidgetItem(kpiDescriptions.vrsStr[style['sql']])) # variables
-
+                else:
+                    self.setItem(i, 11, QTableWidgetItem()) # no variables
                 
             else:
                 # kpi groups
@@ -388,6 +386,7 @@ class kpiTable(QTableWidget):
                 
                 self.setItem(i, 9, QTableWidgetItem()) # no desc
                 self.setItem(i, 10, QTableWidgetItem()) # no group
+                self.setItem(i, 11, QTableWidgetItem()) # no variables
 
             if kpiName in self.kpiScales[self.host].keys():
                 

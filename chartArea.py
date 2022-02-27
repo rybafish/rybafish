@@ -21,7 +21,7 @@ from PyQt5.QtCore import pyqtSignal
 
 # my stuff
 import kpiDescriptions
-from kpiDescriptions import kpiStylesNN, hType
+from kpiDescriptions import kpiStylesNN, hType, processVars
 from utils import resourcePath
 
 import importTrace
@@ -813,12 +813,19 @@ class myWidget(QWidget):
                 
                 yr = kpiStylesNN[type][kpi]['y_range']
 
+                yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
+                
+                sqlIdx = kpiStylesNN[type][kpi]['sql']
+                
+                yr0 = 100 - max(0, int(processVars(sqlIdx, yr0)))
+                yr1 = 100 - min(100, int(processVars(sqlIdx, yr1)))
+
                 for entity in gc:
                 
                     #exactly same calculation as in drawChart:
                     y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
-                    y_shift = y_scale/100*yr[0] * len(gc)
-                    y_scale = y_scale * (yr[1] - yr[0])/100
+                    y_shift = y_scale/100*yr0 * len(gc)
+                    y_scale = y_scale * (yr1 - yr0)/100
                     
                     y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
 
@@ -1602,11 +1609,16 @@ class myWidget(QWidget):
                     
                                         
                     if len(gc) > 0:
-                        yr = kpiStylesNN[type][kpi]['y_range']
+                        yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
+                        
+                        sqlIdx = kpiStylesNN[type][kpi]['sql']
+                        
+                        yr0 = 100 - max(0, int(processVars(sqlIdx, yr0)))
+                        yr1 = 100 - min(100, int(processVars(sqlIdx, yr1)))
                         
                         y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
-                        y_shift = y_scale/100*yr[0] * len(gc)
-                        y_scale = y_scale * (yr[1] - yr[0])/100
+                        y_shift = y_scale/100*yr0 * len(gc)
+                        y_scale = y_scale * (yr1 - yr0)/100
                     
                     i = 0
                     

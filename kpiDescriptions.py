@@ -53,6 +53,13 @@ def processVars(sqlIdx, s):
 
     global vrs
     
+    '''
+    print('---------------------------------------------------------')
+    print(vrs)
+    print(sqlIdx, s)
+    print('---------------------------------------------------------')
+    '''
+    
     if sqlIdx is None:
         return
 
@@ -265,9 +272,19 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             
             if 'y_range' in kpi and kpi['y_range'] != '':
                 yr = kpi['y_range']
+                
                 style['y_range'] = [None]*2
-                style['y_range'][0] = 100 - max(0, yr[0])
-                style['y_range'][1] = 100 - min(100, yr[1])
+
+                '''
+                y1 = int(processVars(sqlIdx, yr[0]))
+                y2 = int(processVars(sqlIdx, yr[1]))
+                
+                style['y_range'][0] = 100 - max(0, y1)
+                style['y_range'][1] = 100 - min(100, y2)
+                '''
+                
+                style['y_range'][0] = yr[0]
+                style['y_range'][1] = yr[1]
             else:
                 style['y_range'] = [0, 100]
                 
