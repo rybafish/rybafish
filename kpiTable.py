@@ -228,8 +228,10 @@ class kpiTable(QTableWidget):
                 log('Not a custom KPI? %s' % (kpiName), 2)
                 return
                 
-            kpiDescriptions.addVars(idx, item.text())
+            log('-----addVars kpiTable -----')
+            kpiDescriptions.addVars(idx, item.text(), True)
             
+            log('-----addVars kpiTable -----')
             self.refill(self.host)
         
     def loadScales(self):

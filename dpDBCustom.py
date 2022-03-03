@@ -9,7 +9,12 @@ import os
 
 from utils import log
 
-from kpiDescriptions import createStyle, customSql, kpiGroup, addVars
+from kpiDescriptions import createStyle, customSql, kpiGroup
+
+# variables...
+from kpiDescriptions import addVars, vrsStr, vrsStrDef, addVarsDef
+
+from utils import Layout
 
 grouplist = {}
 
@@ -69,7 +74,14 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
     vrs = {}
     
     if 'variables' in kpiFile:
-        addVars(srcIdx, kpiFile['variables'])
+    
+        if srcIdx not in vrsStrDef:
+            addVarsDef(srcIdx, kpiFile['variables'])
+        
+        log('-----addVars dpDBCustom -----')
+        #if srcIdx not in vrsStr:
+        addVars(srcIdx, kpiFile['variables'], False)
+        log('-----addVars dpDBCustom -----')
     
     kpis = kpiFile['kpis']
     

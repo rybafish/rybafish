@@ -1,4 +1,4 @@
 # generated automaticaly based on myryba.spec
 
-build_date = "2022-02-17 01:23:45"
-version = "0.9 Paltus"
+build_date = "2022-03-02 03:04:52"
+version = "0.91 beta"

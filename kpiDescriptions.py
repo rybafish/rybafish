@@ -15,20 +15,71 @@ from utils import log, cfg
 
 currentIndex = None
 
-vrsStr = {}
-vrs = {}
+vrsStrDef = {}      # yaml definition, strings
+vrsDef = {}         # yaml definition, dicts
+
+vrsStr = {}         # current string representation (for KPIs table
+vrs = {}            # actual dict
 
 
-def addVars(sqlIdx, vStr):
+def addVarsDef(sqlIdx, vStr):
+    '''
+        builds a dict for default values as it is defined in yaml definition
+        string representation also stored.
+        
+        It is used two cases:
+            1) to reset everithing to defaults when update from kpiTable submitted
+            2) to set variables to empty value in case it is missing in vrsStr
+    '''
+    
+    global vrsStrDef
+    global vrsDef
+    
+    vrsStrDef[sqlIdx] = vStr
+    
+    vlist = [s.strip() for s in vStr.split(',')]
+    
+    if sqlIdx in vrsDef:
+        log('%s already in the dict, anyway...' % sqlIdx, 4)
+        
+    vrsDef[sqlIdx] = {}
+        
+    for v in vlist:
+        p = v.find('=')
+        if p > 0:
+            vName = v[:p].strip()
+            vVal = v[p+1:].strip()
+        else:
+            vName = v
+            vVal = ''
+            
+        vrsDef[sqlIdx][vName] = vVal
+        
+    log('yaml variables for %s defined as %s' % (sqlIdx, str(vrsDef[sqlIdx])))
+    
+
+def addVars(sqlIdx, vStr, overwrite = False):
 
     global vrs
     global vrsStr
     
+    log('addVars input: %s' % (str(vrs)), 5)
+    
+    '''
+    if overwrite:
+        if sqlIdx in vrs:
+            log('full refresh of %s vars' % (sqlIdx), a4)
+            
+            vrs[sqlIdx].clear()
+    '''
+        
     if sqlIdx not in vrs:
         vrs[sqlIdx] = {}
 
-    vrsStr[sqlIdx] = vStr
+    #vrsStr[sqlIdx] = vStr
     
+    if sqlIdx not in vrsStr or overwrite:
+        vrsStr[sqlIdx] = vStr
 
     vlist = [s.strip() for s in vStr.split(',')]
     
@@ -42,29 +93,50 @@ def addVars(sqlIdx, vStr):
             vVal = ''
             
         if vName in vrs[sqlIdx]:
-            log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 2)
-
-        vrs[sqlIdx][vName] = vVal
+            if overwrite:
+                log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 2)
+                vrs[sqlIdx][vName] = vVal
+        else:
+            vrs[sqlIdx][vName] = vVal
+            
+            
+    # go throug defined variables and add missing ones
+    
+    if sqlIdx not in vrsDef:
+        log('[W] how come %s is missing in vrsDed??' % sqlIdx, 2)
+    else:
+        log('compare with definition: %s' % str(vrsDef[sqlIdx]), 5)
+        for k in vrsDef[sqlIdx]:
+            if k not in vrs[sqlIdx]:
+                vrs[k] = ''
+                log('%s was missing, setting to empty value' % k, 4)
         
-    log('addVars result: %s' % (str(vrs)), 5)
+    log('actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])))
 
 
 def processVars(sqlIdx, s):
 
     global vrs
     
-    '''
-    print('---------------------------------------------------------')
-    print(vrs)
-    print(sqlIdx, s)
-    print('---------------------------------------------------------')
-    '''
-    
+    # is it custom kpi at all?
     if sqlIdx is None:
         return
 
+    # are there any variables?
+    if sqlIdx not in vrs:
+        return
+
+    log('---process vars...---------------------------------------')
+    log('sqlIdx: ' + str(sqlIdx))
+    log('vrs: ' + str(vrs[sqlIdx]))
+    log(s)
+    log('---------------------------------------------------------')
+
     if sqlIdx in vrs:
         for v in vrs[sqlIdx]:
+            if v == '':
+                continue
+                
             s = s.replace('$'+v, vrs[sqlIdx][v])
         
     return s
