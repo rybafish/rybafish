@@ -1152,10 +1152,14 @@ class myWidget(QWidget):
                         stacked = kpiStylesNN[type][kpi]['stacked']
                         multiline = True
                         
+                    label = kpiStylesNN[type][kpi]['label']
+                    
+                    if kpiStylesNN[type][kpi].get('sql'):
+                        sqlIdx = kpiStylesNN[type][kpi].get('sql')
+                        label = processVars(sqlIdx, label)
+                        
                     if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
                         unit = ' ' + self.nscales[h][kpi]['unit']
-
-                        label = kpiStylesNN[type][kpi]['label']
                         
                         if kpi in self.nscales[h]: #if those are scanned already
                             if multiline:
@@ -1216,8 +1220,8 @@ class myWidget(QWidget):
                                 lmeta.append(['', pen, 0, 44])
                                 
                     else:
-
-                        label = kpiStylesNN[type][kpi]['label']
+                    
+                        # label defined before if
 
                         lkpis.append(kpi)
                         lkpisl.append(label)

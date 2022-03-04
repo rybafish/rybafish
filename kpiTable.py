@@ -350,19 +350,25 @@ class kpiTable(QTableWidget):
                     self.setCellWidget(i, 2, cell) 
                 else:
                     self.setCellWidget(i, 2, kpiCell(style['pen'], )) # kpi pen style
+
+                # variables/placeholders mapping
                 
+                if style.get('sql'):
+                    # sql exists and not None
+                    
+                    idx = style['sql']
+                    desc = kpiDescriptions.processVars(idx, style['desc'])
+                    label = kpiDescriptions.processVars(idx, style['label'])
+                else:
+                    desc = style['desc']
+                    label = style['label']
+                    
                 if 'disabled' in style.keys():
-                    item = QTableWidgetItem(style['label'])
+                    item = QTableWidgetItem(label)
                     item.setForeground(QBrush(QColor(255, 0, 0)))
                     self.setItem(i, 1, item) # text name
                 else:
-                    self.setItem(i, 1, QTableWidgetItem(style['label'])) # text name
-                
-                if 'sql' in style:
-                    idx = style['sql']
-                    desc = kpiDescriptions.processVars(idx, style['desc'])
-                else:
-                    desc = style['desc']
+                    self.setItem(i, 1, QTableWidgetItem(label)) # text name
                 
                 self.setItem(i, 9, QTableWidgetItem(desc)) # descr
                 
@@ -471,13 +477,24 @@ class kpiTable(QTableWidget):
                     continue
                 style = kpiStylesNN[type][self.kpiNames[i]]
                 
+                
+                if style.get('sql'):
+                    # sql exists and not None
+                    
+                    idx = style['sql']
+                    #desc = kpiDescriptions.processVars(idx, style['desc'])
+                    label = kpiDescriptions.processVars(idx, style['label'])
+                else:
+                    #desc = style['desc']
+                    label = style['label']
+                    
                 if 'disabled' in style.keys():
                     log('style is disabled: %s' % str(style['name']))
-                    item = QTableWidgetItem(style['label'])
+                    item = QTableWidgetItem(label)
                     item.setForeground(QBrush(QColor(255, 0, 0)))
                     self.setItem(i, 1, item) # text name
                 else:
-                    self.setItem(i, 1, QTableWidgetItem(style['label']))
+                    self.setItem(i, 1, QTableWidgetItem(label))
 
                 scaleItem = QTableWidgetItem(str(kpiScale['label']))
                 

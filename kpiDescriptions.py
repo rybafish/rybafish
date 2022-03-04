@@ -120,11 +120,11 @@ def processVars(sqlIdx, s):
     
     # is it custom kpi at all?
     if sqlIdx is None:
-        return
+        return s
 
     # are there any variables?
     if sqlIdx not in vrs:
-        return
+        return s
 
     log('---process vars...---------------------------------------')
     log('sqlIdx: ' + str(sqlIdx))
