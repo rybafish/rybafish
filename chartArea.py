@@ -816,9 +816,16 @@ class myWidget(QWidget):
                 yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
                 
                 sqlIdx = kpiStylesNN[type][kpi]['sql']
-                
-                yr0 = 100 - max(0, int(processVars(sqlIdx, yr0)))
-                yr1 = 100 - min(100, int(processVars(sqlIdx, yr1)))
+
+                try:
+                    yr0p = processVars(sqlIdx, yr0)
+                    yr1p = processVars(sqlIdx, yr1)
+                    yr0 = 100 - max(0, int(yr0p))
+                    yr1 = 100 - min(100, int(yr1p))
+                except ValueError:
+                    log('[E] Cannot convert variable to integer! %s or %s' % (yr0p, yr1p), 1)
+                    yr0 = 100
+                    yr1 = 90
 
                 for entity in gc:
                 
@@ -1617,8 +1624,15 @@ class myWidget(QWidget):
                         
                         sqlIdx = kpiStylesNN[type][kpi]['sql']
                         
-                        yr0 = 100 - max(0, int(processVars(sqlIdx, yr0)))
-                        yr1 = 100 - min(100, int(processVars(sqlIdx, yr1)))
+                        try:
+                            yr0p = processVars(sqlIdx, yr0)
+                            yr1p = processVars(sqlIdx, yr1)
+                            yr0 = 100 - max(0, int(yr0p))
+                            yr1 = 100 - min(100, int(yr1p))
+                        except ValueError:
+                            log('[E] Cannot convert all of the variables to integer! %s or %s' % (yr0p, yr1p), 1)
+                            yr0 = 100
+                            yr1 = 90
                         
                         y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
                         y_shift = y_scale/100*yr0 * len(gc)
@@ -2024,7 +2038,14 @@ class myWidget(QWidget):
                     label_width = self.font_width1
                 else:
                     label_width = self.font_width2
-                qp.drawText(x-label_width, wsize.height() - bottom_margin + self.font_height, label)
+                 
+                # #587
+                
+                #print('>> >> x-label_width', x-label_width)
+                #print('>> >> wsize.height() - bottom_margin + self.font_height', wsize.height() - bottom_margin + self.font_height)
+                #print('>> >> label', label)
+                
+                qp.drawText(int(x-label_width), wsize.height() - bottom_margin + self.font_height, label)
                 
                 if date_mark:
                     label = c_time.strftime('%Y-%m-%d')
@@ -2392,6 +2413,9 @@ class chartArea(QFrame):
         self.toEdit.setStyleSheet("color: blue;")
         self.fromEdit.setFocus()
         
+    def repaintRequest(self):
+        self.widget.repaint()
+    
     def setScale(self, host, kpi, yMin, yMax):
         '''
             scale changed to manual value

@@ -107,6 +107,8 @@ class kpiTable(QTableWidget):
     adjustScale = pyqtSignal(['QString', 'QString'])
     
     setScale = pyqtSignal([int, 'QString', int, int])
+    
+    vrsUpdate = pyqtSignal()
 
     def __init__(self):
 
@@ -211,7 +213,7 @@ class kpiTable(QTableWidget):
             self.setScale.emit(self.host, self.kpiNames[item.row()], yMin, yMax)
         
         elif item.column() == 11:
-            print('okay, need to readjust to the folowing: %s' % (item.text()))
+            log('okay, variables updated: %s' % (item.text()), 4)
             
             kpiName = self.kpiNames[item.row()]
         
@@ -228,11 +230,25 @@ class kpiTable(QTableWidget):
                 log('Not a custom KPI? %s' % (kpiName), 2)
                 return
                 
-            log('-----addVars kpiTable -----')
-            kpiDescriptions.addVars(idx, item.text(), True)
+            item_text = item.text()
             
-            log('-----addVars kpiTable -----')
+            if item_text.strip() == '':
+            
+                if idx in kpiDescriptions.vrsStrDef:
+                    item_text = kpiDescriptions.vrsStrDef[idx]
+                else:
+                    item_text = ''
+                item.setText(item_text)
+                log('Resetting to default definition', 4)
+                
+            log('-----addVars kpiTable -----', 4)
+            #kpiDescriptions.addVars(idx, item.text(), True)
+            kpiDescriptions.addVars(idx, item_text, True)
+            
+            log('-----addVars kpiTable -----', 4)
             self.refill(self.host)
+            
+            self.vrsUpdate.emit()
         
     def loadScales(self):
         # for kpi in scales: log(kpi)

@@ -1240,6 +1240,7 @@ class hslWindow(QMainWindow):
         # bind change scales signal
         #kpisTable.adjustScale.connect(self.chartArea.adjustScale)
         kpisTable.setScale.connect(self.chartArea.setScale)
+        kpisTable.vrsUpdate.connect(self.chartArea.repaintRequest)
 
         # host table row change signal
         self.hostTable.hostChanged.connect(kpisTable.refill)

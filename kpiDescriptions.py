@@ -45,7 +45,7 @@ def addVarsDef(sqlIdx, vStr):
     vrsDef[sqlIdx] = {}
         
     for v in vlist:
-        p = v.find('=')
+        p = v.find(':')
         if p > 0:
             vName = v[:p].strip()
             vVal = v[p+1:].strip()
@@ -63,7 +63,10 @@ def addVars(sqlIdx, vStr, overwrite = False):
     global vrs
     global vrsStr
     
-    log('addVars input: %s' % (str(vrs)), 5)
+    log('addVars input: %s' % (str(vStr)), 5)
+    
+    for idx in vrs:
+        log('%s --> %s' % (idx, str(vrs[idx])), 5)
     
     '''
     if overwrite:
@@ -73,7 +76,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
             vrs[sqlIdx].clear()
     '''
         
-    if sqlIdx not in vrs:
+    if sqlIdx not in vrs or True:
         vrs[sqlIdx] = {}
 
     #vrsStr[sqlIdx] = vStr
@@ -84,7 +87,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
     vlist = [s.strip() for s in vStr.split(',')]
     
     for v in vlist:
-        p = v.find('=')
+        p = v.find(':')
         if p > 0:
             vName = v[:p].strip()
             vVal = v[p+1:].strip()
@@ -100,7 +103,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
             vrs[sqlIdx][vName] = vVal
             
             
-    # go throug defined variables and add missing ones
+    # go through defined variables and add missing ones
     
     if sqlIdx not in vrsDef:
         log('[W] how come %s is missing in vrsDed??' % sqlIdx, 2)
@@ -108,15 +111,23 @@ def addVars(sqlIdx, vStr, overwrite = False):
         log('compare with definition: %s' % str(vrsDef[sqlIdx]), 5)
         for k in vrsDef[sqlIdx]:
             if k not in vrs[sqlIdx]:
-                vrs[k] = ''
-                log('%s was missing, setting to empty value' % k, 4)
+                vrs[sqlIdx][k] = vrsDef[sqlIdx][k]
+                log('\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
         
-    log('actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])))
+    log('actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])), 4)
 
 
 def processVars(sqlIdx, s):
+    '''
+        makes the actual replacement based on global variable vrs
+        sqlIdx is a custom KPI file name with extention, example: 10_exp_st.yaml
+        
+        s is the string for processing
+    '''
 
     global vrs
+    
+    s = str(s)
     
     # is it custom kpi at all?
     if sqlIdx is None:
@@ -126,19 +137,21 @@ def processVars(sqlIdx, s):
     if sqlIdx not in vrs:
         return s
 
-    log('---process vars...---------------------------------------')
-    log('sqlIdx: ' + str(sqlIdx))
-    log('vrs: ' + str(vrs[sqlIdx]))
-    log(s)
-    log('---------------------------------------------------------')
+    #log('---process vars...---------------------------------------', 5)
+    #log('sqlIdx: ' + str(sqlIdx))
+    #log('vrs: ' + str(vrs[sqlIdx]))
+    #log('>>' + s, 5)
+    #log('  -- -- -- --', 5)
 
     if sqlIdx in vrs:
         for v in vrs[sqlIdx]:
             if v == '':
                 continue
                 
-            s = s.replace('$'+v, vrs[sqlIdx][v])
+            s = s.replace('$'+v, str(vrs[sqlIdx][v]))
         
+    #log('<<' + s, 5)
+    #log('---------------------------------------------------------', 5)
     return s
 
 def removeDeadKPIs(kpis, type):
