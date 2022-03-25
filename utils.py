@@ -102,6 +102,10 @@ class Layout():
             return False
         
 
+class vrsException(Exception):
+    def __init__ (self, message):
+        super().__init__(message)
+
 class dbException(Exception):
 
     CONN = 1

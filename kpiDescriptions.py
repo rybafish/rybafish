@@ -13,10 +13,13 @@ import utils
         
 from utils import log, cfg
 
+from utils import vrsException
+
 currentIndex = None
 
 vrsStrDef = {}      # yaml definition, strings
 vrsDef = {}         # yaml definition, dicts
+vrsStrErr = {}      # True/False in case of parsing issues
 
 vrsStr = {}         # current string representation (for KPIs table
 vrs = {}            # actual dict
@@ -28,7 +31,7 @@ def addVarsDef(sqlIdx, vStr):
         string representation also stored.
         
         It is used two cases:
-            1) to reset everithing to defaults when update from kpiTable submitted
+            1) to reset everithing to defaults when update from kpiTable submitted --- not any more...
             2) to set variables to empty value in case it is missing in vrsStr
     '''
     
@@ -59,15 +62,34 @@ def addVarsDef(sqlIdx, vStr):
     
 
 def addVars(sqlIdx, vStr, overwrite = False):
+    '''
+        this one called on manual update of variables from the KPIs table
+    '''
 
     global vrs
     global vrsStr
     
+    def validate(s):
+        '''
+            very simple validation routine
+        '''
+        vlist = [s.strip() for s in vStr.split(',')]
+        
+        for v in vlist:
+            if v.find(':') <= 0:
+                log('Not a valid variable definition: [%s]' % v, 3)
+                return False
+                
+        return True
+    
     log('addVars input: %s' % (str(vStr)), 5)
     
+        
     for idx in vrs:
         log('%s --> %s' % (idx, str(vrs[idx])), 5)
     
+    if vStr == None:
+        return
     '''
     if overwrite:
         if sqlIdx in vrs:
@@ -75,12 +97,23 @@ def addVars(sqlIdx, vStr, overwrite = False):
             
             vrs[sqlIdx].clear()
     '''
+    
+    if not validate(vStr):
+        log('[E] Variables parsing error!')
+        
+        #vrsStr[sqlIdx] = None
+        msg = 'Variables cannot have commas inside'
+        vrsStrErr[sqlIdx] = '[!] '  + msg
+        raise vrsException(msg)
+        
+        return
+    else:
+        vrsStrErr[sqlIdx] = False
+        
         
     if sqlIdx not in vrs or True:
         vrs[sqlIdx] = {}
 
-    #vrsStr[sqlIdx] = vStr
-    
     if sqlIdx not in vrsStr or overwrite:
         vrsStr[sqlIdx] = vStr
 
@@ -92,8 +125,11 @@ def addVars(sqlIdx, vStr, overwrite = False):
             vName = v[:p].strip()
             vVal = v[p+1:].strip()
         else:
+            '''
             vName = v
             vVal = ''
+            '''
+            return 
             
         if vName in vrs[sqlIdx]:
             if overwrite:

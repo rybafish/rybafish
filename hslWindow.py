@@ -233,6 +233,7 @@ class hslWindow(QMainWindow):
                     self.layout.lo.pop('tabs')
                 
         self.layout['variables'] = kpiDescriptions.vrsStr
+        log('--> dumpLayout vars: %s' % str(kpiDescriptions.vrsStr), 4)
         #print('dumping', self.layout['variables'])
         
         if 'running' in self.layout.lo:
