@@ -218,6 +218,9 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             
             if 'y_range' in kpi and kpi['y_range'] != '':
                 yr = kpi['y_range']
+                
+                print('yr: ', yr)
+                
                 style['y_range'] = [None]*2
                 style['y_range'][0] = 100 - max(0, yr[0])
                 style['y_range'][1] = 100 - min(100, yr[1])

@@ -17,7 +17,8 @@ from PyQt5.QtCore import pyqtSignal
 
 import sql
 
-import db
+#import db
+from dbi import dbi
 
 from utils import cfg, log, yesNoDialog, formatTime
 from utils import dbException, customKPIException
@@ -38,11 +39,14 @@ class dataProvider():
     def __init__(self, server):
     
         super().__init__()
+        
+        dbimpl = dbi()
+        self.dbi = dbimpl.dbinterface
     
         log('connecting to %s:%i...' % (server['host'], server['port']))
         
         try: 
-            conn = db.create_connection(server, self.dbProperties)
+            conn = self.dbi.create_connection(server, self.dbProperties)
         except dbException as e:
             log('dataprovider exception bubble up...')
             raise e
@@ -74,7 +78,7 @@ class dataProvider():
             
     def reconnect(self):
         try: 
-            conn = db.create_connection(self.server)
+            conn = self.dbi.create_connection(self.server)
         except Exception as e:
             raise e
         
@@ -108,7 +112,7 @@ class dataProvider():
             log('chart keep-alive... ', 3, False, True)
             
             t0 = time.time()
-            db.execute_query(self.connection, 'select * from dummy', [])
+            self.dbi.execute_query(self.connection, 'select * from dummy', [])
             
             if hasattr(self, 'fakeDisconnect'):
                 log ('generate an exception...')
@@ -119,7 +123,7 @@ class dataProvider():
         except dbException as e:
             log('Trigger autoreconnect...')
             try:
-                conn = db.create_connection(self.server)
+                conn = self.dbi.create_connection(self.server)
                 if conn is not None:
                     self.connection = conn
                     log('Connection restored automatically')
@@ -157,7 +161,7 @@ class dataProvider():
         else:
             sql_string = 'select host, port, null database_name, service_name from m_services order by host, port'
             
-        rows = db.execute_query(self.connection, sql_string, [])
+        rows = self.dbi.execute_query(self.connection, sql_string, [])
         
         services = {}
         
@@ -178,7 +182,7 @@ class dataProvider():
 
         t0 = time.time()
         
-        rows = db.execute_query(self.connection, sql_string, [])
+        rows = self.dbi.execute_query(self.connection, sql_string, [])
         
         if len(rows) <= 1:
             log('[W] no/limited telemetry available', 1)
@@ -226,7 +230,7 @@ class dataProvider():
                             #'to':rows[i][3]
                             })
 
-        rows = db.execute_query(self.connection, kpis_sql, [])
+        rows = self.dbi.execute_query(self.connection, kpis_sql, [])
         
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
 
@@ -554,7 +558,7 @@ class dataProvider():
         
         try:
             #rows = db.execute_query(self.connection, sql, params)
-            rows_list, cols_list, dbCursor, psid = db.execute_query_desc(self.connection, sql, params, None)
+            rows_list, cols_list, dbCursor, psid = self.dbi.execute_query_desc(self.connection, sql, params, None)
         except Exception as e:
             log('[!] execute_query: %s' % str(e))
             #raise dbException('Database Exception')
@@ -828,7 +832,7 @@ class dataProvider():
         t0 = time.time()
         
         try:
-            rows = db.execute_query(self.connection, sql, params)
+            rows = self.dbi.execute_query(self.connection, sql, params)
         except Exception as e:
             log('[!] execute_query: %s' % str(e))
             #raise dbException('Database Exception')

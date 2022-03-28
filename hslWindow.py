@@ -45,6 +45,8 @@ import sys, os
 
 import time
 
+from _constants import build_date, version
+
 class hslWindow(QMainWindow):
 
     statusbar = None
@@ -510,6 +512,8 @@ class hslWindow(QMainWindow):
                 if dbver:
                     windowStr += ', ' + dbver
                 
+                windowStr += ' - ' + version
+                
                 self.tabs.setTabText(0, propStr)
                 self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
                 
@@ -539,7 +543,7 @@ class hslWindow(QMainWindow):
                 
                 self.statusMessage('', False)
 
-            except Exception as e:
+            except dbException as e:
                 log('Init exception not related to DB')
                 log(str(e))
 
@@ -1139,7 +1143,8 @@ class hslWindow(QMainWindow):
         else:
             self.setGeometry(200, 200, 1400, 800)
         
-        self.setWindowTitle('RybaFish Charts')
+        
+        self.setWindowTitle('RybaFish Charts [%s]' % version)
         
         self.setWindowIcon(QIcon(iconPath))
         

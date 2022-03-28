@@ -20,7 +20,7 @@ import time, sys
 #import shiboken2
 #import sip
 
-import db
+from dbi import dbi
 
 import utils
 from QPlainTextEditLN import QPlainTextEditLN
@@ -84,12 +84,12 @@ class sqlWorker(QObject):
             log('reconnecting to handle large SQL')
             #print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
             
-            db.largeSql = True
+            self.dbi.largeSql = True
             
             try: 
-                cons.conn = db.console_connection(cons.config)
+                cons.conn = self.dbi.console_connection(cons.config)
 
-                rows = db.execute_query(cons.conn, "select connection_id from m_connections where own = 'TRUE'", [])
+                rows = self.dbi.execute_query(cons.conn, "select connection_id from m_connections where own = 'TRUE'", [])
                 
                 if len(rows):
                     self.cons.connection_id = rows[0][0]
@@ -145,7 +145,7 @@ class sqlWorker(QObject):
                 psid = None
                 self.resultset_id_list = None
             else:
-                self.rows_list, self.cols_list, dbCursor, psid = db.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+                self.rows_list, self.cols_list, dbCursor, psid = self.dbi.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
             
                 self.resultset_id_list = dbCursor._resultset_id_list
             
@@ -173,7 +173,7 @@ class sqlWorker(QObject):
                 log('connection lost, should we close it?')
 
                 try: 
-                    db.close_connection(cons.conn)
+                    self.dbi.close_connection(cons.conn)
                 except dbException as e:
                     log('[?] ' + str(e))
                 except:
@@ -186,41 +186,6 @@ class sqlWorker(QObject):
                 log('connectionLost() used to be here, but now no UI possible from the thread')
                 #cons.connectionLost()
                 
-                
-        '''
-        
-        seems to be a leftover of old resulset treatment
-        this is to detach results reached resultset limit
-        
-        if result.rows:
-            resultSize = len(result.rows)
-        else:
-            resultSize = -1
-        '''
-
-        # all the rest moved to post-processing in SQLFinished call back
-        # as part of it resultset-dependent
-        '''
-            
-            
-        if cons.wrkException is None:
-            result._resultset_id = _resultset_id   #requred for detach (in case of detach)
-            result.detached = False
-            
-            log('saving the resultset id: %s' % utils.hextostr(_resultset_id))
-
-            if result.cols is not None:
-                for c in result.cols:
-                    if db.ifLOBType(c[1]):
-                        result.LOBs = True
-                        
-                        break
-                    
-            if result.LOBs == False and (not explicitLimit and resultSize == resultSizeLimit):
-                log('detaching due to possible SUSPENDED because of unfinished fetch')
-                result.detach()
-        '''
-
         self.finished.emit()
         #time.sleep(0.5)
         
@@ -1161,7 +1126,7 @@ class resultSet(QTableWidget):
         
         Created to show the resultset (one result tab), destroyed when re-executed.
 
-        Table never refilled.
+        Table never refilled. 
     '''
     
     alertSignal = pyqtSignal(['QString'])
@@ -1275,7 +1240,7 @@ class resultSet(QTableWidget):
         lobCols = []
         
         for i in range(len(self.cols)):
-            if db.ifLOBType(self.cols[i][1]):
+            if self.dbi.ifLOBType(self.cols[i][1]):
                 lobCols.append(i)
             
         for i in range(rows):
@@ -1415,9 +1380,9 @@ class resultSet(QTableWidget):
                 value = self.rows[r][c]
                 cname = self.headers[c]
 
-                if db.ifNumericType(self.cols[c][1]):
+                if self.dbi.ifNumericType(self.cols[c][1]):
                     values.append('%s = %s' % (normalize_header(cname), value))
-                elif db.ifTSType(self.cols[c][1]):
+                elif self.dbi.ifTSType(self.cols[c][1]):
                     values.append('%s = \'%s\'' % (normalize_header(cname), utils.timestampToStr(value)))
                 else:
                     values.append('%s = \'%s\'' % (normalize_header(cname), str(value)))
@@ -1511,7 +1476,7 @@ class resultSet(QTableWidget):
         if self.detached == False and self._resultset_id is not None:
             log('closing the resultset: %s' % (result_str))
             try:
-                db.close_result(self._connection, self._resultset_id) 
+                self.dbi.close_result(self._connection, self._resultset_id) 
                 self.detached = True
             except Exception as e:
                 log('[!] Exception: ' + str(e))
@@ -1542,14 +1507,14 @@ class resultSet(QTableWidget):
         
         if v is None:
             return utils.cfg('nullStringCSV', '')
-        elif db.ifBLOBType(t):
+        elif self.dbi.ifBLOBType(t):
             return str(v.encode())
         else:
-            if db.ifNumericType(t):
+            if self.dbi.ifNumericType(t):
                 return utils.numberToStrCSV(v, False)
-            elif db.ifRAWType(t):
+            elif self.dbi.ifRAWType(t):
                 return v.hex()
-            elif db.ifTSType(t):
+            elif self.dbi.ifTSType(t):
                 return utils.timestampToStr(v)
             else:
                 return str(v)
@@ -1567,24 +1532,6 @@ class resultSet(QTableWidget):
             vType = self.cols[i][1]
             
             values.append(self.csvVal(val, vType))
-
-            '''
-            if val is None:
-                values.append(utils.cfg('nullStringCSV', ''))
-            elif db.ifBLOBType(vType):
-                values.append(str(val.encode()))
-            else:
-                if db.ifNumericType(vType):
-                    values.append(utils.numberToStrCSV(val, False))
-                elif db.ifRAWType(vType):
-                    values.append(val.hex())
-                elif db.ifTSType(vType):
-                    #values.append(val.isoformat(' ', timespec='milliseconds'))
-                    values.append(utils.timestampToStr(val))
-                else:
-                    values.append(str(val))
-            '''
-                
             
         return ';'.join(values)
         
@@ -1637,7 +1584,7 @@ class resultSet(QTableWidget):
                     else:
                         val = r[c][:maxWidth]
                     
-                    if db.ifNumericType(types[c]) and i > 0:
+                    if self.dbi.ifNumericType(types[c]) and i > 0:
                         val = val.rjust(widths[c], ' ')
                     else:
                         val = val.ljust(widths[c], ' ')
@@ -1875,14 +1822,14 @@ class resultSet(QTableWidget):
                     if value is None:
                         values.append(utils.cfg('nullStringCSV', ''))
                     else:
-                        if db.ifBLOBType(vType):
+                        if self.dbi.ifBLOBType(vType):
                             values.append(str(value.encode()))
                         else:
-                            if db.ifNumericType(vType):
+                            if self.dbi.ifNumericType(vType):
                                 values.append(utils.numberToStrCSV(value, False))
-                            elif db.ifRAWType(vType):
+                            elif self.dbi.ifRAWType(vType):
                                 values.append(value.hex())
-                            elif db.ifTSType(vType):
+                            elif self.dbi.ifTSType(vType):
                                 #values.append(value.isoformat(' ', timespec='milliseconds'))
                                 values.append(utils.timestampToStr(value))
                             else:
@@ -1951,7 +1898,7 @@ class resultSet(QTableWidget):
         #fill the result table
                 
         for r in range(len(rows)):
-            log('populate result: %i' % r, 5)
+            #log('populate result: %i' % r, 5)
             for c in range(len(row0)):
                 
                 val = rows[r][c]
@@ -1960,9 +1907,9 @@ class resultSet(QTableWidget):
                     val = utils.cfg('nullString', '?')
                     
                     item = QTableWidgetItem(val)
-                elif db.ifNumericType(cols[c][1]):
+                elif self.dbi.ifNumericType(cols[c][1]):
                 
-                    if db.ifDecimalType(cols[c][1]):
+                    if self.dbi.ifDecimalType(cols[c][1]):
                         #val = utils.numberToStr(val, 3)
                         val = utils.numberToStrCSV(val)
                     else:
@@ -1970,9 +1917,9 @@ class resultSet(QTableWidget):
                     
                     item = QTableWidgetItem(val)
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                elif db.ifLOBType(cols[c][1]): #LOB
+                elif self.dbi.ifLOBType(cols[c][1]): #LOB
                     #val = val.read()
-                    if db.ifBLOBType(cols[c][1]):
+                    if self.dbi.ifBLOBType(cols[c][1]):
                         if val is None:
                             val = utils.cfg('nullString', '?')
                         else:
@@ -1991,13 +1938,13 @@ class resultSet(QTableWidget):
                     
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
 
-                elif db.ifRAWType(cols[c][1]): #VARBINARY
+                elif self.dbi.ifRAWType(cols[c][1]): #VARBINARY
                     val = val.hex()
                     
                     item = QTableWidgetItem(val)
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     
-                elif db.ifVarcharType(cols[c][1]):
+                elif self.dbi.ifVarcharType(cols[c][1]):
                     item = QTableWidgetItem(val)
                     
                     if '\n' in val:
@@ -2028,7 +1975,7 @@ class resultSet(QTableWidget):
                             self.alertSignal.emit(sound)
 
                 
-                elif db.ifTSType(cols[c][1]):
+                elif self.dbi.ifTSType(cols[c][1]):
                     #val = val.isoformat(' ', timespec='milliseconds') 
                     val = utils.timestampToStr(val)
                     item = QTableWidgetItem(val)
@@ -2052,11 +1999,11 @@ class resultSet(QTableWidget):
                         
     def dblClick(self, i, j):
     
-        if db.ifLOBType(self.cols[j][1]):
+        if self.dbi.ifLOBType(self.cols[j][1]):
             if self.detached:
                 self.log('warning: LOB resultset already detached', True)
                 
-                if db.ifBLOBType(self.cols[j][1]):
+                if self.dbi.ifBLOBType(self.cols[j][1]):
                     blob = str(self.rows[i][j].encode())
                 else:
                     blob = str(self.rows[i][j])
@@ -2068,7 +2015,7 @@ class resultSet(QTableWidget):
                         self.log('LOB read() error: %s' % str(e), True)
                         value = '<error1>'
                     
-                    if db.ifBLOBType(self.cols[j][1]):
+                    if self.dbi.ifBLOBType(self.cols[j][1]):
                         blob = str(value.decode("utf-8", errors="ignore"))
                     else:
                         blob = str(value)
@@ -2163,6 +2110,12 @@ class sqlConsole(QWidget):
         #self.t0 = None                      # set on queue start
         #self.t1 = None                      # set on statement start
 
+
+        dbimpl = dbi()
+        self.dbi = dbimpl.dbinterface
+        
+        self.sqlWorker.dbi = self.dbi
+
         # one time thread init...
         self.sqlWorker.moveToThread(self.thread)
         self.sqlWorker.finished.connect(self.sqlFinished)
@@ -2235,10 +2188,10 @@ class sqlConsole(QWidget):
         
         try: 
             log('starting console connection')
-            self.conn = db.console_connection(config)
+            self.conn = self.dbi.console_connection(config)
             self.config = config
             
-            rows = db.execute_query(self.conn, "select connection_id from m_connections where own = 'TRUE'", [])
+            rows = self.dbi.execute_query(self.conn, "select connection_id from m_connections where own = 'TRUE'", [])
             
             if len(rows):
                 self.connection_id = rows[0][0]
@@ -2582,7 +2535,7 @@ class sqlConsole(QWidget):
                 log('close the connection...', 5)
                 self.indicator.status = 'sync'
                 self.indicator.repaint()
-                db.close_connection(self.conn)
+                self.dbi.close_connection(self.conn)
                 
         except dbException as e:
             log('close() db exception: '+ str(e))
@@ -2684,9 +2637,9 @@ class sqlConsole(QWidget):
 
             try:
                 if schema == 'PUBLIC':
-                    rows = db.execute_query(self.conn, 'select distinct schema_name object, \'SCHEMA\' type from schemas where lower(schema_name) like ? union select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [term, schema, term])
+                    rows = self.dbi.execute_query(self.conn, 'select distinct schema_name object, \'SCHEMA\' type from schemas where lower(schema_name) like ? union select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [term, schema, term])
                 else:
-                    rows = db.execute_query(self.conn, 'select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
+                    rows = self.dbi.execute_query(self.conn, 'select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
                     
             except dbException as e:
                 err = str(e)
@@ -2742,7 +2695,7 @@ class sqlConsole(QWidget):
             self.stopResults()
         
             if self.conn is not None:
-                db.close_connection(self.conn)
+                self.dbi.close_connection(self.conn)
                 
                 self.stopKeepAlive()
                 
@@ -2774,7 +2727,7 @@ class sqlConsole(QWidget):
             self.indicator.repaint()
 
             if self.conn is not None:
-                db.close_connection(self.conn)
+                self.dbi.close_connection(self.conn)
                 
                 self.stopKeepAlive()
                 self.conn = None
@@ -2784,9 +2737,9 @@ class sqlConsole(QWidget):
             self.sqlRunning = False
             self.stQueue.clear()
 
-            self.conn = db.console_connection(self.config)                
+            self.conn = self.dbi.console_connection(self.config)                
 
-            rows = db.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
+            rows = self.dbi.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
             
             if len(rows):
                 self.connection_id = rows[0][0]
@@ -2815,9 +2768,9 @@ class sqlConsole(QWidget):
     def reconnect(self):
             
         try: 
-            conn = db.console_connection(self.config)
+            conn = self.dbi.console_connection(self.config)
 
-            rows = db.execute_query(conn, "select connection_id  from m_connections where own = 'TRUE'", [])
+            rows = self.dbi.execute_query(conn, "select connection_id  from m_connections where own = 'TRUE'", [])
             
             if len(rows):
                 self.connection_id = rows[0][0]
@@ -2951,6 +2904,8 @@ class sqlConsole(QWidget):
     def newResult(self, conn, st):
         
         result = resultSet(conn)
+        result.dbi = self.dbi
+        
         result.statement = st
         
         result.defaultTimer = self.defaultTimer
@@ -3002,7 +2957,7 @@ class sqlConsole(QWidget):
                 try:
                     self.indicator.status = 'sync'
                     self.indicator.repaint()
-                    db.drop_statement(self.conn, result.psid)
+                    self.dbi.drop_statement(self.conn, result.psid)
                     self.indicator.status = 'idle'
                     self.indicator.repaint()
                 except Exception as e:
@@ -3033,26 +2988,6 @@ class sqlConsole(QWidget):
             del(result.rows)
             
             #same code in refresh()
-            
-            '''
-            # from here....
-            if result.LOBs and not result.detached:
-                if result.detachTimer is not None:
-                    log('stopping the detach timer in advance...')
-                    result.detachTimer.stop()
-                    result.detachTimer = None
-                    
-                result.detach()
-                
-            if self.conn is not None:
-                try:
-                    db.drop_statement(self.conn, result.psid)
-                except Exception as e:
-                    log('[E] exeption during console close/drop statement: %s' % str(e), 2)
-
-            # to here
-            # can be removed as duplicated in stopResults
-            '''
             
             #result.destroy()
             #result.deleteLater()
@@ -3103,7 +3038,7 @@ class sqlConsole(QWidget):
             self.indicator.repaint()
             
             t0 = time.time()
-            db.execute_query(self.conn, 'select * from dummy', [])
+            self.dbi.execute_query(self.conn, 'select * from dummy', [])
             t1 = time.time()
 
             #self.indicator.status = 'idle'
@@ -3120,13 +3055,13 @@ class sqlConsole(QWidget):
             log('Trigger autoreconnect...')
             self.log('Connection lost, trigger autoreconnect...')
             try:
-                conn = db.console_connection(self.config)
+                conn = self.dbi.console_connection(self.config)
                 if conn is not None:
                     self.conn = conn
                     log('Connection restored automatically')
                     self.indicator.status = 'idle'
 
-                    rows = db.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
+                    rows = self.dbi.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
                     
                     if len(rows):
                         self.connection_id = rows[0][0]
@@ -4022,7 +3957,7 @@ class sqlConsole(QWidget):
             
             if result.cols is not None:
                 for c in result.cols:
-                    if db.ifLOBType(c[1]):
+                    if self.dbi.ifLOBType(c[1]):
                         result.LOBs = True
                         
                         #print('LOBS!', utils.hextostr(result._resultset_id))
