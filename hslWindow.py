@@ -479,7 +479,11 @@ class hslWindow(QMainWindow):
                         self.statusMessage('Loading saved kpis...', True)
 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
-                    self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
+                    if 'timeZoneDelta' in self.chartArea.dp.dbProperties:
+                        self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
+                    else:
+                        self.chartArea.widget.timeZoneDelta = 0
+                        
                     if not conf['noreload']:
                         log('reload from menuConfig #1', 4)
                         self.chartArea.reloadChart()
@@ -496,7 +500,10 @@ class hslWindow(QMainWindow):
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
                     
-                sid = self.chartArea.dp.dbProperties['sid']
+                if 'sid' in self.chartArea.dp.dbProperties:
+                    sid = self.chartArea.dp.dbProperties['sid']
+                else:
+                    sid = ''
                 
                 propStr = conf['user'] + '@' + sid
                 

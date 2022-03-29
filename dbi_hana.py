@@ -1,31 +1,5 @@
 '''
     Database interface implementation for SAP HANA DB
-
-    The class impements mandatory methods:
-    
-    Requred for charts:
-        create_connection
-        execute_query
-        execute_query_desc -- limited requirements, probably temporary...
-        
-        close_connection
-        
-    Requred for SQL Console:
-        console_connection
-        execute_query_desc
-        
-        type checks for LOBs processing and correct result render
-            ifNumericType
-            ifRAWType
-            ifTSType
-            ifVarcharType
-            ifDecimalType
-            ifLOBType
-            ifBLOBType
-        
-    HANA Specific yet requred on the DBI level
-        drop_statement - to keep prepared statements cleat
-        close_result - to release MVCC
 '''
 
 import pyhdb
@@ -314,7 +288,10 @@ class hdbi ():
 
     def execute_query_desc(self, connection, sql_string, params, resultSize):
         '''
-            The method used solely by SQL console because it also needs a result set description.
+            The method mainly used by SQL console because it also needs a result set description.
+            
+            additionaly it is use in Gantt customKPIs because of the dynamic number of return columns 
+            
             It also used a modified version of the pyhdb cursor implementation because of the https://github.com/rybafish/rybafish/issues/97
         '''
 
@@ -448,13 +425,13 @@ class hdbi ():
 
         return rows_list, columns_list, cursor, psid
         
-        
+    '''
     def DEPR_get_data(connection, kpis, times, data):
-        '''
+        ''
             requests list of kpis from connection c where time between times.from times.to into &data
             
             to do: tenant, hostm port
-        '''
+        ''
         
         if not connection:
             log('no db connection...')
@@ -503,10 +480,10 @@ class hdbi ():
         log('trace get time: %s, get/parse time %s (%i rows)' % (str(round(t1-t0, 3)), str(round(t2-t1, 3)), trace_lines))
 
     def DEPR_initHosts(c, hosts, hostKPIs, srvcKPIs):
-        '''
+        '
             this one to be called once after the connect to prepare info on hosts/services available
             AND KPIs
-        '''
+        '
 
         kpis_sql = 'select view_name, column_name from m_load_history_info order by display_hierarchy'
 
@@ -547,7 +524,7 @@ class hdbi ():
         t1 = time.time()
         
         log('hostsInit time: %s' % (str(round(t1-t0, 3))))
-        
+    '''
         
     def ifNumericType(self, t):
         if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT,

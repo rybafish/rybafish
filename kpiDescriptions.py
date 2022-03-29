@@ -473,6 +473,8 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
     
     for kpi in rows:
     
+        print(kpi)
+    
         if kpi[1].lower() == 'm_load_history_host':
             type = 'host'
         else:
