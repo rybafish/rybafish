@@ -3,6 +3,9 @@ import socket
 
 from yaml import safe_load
 
+from io import StringIO
+import csv
+
 try: 
     f = open('conf.yaml', 'r')
     conf = safe_load(f)
@@ -17,15 +20,23 @@ dbPort = srv['port']
 dbUser = srv['user']
 dbPwd = srv['password']
 
-connection = pyhdb.connect(host=dbHost, port=dbPort, user=dbUser, password=dbPwd)
+reconnect = True
 
-if connection is not None:
-    print('connected to DB')
-else:
-    exit(1)
-   
+while True:
 
-while True:   
+    #reconnect 
+    
+    if reconnect:
+        connection = pyhdb.connect(host=dbHost, port=dbPort, user=dbUser, password=dbPwd)
+        
+        reconnect = False
+
+        if connection is not None:
+            print('re-connected to DB')
+        else:
+            print('connection issue, exit')
+            exit(1)
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     s.bind(('127.0.0.1', 5000))
@@ -73,36 +84,38 @@ while True:
                     rows = cursor.fetchall()
                     
                 except pyhdb.exceptions.DatabaseError as e:
-                    resp = '[E]: ' + str(e) + '\n'
+                
+                    err = str(e)
+                    resp = '[E]: ' + err + '\n'
+                    
+                    if err[:30] == 'Lost connection to HANA server':
+                        reconnect = True
                     
                 else:
-                    resp = ''
-                    
+                    output = StringIO()
+                    writer = csv.writer(output, delimiter=',')
+                                        
                     cc = []
                     
-                    print('cols:', str(cols))
-                    print('cols[0]:', str(cols[0]))
-                    
                     for c in cols[0]:
-                        print('c', c)
                         cc.append(c[0])
-                        
-                    print('cc:', cc)
-                        
-                    resp += ','.join(cc) + '\n'
                     
-                    print('resp', resp)
-                        
+                    writer.writerow(cc)
+                                            
                     for r in rows:
                         rr = []
                         
                         for v in r:
                             rr.append(str(v))
-                        
-                        resp += ','.join(rr) + '\n'
-                        
-                    resp += '\n'
+                                                
+                        writer.writerow(rr)
+                    
+                    resp = output.getvalue() + '\n'
+                    
                     print('resp', resp)
                 
                 sql = ''
                 conn.sendall(resp.encode())
+                
+                if reconnect:
+                    break # breake out to reconnect loop
