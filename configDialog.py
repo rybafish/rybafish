@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
-    QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox)
+    QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox, QComboBox)
     
 from PyQt5.QtGui import QPixmap, QIcon
 
@@ -59,6 +59,11 @@ class Config(QDialog):
             cf.config['port'] = ''
             cf.config['host'] = hostport
         
+        if cf.driverCB.currentText() == 'HANA DB':
+            cf.config['dbi'] = 'HDB'
+        elif cf.driverCB.currentText() == 'ABAP Proxy':
+            cf.config['dbi'] = 'S2J'
+        
         cf.config['user'] = cf.userEdit.text()
         cf.config['password'] = cf.pwdEdit.text().strip()
         
@@ -72,9 +77,17 @@ class Config(QDialog):
         #form = QFormLayout()
         form = QGridLayout()
         
+        self.driverCB = QComboBox()
+        self.driverCB.addItem('HANA DB')
+        self.driverCB.addItem('ABAP Proxy')
+
+        
         iconPath = resourcePath('ico\\favicon.png')
         
         self.hostportEdit = QLineEdit()
+        
+        self.hostportEdit.setFixedWidth(192)
+        
         self.userEdit = QLineEdit()
         self.pwdEdit = QLineEdit()
         
@@ -100,10 +113,22 @@ class Config(QDialog):
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
+
+        dbiHBox = QHBoxLayout()
+        
+        dbiHBox.addWidget(QLabel('Connection type:'))
+        dbiHBox.addWidget(self.driverCB)
+        
+        
         vbox = QVBoxLayout()
         #vbox.addWidget(checkButton)
+        #vbox.addWidget()
+        
+        if cfg('DBI', False):
+            vbox.addLayout(dbiHBox)
+        
         vbox.addLayout(form)
-        vbox.addStretch(1)
+        #vbox.addStretch(1)
         # vbox.addLayout(hbox)
         
         # vbox.addWidget(self.savePwd)

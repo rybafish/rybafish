@@ -147,7 +147,10 @@ class sqlWorker(QObject):
             else:
                 self.rows_list, self.cols_list, dbCursor, psid = self.dbi.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
             
-                self.resultset_id_list = dbCursor._resultset_id_list
+                if dbCursor:
+                    self.resultset_id_list = dbCursor._resultset_id_list
+                else:
+                    self.resultset_id_list = None
             
             result.explicitLimit = explicitLimit
             result.resultSizeLimit = resultSizeLimit          
@@ -2110,12 +2113,6 @@ class sqlConsole(QWidget):
         #self.t0 = None                      # set on queue start
         #self.t1 = None                      # set on statement start
 
-
-        dbimpl = dbi()
-        self.dbi = dbimpl.dbinterface
-        
-        self.sqlWorker.dbi = self.dbi
-
         # one time thread init...
         self.sqlWorker.moveToThread(self.thread)
         self.sqlWorker.finished.connect(self.sqlFinished)
@@ -2126,6 +2123,7 @@ class sqlConsole(QWidget):
         
         self.conn = None
         self.config = None
+        self.dbi = None
         self.timer = None           # keep alive timer
         self.rows = []
         
@@ -2187,6 +2185,11 @@ class sqlConsole(QWidget):
             return
         
         try: 
+            dbimpl = dbi(config['dbi'])
+            self.dbi = dbimpl.dbinterface
+            
+            self.sqlWorker.dbi = self.dbi
+
             log('starting console connection')
             self.conn = self.dbi.console_connection(config)
             self.config = config
@@ -2737,6 +2740,13 @@ class sqlConsole(QWidget):
             self.sqlRunning = False
             self.stQueue.clear()
 
+            if self.dbi == None:
+                dbimpl = dbi(self.config['dbi'])
+                self.dbi = dbimpl.dbinterface
+                
+                self.sqlWorker.dbi = self.dbi
+
+                
             self.conn = self.dbi.console_connection(self.config)                
 
             rows = self.dbi.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
@@ -2767,7 +2777,8 @@ class sqlConsole(QWidget):
     
     def reconnect(self):
             
-        try: 
+        try:
+        
             conn = self.dbi.console_connection(self.config)
 
             rows = self.dbi.execute_query(conn, "select connection_id  from m_connections where own = 'TRUE'", [])
@@ -3946,7 +3957,10 @@ class sqlConsole(QWidget):
             if result.cols[0][2] == 'SCALAR':
                 result._resultset_id = None
             else:
-                result._resultset_id = resultset_id_list[i]
+                if resultset_id_list is not None:
+                    result._resultset_id = resultset_id_list[i]
+                else:
+                    result._resultset_id = None
                 
             rows = rows_list[i]
         

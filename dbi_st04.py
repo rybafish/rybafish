@@ -18,7 +18,7 @@ class s2j():
     s = None
 
     def __init__(self):
-        pass
+        log('Using S2J as DB driver implementation')
         
     def create_connection(self, server, dbProperties = None):
     
@@ -30,7 +30,9 @@ class s2j():
         
         log('[S2J] open connection...')
         
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s2j.s = s
+        self.s = s
         
         try:
             self.s.connect((host, port))
@@ -98,27 +100,32 @@ class s2j():
         except ConnectionResetError as e:
             raise dbException(str(err))
             
-        print('=====================')
-                
         resp = resp[:-1]
 
-        rows = self.parseResponce(resp)
+        self.rows = self.parseResponce(resp)
         
-        return rows
+        return self.rows
         
     def parseResponce(self, resp):
+    
+        '''
+            takes csv resp string and creates a rows array
+            ! also builds self.types list
+        
+            Note: local rows but self.types here!
+        '''
     
         def convert_types():
             '''
                 performs conversion of rows array
                 based on types array
             '''
-            for c in range(len(types)):
+            for c in range(len(self.types)):
                 for i in range(len(rows)):
                     
-                    if types[c] == 'int':
+                    if self.types[c] == 'int':
                         rows[i][c] = int(rows[i][c])
-                    elif types[c] == 'timestamp':
+                    elif self.types[c] == 'timestamp':
                         rows[i][c] = datetime.fromisoformat(rows[i][c])
                     else:
                         pass
@@ -151,34 +158,95 @@ class s2j():
         
         rows = []
         
-        header = next(reader)
+        self.header = next(reader)
         #header = reader.__next__()
         
-        log('[S2J] header:' + str(header))
+        log('[S2J] header:' + str(self.header))
         
-        cols = len(header)
+        cols = len(self.header)
         
         for row in reader:
             rows.append(row)
             
-        types = ['']*cols
+        self.types = ['']*cols
         
         #detect types
         for i in range(cols):
             if check_integer(i):
-                types[i] = 'int'
+                self.types[i] = 'int'
             elif check_timestamp(i):
-                types[i] = 'timestamp'
+                self.types[i] = 'timestamp'
             else:
-                types[i] = 'varchar'
+                self.types[i] = 'varchar'
         
         convert_types()
         
-        log('[S2J] types:' + str(types))
-        log('[S2J] row sample:' + str(rows[1]))
+        log('[S2J] types:' + str(self.types))
+        
+        if len(rows) > 1:
+            log('[S2J] row sample:' + str(rows[1]))
         
         return rows
         
     def close_connection(self, connection):
-        log('[S2J] Close connection')
+        log('[S2J] Close connection (ignoring)')
+        
+    '''
+        Console specific stuff below
+    '''    
+    def console_connection (self, server, dbProperties = None, data_format_version2 = False):
+        if s2j.s is not None:
+            self.s = s2j.s
+            return s2j.s
+        else:
+            raise Exception('Chart not connected, cannot open console.')
+
+    def execute_query_desc(self, connection, sql_string, params, resultSize):
+    # self.rows_list, self.cols_list, dbCursor, psid = self.dbi.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+    
+        self.execute_query(connection, sql_string, params)
+        
+        log('[S2J] results')
+        log('[S2J] %s' % str(self.types))
+        log('[S2J] %s' % str(self.rows))
+        
+        cols = []
+        
+        
+        for i in range(len(self.types)):
+            cols.append([self.header[i], self.types[i], None])
+        
+        rlist = [self.rows]
+        clist = [cols]
+        
+        return rlist, clist, None, None
+    
+    def drop_statement(self, connection, psid):
         pass
+        
+    def ifLOBType(self, t):
+        return False
+        
+    def ifBLOBType(self, t):
+        return False
+        
+    def ifNumericType(self, t):
+        if t == 'int':
+            return True
+        else:
+            return False
+        
+    def ifRAWType(self, t):
+        return False
+        
+    def ifTSType(self, t):
+        return False
+        
+    def ifVarcharType(self, t):
+        if t == 'varchar':
+            return True
+        else:
+            return False
+        
+    def ifDecimalType(self, t):
+        return False

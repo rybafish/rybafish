@@ -40,10 +40,10 @@ class dataProvider():
     
         super().__init__()
         
-        dbimpl = dbi()
+        log('connecting to %s:\\\\%s:%i...' % (server['dbi'], server['host'], server['port']))
+
+        dbimpl = dbi(server['dbi'])
         self.dbi = dbimpl.dbinterface
-    
-        log('connecting to %s:%i...' % (server['host'], server['port']))
         
         try: 
             conn = self.dbi.create_connection(server, self.dbProperties)
