@@ -16,6 +16,8 @@ from utils import dbException
 class s2j():
 
     s = None
+    
+    options = {'keepalive': False, 'largeSQL': False}
 
     def __init__(self):
         log('Using S2J as DB driver implementation')
@@ -97,7 +99,7 @@ class s2j():
                     
                 if resp[-2:] == '\n\n':
                     break
-        except ConnectionResetError as e:
+        except (ConnectionResetError, ConnectionAbortedError) as err:
             raise dbException(str(err))
             
         resp = resp[:-1]
@@ -200,6 +202,9 @@ class s2j():
             return s2j.s
         else:
             raise Exception('Chart not connected, cannot open console.')
+
+    def get_connection_id(self, conn):
+        return None
 
     def execute_query_desc(self, connection, sql_string, params, resultSize):
     # self.rows_list, self.cols_list, dbCursor, psid = self.dbi.execute_query_desc(cons.conn, sql, [], resultSizeLimit)

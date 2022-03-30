@@ -37,6 +37,8 @@ class hdbi ():
     message_types.CLOSERESULTSET = 69 
     message_types.DROPSTATEMENTID = 70
     
+    options = {'keepalive': True, 'largeSQL': True}
+    
     logline = 'db configuration:'
 
     for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
@@ -195,6 +197,16 @@ class hdbi ():
         log('sql (re)connect: %s' % (str(round(t1-t0, 3))))
         
         return connection
+
+    def get_connection_id(self, conn):
+        rows = self.execute_query(conn, "select connection_id from m_connections where own = 'TRUE'", [])
+
+        if len(rows):
+            connection_id = rows[0][0]
+            return connection_id
+        else:
+            return None
+        
 
     def close_connection(self, c):
         try:

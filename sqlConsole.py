@@ -2194,12 +2194,18 @@ class sqlConsole(QWidget):
             self.conn = self.dbi.console_connection(config)
             self.config = config
             
+            self.connection_id = self.dbi.get_connection_id(self.conn)
+            log('connection open, id: %s' % self.connection_id)
+            '''
+            moved to DBI implementation
+            
             rows = self.dbi.execute_query(self.conn, "select connection_id from m_connections where own = 'TRUE'", [])
             
             if len(rows):
                 self.connection_id = rows[0][0]
                 
                 log('connection open, id: %s' % self.connection_id)
+            '''
             
         except dbException as e:
             log('[!] failed!')
@@ -3009,6 +3015,11 @@ class sqlConsole(QWidget):
         self.results.clear()
             
     def enableKeepAlive(self, window, keepalive):
+    
+        if not self.dbi.options.get('keepalive'):
+            log('Keep-alives not supported by this DBI')
+            return
+    
         log('Setting up console keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)

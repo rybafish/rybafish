@@ -10,6 +10,8 @@ from utils import resourcePath
 
 from utils import log, cfg
 
+from dbi import dbidict
+
 class Config(QDialog):
 
     config = {}
@@ -20,6 +22,8 @@ class Config(QDialog):
         super(Config, self).__init__(parent)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         self.initUI()
+        
+        print('config', conf)
         
         try:
             if conf:
@@ -32,6 +36,14 @@ class Config(QDialog):
                 if conf.get('pwdhash'):
                     self.savePwd.setChecked(True)
                 '''
+                
+                dbi = conf.get('dbi')
+                
+                if dbi:
+                    for i in range(self.driverCB.count()):
+                        if dbidict[self.driverCB.itemText(i)] == dbi:
+                            self.driverCB.setCurrentIndex(i)
+                
             else:
                 self.hostportEdit.setFocus()
         except:
@@ -59,10 +71,7 @@ class Config(QDialog):
             cf.config['port'] = ''
             cf.config['host'] = hostport
         
-        if cf.driverCB.currentText() == 'HANA DB':
-            cf.config['dbi'] = 'HDB'
-        elif cf.driverCB.currentText() == 'ABAP Proxy':
-            cf.config['dbi'] = 'S2J'
+        cf.config['dbi'] = dbidict[cf.driverCB.currentText()]
         
         cf.config['user'] = cf.userEdit.text()
         cf.config['password'] = cf.pwdEdit.text().strip()

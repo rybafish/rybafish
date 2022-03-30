@@ -90,6 +90,11 @@ class dataProvider():
             self.connection = conn
         
     def enableKeepAlive(self, window, keepalive):
+    
+        if not self.dbi.options.get('keepalive'):
+            log('Keep-alives not supported by this DBI')
+            return
+    
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)

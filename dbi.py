@@ -50,6 +50,8 @@ import dbi_st04
 
 from utils import log, cfg
 
+dbidict = {'HANA DB': 'HDB', 'ABAP Proxy': 'S2J'}
+
 class dbi:
 
     dbinterface = None
