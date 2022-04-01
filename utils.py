@@ -59,6 +59,49 @@ def timePrint():
         
     return s
 
+class cfgManager():
+
+    configs = {}
+    
+    def __init__(self, ):
+        script = sys.argv[0]
+        path, file = os.path.split(script)
+        
+        self.fname = os.path.join(path, 'connections.yaml')
+
+        try: 
+            f = open(self.fname, 'r')
+            self.configs = safe_load(f)
+        except:
+            log('no configs, using defaults')
+        
+    def updateConf(self, confEntry):
+        
+        
+        #if confEntry['name'] in self.configs:
+        #    self.configs.remove()
+        
+        name = confEntry.pop('name')
+            
+        self.configs[name] = confEntry
+        
+        self.dump()
+        
+    
+    def removeConf(self, entryName):
+        if entryName in self.configs:
+            del self.configs[entryName]
+            
+        self.dump()
+        
+    def dump(self):
+        try: 
+            f = open(self.fname, 'w')
+            dump(self.configs, f, default_flow_style=None, sort_keys=False)
+            f.close()
+        except:
+            log('layout dump issue')
+
 class Layout():
     
     lo = {}

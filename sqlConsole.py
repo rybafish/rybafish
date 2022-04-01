@@ -80,31 +80,33 @@ class sqlWorker(QObject):
             self.finished.emit()
             return
 
-        if len(sql) >= 2**17 and cons.conn.large_sql != True:
-            log('reconnecting to handle large SQL')
-            #print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
-            
-            self.dbi.largeSql = True
-            
-            try: 
-                cons.conn = self.dbi.console_connection(cons.config)
+        if self.dbi.name == 'HDB':
+            # hdb specific megic here 
+            if len(sql) >= 2**17 and cons.conn.large_sql != True:
+                log('reconnecting to handle large SQL')
+                #print('replace by a pyhdb.constant? pyhdb.protocol.constants.MAX_MESSAGE_SIZE')
+                
+                self.dbi.largeSql = True
+                
+                try: 
+                    cons.conn = self.dbi.console_connection(cons.config)
 
-                rows = self.dbi.execute_query(cons.conn, "select connection_id from m_connections where own = 'TRUE'", [])
-                
-                if len(rows):
-                    self.cons.connection_id = rows[0][0]
-                    log('connection open, id: %s' % self.cons.connection_id)
+                    rows = self.dbi.execute_query(cons.conn, "select connection_id from m_connections where own = 'TRUE'", [])
                     
-            except dbException as e:
-                err = str(e)
-                #
-                # cons.log('DB Exception:' + err, True)
-                
-                cons.wrkException = 'DB Exception:' + err
-                
-                cons.connect = None
-                self.finished.emit()
-                return
+                    if len(rows):
+                        self.cons.connection_id = rows[0][0]
+                        log('connection open, id: %s' % self.cons.connection_id)
+                        
+                except dbException as e:
+                    err = str(e)
+                    #
+                    # cons.log('DB Exception:' + err, True)
+                    
+                    cons.wrkException = 'DB Exception:' + err
+                    
+                    cons.connect = None
+                    self.finished.emit()
+                    return
                 
         #execute the query
         

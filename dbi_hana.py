@@ -26,18 +26,24 @@ import sql
 import sys
 import re
 
-from utils import log, cfg, hextostr
+from utils import cfg, hextostr
+from utils import log as ulog
 from utils import dbException
 
 from os import getlogin
 
+def log(s, p = 3):
+    ulog('[HDB] ' + s, p)
+
 class hdbi ():
 
+    name = 'HDB'
+    options = {'keepalive': True, 'largeSQL': True}
+    
     # those two are missing in PyHDB
     message_types.CLOSERESULTSET = 69 
     message_types.DROPSTATEMENTID = 70
     
-    options = {'keepalive': True, 'largeSQL': True}
     
     logline = 'db configuration:'
 
@@ -358,7 +364,7 @@ class hdbi ():
                 # p - ParameterMetadata object
                 log('Okay, Scalar output parameter: [%s]' % (str(p)), 3)
                 
-                if(ifLOBType(p.datatype)):
+                if(self.ifLOBType(p.datatype)):
                     params.append('') # don't even ask... PyHDB...
                 else:
                     params.append(None)
@@ -403,10 +409,11 @@ class hdbi ():
             
                     log('columns_list with scalar(s)  ----> %s' % str(columns_list), 4)
                     
-                
+                '''
                 for clmn in columns_list:
                     log('--> %s' % str(clmn), 5)
                     pass
+                '''
                 
                 log('results to fetch: %i' % len(cursor.description_list), 5)
                 

@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
-    QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox, QComboBox)
+    QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox, QComboBox, QFrame)
     
 from PyQt5.QtGui import QPixmap, QIcon
 
@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 
 from utils import resourcePath
 
-from utils import log, cfg
+from utils import log, cfg, cfgManager
 
 from dbi import dbidict
 
@@ -16,15 +16,7 @@ class Config(QDialog):
 
     config = {}
     
-    def __init__(self, conf, parent = None):
-        #super().__init__(parent)
-        
-        super(Config, self).__init__(parent)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
-        self.initUI()
-        
-        print('config', conf)
-        
+    def setConf(self, conf):
         try:
             if conf:
                 hostport = conf['host'] + ':' + str(conf['port'])
@@ -48,6 +40,20 @@ class Config(QDialog):
                 self.hostportEdit.setFocus()
         except:
             pass
+    
+    
+    def __init__(self, conf, parent = None):
+        #super().__init__(parent)
+        
+        super(Config, self).__init__(parent)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
+        
+        self.cfgManager = cfgManager()
+        self.initUI()
+        
+        self.conf = conf
+        if conf:
+            self.setConf(conf)
         
     @staticmethod
     def getConfig(config, parent = None):
@@ -80,7 +86,81 @@ class Config(QDialog):
         # cf.config['savepwd'] = cf.savePwd.isChecked()
         
         return (cf.config, result == QDialog.Accepted)
+        
+    def driverChanged(self, index):
+    
+        drv = self.driverCB.currentText()
+        
+        if drv == 'ABAP Proxy':
+            self.userEdit.setDisabled(True)
+            self.pwdEdit.setDisabled(True)
+            self.update()
+        elif drv == 'HANA DB':
+            self.userEdit.setEnabled(True)
+            self.pwdEdit.setEnabled(True)
 
+    def confChange(self, i):
+    
+        def parseHost(hostport):
+        
+            try:
+                host, port = hostport.split(':')
+                port = int(port)
+                
+                self.hostportEdit.setStyleSheet("color: black;")
+
+            except:
+                self.hostportEdit.setStyleSheet("color: red;")
+                host = hostport
+                port = None
+                
+            return host, port
+        
+        conf = {}
+        
+        name = self.confCB.currentText()
+        
+        if name != '':
+            c = self.cfgManager.configs[name]
+            
+            host, port = parseHost(c['hostport'])
+            conf['host'] = host
+            conf['port'] = port
+            conf['user'] = c['user']
+            conf['password'] = c['pwd']
+        else:
+            conf = self.conf
+        
+        self.setConf(conf)
+    
+    def confSave(self):
+        txt = self.confCB.currentText()
+        
+        cfg = {}
+        
+        cfg['name'] = txt
+        cfg['dbi'] = self.driverCB.currentText()
+        cfg['user'] = self.userEdit.text()
+        cfg['pwd'] = self.pwdEdit.text()
+        cfg['hostport'] = self.hostportEdit.text()
+        
+        items = []
+        for i in range(self.confCB.count()):
+            items.append(self.confCB.itemText(i))
+            
+        self.cfgManager.updateConf(cfg)
+        
+        self.confCB.addItem(txt)
+        
+        self.confCB.setCurrentIndex(self.confCB.count() - 1)
+                
+    def confDel(self):
+        name = self.confCB.currentText()
+        i = self.confCB.currentIndex()
+        self.confCB.removeItem(i)
+        
+        self.cfgManager.removeConf(name)
+        
     def initUI(self):
 
         #form = QFormLayout()
@@ -89,13 +169,12 @@ class Config(QDialog):
         self.driverCB = QComboBox()
         self.driverCB.addItem('HANA DB')
         self.driverCB.addItem('ABAP Proxy')
-
         
         iconPath = resourcePath('ico\\favicon.png')
         
         self.hostportEdit = QLineEdit()
         
-        self.hostportEdit.setFixedWidth(192)
+        #self.hostportEdit.setFixedWidth(192)
         
         self.userEdit = QLineEdit()
         self.pwdEdit = QLineEdit()
@@ -115,6 +194,39 @@ class Config(QDialog):
         # self.savePwd = QCheckBox('Save the password into layout.aml');
         self.noReload = QCheckBox('Skip initial KPIs load');
 
+
+        # save dialog
+        self.confCB = QComboBox()
+        
+        self.confCB.setFixedWidth(100)
+
+        self.confCB.addItem('')
+        for k in self.cfgManager.configs:
+            self.confCB.addItem(k)
+        
+        self.confCB.setEditable(True)
+        self.confCB.currentIndexChanged.connect(self.confChange)
+        
+        self.save = QPushButton('Save')
+        self.save.clicked.connect(self.confSave)
+        
+        self.delete = QPushButton('Delete')
+        self.delete.clicked.connect(self.confDel)
+
+        confHBox = QHBoxLayout()
+        confHBox.addWidget(QLabel('Configuration:'))
+        confHBox.addWidget(self.confCB)
+        confHBox.addWidget(self.save)
+        confHBox.addWidget(self.delete)
+
+        # dbi stuff
+        dbiHBox = QHBoxLayout()
+        
+        dbiHBox.addWidget(QLabel('Connection type:'))
+        dbiHBox.addWidget(self.driverCB)
+        
+        self.driverCB.currentIndexChanged.connect(self.driverChanged)
+        # ok/cancel buttons
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
             Qt.Horizontal, self)
@@ -123,22 +235,20 @@ class Config(QDialog):
         self.buttons.rejected.connect(self.reject)
 
 
-        dbiHBox = QHBoxLayout()
-        
-        dbiHBox.addWidget(QLabel('Connection type:'))
-        dbiHBox.addWidget(self.driverCB)
-        
-        
+        # okay, Layout:
         vbox = QVBoxLayout()
-        #vbox.addWidget(checkButton)
-        #vbox.addWidget()
         
+        if True:
+            frm = QFrame()
+            frm.setFrameShape(QFrame.HLine)
+            frm.setFrameShadow(QFrame.Sunken)
+            vbox.addLayout(confHBox)
+            vbox.addWidget(frm)
+
         if cfg('DBI', False):
-            vbox.addLayout(dbiHBox)
+            vbox.addLayout(dbiHBox) # driver type
         
-        vbox.addLayout(form)
-        #vbox.addStretch(1)
-        # vbox.addLayout(hbox)
+        vbox.addLayout(form) # main form
         
         # vbox.addWidget(self.savePwd)
         vbox.addWidget(self.noReload)

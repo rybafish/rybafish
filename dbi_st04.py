@@ -10,14 +10,20 @@ from datetime import datetime
 from io import StringIO
 import csv
 
-from utils import log, cfg
+from utils import cfg
+from utils import log as ulog
 from utils import dbException
+
+def log(s, p = 3):
+    ulog('[S2J] ' + s, p)
+
 
 class s2j():
 
-    s = None
-    
+    name = 'S2J'
     options = {'keepalive': False, 'largeSQL': False}
+
+    s = None
 
     def __init__(self):
         log('Using S2J as DB driver implementation')
@@ -26,11 +32,8 @@ class s2j():
     
         host = server['host']
         port = server['port']
-
-        host = '127.0.0.1'
-        port = 5000
         
-        log('[S2J] open connection...')
+        log('open connection...')
         
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s2j.s = s
@@ -38,8 +41,10 @@ class s2j():
         
         try:
             self.s.connect((host, port))
-        except ConnectionRefusedError as e:
-            raise dbException(str(e))
+        #except ConnectionRefusedError as e:
+        except ConnectionError as e:
+            error = 'Cannot connect to ABAP proxy: ' + str(e)
+            raise dbException(error)
         
         return self.s
         
@@ -69,14 +74,14 @@ class s2j():
             return res
             
         
-        log('[S2J] %s' % sql_string)
+        log('sql: %s' % sql_string)
         
         if params:
-            log('[S2J] [%s]' % str(params))
+            log('params: [%s]' % str(params))
             
             sql_string = substituteParams(sql_string, params)
             
-            log('[S2J] [%s]' % (sql_string))
+            log('sql: [%s]' % (sql_string))
             
         sql = sql_string + '\n\n'
         sql = sql.encode()
@@ -133,18 +138,18 @@ class s2j():
                         pass
         
         def check_integer(j):
-            log('[S2J] check column %i for int' % (j))
+            log('check column %i for int' % (j), 5)
             
             for ii in range(len(rows)):
                 if not rows[ii][j].isdigit():
-                    log('[S2J] not a digit: (%i, %i): %s' % (ii, j, rows[ii][j]))
-                    log('[S2J] not a digit: %s' % (str(rows[ii])))
+                    log('not a digit: (%i, %i): %s' % (ii, j, rows[ii][j]), 5)
+                    log('not a digit: %s' % (str(rows[ii])), 5)
                     return False
                     
             return True
             
         def check_timestamp(j):
-            log('[S2J] check column %i for timestamp' % (j))
+            log('check column %i for timestamp' % (j), 5)
             
             for ii in range(len(rows)):
                 try:
@@ -163,7 +168,7 @@ class s2j():
         self.header = next(reader)
         #header = reader.__next__()
         
-        log('[S2J] header:' + str(self.header))
+        log('header:' + str(self.header), 5)
         
         cols = len(self.header)
         
@@ -183,15 +188,15 @@ class s2j():
         
         convert_types()
         
-        log('[S2J] types:' + str(self.types))
+        log('types:' + str(self.types), 5)
         
         if len(rows) > 1:
-            log('[S2J] row sample:' + str(rows[1]))
+            log('row sample:' + str(rows[1]), 5)
         
         return rows
         
     def close_connection(self, connection):
-        log('[S2J] Close connection (ignoring)')
+        log('Close connection (ignoring)', 5)
         
     '''
         Console specific stuff below
@@ -211,9 +216,9 @@ class s2j():
     
         self.execute_query(connection, sql_string, params)
         
-        log('[S2J] results')
-        log('[S2J] %s' % str(self.types))
-        log('[S2J] %s' % str(self.rows))
+        log('results', 5)
+        log('types: %s' % str(self.types), 5)
+        log('rows:\n%s' % str(self.rows), 5)
         
         cols = []
         
