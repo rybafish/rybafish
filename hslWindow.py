@@ -143,6 +143,11 @@ class hslWindow(QMainWindow):
         return kpis
         
     def dumpLayout(self, closeTabs = True):
+    
+        if self.connectionConf:
+            connection = self.connectionConf.get('name')
+        else:
+            connection = None
 
         if self.layoutDumped:
             return
@@ -168,6 +173,12 @@ class hslWindow(QMainWindow):
                 del self.layout.lo['kpis']
                 
         #log('--> dumpLayout, kpis: ' + str(kpis))
+        
+        if connection:
+            self.layout['connectionName'] = connection
+        else:
+            if self.connectionConf:
+                self.layout['connectionName'] = None
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
@@ -392,6 +403,9 @@ class hslWindow(QMainWindow):
             connConf = cfg('server')
         else:
             connConf = self.connectionConf
+            
+        if not connConf.get('name'):
+            connConf['name'] = self.layout['connectionName']
             
         '''
         if self.layout.lo.get('pwdhash') :

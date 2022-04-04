@@ -42,7 +42,7 @@ class s2j():
         try:
             self.s.connect((host, port))
         #except ConnectionRefusedError as e:
-        except ConnectionError as e:
+        except (ConnectionError, socket.gaierror) as e:
             error = 'Cannot connect to ABAP proxy: ' + str(e)
             raise dbException(error)
         

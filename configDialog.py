@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
-    QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox, QComboBox, QFrame)
+    QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox, QComboBox, QFrame, QGroupBox, QSplitter)
     
 from PyQt5.QtGui import QPixmap, QIcon
 
@@ -52,9 +52,29 @@ class Config(QDialog):
         self.initUI()
         
         self.conf = conf
-        if conf:
-            self.setConf(conf)
         
+        name = conf.get('name')
+
+        if name:
+            self.setConfName(name)
+            # change the config based on cfgManager
+        else:
+            if conf:
+                # old style configuration PLUS manually changed (saved for runtime only) config
+                self.setConf(conf)
+                
+    def setConfName(self, name):
+        
+        if not name:
+            return False
+            
+        for i in range(self.confCB.count()):
+            if name == self.confCB.itemText(i):
+                self.confCB.setCurrentIndex(i)
+                return True
+                
+        return False
+    
     @staticmethod
     def getConfig(config, parent = None):
     
@@ -77,6 +97,7 @@ class Config(QDialog):
             cf.config['port'] = ''
             cf.config['host'] = hostport
         
+        cf.config['name'] = cf.confCB.currentText()
         cf.config['dbi'] = dbidict[cf.driverCB.currentText()]
         
         cf.config['user'] = cf.userEdit.text()
@@ -98,6 +119,8 @@ class Config(QDialog):
         elif drv == 'HANA DB':
             self.userEdit.setEnabled(True)
             self.pwdEdit.setEnabled(True)
+            
+        self.configurationChanged(self.confCB.currentText())
 
     def confChange(self, i):
     
@@ -124,22 +147,36 @@ class Config(QDialog):
             c = self.cfgManager.configs[name]
             
             host, port = parseHost(c['hostport'])
+            conf['dbi'] = c['dbi']
             conf['host'] = host
             conf['port'] = port
-            conf['user'] = c['user']
-            conf['password'] = c['pwd']
+
+            if 'user' in c:
+                conf['user'] = c['user']
+            else:
+                conf['user'] = ''
+                
+            if 'pwd' in c:
+                conf['password'] = c['pwd']
+            else:
+                conf['password'] = ''
         else:
             conf = self.conf
         
         self.setConf(conf)
+        self.setStatus('')
     
     def confSave(self):
         txt = self.confCB.currentText()
         
+        if txt == '':
+            self.setStatus('Please fill in the configuration name before saving.')
+            return
+        
         cfg = {}
         
         cfg['name'] = txt
-        cfg['dbi'] = self.driverCB.currentText()
+        cfg['dbi'] = dbidict[self.driverCB.currentText()]
         cfg['user'] = self.userEdit.text()
         cfg['pwd'] = self.pwdEdit.text()
         cfg['hostport'] = self.hostportEdit.text()
@@ -150,9 +187,12 @@ class Config(QDialog):
             
         self.cfgManager.updateConf(cfg)
         
-        self.confCB.addItem(txt)
-        
-        self.confCB.setCurrentIndex(self.confCB.count() - 1)
+        if txt not in items:
+            self.confCB.addItem(txt)
+            self.confCB.setCurrentIndex(self.confCB.count() - 1)
+            self.setStatus('Configuration added.')
+        else:
+            self.setStatus('Configuration updated.')
                 
     def confDel(self):
         name = self.confCB.currentText()
@@ -160,6 +200,38 @@ class Config(QDialog):
         self.confCB.removeItem(i)
         
         self.cfgManager.removeConf(name)
+        
+        self.setStatus('Configuration removed.')
+        
+    def setStatus(self, txt):
+        self.status.setText(txt)
+        
+    def checkForChanges(self, name):
+        # returns True if there are changes
+        
+        conf = self.cfgManager.configs.get(name)
+        
+        if conf:
+            print(conf)
+            drv = dbidict[self.driverCB.currentText()]
+            print(conf.get('dbi'), drv)
+            if (conf['hostport'] == self.hostportEdit.text()
+                and conf.get('user') == self.userEdit.text()
+                and conf.get('pwd') == self.pwdEdit.text()
+                and conf.get('dbi') == drv):
+                return False
+            else:
+                print('True')
+                return True
+        else:
+            return False
+        
+    def configurationChanged(self, text):
+    
+        if self.checkForChanges(self.confCB.currentText()):
+            self.setStatus('Note: there are unsaved configuration changes')
+        else:
+            self.setStatus('')
         
     def initUI(self):
 
@@ -173,11 +245,14 @@ class Config(QDialog):
         iconPath = resourcePath('ico\\favicon.png')
         
         self.hostportEdit = QLineEdit()
+        self.hostportEdit.textEdited.connect(self.configurationChanged)
         
         #self.hostportEdit.setFixedWidth(192)
         
         self.userEdit = QLineEdit()
         self.pwdEdit = QLineEdit()
+        self.userEdit.textEdited.connect(self.configurationChanged)
+        self.pwdEdit.textEdited.connect(self.configurationChanged)
         
         self.pwdEdit.setEchoMode(QLineEdit.Password)
         
@@ -201,7 +276,8 @@ class Config(QDialog):
         self.confCB.setFixedWidth(100)
 
         self.confCB.addItem('')
-        for k in self.cfgManager.configs:
+        
+        for k in sorted(self.cfgManager.configs):
             self.confCB.addItem(k)
         
         self.confCB.setEditable(True)
@@ -214,7 +290,15 @@ class Config(QDialog):
         self.delete.clicked.connect(self.confDel)
 
         confHBox = QHBoxLayout()
-        confHBox.addWidget(QLabel('Configuration:'))
+        #confHBox.addWidget(QLabel('Configuration:'))
+        
+        #confSpltr = QSplitter(Qt.Horizontal)
+        #confSpltr.addWidget(self.confCB)
+        #confSpltr.addWidget(self.save)
+        #confSpltr.addWidget(self.delete)
+        #confSpltr.setSizes([200, 50])
+        #confHBox.addWidget(confSpltr)
+
         confHBox.addWidget(self.confCB)
         confHBox.addWidget(self.save)
         confHBox.addWidget(self.delete)
@@ -233,33 +317,50 @@ class Config(QDialog):
 
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
-
+        
+        self.status = QLabel()
 
         # okay, Layout:
         vbox = QVBoxLayout()
-        
-        if True:
-            frm = QFrame()
-            frm.setFrameShape(QFrame.HLine)
-            frm.setFrameShadow(QFrame.Sunken)
-            vbox.addLayout(confHBox)
-            vbox.addWidget(frm)
 
+        if True:
+            confGroup = QGroupBox()
+            confGroup.setTitle('Configuration')
+            
+            confGroup.setLayout(confHBox)
+            
+            vbox.addWidget(confGroup)
+        
         if cfg('DBI', False):
             vbox.addLayout(dbiHBox) # driver type
         
         vbox.addLayout(form) # main form
         
+        if False:
+            frm1 = QFrame()
+            frm1.setFrameShape(QFrame.HLine)
+            frm1.setFrameShadow(QFrame.Sunken)
+            
+            frm2 = QFrame()
+            frm2.setFrameShape(QFrame.HLine)
+            frm2.setFrameShadow(QFrame.Sunken)
+            
+            vbox.addWidget(frm1)
+            vbox.addLayout(confHBox)
+            vbox.addWidget(frm2)
+
         # vbox.addWidget(self.savePwd)
         vbox.addWidget(self.noReload)
         vbox.addWidget(self.buttons)
         
         self.setWindowIcon(QIcon(iconPath))
         
+        vbox.addWidget(self.status)
         self.setLayout(vbox)
         
+        self.setFixedWidth(450)
         #self.setGeometry(300, 300, 300, 150)
-        self.setWindowTitle('Connection')
+        self.setWindowTitle('Connection details')
         #self.show()
         
         

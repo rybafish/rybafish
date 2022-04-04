@@ -51,6 +51,10 @@ import dbi_st04
 from utils import log, cfg
 
 dbidict = {'HANA DB': 'HDB', 'ABAP Proxy': 'S2J'}
+dbidictRev = {} # reverse dict
+
+for k in dbidict:
+    dbidictRev[dbidict[k]] = k
 
 class dbi:
 
