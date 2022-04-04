@@ -53,15 +53,28 @@ class Config(QDialog):
         
         self.conf = conf
         
-        name = conf.get('name')
+        name = conf.get('setToName')
+        
+        if not name:
+            name = conf.get('name')
+        
+        print('name:', name)
+        print('conf:', conf)
+        print('---------')
 
         if name:
+            print('resetting to', name)
             self.setConfName(name)
+            conf['name'] = name
             # change the config based on cfgManager
-        else:
-            if conf:
-                # old style configuration PLUS manually changed (saved for runtime only) config
-                self.setConf(conf)
+
+        print('conf:', conf)
+        print('conf.name:', conf.get('name'))
+        print('name:', name)
+        if (conf and (conf.get('name') == name)) and not conf.get('setToName'):
+            print('manual changes...')
+            # old style configuration PLUS manually changed (saved for runtime only) config
+            self.setConf(conf)
                 
     def setConfName(self, name):
         
@@ -268,7 +281,6 @@ class Config(QDialog):
         
         # self.savePwd = QCheckBox('Save the password into layout.aml');
         self.noReload = QCheckBox('Skip initial KPIs load');
-
 
         # save dialog
         self.confCB = QComboBox()

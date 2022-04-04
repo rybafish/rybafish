@@ -405,7 +405,7 @@ class hslWindow(QMainWindow):
             connConf = self.connectionConf
             
         if not connConf.get('name'):
-            connConf['name'] = self.layout['connectionName']
+            connConf['setToName'] = self.layout['connectionName']
             
         '''
         if self.layout.lo.get('pwdhash') :
