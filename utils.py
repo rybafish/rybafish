@@ -199,7 +199,17 @@ class dbException(Exception):
 
     def __init__ (self, message, type = None):
         self.type = type
+        self.msg = message
         super().__init__(message, type)
+        
+    def __str__(self):
+    
+        message = self.msg
+        
+        if self.type is not None:
+            message += ', Type ' + str(self.type)
+    
+        return message
 
 class customKPIException(Exception):
 

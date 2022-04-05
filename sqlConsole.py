@@ -102,7 +102,7 @@ class sqlWorker(QObject):
                     #
                     # cons.log('DB Exception:' + err, True)
                     
-                    cons.wrkException = 'DB Exception:' + err
+                    cons.wrkException = 'DB Exception: ' + err
                     
                     cons.connect = None
                     self.finished.emit()
@@ -171,7 +171,7 @@ class sqlWorker(QObject):
             # fixme 
             # cons.log('DB Exception:' + err, True)
             
-            cons.wrkException = 'DB Exception:' + err
+            cons.wrkException = 'DB Exception: ' + err
             
             if e.type == dbException.CONN:
                 # fixme 
