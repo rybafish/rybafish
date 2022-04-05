@@ -24,6 +24,7 @@ class s2j():
     options = {'keepalive': False, 'largeSQL': False}
 
     s = None
+    lock = None
 
     def __init__(self):
         log('Using S2J as DB driver implementation')
@@ -73,6 +74,10 @@ class s2j():
                 
             return res
             
+        if s2j.lock:
+            raise dbException('Proxy is locked: wait for the other query to finish first.')
+            
+        s2j.lock = True
         
         log('sql: %s' % sql_string)
         
@@ -105,11 +110,14 @@ class s2j():
                 if resp[-2:] == '\n\n':
                     break
         except (ConnectionResetError, ConnectionAbortedError) as err:
+            s2j.lock = False
             raise dbException(str(err))
             
         resp = resp[:-1]
 
         self.rows = self.parseResponce(resp)
+        
+        s2j.lock = False
         
         return self.rows
         
