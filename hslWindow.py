@@ -417,6 +417,8 @@ class hslWindow(QMainWindow):
             
         conf, ok = configDialog.Config.getConfig(connConf, self)
         
+        log('config dialog, ok? %s' % str(ok), 5)
+        
         if ok:
             self.connectionConf = conf
         

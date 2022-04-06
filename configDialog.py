@@ -247,6 +247,10 @@ class Config(QDialog):
             self.setStatus('')
         
     def initUI(self):
+    
+    
+        #почему-то по ESC он не rejected вызывает, а что-то другое и обновляет configuraton
+        #в крайнем случае можно прям кнопку обработать, но вообще наверное и получше есть способ
 
         #form = QFormLayout()
         form = QGridLayout()
@@ -285,7 +289,7 @@ class Config(QDialog):
         # save dialog
         self.confCB = QComboBox()
         
-        self.confCB.setFixedWidth(100)
+        #self.confCB.setFixedWidth(100)
 
         self.confCB.addItem('')
         
@@ -311,9 +315,9 @@ class Config(QDialog):
         #confSpltr.setSizes([200, 50])
         #confHBox.addWidget(confSpltr)
 
-        confHBox.addWidget(self.confCB)
-        confHBox.addWidget(self.save)
-        confHBox.addWidget(self.delete)
+        confHBox.addWidget(self.confCB, 2)
+        confHBox.addWidget(self.save, 1)
+        confHBox.addWidget(self.delete, 1)
 
         # dbi stuff
         dbiHBox = QHBoxLayout()
@@ -323,12 +327,25 @@ class Config(QDialog):
         
         self.driverCB.currentIndexChanged.connect(self.driverChanged)
         # ok/cancel buttons
+        buttonsHBox = QHBoxLayout()
+        btnConnect = QPushButton('Connect')
+        btnCancel = QPushButton('Cancel')
+        
+        btnConnect.clicked.connect(self.accept)
+        btnCancel.clicked.connect(self.reject)
+        
+        buttonsHBox.addStretch(1)
+        buttonsHBox.addWidget(btnConnect)
+        buttonsHBox.addWidget(btnCancel)
+        
+        '''
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
             Qt.Horizontal, self)
 
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
+        '''
         
         self.status = QLabel()
 
@@ -343,7 +360,7 @@ class Config(QDialog):
             
             vbox.addWidget(confGroup)
         
-        if cfg('DBI', False):
+        if cfg('experimental', False):
             vbox.addLayout(dbiHBox) # driver type
         
         vbox.addLayout(form) # main form
@@ -363,17 +380,26 @@ class Config(QDialog):
 
         # vbox.addWidget(self.savePwd)
         vbox.addWidget(self.noReload)
-        vbox.addWidget(self.buttons)
+        #vbox.addWidget(self.buttons)
+        
+        vbox.addLayout(buttonsHBox)
         
         self.setWindowIcon(QIcon(iconPath))
         
         vbox.addWidget(self.status)
         self.setLayout(vbox)
         
-        self.setFixedWidth(450)
+        btnConnect.setDefault(True)
+        btnConnect.setFocus()
+        
+        #self.setFixedWidth(450)
         #self.setGeometry(300, 300, 300, 150)
         self.setWindowTitle('Connection details')
         #self.show()
+        
+        s = self.size()
+        
+        self.resize(450, s.height())
         
         
 if __name__ == '__main__':

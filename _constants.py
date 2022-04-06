@@ -1,4 +1,4 @@
-# generated automaticaly based on myryba.spec
+# getarated automaticaly based on myryba.spec
 
-build_date = "2022-02-17 01:23:45"
-version = "0.91 beta 1 [DBI]"
+build_date = "2022-04-07 01:57:27"
+version = "0.91 beta 1"
