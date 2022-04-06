@@ -58,21 +58,21 @@ class Config(QDialog):
         if not name:
             name = conf.get('name')
         
-        print('name:', name)
-        print('conf:', conf)
-        print('---------')
+        #print('name:', name)
+        #print('conf:', conf)
+        #print('---------')
 
         if name:
-            print('resetting to', name)
+            #print('resetting to', name)
             self.setConfName(name)
             conf['name'] = name
             # change the config based on cfgManager
 
-        print('conf:', conf)
-        print('conf.name:', conf.get('name'))
-        print('name:', name)
+        #print('conf:', conf)
+        #print('conf.name:', conf.get('name'))
+        #print('name:', name)
         if (conf and (conf.get('name') == name)) and not conf.get('setToName'):
-            print('manual changes...')
+            #print('manual changes...')
             # old style configuration PLUS manually changed (saved for runtime only) config
             self.setConf(conf)
                 
@@ -225,16 +225,16 @@ class Config(QDialog):
         conf = self.cfgManager.configs.get(name)
         
         if conf:
-            print(conf)
+            #print(conf)
             drv = dbidict[self.driverCB.currentText()]
-            print(conf.get('dbi'), drv)
+            #print(conf.get('dbi'), drv)
             if (conf['hostport'] == self.hostportEdit.text()
                 and conf.get('user') == self.userEdit.text()
                 and conf.get('pwd') == self.pwdEdit.text()
                 and conf.get('dbi') == drv):
                 return False
             else:
-                print('True')
+                #print('True')
                 return True
         else:
             return False

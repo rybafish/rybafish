@@ -77,6 +77,7 @@ class s2j():
         if s2j.lock:
             raise dbException('Proxy is locked: wait for the other query to finish first.')
             
+        log('DBI LOCK SET')
         s2j.lock = True
         
         log('sql: %s' % sql_string)
@@ -109,18 +110,40 @@ class s2j():
                     
                 if resp[-2:] == '\n\n':
                     break
-        except (ConnectionResetError, ConnectionAbortedError) as err:
+        except ConnectionError as err:
             s2j.lock = False
+            log('DBI LOCK UNSET')
             raise dbException(str(err))
+        except Exception as er:
+            s2j.lock = False
+            log('DBI LOCK UNSET 2')
+            raise dbException(str(er))
             
         resp = resp[:-1]
 
+        if resp[:9] == '[ERROR]: ':
+            s2j.lock = False
+            log('DBI LOCK UNSET')
+            raise dbException(resp[9:])
+            
         self.rows = self.parseResponce(resp)
         
         s2j.lock = False
+        log('DBI LOCK UNSET')
         
         return self.rows
         
+    def destroy(self):
+        log('DBI Destroy call...')
+        if self.s is not None:
+            log('Closing the connection...')
+            # sock.shutdown(socket.SHUT_RDWR) ?
+            self.s.close()
+            
+        s2j.lock = False
+        log('DBI LOCK UNSET')
+
+    
     def parseResponce(self, resp):
     
         '''

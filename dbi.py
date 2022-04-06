@@ -4,6 +4,9 @@
 
     The class have to impement the following:
     
+    - name property
+    - options property
+    
     Charts (used in dbDP.py):
         create_connection
         execute_query
@@ -60,13 +63,26 @@ class dbi:
 
     dbinterface = None
 
-    def __init__ (self, dbtype = 'HDB'):
+    def __init__ (self, dbtype):
     
-        log('DBI init: %s' % dbtype)
+        log('[DBI] init: %s' % dbtype)
+        
+        if dbi.dbinterface is None or dbi.dbinterface.name != dbtype:
+        
+            if dbi.dbinterface is not None:
+                log('[DBI] stopping the old DBI instance')
+                dbi.dbinterface.destroy()
+                del dbi.dbinterface
+            else:
+                log('[DBI] seems initial DBI instance request')
     
-        if dbtype == 'HDB':
-            self.dbinterface = dbi_hana.hdbi()
-        elif dbtype == 'S2J':
-            self.dbinterface = dbi_st04.s2j()
+            if dbtype == 'HDB':
+                dbi.dbinterface = dbi_hana.hdbi()
+            elif dbtype == 'S2J':
+                dbi.dbinterface = dbi_st04.s2j()
+            else:
+                raise Exception('Unknown DB driver name: %s' % dbtype)
         else:
-            raise Exception('Unknown DB driver name: %s' % dbtype)
+            log('[DBI] reusing existing instance')
+            
+            

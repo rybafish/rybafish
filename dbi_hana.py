@@ -214,7 +214,12 @@ class hdbi ():
             return None
         
 
+    def destroy(self):
+        log('destroy call (ignored)')
+        pass
+        
     def close_connection(self, c):
+        log('close connection call...')
         try:
             c.close() # fails with OperationalError always...
         except pyhdb.exceptions.OperationalError:

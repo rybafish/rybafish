@@ -79,6 +79,11 @@ class sqlWorker(QObject):
             cons.wrkException = 'no db connection'
             self.finished.emit()
             return
+            
+        if self.dbi is None:
+            cons.wrkException = 'no dbi instance, please report this error'
+            self.finished.emit()
+            return
 
         if self.dbi.name == 'HDB':
             # hdb specific megic here 
@@ -186,7 +191,6 @@ class sqlWorker(QObject):
                     
                 cons.conn = None
                 cons.connection_id = None
-                
                 
                 log('connectionLost() used to be here, but now no UI possible from the thread')
                 #cons.connectionLost()
@@ -2547,14 +2551,17 @@ class sqlConsole(QWidget):
                 self.indicator.status = 'sync'
                 self.indicator.repaint()
                 self.dbi.close_connection(self.conn)
+                self.dbi = None
                 
         except dbException as e:
             log('close() db exception: '+ str(e))
             super().close()
+            self.dbi = None
             return True
         except Exception as e:
             log('close() exception: '+ str(e))
             super().close()
+            self.dbi = None
             return True
         
         log('super().close()...', 5)
@@ -2707,6 +2714,7 @@ class sqlConsole(QWidget):
         
             if self.conn is not None:
                 self.dbi.close_connection(self.conn)
+                self.dbi = None
                 
                 self.stopKeepAlive()
                 
@@ -2721,6 +2729,7 @@ class sqlConsole(QWidget):
             self.stopKeepAlive()
             self.conn = None # ?
             self.connection_id = None
+            self.dbi = None
             return
         except Exception as e:
             log('close() exception: '+ str(e))
@@ -2729,6 +2738,7 @@ class sqlConsole(QWidget):
             self.stopKeepAlive()
             self.conn = None # ?
             self.connection_id = None
+            self.dbi = None
             return
         
     def connectDB(self):
@@ -2754,7 +2764,6 @@ class sqlConsole(QWidget):
                 
                 self.sqlWorker.dbi = self.dbi
 
-                
             self.conn = self.dbi.console_connection(self.config)                
 
             rows = self.dbi.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
@@ -2784,6 +2793,10 @@ class sqlConsole(QWidget):
 
     
     def reconnect(self):
+            
+        if self.dbi is None:
+            log('Reconnection canceled as there is no DBI instance', 3)
+            return
             
         try:
         
@@ -3045,6 +3058,9 @@ class sqlConsole(QWidget):
     def keepAlive(self):
     
         if self.conn is None:
+            return
+
+        if self.dbi is None:
             return
             
         if self.sqlRunning:
@@ -3771,7 +3787,7 @@ class sqlConsole(QWidget):
             #self.thread.quit()
             #self.sqlRunning = False
 
-            if self.conn is not None:
+            if self.conn is not None and self.dbi is not None:
                 self.indicator.status = 'error'
                 
                 if cfg('blockLineNumbers', True) and self.cons.manualSelection:
@@ -3878,7 +3894,7 @@ class sqlConsole(QWidget):
             else:
                 self.indicator.status = 'disconnected'
                 
-                log('console connection lost')
+                log('console connection lost %s, %s' % (str(self.conn), str(self.dbi)))
                 
                 self.connectionLost()
                 #answer = utils.yesNoDialog('Connectioni lost', 'Connection to the server lost, reconnect?' cancelPossible)

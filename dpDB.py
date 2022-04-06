@@ -32,7 +32,6 @@ class dataProvider():
     server = None
     timer = None
     timerkeepalive = None
-    dbProperties = {}
     
     # lock = False
     
@@ -44,6 +43,8 @@ class dataProvider():
 
         dbimpl = dbi(server['dbi'])
         self.dbi = dbimpl.dbinterface
+        
+        self.dbProperties = {}
         
         try: 
             conn = self.dbi.create_connection(server, self.dbProperties)

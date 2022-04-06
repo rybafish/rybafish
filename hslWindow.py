@@ -21,6 +21,7 @@ import dpTrace
 
 import dpDummy
 import dpDB
+from dbi import dbi
 import sqlConsole
 
 import datetime
@@ -450,6 +451,10 @@ class hslWindow(QMainWindow):
                 self.repaint()
 
                 self.chartArea.setStatus('sync', True)
+                
+                if dbi.dbinterface is not None:
+                    dbi.dbinterface.destroy()
+                    
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
                 self.chartArea.setStatus('idle')
 
@@ -734,8 +739,6 @@ class hslWindow(QMainWindow):
             else:
                 noname = False
                 
-        # console = sqlConsole.sqlConsole(self, conf, tname) # self = window
-
         try:
             console = sqlConsole.sqlConsole(self, conf, tname) # self = window
             log('seems connected...')
@@ -1283,8 +1286,6 @@ class hslWindow(QMainWindow):
         
         if cfg('developmentMode'):
         
-            #tname = sqlConsole.generateTabName()
-
             #idx = self.tabs.count()
             self.sqlTabCounter += 1
             idx = self.sqlTabCounter
