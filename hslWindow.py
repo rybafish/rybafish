@@ -466,6 +466,13 @@ class hslWindow(QMainWindow):
                     dbi.dbinterface.destroy()
                     
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+                
+                if 'disconnectSignal' in self.chartArea.dp.options:
+                    self.chartArea.dp.disconnected.connect(self.chartArea.dpDisconnected)
+                    
+                if 'busySignal' in self.chartArea.dp.options:
+                    self.chartArea.dp.busy.connect(self.chartArea.dpBusy)
+                    
                 self.chartArea.setStatus('idle')
 
                 for i in range(self.tabs.count()):
@@ -875,6 +882,11 @@ class hslWindow(QMainWindow):
                 break
     
     
+    '''
+    def chartIndicator(self, status):
+         self.chartArea.indicator.status = 'disconnected'
+    '''
+    
     def setTabName(self, str):
         self.tabs.setTabText(0, str)
         
@@ -995,6 +1007,7 @@ class hslWindow(QMainWindow):
         self.tabs.addTab(self.mainSplitter, 'Chart')
         
         self.chartArea.selfRaise.connect(self.raiseTab)
+        #self.chartArea.indSignal.connect(self.chartIndicator)
         ind.iClicked.connect(self.chartArea.indicatorSignal)
         
         # as console is fully sync it does not have runtime and corresponding signals

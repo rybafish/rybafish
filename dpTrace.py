@@ -34,6 +34,8 @@ def getKpiDesc(type, kName):
 
 
 class dataProvider:
+
+    options = []
     
     def __init__(self, files):
         self.files = []

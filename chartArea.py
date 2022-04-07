@@ -2067,6 +2067,8 @@ class chartArea(QFrame):
     
     selfRaise = pyqtSignal(object)
     
+    chartIndicator = pyqtSignal(['QString']) # indicator update request
+    
     connection = None # db connection
     
     hostKPIs = [] # list of available host KPIS, sql names
@@ -2087,6 +2089,16 @@ class chartArea(QFrame):
     toTime = None
     
     suppressStatus = None # supress status update, intended for autorefresh theshold vialation message
+    
+    def dpDisconnected(self):
+        self.setStatus('disconnected', True)
+
+    def dpBusy(self, flag):
+    
+        if flag:
+            self.setStatus('sync', True)
+        else:
+            self.setStatus('idle', True)
     
     def indicatorSignal(self):
         self.selfRaise.emit(self.parentWidget())

@@ -9,6 +9,8 @@ from utils import log, cfg, msgDialog
 
 class dataProvider:
 
+    options = []
+
     def __init__(self):
         log('dummy data provider init()')
         

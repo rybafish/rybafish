@@ -26,12 +26,17 @@ from utils import dbException, customKPIException
 import traceback
 from os import getcwd
 
-class dataProvider():
+class dataProvider(QObject):
+    
+    disconnected  = pyqtSignal()
+    busy  = pyqtSignal(int)
     
     connection = None
     server = None
     timer = None
     timerkeepalive = None
+    
+    options = ['disconnectSignal', 'busySignal']
     
     # lock = False
     
@@ -127,12 +132,15 @@ class dataProvider():
             log('chart keep-alive... ', 3, False, True)
             
             t0 = time.time()
+            
+            self.busy.emit(1)
             self.dbi.execute_query(self.connection, 'select * from dummy', [])
             
             if hasattr(self, 'fakeDisconnect'):
                 log ('generate an exception...')
                 log (10/0)
             
+            self.busy.emit(0)
             t1 = time.time()
             log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
         except dbException as e:
@@ -146,15 +154,18 @@ class dataProvider():
                     log('Some connection issue, give up')
                     self.timer.stop()
                     self.connection = None
+                    self.disconnected.emit()
             except:
                 log('Connection lost, give up')
 
                 self.timer.stop()
                 self.connection = None
+                self.disconnected.emit()
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
             log('[!] %s' % str(e))
             self.connection = None
+            self.disconnected.emit()
         
         
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
