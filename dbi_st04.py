@@ -14,6 +14,8 @@ from utils import cfg
 from utils import log as ulog
 from utils import dbException
 
+from dbi_extention import getDBProperties
+
 def log(s, p = 3):
     ulog('[S2J] ' + s, p)
 
@@ -46,6 +48,8 @@ class s2j():
         except (ConnectionError, socket.gaierror) as e:
             error = 'Cannot connect to ABAP proxy: ' + str(e)
             raise dbException(error)
+            
+        getDBProperties(self.s, self.execute_query, log, dbProperties)
         
         return self.s
         
@@ -101,11 +105,11 @@ class s2j():
                 data = self.s.recv(1024)
 
                 if data:
-                    print('Received:')
-                    print(data.decode())
+                    #print('Received:')
+                    #print(data.decode())
                     resp += data.decode()
                 else:
-                    print('Terminated.')
+                    #print('Terminated.')
                     break
                     
                 if resp[-2:] == '\n\n':
@@ -130,6 +134,9 @@ class s2j():
         
         s2j.lock = False
         log('DBI LOCK UNSET')
+        
+        log('SQL Results')
+        log(str(self.rows), 5)
         
         return self.rows
         
@@ -186,6 +193,7 @@ class s2j():
                 try:
                     v = datetime.fromisoformat(rows[ii][j])
                 except:
+                    log('not a timestamp: (%i, %i): %s' % (ii, j, rows[ii][j]), 5)
                     return False
                     
             return True
@@ -247,9 +255,7 @@ class s2j():
     
         self.execute_query(connection, sql_string, params)
         
-        log('results', 5)
-        log('types: %s' % str(self.types), 5)
-        log('rows:\n%s' % str(self.rows), 5)
+        #log('rows:\n%s' % str(self.rows), 5)
         
         cols = []
         
@@ -259,6 +265,9 @@ class s2j():
         
         rlist = [self.rows]
         clist = [cols]
+
+        log('columns for above: %s' % str(clist), 5)
+        log('types for above: %s' % str(self.types), 5)
         
         return rlist, clist, None, None
     

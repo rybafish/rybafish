@@ -18,17 +18,16 @@ from pyhdb.protocol.constants import function_codes #for the cursor_mod
 
 from _constants import build_date, version
 
-from datetime import datetime
-
 import kpiDescriptions
 import sql
 
 import sys
-import re
 
 from utils import cfg, hextostr
 from utils import log as ulog
 from utils import dbException
+
+from dbi_extention import getDBProperties
 
 from os import getlogin
 
@@ -80,66 +79,8 @@ class hdbi ():
             raise dbException(str(e))
 
         t1 = time.time()
-
-        if dbProperties is not None:
         
-            rows = self.execute_query(connection, 'select distinct key, value from m_host_information where key in (?, ?, ?)', ['timezone_offset', 'sid', 'build_version'])
-            
-            for row in rows:
-                if row[0] == 'timezone_offset':
-                    dbUTCDelta = row[1]
-                    
-                    hostNow = datetime.now().timestamp()
-                    hostUTCDelta = (datetime.fromtimestamp(hostNow) - datetime.utcfromtimestamp(hostNow)).total_seconds()
-                    
-                    dbProperties['timeZoneDelta'] = int(dbUTCDelta) - int(hostUTCDelta)
-                elif row[0] == 'sid':
-                    if cfg('sidmapping'):
-                        sm = cfg('sidmapping')
-                        dbProperties['sid'] = row[1].replace(sm[0], sm[1])
-                    else:
-                        dbProperties['sid'] = row[1]
-                elif row[0] == 'build_version':
-                    ver = row[1]
-                    # example: 2.00.045.00.1575639312
-                    
-                    m = re.match('^\s*(\d\.\d+\.\d+)', ver)
-                    
-                    if m:
-                        ver = m.group(1)
-                        
-                    dbProperties['version'] = ver
-
-            if 'timeZoneDelta' not in dbProperties:
-                dbProperties['timeZoneDelta'] = 0
-            if 'sid' not in dbProperties:
-                dbProperties['sid'] = '???'
-                
-                
-            if cfg('skipTenant', False) == False:
-                
-                rows = []
-                
-                try:
-                    rows = self.execute_query(connection, 'select database_name from m_database', [])
-
-                    if len(rows) == 1:
-                        if cfg('dbmapping'):
-                            dbmap = cfg('dbmapping')
-                            dbProperties['tenant'] = rows[0][0].replace(dbmap[0], dbmap[1])
-                        else:
-                            dbProperties['tenant'] = rows[0][0]
-                    else:
-                        dbProperties['tenant'] = '???'
-                        log('[w] tenant cannot be identitied')
-                        log('[w] response rows array: %s' % str(rows))
-                        
-                except dbException as e:
-                    rows.append(['???'])
-                    log('[w] tenant request error: %s' % str(e))
-                    
-                    dbProperties['tenant'] = None
-                
+        getDBProperties(connection, self.execute_query, log, dbProperties)
         
         t2 = time.time()
         
