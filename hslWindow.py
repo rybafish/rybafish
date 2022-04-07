@@ -448,6 +448,14 @@ class hslWindow(QMainWindow):
                         w.indicator.status = 'disconnected'
                         w.indicator.repaint()
                         log('disconnected...')
+                        
+                # close damn chart console
+
+                if self.chartArea.dp is not None:
+                    self.chartArea.dp.close()
+                    del self.chartArea.dp
+                    self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+
 
                 self.statusMessage('Connecting...', False)
                 self.repaint()
@@ -555,6 +563,7 @@ class hslWindow(QMainWindow):
                         log('wrong keepalive setting: %s' % (cfg('keepalive')))
                                 
             except dbException as e:
+                self.chartArea.indicator.status = 'disconnected'
                 log('Connect or init error:')
                 if hasattr(e, 'message'):
                     log(e.message)
@@ -571,8 +580,8 @@ class hslWindow(QMainWindow):
                 
                 self.statusMessage('', False)
 
-            except dbException as e:
-                log('Init exception not related to DB')
+            except Exception as e:
+                log('Init exception NOT related to DB')
                 log(str(e))
 
                 msgBox = QMessageBox(self)

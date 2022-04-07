@@ -107,6 +107,15 @@ class dataProvider():
             self.timer.stop()
             self.timer.start(1000 * self.timerkeepalive)
     
+    def close(self):
+        if self.connection is not None:
+            log('closing dataprovider connection')
+            self.connection.close()
+            
+        if self.timer:
+            log('stopping dataprovider keep-alive timer')
+            self.timer.stop()
+        
     def keepAlive(self):
     
         if self.connection is None:
