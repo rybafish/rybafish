@@ -96,7 +96,10 @@ class s2j():
         sql = sql_string + '\n\n'
         sql = sql.encode()
         
-        self.s.sendall(sql)
+        try:
+            self.s.sendall(sql)
+        except ConnectionError as err:
+            raise dbException('Proxy network issue: ' + str(err))
         
         resp = ''
         
