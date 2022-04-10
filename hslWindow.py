@@ -48,6 +48,8 @@ import time
 
 from _constants import build_date, version
 
+from updatesCheck import checkUpdates
+
 class hslWindow(QMainWindow):
 
     statusbar = None
@@ -66,8 +68,43 @@ class hslWindow(QMainWindow):
         super().__init__()
         self.initUI()
         
+        if cfg('updatesCheckInterval', '7'):
+            checkUpdates(self, self.updatesCB, self.layout.lo.get('updateNextCheck'), self.layout.lo.get('updateVersionCheck'))
         
     # def tabChanged(self, newidx):
+    
+    def updatesCB(self, status):
+    
+        interval = cfg('updatesCheckInterval', '7')
+        
+        if interval:
+            try:
+                interval = int(interval)
+            except ValueError:
+                log('[!] unexpected updateCheckInterval: %s' % str(interval), 2)
+                interval = 7
+        else:
+            interval = 7
+            
+        log('Updates callback, status: [%s]' % status, 4)
+    
+        today = datetime.datetime.now().date()
+
+        if 'updateVersionCheck' in self.layout.lo:
+            self.layout.lo.pop('updateVersionCheck')
+
+        if 'updateNextCheck' in self.layout.lo:
+            self.layout.lo.pop('updateNextCheck')
+
+        if status in ('', 'Ok'):
+            log('New version detected, but will remind  later', 3)
+            self.layout['updateNextCheck'] = today + datetime.timedelta(days=7)
+        elif status == 'ignoreYear':
+            self.layout['updateNextCheck'] = today + datetime.timedelta(days=365)
+        elif status == 'ignoreVersion':
+            self.layout['updateVersionCheck'] = today
+
+        self.layout.dump()
         
     def closeTab(self):
         indx = self.tabs.currentIndex()
