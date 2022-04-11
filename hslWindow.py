@@ -73,7 +73,7 @@ class hslWindow(QMainWindow):
         
     # def tabChanged(self, newidx):
     
-    def updatesCB(self, status):
+    def updatesCB(self, status, buildDate = None):
     
         interval = cfg('updatesCheckInterval', '7')
         
@@ -90,19 +90,24 @@ class hslWindow(QMainWindow):
     
         today = datetime.datetime.now().date()
 
+
+        '''
         if 'updateVersionCheck' in self.layout.lo:
             self.layout.lo.pop('updateVersionCheck')
+        '''
 
         if 'updateNextCheck' in self.layout.lo:
             self.layout.lo.pop('updateNextCheck')
 
-        if status in ('', 'Ok'):
-            log('New version detected, but will remind  later', 3)
+        if status in (''):
+            self.layout['updateNextCheck'] = today + datetime.timedelta(days=interval)
+        elif status == 'ignoreWeek':
             self.layout['updateNextCheck'] = today + datetime.timedelta(days=7)
         elif status == 'ignoreYear':
             self.layout['updateNextCheck'] = today + datetime.timedelta(days=365)
         elif status == 'ignoreVersion':
-            self.layout['updateVersionCheck'] = today
+            self.layout['updateNextCheck'] = today + datetime.timedelta(days=interval)
+            self.layout['updateVersionCheck'] = buildDate
 
         self.layout.dump()
         

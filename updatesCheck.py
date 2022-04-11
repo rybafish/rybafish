@@ -17,10 +17,13 @@ from datetime import datetime
 from PyQt5.QtCore import QTimer
 
 updTimer = None
-
 wnd = None
+versionCheck = None
+afterCheck = None # callback function
 
 def gotResponse(QNetworkReply):
+
+    global afterCheck
 
     try:
         status = QNetworkReply.attribute(QNetworkRequest.HttpStatusCodeAttribute);
@@ -58,11 +61,42 @@ def gotResponse(QNetworkReply):
         log(verStrBeta)
         
     #upd = updateDialog.Update(self)
+    
+    try:
+        currentBuild = datetime.strptime(build_date, '%Y-%m-%d %H:%M:%S')
+        currentBuild = currentBuild.strftime('%Y-%m-%d')
+    except:
+        log('[W] Cannot convert build_date to datetime: %s' % build_date, 2)
+        currentBuild = ''
+    
+    try:
+        buildDateDT = ver['date']
+        buildDate = buildDateDT.strftime('%Y-%m-%d')
+    except:
+        buildDate = str(ver['date'])
+
+    if versionCheck:
+        if versionCheck < buildDate:
+            log('Okay, there is a published build later than versionCheck: %s > %s' % (buildDate, versionCheck), 2)
+        else:
+            log('Skipping update dialog due to versionCheck value: %s, last build: %s' % (versionCheck, buildDate), 4)
+            afterCheck('') # update the updateNextCheck date
+            return
+            
+    else:
+        if buildDate < currentBuild:
+            log('There is no new version, current build %s, last published %s' % (currentBuild, buildDate), 4)
+            
+            afterCheck('') # update the updateNextCheck date
+            return
+        else:
+            log('There is a build newer than current one: %s > %s' % (buildDate, currentBuild), 4)
+    
     upd = updateInfo(wnd)
     
     upd.exec_()
     
-    afterCheck(upd.status)
+    afterCheck(upd.status, buildDateDT)
 
 '''    
 def updateTimer():
@@ -79,41 +113,40 @@ def updateTimer():
 '''
     
     
-def checkUpdates(prnt, afterCheckCB, nextCheck, versionCheck):
+def checkUpdates(prnt, afterCheckCB, nextCheck, versionCheckIn):
     global afterCheck
     global wnd
     global updTimer
+    
+    global versionCheck
     
     wnd = prnt
     
     today = datetime.today().date().strftime('%Y-%m-%d')
     
-    if nextCheck or versionCheck:
-        if nextCheck:
-            try:
-                nextCheck = nextCheck.strftime('%Y-%m-%d')
-            except:
-                log('[W] cannot treat %s as date. Maybe check your layout.yaml?' % (str(nextCheck)), 2)
-                nextCheck = str(nextCheck)
-                
-            if nextCheck < today:
-                log('Okay, we need a version check due to nextCheck value (%s), triggering the request...' % str(nextCheck), 2)
-            else:
-                log('Skipping update check due to nextCheck value: %s' % str(nextCheck), 4)
-                return
-                
-        if versionCheck:
-            try:
-                versionCheck = versionCheck.strftime('%Y-%m-%d')
-            except:
-                log('[W] cannot treat %s as date. Maybe check your layout.yaml?' % (str(versionCheck)), 2)
-                versionCheck = str(versionCheck)
-
-            if versionCheck < today:
-                log('Okay, we need a version check due to versionCheck value (%s), triggering the request...' % str(versionCheck), 2)
-            else:
-                log('Skipping update check due to versionCheck value: %s' % str(versionCheck), 4)
-                return
+    log('checkUpdates, nextCheck: %s, versionCheckIn: %s' % (str(nextCheck), str(versionCheckIn)), 5)
+    
+    if nextCheck:
+        try:
+            nextCheck = nextCheck.strftime('%Y-%m-%d')
+        except:
+            log('[W] cannot treat %s as date. Maybe check your layout.yaml?' % (str(nextCheck)), 2)
+            nextCheck = str(nextCheck)
+            
+        if nextCheck < today:
+            log('Okay, we need a version check due to nextCheck value (%s), triggering the request...' % str(nextCheck), 2)
+        else:
+            log('Skipping update check due to nextCheck value: %s' % str(nextCheck), 4)
+            return
+            
+    if versionCheckIn:
+        try:
+            versionCheck = versionCheckIn.strftime('%Y-%m-%d')
+        except:
+            log('[W] cannot treat %s as date. Maybe check your layout.yaml?' % (str(versionCheckIn)), 2)
+            versionCheck = str(versionCheckIn)
+        
+    # trigger the request...
             
     afterCheck = afterCheckCB
     
@@ -124,7 +157,7 @@ def checkUpdates(prnt, afterCheckCB, nextCheck, versionCheck):
     manager = QNetworkAccessManager(wnd)
     
     manager.finished[QNetworkReply].connect(gotResponse)
-    manager.get(QNetworkRequest(QUrl('https://www.rybafish.net/version')))
+    manager.get(QNetworkRequest(QUrl('https://www.rybafish.net/versionTest')))
     
 
 class updateInfo(QDialog):
@@ -147,7 +180,7 @@ class updateInfo(QDialog):
         self.close()
         
     def acceptBtn(self):
-        self.status = 'Ok'
+        self.status = 'ignoreWeek'
         self.close()
         
     def initUI(self):
