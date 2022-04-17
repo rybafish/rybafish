@@ -77,7 +77,8 @@ class ExceptionHandler(QtCore.QObject):
 
         msgBox = QMessageBox()
         msgBox.setWindowTitle('Fatal error')
-        msgBox.setText('Unhandled exception occured. Check the log file for details.')
+        msgBox.setText('Unhandled exception occured. Check the log file for details.\n\nIf you want to report this issue, press "Show Details" and copy the call stack.')
+        
         msgBox.setIcon(QMessageBox.Critical)
         msgBox.setDetailedText(details)
         iconPath = resourcePath('ico\\favicon.png')

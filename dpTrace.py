@@ -34,6 +34,8 @@ def getKpiDesc(type, kName):
 
 
 class dataProvider:
+
+    options = []
     
     def __init__(self, files):
         self.files = []
@@ -47,6 +49,9 @@ class dataProvider:
         self.files = files
         log('trace dp: %s' % str(files))
         
+    def close(self):
+        pass
+
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
         '''
             performs initial load, extract hosts and metadata

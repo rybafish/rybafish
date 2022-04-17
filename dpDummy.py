@@ -9,6 +9,8 @@ from utils import log, cfg, msgDialog
 
 class dataProvider:
 
+    options = []
+
     def __init__(self):
         log('dummy data provider init()')
         
@@ -90,6 +92,9 @@ class dataProvider:
 
             msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
                     
+    def close(self):
+        pass
+        
     def getData(self, host, fromto, kpis, data, wnd=None):
         
         #time.sleep(0.1)
