@@ -59,6 +59,96 @@ def timePrint():
         
     return s
 
+class cfgManager():
+
+    configs = {}
+    
+    def __init__(self, ):
+        from cryptography.fernet import Fernet
+        
+        script = sys.argv[0]
+        path, file = os.path.split(script)
+        
+        self.fname = os.path.join(path, 'connections.yaml')
+        
+        self.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
+        
+        cfs = None
+
+        self.configs = {}
+
+        try: 
+            f = open(self.fname, 'r')
+            cfs = safe_load(f)
+            
+        except:
+            log('no configs, using defaults')
+            return
+            
+        if not cfs:
+            return
+
+        for n in cfs:
+                
+            confEntry = cfs[n]
+            
+            if 'pwd' in confEntry:
+                pwd = confEntry['pwd']
+                pwd = self.fernet.decrypt(pwd).decode()
+                confEntry['pwd'] = pwd
+                
+            self.configs[n] = confEntry
+        
+    def updateConf(self, confEntry):
+        
+        
+        #if confEntry['name'] in self.configs:
+        #    self.configs.remove()
+        
+        name = confEntry.pop('name')
+        
+        self.configs[name] = confEntry
+        
+        self.dump()
+        
+    
+    def removeConf(self, entryName):
+        if entryName in self.configs:
+            del self.configs[entryName]
+            
+        self.dump()
+        
+    def dump(self):
+
+        #ds = self.configs.copy()
+        
+        ds = {}
+        for n in self.configs:
+            confEntry = self.configs[n].copy()
+            if 'pwd' in confEntry:
+                pwd = confEntry['pwd']
+                pwd = self.fernet.encrypt(pwd.encode())
+        
+                confEntry['pwd'] = pwd
+                
+                
+            if confEntry.get('dbi') == 'S2J':
+                if 'pwd' in confEntry:
+                    del confEntry['pwd']
+                
+                if 'user' in confEntry:
+                    del confEntry['user']
+                    
+            ds[n] = confEntry
+
+        try: 
+            f = open(self.fname, 'w')
+            
+            dump(ds, f, default_flow_style=None, sort_keys=False)
+            f.close()
+        except Exception as e:
+            log('layout dump issue:' + str(e))
+
 class Layout():
     
     lo = {}
@@ -113,7 +203,17 @@ class dbException(Exception):
 
     def __init__ (self, message, type = None):
         self.type = type
+        self.msg = message
         super().__init__(message, type)
+        
+    def __str__(self):
+    
+        message = self.msg
+        
+        if self.type is not None:
+            message += ', Type ' + str(self.type)
+    
+        return message
 
 class customKPIException(Exception):
 

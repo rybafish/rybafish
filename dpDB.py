@@ -17,7 +17,8 @@ from PyQt5.QtCore import pyqtSignal
 
 import sql
 
-import db
+#import db
+from dbi import dbi
 
 from utils import cfg, log, yesNoDialog, formatTime
 from utils import dbException, customKPIException
@@ -25,24 +26,33 @@ from utils import dbException, customKPIException
 import traceback
 from os import getcwd
 
-class dataProvider():
+class dataProvider(QObject):
+    
+    disconnected  = pyqtSignal()
+    busy  = pyqtSignal(int)
     
     connection = None
     server = None
     timer = None
     timerkeepalive = None
-    dbProperties = {}
+    
+    options = ['disconnectSignal', 'busySignal']
     
     # lock = False
     
     def __init__(self, server):
     
         super().__init__()
-    
-        log('connecting to %s:%i...' % (server['host'], server['port']))
+        
+        log('connecting to %s:\\\\%s:%i...' % (server['dbi'], server['host'], server['port']))
+
+        dbimpl = dbi(server['dbi'])
+        self.dbi = dbimpl.dbinterface
+        
+        self.dbProperties = {}
         
         try: 
-            conn = db.create_connection(server, self.dbProperties)
+            conn = self.dbi.create_connection(server, self.dbProperties)
         except dbException as e:
             log('dataprovider exception bubble up...')
             raise e
@@ -74,7 +84,7 @@ class dataProvider():
             
     def reconnect(self):
         try: 
-            conn = db.create_connection(self.server)
+            conn = self.dbi.create_connection(self.server)
         except Exception as e:
             raise e
         
@@ -86,6 +96,11 @@ class dataProvider():
             self.connection = conn
         
     def enableKeepAlive(self, window, keepalive):
+    
+        if not self.dbi.options.get('keepalive'):
+            log('Keep-alives not supported by this DBI')
+            return
+    
         log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)
@@ -97,6 +112,15 @@ class dataProvider():
             self.timer.stop()
             self.timer.start(1000 * self.timerkeepalive)
     
+    def close(self):
+        if self.connection is not None:
+            log('closing dataprovider connection')
+            self.connection.close()
+            
+        if self.timer:
+            log('stopping dataprovider keep-alive timer')
+            self.timer.stop()
+        
     def keepAlive(self):
     
         if self.connection is None:
@@ -108,18 +132,21 @@ class dataProvider():
             log('chart keep-alive... ', 3, False, True)
             
             t0 = time.time()
-            db.execute_query(self.connection, 'select * from dummy', [])
+            
+            self.busy.emit(1)
+            self.dbi.execute_query(self.connection, 'select * from dummy', [])
             
             if hasattr(self, 'fakeDisconnect'):
                 log ('generate an exception...')
                 log (10/0)
             
+            self.busy.emit(0)
             t1 = time.time()
             log('ok: %s ms' % (str(round(t1-t0, 3))), 3, True)
         except dbException as e:
             log('Trigger autoreconnect...')
             try:
-                conn = db.create_connection(self.server)
+                conn = self.dbi.create_connection(self.server)
                 if conn is not None:
                     self.connection = conn
                     log('Connection restored automatically')
@@ -127,15 +154,18 @@ class dataProvider():
                     log('Some connection issue, give up')
                     self.timer.stop()
                     self.connection = None
+                    self.disconnected.emit()
             except:
                 log('Connection lost, give up')
 
                 self.timer.stop()
                 self.connection = None
+                self.disconnected.emit()
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
             log('[!] %s' % str(e))
             self.connection = None
+            self.disconnected.emit()
         
         
     def initHosts(self, hosts, hostKPIs, srvcKPIs):
@@ -157,7 +187,7 @@ class dataProvider():
         else:
             sql_string = 'select host, port, null database_name, service_name from m_services order by host, port'
             
-        rows = db.execute_query(self.connection, sql_string, [])
+        rows = self.dbi.execute_query(self.connection, sql_string, [])
         
         services = {}
         
@@ -178,7 +208,7 @@ class dataProvider():
 
         t0 = time.time()
         
-        rows = db.execute_query(self.connection, sql_string, [])
+        rows = self.dbi.execute_query(self.connection, sql_string, [])
         
         if len(rows) <= 1:
             log('[W] no/limited telemetry available', 1)
@@ -226,7 +256,7 @@ class dataProvider():
                             #'to':rows[i][3]
                             })
 
-        rows = db.execute_query(self.connection, kpis_sql, [])
+        rows = self.dbi.execute_query(self.connection, kpis_sql, [])
         
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
 
@@ -556,7 +586,7 @@ class dataProvider():
         
         try:
             #rows = db.execute_query(self.connection, sql, params)
-            rows_list, cols_list, dbCursor, psid = db.execute_query_desc(self.connection, sql, params, None)
+            rows_list, cols_list, dbCursor, psid = self.dbi.execute_query_desc(self.connection, sql, params, None)
         except Exception as e:
             log('[!] execute_query: %s' % str(e))
             #raise dbException('Database Exception')
@@ -830,7 +860,7 @@ class dataProvider():
         t0 = time.time()
         
         try:
-            rows = db.execute_query(self.connection, sql, params)
+            rows = self.dbi.execute_query(self.connection, sql, params)
         except Exception as e:
             log('[!] execute_query: %s' % str(e))
             #raise dbException('Database Exception')
