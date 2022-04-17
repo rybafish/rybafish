@@ -13,7 +13,182 @@ import utils
         
 from utils import log, cfg
 
+from utils import vrsException
+
 currentIndex = None
+
+vrsStrDef = {}      # yaml definition, strings
+vrsDef = {}         # yaml definition, dicts
+vrsStrErr = {}      # True/False in case of parsing issues
+
+vrsStr = {}         # current string representation (for KPIs table
+vrs = {}            # actual dict
+
+
+def addVarsDef(sqlIdx, vStr):
+    '''
+        builds a dict for default values as it is defined in yaml definition
+        string representation also stored.
+        
+        It is used two cases:
+            1) to reset everithing to defaults when update from kpiTable submitted --- not any more...
+            2) to set variables to empty value in case it is missing in vrsStr
+    '''
+    
+    global vrsStrDef
+    global vrsDef
+    
+    vrsStrDef[sqlIdx] = vStr
+    
+    vlist = [s.strip() for s in vStr.split(',')]
+    
+    if sqlIdx in vrsDef:
+        log('%s already in the dict, anyway...' % sqlIdx, 4)
+        
+    vrsDef[sqlIdx] = {}
+        
+    for v in vlist:
+        p = v.find(':')
+        if p > 0:
+            vName = v[:p].strip()
+            vVal = v[p+1:].strip()
+        else:
+            vName = v
+            vVal = ''
+            
+        vrsDef[sqlIdx][vName] = vVal
+        
+    log('yaml variables for %s defined as %s' % (sqlIdx, str(vrsDef[sqlIdx])))
+    
+
+def addVars(sqlIdx, vStr, overwrite = False):
+    '''
+        this one called on manual update of variables from the KPIs table
+    '''
+
+    global vrs
+    global vrsStr
+    
+    def validate(s):
+        '''
+            very simple validation routine
+        '''
+        vlist = [s.strip() for s in vStr.split(',')]
+        
+        for v in vlist:
+            if v.find(':') <= 0:
+                log('Not a valid variable definition: [%s]' % v, 3)
+                return False
+                
+        return True
+    
+    log('addVars input: %s' % (str(vStr)), 5)
+    
+        
+    for idx in vrs:
+        log('%s --> %s' % (idx, str(vrs[idx])), 5)
+    
+    if vStr == None:
+        return
+    '''
+    if overwrite:
+        if sqlIdx in vrs:
+            log('full refresh of %s vars' % (sqlIdx), a4)
+            
+            vrs[sqlIdx].clear()
+    '''
+    
+    if not validate(vStr):
+        log('[E] Variables parsing error!')
+        
+        #vrsStr[sqlIdx] = None
+        msg = 'Variables cannot have commas inside'
+        vrsStrErr[sqlIdx] = '[!] '  + msg
+        raise vrsException(msg)
+        
+        return
+    else:
+        vrsStrErr[sqlIdx] = False
+        
+        
+    if sqlIdx not in vrs or True:
+        vrs[sqlIdx] = {}
+
+    if sqlIdx not in vrsStr or overwrite:
+        vrsStr[sqlIdx] = vStr
+
+    vlist = [s.strip() for s in vStr.split(',')]
+    
+    for v in vlist:
+        p = v.find(':')
+        if p > 0:
+            vName = v[:p].strip()
+            vVal = v[p+1:].strip()
+        else:
+            '''
+            vName = v
+            vVal = ''
+            '''
+            return 
+            
+        if vName in vrs[sqlIdx]:
+            if overwrite:
+                log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 2)
+                vrs[sqlIdx][vName] = vVal
+        else:
+            vrs[sqlIdx][vName] = vVal
+            
+            
+    # go through defined variables and add missing ones
+    
+    if sqlIdx not in vrsDef:
+        log('[W] how come %s is missing in vrsDed??' % sqlIdx, 2)
+    else:
+        log('compare with definition: %s' % str(vrsDef[sqlIdx]), 5)
+        for k in vrsDef[sqlIdx]:
+            if k not in vrs[sqlIdx]:
+                vrs[sqlIdx][k] = vrsDef[sqlIdx][k]
+                log('\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
+        
+    log('actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])), 4)
+
+
+def processVars(sqlIdx, s):
+    '''
+        makes the actual replacement based on global variable vrs
+        sqlIdx is a custom KPI file name with extention, example: 10_exp_st.yaml
+        
+        s is the string for processing
+    '''
+
+    global vrs
+    
+    s = str(s)
+    
+    # is it custom kpi at all?
+    if sqlIdx is None:
+        return s
+
+    # are there any variables?
+    if sqlIdx not in vrs:
+        return s
+
+    #log('---process vars...---------------------------------------', 5)
+    #log('sqlIdx: ' + str(sqlIdx))
+    #log('vrs: ' + str(vrs[sqlIdx]))
+    #log('>>' + s, 5)
+    #log('  -- -- -- --', 5)
+
+    if sqlIdx in vrs:
+        for v in vrs[sqlIdx]:
+            if v == '':
+                continue
+                
+            s = s.replace('$'+v, str(vrs[sqlIdx][v]))
+        
+    #log('<<' + s, 5)
+    #log('---------------------------------------------------------', 5)
+    return s
 
 def removeDeadKPIs(kpis, type):
 
@@ -219,11 +394,18 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             if 'y_range' in kpi and kpi['y_range'] != '':
                 yr = kpi['y_range']
                 
-                print('yr: ', yr)
-                
                 style['y_range'] = [None]*2
-                style['y_range'][0] = 100 - max(0, yr[0])
-                style['y_range'][1] = 100 - min(100, yr[1])
+
+                '''
+                y1 = int(processVars(sqlIdx, yr[0]))
+                y2 = int(processVars(sqlIdx, yr[1]))
+                
+                style['y_range'][0] = 100 - max(0, y1)
+                style['y_range'][1] = 100 - min(100, y2)
+                '''
+                
+                style['y_range'][0] = yr[0]
+                style['y_range'][1] = yr[1]
             else:
                 style['y_range'] = [0, 100]
                 
@@ -274,6 +456,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['pen'] = QPen(color, 1, penStyle)
 
     style['sql'] = sqlIdx
+    
     '''
     except Exception as e:
         log(str(kpi))

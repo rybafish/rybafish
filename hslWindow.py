@@ -288,6 +288,10 @@ class hslWindow(QMainWindow):
                 if 'tabs' in self.layout.lo:
                     self.layout.lo.pop('tabs')
                 
+        self.layout['variables'] = kpiDescriptions.vrsStr
+        log('--> dumpLayout vars: %s' % str(kpiDescriptions.vrsStr), 4)
+        #print('dumping', self.layout['variables'])
+        
         if 'running' in self.layout.lo:
             self.layout.lo.pop('running')
            
@@ -629,6 +633,7 @@ class hslWindow(QMainWindow):
                 
                 self.statusMessage('', False)
 
+            '''
             except Exception as e:
                 log('Init exception NOT related to DB')
                 log(str(e))
@@ -642,6 +647,7 @@ class hslWindow(QMainWindow):
                 msgBox.exec_()
                 
                 self.statusMessage('', False)
+            '''
                     
         else:
             # cancel or parsing error
@@ -937,6 +943,15 @@ class hslWindow(QMainWindow):
         if cfg('saveLayout', True):
             self.layout = Layout(True)
             
+            if self.layout['variables']:
+                # kpiDescriptions.vrs = self.layout['variables']
+                log('-----addVars hslWindow-----')
+                
+                for idx in self.layout['variables']:
+                    kpiDescriptions.addVars(idx, self.layout['variables'][idx])
+                    
+                log('-----addVars hslWindow-----')
+            
             if self.layout['running']:
 
                 try:
@@ -946,11 +961,10 @@ class hslWindow(QMainWindow):
                     pass
 
                 answer = utils.yesNoDialog('Warning', 'Another RybaFish is already running, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
-                #answer = utils.yesNoDialog('Warning', 'RybaFish is already running or crashed last time, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 
                 if answer == True or answer is None:
                     sys.exit(0)
-                
+
                 if answer == 'ignore':
                     log('Ignoring the layout')
                 else:
@@ -1322,6 +1336,7 @@ class hslWindow(QMainWindow):
         # bind change scales signal
         #kpisTable.adjustScale.connect(self.chartArea.adjustScale)
         kpisTable.setScale.connect(self.chartArea.setScale)
+        kpisTable.vrsUpdate.connect(self.chartArea.repaintRequest)
 
         # host table row change signal
         self.hostTable.hostChanged.connect(kpisTable.refill)

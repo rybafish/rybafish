@@ -21,7 +21,7 @@ from PyQt5.QtCore import pyqtSignal
 
 # my stuff
 import kpiDescriptions
-from kpiDescriptions import kpiStylesNN, hType
+from kpiDescriptions import kpiStylesNN, hType, processVars
 from utils import resourcePath
 
 import importTrace
@@ -813,12 +813,26 @@ class myWidget(QWidget):
                 
                 yr = kpiStylesNN[type][kpi]['y_range']
 
+                yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
+                
+                sqlIdx = kpiStylesNN[type][kpi]['sql']
+
+                try:
+                    yr0p = processVars(sqlIdx, yr0)
+                    yr1p = processVars(sqlIdx, yr1)
+                    yr0 = 100 - max(0, int(yr0p))
+                    yr1 = 100 - min(100, int(yr1p))
+                except ValueError:
+                    log('[E] Cannot convert variable to integer! %s or %s' % (yr0p, yr1p), 1)
+                    yr0 = 100
+                    yr1 = 90
+
                 for entity in gc:
                 
                     #exactly same calculation as in drawChart:
                     y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
-                    y_shift = y_scale/100*yr[0] * len(gc)
-                    y_scale = y_scale * (yr[1] - yr[0])/100
+                    y_shift = y_scale/100*yr0 * len(gc)
+                    y_scale = y_scale * (yr1 - yr0)/100
                     
                     y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
 
@@ -1145,10 +1159,14 @@ class myWidget(QWidget):
                         stacked = kpiStylesNN[type][kpi]['stacked']
                         multiline = True
                         
+                    label = kpiStylesNN[type][kpi]['label']
+                    
+                    if kpiStylesNN[type][kpi].get('sql'):
+                        sqlIdx = kpiStylesNN[type][kpi].get('sql')
+                        label = processVars(sqlIdx, label)
+                        
                     if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
                         unit = ' ' + self.nscales[h][kpi]['unit']
-
-                        label = kpiStylesNN[type][kpi]['label']
                         
                         if kpi in self.nscales[h]: #if those are scanned already
                             if multiline:
@@ -1209,8 +1227,8 @@ class myWidget(QWidget):
                                 lmeta.append(['', pen, 0, 44])
                                 
                     else:
-
-                        label = kpiStylesNN[type][kpi]['label']
+                    
+                        # label defined before if
 
                         lkpis.append(kpi)
                         lkpisl.append(label)
@@ -1602,11 +1620,23 @@ class myWidget(QWidget):
                     
                                         
                     if len(gc) > 0:
-                        yr = kpiStylesNN[type][kpi]['y_range']
+                        yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
+                        
+                        sqlIdx = kpiStylesNN[type][kpi]['sql']
+                        
+                        try:
+                            yr0p = processVars(sqlIdx, yr0)
+                            yr1p = processVars(sqlIdx, yr1)
+                            yr0 = 100 - max(0, int(yr0p))
+                            yr1 = 100 - min(100, int(yr1p))
+                        except ValueError:
+                            log('[E] Cannot convert all of the variables to integer! %s or %s' % (yr0p, yr1p), 1)
+                            yr0 = 100
+                            yr1 = 90
                         
                         y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
-                        y_shift = y_scale/100*yr[0] * len(gc)
-                        y_scale = y_scale * (yr[1] - yr[0])/100
+                        y_shift = y_scale/100*yr0 * len(gc)
+                        y_scale = y_scale * (yr1 - yr0)/100
                     
                     i = 0
                     
@@ -2008,7 +2038,14 @@ class myWidget(QWidget):
                     label_width = self.font_width1
                 else:
                     label_width = self.font_width2
-                qp.drawText(x-label_width, wsize.height() - bottom_margin + self.font_height, label)
+                 
+                # #587
+                
+                #print('>> >> x-label_width', x-label_width)
+                #print('>> >> wsize.height() - bottom_margin + self.font_height', wsize.height() - bottom_margin + self.font_height)
+                #print('>> >> label', label)
+                
+                qp.drawText(int(x-label_width), wsize.height() - bottom_margin + self.font_height, label)
                 
                 if date_mark:
                     label = c_time.strftime('%Y-%m-%d')
@@ -2388,6 +2425,9 @@ class chartArea(QFrame):
         self.toEdit.setStyleSheet("color: blue;")
         self.fromEdit.setFocus()
         
+    def repaintRequest(self):
+        self.widget.repaint()
+    
     def setScale(self, host, kpi, yMin, yMax):
         '''
             scale changed to manual value

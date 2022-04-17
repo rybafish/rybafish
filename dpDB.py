@@ -413,7 +413,9 @@ class dataProvider(QObject):
                         fromTable = 'from m_load_history_service'
 
                 else:
-                    fromTable = 'from (%s)' % kpiDescriptions.customSql[kpiSrc]
+                    sql = kpiDescriptions.processVars(kpiSrc, kpiDescriptions.customSql[kpiSrc])
+                    
+                    fromTable = 'from (%s)' % sql
                                 
             for kpi in kpis:
                 if kpiSrc == '-':
