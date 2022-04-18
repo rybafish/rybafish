@@ -68,6 +68,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
 
     global vrs
     global vrsStr
+    global vrsDef
     
     def validate(s):
         '''
@@ -83,7 +84,6 @@ def addVars(sqlIdx, vStr, overwrite = False):
         return True
     
     log('addVars input: %s' % (str(vStr)), 5)
-    
         
     for idx in vrs:
         log('%s --> %s' % (idx, str(vrs[idx])), 5)
@@ -110,8 +110,8 @@ def addVars(sqlIdx, vStr, overwrite = False):
     else:
         vrsStrErr[sqlIdx] = False
         
-        
-    if sqlIdx not in vrs or True:
+    #if sqlIdx not in vrs or True: 2022-04-17
+    if sqlIdx not in vrs:
         vrs[sqlIdx] = {}
 
     if sqlIdx not in vrsStr or overwrite:
@@ -119,11 +119,14 @@ def addVars(sqlIdx, vStr, overwrite = False):
 
     vlist = [s.strip() for s in vStr.split(',')]
     
+    vNames = []
     for v in vlist:
         p = v.find(':')
         if p > 0:
             vName = v[:p].strip()
             vVal = v[p+1:].strip()
+            
+            vNames.append(vName)
         else:
             '''
             vName = v
@@ -138,19 +141,26 @@ def addVars(sqlIdx, vStr, overwrite = False):
         else:
             vrs[sqlIdx][vName] = vVal
             
+    # go throuth the result and remove the stuff that was not supplied in the input string, #602
+    if sqlIdx in vrsDef:
+        # otherwise it is probably an initial load
+        for v in vrs[sqlIdx]:
+            if v not in vNames:
+                log('Variable \'%s\' seems missing in %s, restoring default from YAML' % (v, sqlIdx))
+                vrs[sqlIdx][v] = vrsDef[sqlIdx][v]
             
     # go through defined variables and add missing ones
     
     if sqlIdx not in vrsDef:
         log('[W] how come %s is missing in vrsDed??' % sqlIdx, 2)
     else:
-        log('compare with definition: %s' % str(vrsDef[sqlIdx]), 5)
+        log('Variables YAML defaults: %s' % str(vrsDef[sqlIdx]), 5)
         for k in vrsDef[sqlIdx]:
             if k not in vrs[sqlIdx]:
                 vrs[sqlIdx][k] = vrsDef[sqlIdx][k]
-                log('\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
+                log('[W] MUST NOT REACH THIS POINT #602\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
         
-    log('actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])), 4)
+    log('Actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])), 4)
 
 
 def processVars(sqlIdx, s):

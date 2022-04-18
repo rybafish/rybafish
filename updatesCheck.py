@@ -132,7 +132,7 @@ def gotResponse(QNetworkReply):
             return
             
     else:
-        if buildDate < currentBuild:
+        if buildDate <= currentBuild:
             log('There is no new version, current build %s, last published %s' % (currentBuild, buildDate), 4)
             
             afterCheck('') # update the updateNextCheck date

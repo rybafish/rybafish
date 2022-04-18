@@ -360,7 +360,7 @@ class Config(QDialog):
             
             vbox.addWidget(confGroup)
         
-        if cfg('experimental', False):
+        if cfg('experimental', False) and cfg('S2J', False):
             vbox.addLayout(dbiHBox) # driver type
         
         vbox.addLayout(form) # main form

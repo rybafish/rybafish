@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, QUrl
 from utils import resourcePath
 from yaml import safe_load, YAMLError
 
-from utils import log
+from utils import log, cfg
 
 from _constants import build_date, version
 
@@ -74,9 +74,11 @@ class About(QDialog):
         manager = QNetworkAccessManager(self)
         
         manager.finished[QNetworkReply].connect(self.gotResponse)
-        manager.get(QNetworkRequest(QUrl('https://www.rybafish.net/version')))
+        updateURL = cfg('updatesURL', 'https://files.rybafish.net/version')
+        manager.get(QNetworkRequest(QUrl(updateURL)))
         
         self.updatesLabel.setText('requesting...')
+        self.updatesLabelBeta.setText('')
         
     def rybafishDotNet(self, link):
         QDesktopServices.openUrl(QUrl(link))
