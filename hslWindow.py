@@ -21,6 +21,7 @@ import dpTrace
 
 import dpDummy
 import dpDB
+from dbi import dbi
 import sqlConsole
 
 import datetime
@@ -45,6 +46,10 @@ import sys, os
 
 import time
 
+from _constants import build_date, version
+
+from updatesCheck import checkUpdates
+
 class hslWindow(QMainWindow):
 
     statusbar = None
@@ -63,8 +68,49 @@ class hslWindow(QMainWindow):
         super().__init__()
         self.initUI()
         
+        if cfg('updatesCheckInterval', '7'):
+            if self.layout is not None:
+                checkUpdates(self, self.updatesCB, self.layout.lo.get('updateNextCheck'), self.layout.lo.get('updateVersionCheck'))
         
     # def tabChanged(self, newidx):
+    
+    def updatesCB(self, status, buildDate = None):
+    
+        interval = cfg('updatesCheckInterval', '7')
+        
+        if interval:
+            try:
+                interval = int(interval)
+            except ValueError:
+                log('[!] unexpected updateCheckInterval: %s' % str(interval), 2)
+                interval = 7
+        else:
+            interval = 7
+            
+        log('Updates callback, status: [%s]' % status, 4)
+    
+        today = datetime.datetime.now().date()
+
+
+        '''
+        if 'updateVersionCheck' in self.layout.lo:
+            self.layout.lo.pop('updateVersionCheck')
+        '''
+
+        if 'updateNextCheck' in self.layout.lo:
+            self.layout.lo.pop('updateNextCheck')
+
+        if status in (''):
+            self.layout['updateNextCheck'] = today + datetime.timedelta(days=interval)
+        elif status == 'ignoreWeek':
+            self.layout['updateNextCheck'] = today + datetime.timedelta(days=7)
+        elif status == 'ignoreYear':
+            self.layout['updateNextCheck'] = today + datetime.timedelta(days=365)
+        elif status == 'ignoreVersion':
+            self.layout['updateNextCheck'] = today + datetime.timedelta(days=interval)
+            self.layout['updateVersionCheck'] = buildDate
+
+        self.layout.dump()
         
     def closeTab(self):
         indx = self.tabs.currentIndex()
@@ -141,6 +187,11 @@ class hslWindow(QMainWindow):
         return kpis
         
     def dumpLayout(self, closeTabs = True):
+    
+        if self.connectionConf:
+            connection = self.connectionConf.get('name')
+        else:
+            connection = None
 
         if self.layoutDumped:
             return
@@ -166,6 +217,12 @@ class hslWindow(QMainWindow):
                 del self.layout.lo['kpis']
                 
         #log('--> dumpLayout, kpis: ' + str(kpis))
+        
+        if connection:
+            self.layout['connectionName'] = connection
+        else:
+            if self.connectionConf:
+                self.layout['connectionName'] = None
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
@@ -232,6 +289,10 @@ class hslWindow(QMainWindow):
                 if 'tabs' in self.layout.lo:
                     self.layout.lo.pop('tabs')
                 
+        self.layout['variables'] = kpiDescriptions.vrsStr
+        log('--> dumpLayout vars: %s' % str(kpiDescriptions.vrsStr), 4)
+        #print('dumping', self.layout['variables'])
+        
         if 'running' in self.layout.lo:
             self.layout.lo.pop('running')
            
@@ -391,6 +452,12 @@ class hslWindow(QMainWindow):
         else:
             connConf = self.connectionConf
             
+        if not connConf:
+            connConf = {}
+            
+        if not connConf.get('name') and self.layout:
+            connConf['setToName'] = self.layout['connectionName']
+
         '''
         if self.layout.lo.get('pwdhash') :
             pwd = utils.pwdunhash(self.layout['pwdhash'])
@@ -399,6 +466,8 @@ class hslWindow(QMainWindow):
         '''
             
         conf, ok = configDialog.Config.getConfig(connConf, self)
+        
+        log('config dialog, ok? %s' % str(ok), 5)
         
         if ok:
             self.connectionConf = conf
@@ -429,12 +498,31 @@ class hslWindow(QMainWindow):
                         w.indicator.status = 'disconnected'
                         w.indicator.repaint()
                         log('disconnected...')
+                        
+                # close damn chart console
+
+                if self.chartArea.dp is not None:
+                    self.chartArea.dp.close()
+                    del self.chartArea.dp
+                    self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+
 
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
                 self.chartArea.setStatus('sync', True)
+                
+                if dbi.dbinterface is not None:
+                    dbi.dbinterface.destroy()
+                    
                 self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+                
+                if 'disconnectSignal' in self.chartArea.dp.options:
+                    self.chartArea.dp.disconnected.connect(self.chartArea.dpDisconnected)
+                    
+                if 'busySignal' in self.chartArea.dp.options:
+                    self.chartArea.dp.busy.connect(self.chartArea.dpBusy)
+                    
                 self.chartArea.setStatus('idle')
 
                 for i in range(self.tabs.count()):
@@ -477,7 +565,11 @@ class hslWindow(QMainWindow):
                         self.statusMessage('Loading saved kpis...', True)
 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
-                    self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
+                    if 'timeZoneDelta' in self.chartArea.dp.dbProperties:
+                        self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
+                    else:
+                        self.chartArea.widget.timeZoneDelta = 0
+                        
                     if not conf['noreload']:
                         log('reload from menuConfig #1', 4)
                         self.chartArea.reloadChart()
@@ -494,7 +586,10 @@ class hslWindow(QMainWindow):
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
                     
-                sid = self.chartArea.dp.dbProperties['sid']
+                if 'sid' in self.chartArea.dp.dbProperties:
+                    sid = self.chartArea.dp.dbProperties['sid']
+                else:
+                    sid = ''
                 
                 propStr = conf['user'] + '@' + sid
                 
@@ -510,6 +605,8 @@ class hslWindow(QMainWindow):
                 if dbver:
                     windowStr += ', ' + dbver
                 
+                windowStr += ' - ' + version
+                
                 self.tabs.setTabText(0, propStr)
                 self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
                 
@@ -523,6 +620,7 @@ class hslWindow(QMainWindow):
                         log('wrong keepalive setting: %s' % (cfg('keepalive')))
                                 
             except dbException as e:
+                self.chartArea.indicator.status = 'disconnected'
                 log('Connect or init error:')
                 if hasattr(e, 'message'):
                     log(e.message)
@@ -539,8 +637,9 @@ class hslWindow(QMainWindow):
                 
                 self.statusMessage('', False)
 
+            '''
             except Exception as e:
-                log('Init exception not related to DB')
+                log('Init exception NOT related to DB')
                 log(str(e))
 
                 msgBox = QMessageBox(self)
@@ -552,6 +651,7 @@ class hslWindow(QMainWindow):
                 msgBox.exec_()
                 
                 self.statusMessage('', False)
+            '''
                     
         else:
             # cancel or parsing error
@@ -709,8 +809,6 @@ class hslWindow(QMainWindow):
             else:
                 noname = False
                 
-        # console = sqlConsole.sqlConsole(self, conf, tname) # self = window
-
         try:
             console = sqlConsole.sqlConsole(self, conf, tname) # self = window
             log('seems connected...')
@@ -836,28 +934,44 @@ class hslWindow(QMainWindow):
                 break
     
     
+    '''
+    def chartIndicator(self, status):
+         self.chartArea.indicator.status = 'disconnected'
+    '''
+    
     def setTabName(self, str):
         self.tabs.setTabText(0, str)
         
     def initUI(self):
+    
+        global rybaSplash
 
         if cfg('saveLayout', True):
             self.layout = Layout(True)
+            
+            if self.layout['variables']:
+                # kpiDescriptions.vrs = self.layout['variables']
+                log('-----addVars hslWindow-----')
+                
+                for idx in self.layout['variables']:
+                    kpiDescriptions.addVars(idx, self.layout['variables'][idx])
+                    
+                log('-----addVars hslWindow-----')
             
             if self.layout['running']:
 
                 try:
                     import pyi_splash
                     pyi_splash.close()
+                    rybaSplash = False
                 except:
                     pass
 
                 answer = utils.yesNoDialog('Warning', 'Another RybaFish is already running, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
-                #answer = utils.yesNoDialog('Warning', 'RybaFish is already running or crashed last time, all the layout and autosave features will be disabled.\n\nExit now?', ignore = True)
                 
                 if answer == True or answer is None:
                     sys.exit(0)
-                
+
                 if answer == 'ignore':
                     log('Ignoring the layout')
                 else:
@@ -956,6 +1070,7 @@ class hslWindow(QMainWindow):
         self.tabs.addTab(self.mainSplitter, 'Chart')
         
         self.chartArea.selfRaise.connect(self.raiseTab)
+        #self.chartArea.indSignal.connect(self.chartIndicator)
         ind.iClicked.connect(self.chartArea.indicatorSignal)
         
         # as console is fully sync it does not have runtime and corresponding signals
@@ -1052,12 +1167,11 @@ class hslWindow(QMainWindow):
         reloadConfigAct.triggered.connect(self.menuReloadConfig)
         actionsMenu.addAction(reloadConfigAct)
 
-        if cfg('experimental'):
-            reloadCustomSQLsAct = QAction('Reload Context &SQLs', self)
-            reloadCustomSQLsAct.setStatusTip('Reload definition of context SQLs')
-            reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
-            
-            actionsMenu.addAction(reloadCustomSQLsAct)
+        reloadCustomSQLsAct = QAction('Reload Context &SQLs', self)
+        reloadCustomSQLsAct.setStatusTip('Reload definition of context SQLs')
+        reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
+        
+        actionsMenu.addAction(reloadCustomSQLsAct)
 
         reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
         reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
@@ -1090,10 +1204,9 @@ class hslWindow(QMainWindow):
         confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
         confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
 
-        if cfg('experimental'):
-            confContextHelpAct = QAction('Context SQLs', self)
-            confContextHelpAct.setStatusTip('Short manual on context SQLs')
-            confContextHelpAct.triggered.connect(self.menuContextSQLsConfHelp)
+        confContextHelpAct = QAction('Context SQLs', self)
+        confContextHelpAct.setStatusTip('Short manual on context SQLs')
+        confContextHelpAct.triggered.connect(self.menuContextSQLsConfHelp)
 
         confTipsAct = QAction('Tips and tricks', self)
         confTipsAct.setStatusTip('Tips and tricks description')
@@ -1105,8 +1218,7 @@ class hslWindow(QMainWindow):
         
         helpMenu.addAction(confCustomHelpAct)
         
-        if cfg('experimental'):
-            helpMenu.addAction(confContextHelpAct)
+        helpMenu.addAction(confContextHelpAct)
         
         helpMenu.addAction(confTipsAct)
             
@@ -1139,7 +1251,8 @@ class hslWindow(QMainWindow):
         else:
             self.setGeometry(200, 200, 1400, 800)
         
-        self.setWindowTitle('RybaFish Charts')
+        
+        self.setWindowTitle('RybaFish Charts [%s]' % version)
         
         self.setWindowIcon(QIcon(iconPath))
         
@@ -1227,6 +1340,7 @@ class hslWindow(QMainWindow):
         # bind change scales signal
         #kpisTable.adjustScale.connect(self.chartArea.adjustScale)
         kpisTable.setScale.connect(self.chartArea.setScale)
+        kpisTable.vrsUpdate.connect(self.chartArea.repaintRequest)
 
         # host table row change signal
         self.hostTable.hostChanged.connect(kpisTable.refill)
@@ -1250,15 +1364,12 @@ class hslWindow(QMainWindow):
         log('init finish()')
 
 
-        if cfg('experimental'):
-            customSQLs.loadSQLs()
+        customSQLs.loadSQLs()
 
         # offline console tests
         
         if cfg('developmentMode'):
         
-            #tname = sqlConsole.generateTabName()
-
             #idx = self.tabs.count()
             self.sqlTabCounter += 1
             idx = self.sqlTabCounter

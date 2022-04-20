@@ -41,6 +41,14 @@ class ExceptionHandler(QtCore.QObject):
     def handler(self, exctype, value, tb):
     
         global ryba
+        global rybaSplash
+        
+        if rybaSplash:
+            try:
+                import pyi_splash
+                pyi_splash.close()
+            except:
+                pass
     
         cwd = getcwd()
         log('[!] fatal exception\n')
@@ -77,7 +85,8 @@ class ExceptionHandler(QtCore.QObject):
 
         msgBox = QMessageBox()
         msgBox.setWindowTitle('Fatal error')
-        msgBox.setText('Unhandled exception occured. Check the log file for details.')
+        msgBox.setText('Unhandled exception occured. Check the log file for details.\n\nIf you want to report this issue, press "Show Details" and copy the call stack.')
+        
         msgBox.setIcon(QMessageBox.Critical)
         msgBox.setDetailedText(details)
         iconPath = resourcePath('ico\\favicon.png')
@@ -89,6 +98,9 @@ class ExceptionHandler(QtCore.QObject):
 if __name__ == '__main__':
 
     global ryba
+    global rybaSplash
+    
+    rybaSplash = True
 
     try:
         import pyi_splash
@@ -105,20 +117,22 @@ if __name__ == '__main__':
     loadConfig = True
     
     while loadConfig:
-
+    
         ok = utils.loadConfig()
-        
-        kpiDescriptions.generateRaduga()
-        
+                
         if not ok:
             try:
                 import pyi_splash
                 pyi_splash.close()
+                rybaSplash = False
             except:
                 pass
             loadConfig = utils.yesNoDialog('Config error', 'Cannot load/parse config.yaml\nTry again?')
         else:
             loadConfig = False
+            
+    if loadConfig:
+        kpiDescriptions.generateRaduga()
 
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))
