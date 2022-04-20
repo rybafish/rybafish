@@ -74,3 +74,28 @@ keepalive: 1200
 
 #lowercase column named for "Generate Filter" and "Insert Column Names" features
 #lowercase-columns: False
+
+## colors for Colorize KPIs menu option:
+raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00fa9a', '#8a2be2', 
+        '#dc143c', '#0000ff', '#da70d6', '#d8bfd8', '#ff00ff', '#1e90ff', '#db7093', '#ffff54', 
+        '#ff1493', '#7b68ee', '#ffa07a', '#008000', '#3cb371', '#b8860b', '#4682b4', '#000080', 
+        '#9acd32', '#afeeee', '#7fffd4', '#ffdead', '#2f4f4f', '#556b2f', '#a0522d', '#483d8b']
+
+# string that will trigger the alert sound when selected:
+#alertTriggerOn: '{alert}'
+
+# default sound to play when '{alert}' value selected
+#alertSound: 'default.wav'
+
+# alert sounds volume
+#alertVolume: 80
+
+# Popup the window on alert
+#alertAutoPopup: True
+
+# Play a sound when the autorefresh console is disconnected
+#alertDisconnected: 'disconnected.wav'
+
+## automatic check for updates parameters
+#updatesCheckInterval: 7
+#updatesCheckBeta: True

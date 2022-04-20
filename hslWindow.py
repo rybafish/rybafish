@@ -457,7 +457,7 @@ class hslWindow(QMainWindow):
             
         if not connConf.get('name') and self.layout:
             connConf['setToName'] = self.layout['connectionName']
-            
+
         '''
         if self.layout.lo.get('pwdhash') :
             pwd = utils.pwdunhash(self.layout['pwdhash'])
@@ -1167,12 +1167,11 @@ class hslWindow(QMainWindow):
         reloadConfigAct.triggered.connect(self.menuReloadConfig)
         actionsMenu.addAction(reloadConfigAct)
 
-        if cfg('experimental'):
-            reloadCustomSQLsAct = QAction('Reload Context &SQLs', self)
-            reloadCustomSQLsAct.setStatusTip('Reload definition of context SQLs')
-            reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
-            
-            actionsMenu.addAction(reloadCustomSQLsAct)
+        reloadCustomSQLsAct = QAction('Reload Context &SQLs', self)
+        reloadCustomSQLsAct.setStatusTip('Reload definition of context SQLs')
+        reloadCustomSQLsAct.triggered.connect(self.menuReloadCustomSQLs)
+        
+        actionsMenu.addAction(reloadCustomSQLsAct)
 
         reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
         reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
@@ -1205,10 +1204,9 @@ class hslWindow(QMainWindow):
         confCustomHelpAct.setStatusTip('Short manual on custom KPIs')
         confCustomHelpAct.triggered.connect(self.menuCustomConfHelp)
 
-        if cfg('experimental'):
-            confContextHelpAct = QAction('Context SQLs', self)
-            confContextHelpAct.setStatusTip('Short manual on context SQLs')
-            confContextHelpAct.triggered.connect(self.menuContextSQLsConfHelp)
+        confContextHelpAct = QAction('Context SQLs', self)
+        confContextHelpAct.setStatusTip('Short manual on context SQLs')
+        confContextHelpAct.triggered.connect(self.menuContextSQLsConfHelp)
 
         confTipsAct = QAction('Tips and tricks', self)
         confTipsAct.setStatusTip('Tips and tricks description')
@@ -1220,8 +1218,7 @@ class hslWindow(QMainWindow):
         
         helpMenu.addAction(confCustomHelpAct)
         
-        if cfg('experimental'):
-            helpMenu.addAction(confContextHelpAct)
+        helpMenu.addAction(confContextHelpAct)
         
         helpMenu.addAction(confTipsAct)
             
@@ -1367,8 +1364,7 @@ class hslWindow(QMainWindow):
         log('init finish()')
 
 
-        if cfg('experimental'):
-            customSQLs.loadSQLs()
+        customSQLs.loadSQLs()
 
         # offline console tests
         
