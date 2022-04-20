@@ -106,11 +106,13 @@ if __name__ == '__main__':
     loadConfig = True
     
     while loadConfig:
+    
+        log('loadConfig: ' + str(loadConfig), 1)
 
         ok = utils.loadConfig()
         
-        kpiDescriptions.generateRaduga()
-        
+        log('ok: ' + str(ok), 1)
+                
         if not ok:
             try:
                 import pyi_splash
@@ -120,6 +122,9 @@ if __name__ == '__main__':
             loadConfig = utils.yesNoDialog('Config error', 'Cannot load/parse config.yaml\nTry again?')
         else:
             loadConfig = False
+            
+    if loadConfig:
+        kpiDescriptions.generateRaduga()
 
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))

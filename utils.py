@@ -514,8 +514,6 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         f.seek(os.SEEK_END, 0)
         try:
             f.write(ts + str(s) + nl)
-        #except builtins.UnicodeEncodeError:   builtins unknown smth.
-        #    f.write(ts + str(s.encode()) + nl)
 
         except Exception as e:
             f.write(ts + str(e) + nl)

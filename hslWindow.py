@@ -451,7 +451,7 @@ class hslWindow(QMainWindow):
         else:
             connConf = self.connectionConf
             
-        if not connConf.get('name'):
+        if not connConf or not connConf.get('name'):
             connConf['setToName'] = self.layout['connectionName']
             
         '''
