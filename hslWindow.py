@@ -69,7 +69,8 @@ class hslWindow(QMainWindow):
         self.initUI()
         
         if cfg('updatesCheckInterval', '7'):
-            checkUpdates(self, self.updatesCB, self.layout.lo.get('updateNextCheck'), self.layout.lo.get('updateVersionCheck'))
+            if self.layout is not None:
+                checkUpdates(self, self.updatesCB, self.layout.lo.get('updateNextCheck'), self.layout.lo.get('updateVersionCheck'))
         
     # def tabChanged(self, newidx):
     
@@ -451,7 +452,10 @@ class hslWindow(QMainWindow):
         else:
             connConf = self.connectionConf
             
-        if not connConf or not connConf.get('name'):
+        if not connConf:
+            connConf = {}
+            
+        if not connConf.get('name') and self.layout:
             connConf['setToName'] = self.layout['connectionName']
             
         '''
@@ -939,6 +943,8 @@ class hslWindow(QMainWindow):
         self.tabs.setTabText(0, str)
         
     def initUI(self):
+    
+        global rybaSplash
 
         if cfg('saveLayout', True):
             self.layout = Layout(True)
@@ -957,6 +963,7 @@ class hslWindow(QMainWindow):
                 try:
                     import pyi_splash
                     pyi_splash.close()
+                    rybaSplash = False
                 except:
                     pass
 

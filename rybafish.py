@@ -41,6 +41,14 @@ class ExceptionHandler(QtCore.QObject):
     def handler(self, exctype, value, tb):
     
         global ryba
+        global rybaSplash
+        
+        if rybaSplash:
+            try:
+                import pyi_splash
+                pyi_splash.close()
+            except:
+                pass
     
         cwd = getcwd()
         log('[!] fatal exception\n')
@@ -90,6 +98,9 @@ class ExceptionHandler(QtCore.QObject):
 if __name__ == '__main__':
 
     global ryba
+    global rybaSplash
+    
+    rybaSplash = True
 
     try:
         import pyi_splash
@@ -107,16 +118,13 @@ if __name__ == '__main__':
     
     while loadConfig:
     
-        log('loadConfig: ' + str(loadConfig), 1)
-
         ok = utils.loadConfig()
-        
-        log('ok: ' + str(ok), 1)
                 
         if not ok:
             try:
                 import pyi_splash
                 pyi_splash.close()
+                rybaSplash = False
             except:
                 pass
             loadConfig = utils.yesNoDialog('Config error', 'Cannot load/parse config.yaml\nTry again?')
