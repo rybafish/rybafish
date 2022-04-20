@@ -423,7 +423,11 @@ class dataProvider(QObject):
                 else:
                     kpisSql.append(kpiDescriptions.kpiStylesNN[type][kpi]['sqlname'])
                     
+            '''
             if 'nofilter' in kpiDescriptions.kpiStylesNN[type][kpi] and kpiDescriptions.kpiStylesNN[type][kpi]['nofilter']:
+                nofilter = True
+            '''
+            if kpiDescriptions.kpiStylesNN[type][kpi].get('nofilter'):
                 nofilter = True
             
             cols = ', '.join(kpisSql)

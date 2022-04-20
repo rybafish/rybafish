@@ -278,7 +278,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         return None
         
     if custom:
-        if 'nofilter' in kpi:
+        if kpi.get('nofilter'):
             style['nofilter'] = True
         else:
             style['nofilter'] = False
