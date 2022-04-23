@@ -1,8 +1,11 @@
-from PyQt5.QtWidgets import QApplication, QMessageBox;
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtGui import QPainter, QIcon
 
 import sys
-import os
+
+#import os
+from PyQt5.QtCore import Qt
+
 import hslWindow
 
 from PyQt5 import QtCore
@@ -113,9 +116,7 @@ if __name__ == '__main__':
     exceptionHandler = ExceptionHandler()
     #sys._excepthook = sys.excepthook
     sys.excepthook = exceptionHandler.handler
-        
-    app = QApplication(sys.argv)
-
+    
     loadConfig = True
     
     while loadConfig:
@@ -137,12 +138,14 @@ if __name__ == '__main__':
         utils.fakeRaduga()
             
     kpiDescriptions.generateRaduga()
+    
+    if utils.cfg('DPIAwareness', True):
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+        
+    app = QApplication(sys.argv)
 
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))
-
-    #QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, False)
-    #QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, False) 
 
     ryba = hslWindow.hslWindow()
 
@@ -151,7 +154,6 @@ if __name__ == '__main__':
         pyi_splash.close()
     except:
         pass
-
     
     loadConfig = True
     
