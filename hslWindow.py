@@ -945,6 +945,9 @@ class hslWindow(QMainWindow):
     def initUI(self):
     
         global rybaSplash
+        
+        #QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, False)
+        #QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, False) 
 
         if cfg('saveLayout', True):
             self.layout = Layout(True)
@@ -1230,6 +1233,8 @@ class hslWindow(QMainWindow):
             pos = self.layout['pos']
             size = self.layout['size']
             
+            log('Screen Y DPI, logical: %i, physical %i' % (self.logicalDpiY(), self.physicalDpiY()))
+            log('Screen X DPI, logical: %i, phisical %i' % (self.logicalDpiX(), self.physicalDpiX()))
             #print('screen number', QApplication.desktop().screenNumber())
             #print('number of screens', QApplication.desktop().screenCount())
             #print('available geometry:', QApplication.desktop().availableGeometry())

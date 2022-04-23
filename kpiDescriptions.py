@@ -214,7 +214,7 @@ def generateRaduga():
     #random.seed(cfg('radugaSeed', 1))
 
     colors = utils.cfg('raduga')
-    
+        
     for c in colors:
         
         color = QColor(c)
@@ -230,6 +230,9 @@ def getRadugaPen():
     global currentIndex
     
     n = len(radugaPens)
+    
+    if n == 0:
+        return None
     
     pen = radugaPens[currentIndex]
 

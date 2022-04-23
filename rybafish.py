@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox;
 from PyQt5.QtGui import QPainter, QIcon
 
 import sys
-from os import getcwd
+import os
 import hslWindow
 
 from PyQt5 import QtCore
@@ -50,7 +50,7 @@ class ExceptionHandler(QtCore.QObject):
             except:
                 pass
     
-        cwd = getcwd()
+        cwd = os.getcwd()
         log('[!] fatal exception\n')
         
         #details = '%s: %s\n' % (str(exctype), str(value))
@@ -100,6 +100,8 @@ if __name__ == '__main__':
     global ryba
     global rybaSplash
     
+    #os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = '1'
+    
     rybaSplash = True
 
     try:
@@ -131,15 +133,18 @@ if __name__ == '__main__':
         else:
             loadConfig = False
             
-    if loadConfig:
-        kpiDescriptions.generateRaduga()
+    if not loadConfig:
+        utils.fakeRaduga()
+            
+    kpiDescriptions.generateRaduga()
 
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))
 
-    #ex = hslWindow.hslWindow()
+    #QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, False)
+    #QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, False) 
+
     ryba = hslWindow.hslWindow()
-    #ex = hslWindow.hslWindow()
 
     try:
         import pyi_splash
