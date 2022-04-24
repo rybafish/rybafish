@@ -245,6 +245,14 @@ class Config(QDialog):
             self.setStatus('Note: there are unsaved configuration changes')
         else:
             self.setStatus('')
+
+    def pwdShowHide(self):
+        if self.pwdEdit.echoMode() == QLineEdit.Password:
+            self.pwdEdit.setEchoMode(QLineEdit.Normal)
+            self.pwdShow.setText('hide')
+        else:
+            self.pwdShow.setText('show')
+            self.pwdEdit.setEchoMode(QLineEdit.Password)
         
     def initUI(self):
     
@@ -271,6 +279,9 @@ class Config(QDialog):
         self.userEdit.textEdited.connect(self.configurationChanged)
         self.pwdEdit.textEdited.connect(self.configurationChanged)
         
+        self.pwdShow = QPushButton('show')
+        self.pwdShow.clicked.connect(self.pwdShowHide)
+        
         self.pwdEdit.setEchoMode(QLineEdit.Password)
         
         form.addWidget(QLabel('hostname:port'), 1, 1)
@@ -279,7 +290,15 @@ class Config(QDialog):
 
         form.addWidget(self.hostportEdit, 1, 2)
         form.addWidget(self.userEdit, 2, 2)
+        
+        pwdHBox = QHBoxLayout()
+        pwdHBox.addWidget(self.pwdEdit)
+        pwdHBox.addWidget(self.pwdShow)
+        form.addLayout(pwdHBox, 3, 2)
+        '''
         form.addWidget(self.pwdEdit, 3, 2)
+        form.addWidget(self.pwdShow, 3, 3)
+        '''
         
         checkButton = QPushButton("Check")
         

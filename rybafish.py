@@ -1,8 +1,11 @@
-from PyQt5.QtWidgets import QApplication, QMessageBox;
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtGui import QPainter, QIcon
 
 import sys
-from os import getcwd
+
+#import os
+from PyQt5.QtCore import Qt
+
 import hslWindow
 
 from PyQt5 import QtCore
@@ -50,7 +53,7 @@ class ExceptionHandler(QtCore.QObject):
             except:
                 pass
     
-        cwd = getcwd()
+        cwd = os.getcwd()
         log('[!] fatal exception\n')
         
         #details = '%s: %s\n' % (str(exctype), str(value))
@@ -100,6 +103,8 @@ if __name__ == '__main__':
     global ryba
     global rybaSplash
     
+    #os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = '1'
+    
     rybaSplash = True
 
     try:
@@ -111,9 +116,7 @@ if __name__ == '__main__':
     exceptionHandler = ExceptionHandler()
     #sys._excepthook = sys.excepthook
     sys.excepthook = exceptionHandler.handler
-        
-    app = QApplication(sys.argv)
-
+    
     loadConfig = True
     
     while loadConfig:
@@ -131,22 +134,26 @@ if __name__ == '__main__':
         else:
             loadConfig = False
             
-    if loadConfig:
-        kpiDescriptions.generateRaduga()
+    if not loadConfig:
+        utils.fakeRaduga()
+            
+    kpiDescriptions.generateRaduga()
+    
+    if utils.cfg('DPIAwareness', True):
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+        
+    app = QApplication(sys.argv)
 
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))
 
-    #ex = hslWindow.hslWindow()
     ryba = hslWindow.hslWindow()
-    #ex = hslWindow.hslWindow()
 
     try:
         import pyi_splash
         pyi_splash.close()
     except:
         pass
-
     
     loadConfig = True
     
