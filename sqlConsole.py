@@ -1551,7 +1551,7 @@ class resultSet(QTableWidget):
         
         def abapCopy():
 
-            maxWidth = 32
+            maxWidth = cfg('abap-length', 32)
             widths = []
             
             widths = [0]*len(colList)
