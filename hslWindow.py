@@ -228,12 +228,7 @@ class hslWindow(QMainWindow):
         self.layout['size'] = [self.size().width(), self.size().height()]
         
         # block the position on topof the file
-        
-        '''
-        if 'pwdhash' not in self.layout.lo:
-            self.layout['pwdhash'] = None
-        '''
-        
+                
         self.layout['mainSplitter'] = self.mainSplitter.sizes()
         self.layout['kpiSplitter'] = self.kpiSplitter.sizes()
 
@@ -424,6 +419,15 @@ class hslWindow(QMainWindow):
     def menuAbout(self):
         abt = aboutDialog.About(self)
         abt.exec_()
+
+    def menuVariables(self):
+        vrs = kpiDescriptions.Variables(self)
+        
+        h = self.hostTable.currentRow()
+        
+        vrs.exec_()
+        
+        self.kpisTable.refill(h)
         
     def menuConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
@@ -457,13 +461,6 @@ class hslWindow(QMainWindow):
             
         if not connConf.get('name') and self.layout:
             connConf['setToName'] = self.layout['connectionName']
-
-        '''
-        if self.layout.lo.get('pwdhash') :
-            pwd = utils.pwdunhash(self.layout['pwdhash'])
-            connConf['password'] = pwd
-            connConf['pwdhash'] = True
-        '''
             
         conf, ok = configDialog.Config.getConfig(connConf, self)
         
@@ -574,14 +571,6 @@ class hslWindow(QMainWindow):
                         log('reload from menuConfig #1', 4)
                         self.chartArea.reloadChart()
                         
-                    '''
-                    if conf['savepwd']:
-                        pwhash = utils.pwdtohash(conf['password'])
-                        log('saving the pwd... %s' % pwhash)
-                        self.layout['pwdhash'] = pwhash
-                    else:
-                        self.layout['pwdhash'] = None
-                    '''                    
                 else:
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
@@ -1149,20 +1138,28 @@ class hslWindow(QMainWindow):
             
             actionsMenu.addAction(fontAct)
 
-        if cfg('experimental'):
-            layoutMenu = menubar.addMenu('&Layout')
+        varsMenu = menubar.addMenu('Variables')
+        
+        varsAct = QAction('Show variables', self)
+        varsAct.setShortcut('Alt+V')
+        varsAct.setStatusTip('Shows current variables for all KPIs')
+        varsAct.triggered.connect(self.menuVariables)
+        
+        varsMenu.addAction(varsAct)
             
-            layoutAct = QAction('Save window layout', self)
-            layoutAct.setStatusTip('Saves the window size and position to be able to restore it later')
-            layoutAct.triggered.connect(self.menuLayout)
-            
-            layoutMenu.addAction(layoutAct)
+        layoutMenu = menubar.addMenu('&Layout')
+        
+        layoutAct = QAction('Save window layout', self)
+        layoutAct.setStatusTip('Saves the window size and position to be able to restore it later')
+        layoutAct.triggered.connect(self.menuLayout)
+        
+        layoutMenu.addAction(layoutAct)
 
-            layoutAct = QAction('Restore window layout', self)
-            layoutAct.setStatusTip('Restores the window size and position')
-            layoutAct.triggered.connect(self.menuLayoutRestore)
-            
-            layoutMenu.addAction(layoutAct)
+        layoutAct = QAction('Restore window layout', self)
+        layoutAct.setStatusTip('Restores the window size and position')
+        layoutAct.triggered.connect(self.menuLayoutRestore)
+        
+        layoutMenu.addAction(layoutAct)
             
         # issue #255
         reloadConfigAct = QAction('Reload &Config', self)

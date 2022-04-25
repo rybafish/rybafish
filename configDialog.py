@@ -23,12 +23,7 @@ class Config(QDialog):
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
                 self.pwdEdit.setText(conf['password'])
-                
-                '''
-                if conf.get('pwdhash'):
-                    self.savePwd.setChecked(True)
-                '''
-                
+                                
                 dbi = conf.get('dbi')
                 
                 if dbi:
@@ -117,7 +112,6 @@ class Config(QDialog):
         cf.config['password'] = cf.pwdEdit.text().strip()
         
         cf.config['noreload'] = cf.noReload.isChecked()
-        # cf.config['savepwd'] = cf.savePwd.isChecked()
         
         return (cf.config, result == QDialog.Accepted)
         
@@ -302,7 +296,6 @@ class Config(QDialog):
         
         checkButton = QPushButton("Check")
         
-        # self.savePwd = QCheckBox('Save the password into layout.aml');
         self.noReload = QCheckBox('Skip initial KPIs load');
 
         # save dialog
@@ -397,7 +390,6 @@ class Config(QDialog):
             vbox.addLayout(confHBox)
             vbox.addWidget(frm2)
 
-        # vbox.addWidget(self.savePwd)
         vbox.addWidget(self.noReload)
         #vbox.addWidget(self.buttons)
         
