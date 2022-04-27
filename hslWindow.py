@@ -139,7 +139,7 @@ class hslWindow(QMainWindow):
             log('reload request!')
             self.chartArea.reloadChart()
             
-        elif modifiers == Qt.AltModifier elif Qt.Key_0 < event.key() <= Qt.Key_9:
+        elif modifiers == Qt.AltModifier and Qt.Key_0 < event.key() <= Qt.Key_9:
             self.switchTab(event.key() - Qt.Key_1)
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_W:
