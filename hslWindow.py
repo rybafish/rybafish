@@ -127,6 +127,9 @@ class hslWindow(QMainWindow):
                 self.tabs.removeTab(indx)
     
         
+    def switchTab(self, index):
+        self.tabs.setCurrentIndex(index)
+        
     def keyPressEvent(self, event):
         #log('window keypress: %s' % (str(event.key())))
 
@@ -135,6 +138,9 @@ class hslWindow(QMainWindow):
         if (modifiers == Qt.ControlModifier and event.key() == 82) or event.key() == Qt.Key_F5:
             log('reload request!')
             self.chartArea.reloadChart()
+            
+        elif modifiers == Qt.AltModifier elif Qt.Key_0 < event.key() <= Qt.Key_9:
+            self.switchTab(event.key() - Qt.Key_1)
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_W:
             self.closeTab()
@@ -732,6 +738,7 @@ class hslWindow(QMainWindow):
             console.statusMessage.connect(self.statusMessage)
             
             console.alertSignal.connect(self.popUp)
+            console.tabSwitchSignal.connect(self.switchTab)
             
             ind = indicator()
             console.indicator = ind
@@ -827,6 +834,7 @@ class hslWindow(QMainWindow):
         console.statusMessage.connect(self.statusMessage)
         
         console.alertSignal.connect(self.popUp)
+        console.tabSwitchSignal.connect(self.switchTab)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -1280,6 +1288,7 @@ class hslWindow(QMainWindow):
                 console.statusMessage.connect(self.statusMessage)
                 
                 console.alertSignal.connect(self.popUp)
+                console.tabSwitchSignal.connect(self.switchTab)
                 
                 ind.iClicked.connect(console.reportRuntime)
                 
@@ -1363,6 +1372,9 @@ class hslWindow(QMainWindow):
         self.chartArea.widget.statusMessage_.connect(self.statusMessage)
 
         self.chartArea.connected.connect(self.setTabName)
+        
+        self.chartArea.setFocus()
+        
         log('init finish()')
 
 
@@ -1392,6 +1404,7 @@ class hslWindow(QMainWindow):
             console.statusMessage.connect(self.statusMessage)
             
             console.alertSignal.connect(self.popUp)
+            console.tabSwitchSignal.connect(self.switchTab)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 

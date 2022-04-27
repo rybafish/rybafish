@@ -1,5 +1,3 @@
-#надо посмотреть что выведет calculateMargins при разном маШтабе
-
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip, QAction
 

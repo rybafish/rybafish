@@ -3,7 +3,7 @@ from PyQt5.QtGui import QPainter, QIcon
 
 import sys
 
-#import os
+import os
 from PyQt5.QtCore import Qt
 
 import hslWindow

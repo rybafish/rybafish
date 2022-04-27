@@ -878,6 +878,7 @@ class console(QPlainTextEditLN):
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
             self.autocompleteSignal.emit()
+
         else:
             #have to clear each time in case of input right behind the braket
             #elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
@@ -891,6 +892,7 @@ class console(QPlainTextEditLN):
                 #log('keypress clear highlighting', 5)
                 self.clearHighlighting()
                 
+            #print('console: super')
             super().keyPressEvent(event)
             
             #if modifiers == Qt.ControlModifier and event.key() == Qt.Key_V:
@@ -2063,6 +2065,9 @@ class resultSet(QTableWidget):
             super().wheelEvent(event)
         
 class logArea(QPlainTextEdit):
+
+    tabSwitchSignal = pyqtSignal(int)
+
     def __init__(self):
         super().__init__()
 
@@ -2092,6 +2097,14 @@ class logArea(QPlainTextEdit):
         if action == t2:
             self.appendPlainText('random text')
         '''
+    def keyPressEvent (self, event):
+        #log keypress
+        modifiers = QApplication.keyboardModifiers()
+        
+        if modifiers == Qt.AltModifier and Qt.Key_0 < event.key() <= Qt.Key_9:
+            self.tabSwitchSignal.emit(event.key() - Qt.Key_1)
+        else:
+            super().keyPressEvent(event)
               
         
 class sqlConsole(QWidget):
@@ -2100,6 +2113,8 @@ class sqlConsole(QWidget):
     statusMessage = pyqtSignal(['QString', bool])
     selfRaise = pyqtSignal(object)
     alertSignal = pyqtSignal()
+    
+    tabSwitchSignal = pyqtSignal(int)
 
     def __init__(self, window, config, tabname = None):
     
@@ -2184,6 +2199,10 @@ class sqlConsole(QWidget):
         self.cons.disconnectSignal.connect(self.disconnectDB)
         self.cons.abortSignal.connect(self.cancelSession)
         self.cons.autocompleteSignal.connect(self.autocompleteHint)
+        
+        self.cons.tabSwitchSignal.connect(self.tabSwitchSignal)
+        
+        self.logArea.tabSwitchSignal.connect(self.tabSwitchSignal)
         
         self.cons.explainSignal.connect(self.explainPlan)
 
@@ -2384,7 +2403,7 @@ class sqlConsole(QWidget):
             
     def keyPressEvent(self, event):
     
-        #print('sql keypress')
+        #print('sql tab keypress')
    
         modifiers = QApplication.keyboardModifiers()
 
