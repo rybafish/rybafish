@@ -115,7 +115,9 @@ class dataProvider(QObject):
     def close(self):
         if self.connection is not None:
             log('closing dataprovider connection')
-            self.connection.close()
+            
+            #self.connection.close()
+            self.dbi.close_connection(self.connection)
             
         if self.timer:
             log('stopping dataprovider keep-alive timer')
