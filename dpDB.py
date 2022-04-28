@@ -266,7 +266,7 @@ class dataProvider(QObject):
 
         try:
             dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
-        except Exception as e:
+        except customKPIException as e:
             log('[e] error loading custom kpis')
             log('[e] fix or delete the problemmatic yaml for proper connect')
             raise e

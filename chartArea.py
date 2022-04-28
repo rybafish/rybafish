@@ -2341,7 +2341,12 @@ class chartArea(QFrame):
             
         self.repaint()
         
-        self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
+        try:
+            self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
+        except utils.customKPIException as e:
+            utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
+        except Exception as e:
+            utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n' + str(e))
 
         if len(self.widget.hosts) == 0 and cfg('noAccessWarning', False) == False:
             msgBox = QMessageBox(self)

@@ -191,7 +191,6 @@ class Layout():
             
             return False
         
-
 class vrsException(Exception):
     def __init__ (self, message):
         super().__init__(message)
@@ -216,10 +215,8 @@ class dbException(Exception):
         return message
 
 class customKPIException(Exception):
-
-    def __init__ (self, message, type = None):
-        self.type = type
-        super().__init__(message, type)
+    def __init__ (self, message):
+        super().__init__(message)
     
 def timestampToStr(ts, trimZeroes = True):
 
