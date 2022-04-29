@@ -105,6 +105,8 @@ if __name__ == '__main__':
     
     ryba = None
     
+    app = None
+    
     #os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = '1'
     
     rybaSplash = True
@@ -120,7 +122,7 @@ if __name__ == '__main__':
     sys.excepthook = exceptionHandler.handler
     
     loadConfig = True
-    
+
     while loadConfig:
     
         ok = utils.loadConfig()
@@ -132,6 +134,10 @@ if __name__ == '__main__':
                 rybaSplash = False
             except:
                 pass
+                
+            if app is None:
+                app = QApplication(sys.argv)
+                
             loadConfig = utils.yesNoDialog('Config error', 'Cannot load/parse config.yaml\nTry again?')
         else:
             loadConfig = False
@@ -144,7 +150,8 @@ if __name__ == '__main__':
     if utils.cfg('DPIAwareness', True):
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
         
-    app = QApplication(sys.argv)
+    if app is None:
+        app = QApplication(sys.argv)
 
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))

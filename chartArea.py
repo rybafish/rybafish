@@ -1698,7 +1698,7 @@ class myWidget(QWidget):
                                 qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
                                     
                                 if title:
-                                    tv = t[4]
+                                    tv = str(t[4])
                                     #print(tv)
                                     
                                     tWidth = tfm.width(tv)
