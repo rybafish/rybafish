@@ -2532,7 +2532,7 @@ class sqlConsole(QWidget):
         
         self.setFocus()
     
-    def close(self, cancelPossible = True):
+    def close(self, cancelPossible = True, abandoneExecution = False):
     
         log('closing sql console...')
         log('indicator:' + self.indicator.status, 4)
@@ -2564,7 +2564,10 @@ class sqlConsole(QWidget):
         try: 
             self.stopKeepAlive()
             
-            if self.conn is not None:
+            if self.sqlRunning and abandoneExecution:
+                log('Something is running in tab \'%s\', abandoning without connection close()...' % self.tabname.rstrip(' *'), 3)
+            
+            if self.conn is not None and abandoneExecution == False:
                 log('close the connection...', 5)
                 self.indicator.status = 'sync'
                 self.indicator.repaint()
@@ -3798,6 +3801,10 @@ class sqlConsole(QWidget):
         self.indicator.repaint()
         
         log('(%s) psid to save --> %s' % (self.tabname.rstrip(' *'), utils.hextostr(self.sqlWorker.psid)), 4)
+        
+        if self.dbi is None:
+            log('dbi is None during sqlFinished. Likely due to close() call executed before, aborting processing', 2)
+            return
         
         if self.wrkException is not None:
             self.log(self.wrkException, True)

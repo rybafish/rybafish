@@ -200,9 +200,11 @@ class hslWindow(QMainWindow):
             connection = None
 
         if self.layoutDumped:
+            log('self.layoutDumped', 5)
             return
             
         if self.layout is None:
+            log('self.layout is None', 5)
             return
 
         log('--> dumpLayout', 5)
@@ -259,6 +261,27 @@ class hslWindow(QMainWindow):
         
         self.layout['currentTab'] = self.tabs.currentIndex()
         
+        
+        somethingRunning = False
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            if w.sqlRunning:
+                somethingRunning = True
+                break
+                
+        abandone = False
+        
+        if somethingRunning:
+            log('There is something running, need to show a warning', 4)
+            
+            answer = utils.yesNoDialog('Warning', 'It seems there is something still running.\n\nAre you sure you want to exit and abandone the execution?')
+                        
+            if not answer:
+                self.layoutDumped = False
+                return False
+            else:
+                abandone = True
+            
         if cfg('saveOpenTabs', True):
             for i in range(self.tabs.count() -1, 0, -1):
                 w = self.tabs.widget(i)
@@ -278,7 +301,8 @@ class hslWindow(QMainWindow):
                         tabs.append([w.fileName, bkp, pos, block])
                         
                     if closeTabs:
-                        w.close(None) # can not abort (and dont need to any more!)
+                        log('close tab call...', 5)
+                        w.close(None, abandoneExecution = abandone)
 
                         self.tabs.removeTab(i)
 
@@ -298,6 +322,8 @@ class hslWindow(QMainWindow):
             self.layout.lo.pop('running')
            
         self.layout.dump()
+        
+        return True
         
         
     def menuQuit(self):
@@ -320,8 +346,14 @@ class hslWindow(QMainWindow):
         
         log('before dump layout', 5)
         
+        status = None
+        
         if cfg('saveLayout', True):
-            self.dumpLayout()
+            status = self.dumpLayout()
+        
+        if status == False:
+            log('termination aborted....')
+            return
             
         log('dump layout done', 5)
                     

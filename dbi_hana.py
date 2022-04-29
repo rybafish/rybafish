@@ -160,11 +160,14 @@ class hdbi ():
         pass
         
     def close_connection(self, c):
-        log('close connection call...')
+        log('close connection call...', 5)
         try:
             c.close() # fails with OperationalError always...
         except pyhdb.exceptions.OperationalError:
+            log('close exception...', 5)
             pass
+        
+        log('closed...', 5)
             
         return
         
