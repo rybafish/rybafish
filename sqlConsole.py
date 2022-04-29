@@ -1353,12 +1353,11 @@ class resultSet(QTableWidget):
             clipboard.setText(self.cols[i][0])
         '''
         
-        #if cfg('experimental') and action == highlightColCh:
         if action == highlightColCh:
             self.highlightColumn = i
+            self.highlightValue = None
             self.highlightRefresh()
 
-        #if cfg('experimental') and action == highlightColVal:
         if action == highlightColVal:
             self.highlightColumn = i
             self.highlightValue = self.item(self.currentRow(), i).text()
