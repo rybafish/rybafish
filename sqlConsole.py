@@ -2572,6 +2572,7 @@ class sqlConsole(QWidget):
                 self.indicator.status = 'sync'
                 self.indicator.repaint()
                 self.dbi.close_connection(self.conn)
+                self.conn = None
                 self.dbi = None
                 
         except dbException as e:

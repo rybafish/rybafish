@@ -119,8 +119,20 @@ class hslWindow(QMainWindow):
             cons = self.tabs.currentWidget()
             
             cons.delayBackup()
+            
+            abandone = False
+            
+            if cons.sqlRunning:
+                log('Sems the sql still running, need to show a warning', 4)
+                
+                answer = utils.yesNoDialog('Warning', 'It seems the SQL is still running.\n\nAre you sure you want to close the console and abandone the execution?')
+                            
+                if not answer:
+                    return False
+                else:
+                    abandone = True            
 
-            status = cons.close()
+            status = cons.close(abandoneExecution=abandone)
             
             if status == True:
                 self.statusbar.removeWidget(cons.indicator)
