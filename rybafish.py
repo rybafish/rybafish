@@ -70,7 +70,7 @@ class ExceptionHandler(QtCore.QObject):
         log(details, nots = True)
 
 
-        if ryba.tabs:
+        if ryba is not None and ryba.tabs:
             for i in range(ryba.tabs.count() -1, 0, -1):
 
                 w = ryba.tabs.widget(i)
@@ -102,6 +102,8 @@ if __name__ == '__main__':
 
     global ryba
     global rybaSplash
+    
+    ryba = None
     
     #os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = '1'
     

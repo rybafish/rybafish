@@ -953,8 +953,11 @@ class hslWindow(QMainWindow):
                 # kpiDescriptions.vrs = self.layout['variables']
                 log('-----addVars hslWindow-----')
                 
-                for idx in self.layout['variables']:
-                    kpiDescriptions.addVars(idx, self.layout['variables'][idx])
+                try:
+                    for idx in self.layout['variables']:
+                        kpiDescriptions.addVars(idx, self.layout['variables'][idx])
+                except utils.vrsException as e:
+                    log(str(e), 2)
                     
                 log('-----addVars hslWindow-----')
             
