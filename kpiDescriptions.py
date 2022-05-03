@@ -1,6 +1,8 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPen, QColor
 
+from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QLineEdit, QLabel, QPushButton, QTableWidget, QTableWidgetItem
+
 import random
 
 kpiKeys = []
@@ -12,8 +14,8 @@ radugaPens = []
 import utils
         
 from utils import log, cfg
-
 from utils import vrsException
+from utils import resourcePath
 
 currentIndex = None
 
@@ -23,6 +25,182 @@ vrsStrErr = {}      # True/False in case of parsing issues
 
 vrsStr = {}         # current string representation (for KPIs table
 vrs = {}            # actual dict
+
+class Variables(QDialog):
+
+    width = None
+    height = None
+    x = None
+    y = None
+
+    def __init__(self, hwnd):
+        super().__init__(hwnd)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
+        
+        self.initUI()
+        
+    '''
+    def eventFilter(self, source, event):
+        if (event.type() == QtCore.QEvent.KeyPress and event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter)):
+            res = super().eventFilter(source, event)
+            
+            print('enter')
+            return res
+            
+        return super().eventFilter(source, event)
+    '''
+        
+    def fillVariables(self, mode = None):
+    
+        '''
+            надо сделать чтоб он шёл по YAML определениям
+            и показывал, если там пусто - то их, а если нет - то рантаймные значения
+            
+            а потом ещё что-то из рантайма то чего не было в дефолтах? чтоб почистить было можно
+            надо всё это барахло выносить в отдельный файл как минимум, тут будет чёрт ногу сломать что
+            
+            Надо ещё свериться как и внутри чего обновляет значения правка переменных в таблице, куда оно попадает, каким вызовом?
+        '''
+    
+        if mode == 'defaults':
+            lvrsStr = vrsStrDef
+            lvrs = vrsDef
+        else:
+            lvrsStr = vrsStr
+            lvrs = vrs
+    
+        r = 0
+    
+        print('vrsStr')
+        for idx in lvrsStr:
+            print(idx, ' --> ', lvrsStr[idx])
+
+        print('\nvrs')
+        for idx in lvrs:
+            print(idx, ' --> ', lvrs[idx])
+            r += len(lvrs[idx])
+            
+        print()
+
+        self.vTab.setRowCount(r)
+
+        row = 0
+        for idx in lvrs:
+            i = 0
+            for var in lvrs[idx]:
+                val = lvrs[idx][var]
+                #print(idx, var, val)
+                
+                if i == 0:
+                    self.vTab.setItem(row, 0, QTableWidgetItem(idx))
+                    
+                self.vTab.setItem(row, 1, QTableWidgetItem(var))
+                self.vTab.setItem(row, 2, QTableWidgetItem(val))
+                
+                i += 1
+                row += 1
+                
+        self.vTab.resizeColumnsToContents()
+        
+    def resetVars(self):
+        self.fillVariables('defaults')
+    
+    def processVars(self):
+    
+        global vrs
+        global vrsStr
+        
+        rowsCount = self.vTab.rowCount()
+        
+        vrsNew = {}
+        
+        idx = ''
+        nvrsStr = {}
+        nvrs = {}
+        
+        for i in range(rowsCount):
+            if self.vTab.item(i, 0) and self.vTab.item(i, 0).text() != idx:
+                idx = self.vTab.item(i, 0).text()
+                nvrs[idx] = {}
+                
+            var = self.vTab.item(i, 1).text()
+            val = self.vTab.item(i, 2).text()
+            
+            nvrs[idx][var] = val
+            
+            print('--->', idx, var, val)
+
+        print('\nnew vrs:')
+        for idx in nvrs:
+            print(idx, '-->', nvrs[idx])
+            
+            nvrsStr[idx] = ', '.join(['%s: %s' % (key, value) for (key, value) in nvrs[idx].items()])
+            
+        print('\nvrsStr')
+        for idx in nvrsStr:
+            print(idx, ' --> ', nvrsStr[idx])
+            
+        vrsStr = nvrsStr
+        vrs = nvrs
+            
+        Variables.width = self.size().width()
+        Variables.height = self.size().height()
+        
+        Variables.x = self.pos().x()
+        Variables.y = self.pos().y()
+        
+        self.accept()
+        
+        
+    def initUI(self):
+    
+        iconPath = resourcePath('ico\\favicon.png')
+        
+        vbox = QVBoxLayout()
+        ocBox = QHBoxLayout()
+        
+        self.vTab = QTableWidget()
+        
+        self.vTab.setColumnCount(3)
+        
+        vbox.addWidget(self.vTab)
+        
+        rButton = QPushButton('Reset all to defaults')
+        
+        if len(vrsDef) == 0:
+            rButton.setDisabled(True)
+        
+        okButton = QPushButton('Ok')
+        cButton = QPushButton('Cancel')
+        
+        okButton.clicked.connect(self.processVars)
+        rButton.clicked.connect(self.resetVars)
+        cButton.clicked.connect(self.reject)
+        
+        ocBox.addStretch(1)
+        ocBox.addWidget(okButton)
+        ocBox.addWidget(rButton)
+        ocBox.addWidget(cButton)
+        
+        vbox.addLayout(ocBox)
+        
+    
+        self.setLayout(vbox)
+        
+        #self.setWindowIcon(QIcon(iconPath))
+        
+        #self.setGeometry(300, 300, 300, 150)
+        
+        self.resize(500, 300)
+        self.setWindowTitle('Variables')
+        
+        self.fillVariables()
+        
+        if self.width and self.height:
+            self.resize(self.width, self.height)
+
+        if self.x and self.y:
+            self.move(self.x, self.y)
 
 
 def addVarsDef(sqlIdx, vStr):

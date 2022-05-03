@@ -622,9 +622,9 @@ class kpiTable(QTableWidget):
         self.setColumnWidth(6, 50) # AVG
         self.setColumnWidth(7, 20) # Sum -- remove
         self.setColumnWidth(8, 80) # Last
-        self.setColumnWidth(9, 220) # desc
+        self.setColumnWidth(9, 110) # desc
         self.setColumnWidth(10, 40) # group
-        self.setColumnWidth(11, 80) # variables
+        self.setColumnWidth(11, 200) # variables
         #self.setColumnWidth(10, 30) # threshold
         
         self.itemChanged.connect(self.itemChange)

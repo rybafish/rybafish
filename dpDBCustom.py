@@ -15,6 +15,7 @@ from kpiDescriptions import createStyle, customSql, kpiGroup
 from kpiDescriptions import addVars, vrsStr, vrsStrDef, addVarsDef
 
 from utils import Layout
+from utils import customKPIException
 
 grouplist = {}
 
@@ -65,7 +66,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
     except Exception as e:
         log('Error loading custom KPI file %s: %s' %(os.path.join(path, file), str(e)), 1)
         
-        raise e
+        raise customKPIException(str(e))
         
         
     srcIdx = file

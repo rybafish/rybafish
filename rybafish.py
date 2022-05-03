@@ -3,7 +3,7 @@ from PyQt5.QtGui import QPainter, QIcon
 
 import sys
 
-#import os
+import os
 from PyQt5.QtCore import Qt
 
 import hslWindow
@@ -70,7 +70,7 @@ class ExceptionHandler(QtCore.QObject):
         log(details, nots = True)
 
 
-        if ryba.tabs:
+        if ryba is not None and ryba.tabs:
             for i in range(ryba.tabs.count() -1, 0, -1):
 
                 w = ryba.tabs.widget(i)
@@ -103,6 +103,10 @@ if __name__ == '__main__':
     global ryba
     global rybaSplash
     
+    ryba = None
+    
+    app = None
+    
     #os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = '1'
     
     rybaSplash = True
@@ -118,7 +122,7 @@ if __name__ == '__main__':
     sys.excepthook = exceptionHandler.handler
     
     loadConfig = True
-    
+
     while loadConfig:
     
         ok = utils.loadConfig()
@@ -130,6 +134,10 @@ if __name__ == '__main__':
                 rybaSplash = False
             except:
                 pass
+                
+            if app is None:
+                app = QApplication(sys.argv)
+                
             loadConfig = utils.yesNoDialog('Config error', 'Cannot load/parse config.yaml\nTry again?')
         else:
             loadConfig = False
@@ -142,7 +150,8 @@ if __name__ == '__main__':
     if utils.cfg('DPIAwareness', True):
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
         
-    app = QApplication(sys.argv)
+    if app is None:
+        app = QApplication(sys.argv)
 
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))

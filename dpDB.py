@@ -115,7 +115,9 @@ class dataProvider(QObject):
     def close(self):
         if self.connection is not None:
             log('closing dataprovider connection')
-            self.connection.close()
+            
+            #self.connection.close()
+            self.dbi.close_connection(self.connection)
             
         if self.timer:
             log('stopping dataprovider keep-alive timer')
@@ -264,7 +266,7 @@ class dataProvider(QObject):
 
         try:
             dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
-        except Exception as e:
+        except customKPIException as e:
             log('[e] error loading custom kpis')
             log('[e] fix or delete the problemmatic yaml for proper connect')
             raise e
@@ -493,10 +495,11 @@ class dataProvider(QObject):
                 else:
                     self.getGanttData(type, kpis[0], data, sql, params_now, kpiSrc)
                     
-            except Exception as e:
+            except dbException as e:
+            
+                log('Handling dbException for custom KPI..., type %s' % (str(e.type)), 2)
             
                 reply = None
-                
                 
                 #details = '>>' + s.replace('\\n', '\n').replace(cwd, '..')
                 
@@ -508,7 +511,8 @@ class dataProvider(QObject):
                 log(details, nots = True)
 
                 if customKpi(kpis[0]):
-                    if True or str(e)[:22] == '[db]: sql syntax error':
+                    if e.type != dbException.CONN:
+                    #if True or str(e)[:22] == '[db]: sql syntax error':
                         log('yesNoDialog ---> disable %s?' % (kpiSrc))
                         reply = yesNoDialog('Error: custom SQL exception', 'SQL for custom KPIs %s terminated with the following error:\n\n%s\n\n Disable this KPI source (%s)?' % (', '.join(kpis), str(e), kpiSrc), parent=wnd)
                     else:
@@ -541,6 +545,10 @@ class dataProvider(QObject):
                     self.connection = None
                     
                     log('[!] getHostKpis (%s) failed: %s' % (str(kpis), str(e)))
+                    raise e
+                    
+            except Exception as e:
+                    log('[!] dont know how to handle exception: %s, %s' % (str(kpis), str(e)))
                     raise e
                 
         self.renewKeepAlive()
@@ -591,9 +599,11 @@ class dataProvider(QObject):
         try:
             #rows = db.execute_query(self.connection, sql, params)
             rows_list, cols_list, dbCursor, psid = self.dbi.execute_query_desc(self.connection, sql, params, None)
+        except dbException as e:
+            log('[!] db gantt execute_query: %s' % str(e))
+            raise dbException(str(e), e.type)
         except Exception as e:
-            log('[!] execute_query: %s' % str(e))
-            #raise dbException('Database Exception')
+            log('[!] gantt execute_query: %s' % str(e))
             raise dbException('[db]: ' + str(e))
 
 
@@ -865,12 +875,12 @@ class dataProvider(QObject):
         
         try:
             rows = self.dbi.execute_query(self.connection, sql, params)
+        except dbException as e:
+            log('[!] db execute_query: %s' % str(e))
+            raise dbException(str(e), e.type)
         except Exception as e:
             log('[!] execute_query: %s' % str(e))
-            #raise dbException('Database Exception')
             raise dbException('[db]: ' + str(e))
-            
-            
             
         if len(kpis) > 0:
             #print(kpis, kpiSrc)

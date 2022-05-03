@@ -119,13 +119,28 @@ class hslWindow(QMainWindow):
             cons = self.tabs.currentWidget()
             
             cons.delayBackup()
+            
+            abandone = False
+            
+            if cons.sqlRunning:
+                log('Sems the sql still running, need to show a warning', 4)
+                
+                answer = utils.yesNoDialog('Warning', 'It seems the SQL is still running.\n\nAre you sure you want to close the console and abandone the execution?')
+                            
+                if not answer:
+                    return False
+                else:
+                    abandone = True            
 
-            status = cons.close()
+            status = cons.close(abandoneExecution=abandone)
             
             if status == True:
                 self.statusbar.removeWidget(cons.indicator)
                 self.tabs.removeTab(indx)
     
+        
+    def switchTab(self, index):
+        self.tabs.setCurrentIndex(index)
         
     def keyPressEvent(self, event):
         #log('window keypress: %s' % (str(event.key())))
@@ -135,6 +150,9 @@ class hslWindow(QMainWindow):
         if (modifiers == Qt.ControlModifier and event.key() == 82) or event.key() == Qt.Key_F5:
             log('reload request!')
             self.chartArea.reloadChart()
+            
+        elif modifiers == Qt.AltModifier and Qt.Key_0 < event.key() <= Qt.Key_9:
+            self.switchTab(event.key() - Qt.Key_1)
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_W:
             self.closeTab()
@@ -194,9 +212,11 @@ class hslWindow(QMainWindow):
             connection = None
 
         if self.layoutDumped:
+            log('self.layoutDumped', 5)
             return
             
         if self.layout is None:
+            log('self.layout is None', 5)
             return
 
         log('--> dumpLayout', 5)
@@ -228,12 +248,7 @@ class hslWindow(QMainWindow):
         self.layout['size'] = [self.size().width(), self.size().height()]
         
         # block the position on topof the file
-        
-        '''
-        if 'pwdhash' not in self.layout.lo:
-            self.layout['pwdhash'] = None
-        '''
-        
+                
         self.layout['mainSplitter'] = self.mainSplitter.sizes()
         self.layout['kpiSplitter'] = self.kpiSplitter.sizes()
 
@@ -258,6 +273,27 @@ class hslWindow(QMainWindow):
         
         self.layout['currentTab'] = self.tabs.currentIndex()
         
+        
+        somethingRunning = False
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            if w.sqlRunning:
+                somethingRunning = True
+                break
+                
+        abandone = False
+        
+        if somethingRunning:
+            log('There is something running, need to show a warning', 4)
+            
+            answer = utils.yesNoDialog('Warning', 'It seems there is something still running.\n\nAre you sure you want to exit and abandone the execution?')
+                        
+            if not answer:
+                self.layoutDumped = False
+                return False
+            else:
+                abandone = True
+            
         if cfg('saveOpenTabs', True):
             for i in range(self.tabs.count() -1, 0, -1):
                 w = self.tabs.widget(i)
@@ -277,7 +313,8 @@ class hslWindow(QMainWindow):
                         tabs.append([w.fileName, bkp, pos, block])
                         
                     if closeTabs:
-                        w.close(None) # can not abort (and dont need to any more!)
+                        log('close tab call...', 5)
+                        w.close(None, abandoneExecution = abandone)
 
                         self.tabs.removeTab(i)
 
@@ -297,6 +334,8 @@ class hslWindow(QMainWindow):
             self.layout.lo.pop('running')
            
         self.layout.dump()
+        
+        return True
         
         
     def menuQuit(self):
@@ -319,8 +358,14 @@ class hslWindow(QMainWindow):
         
         log('before dump layout', 5)
         
+        status = None
+        
         if cfg('saveLayout', True):
-            self.dumpLayout()
+            status = self.dumpLayout()
+        
+        if status == False:
+            log('termination aborted....')
+            return
             
         log('dump layout done', 5)
                     
@@ -424,6 +469,15 @@ class hslWindow(QMainWindow):
     def menuAbout(self):
         abt = aboutDialog.About(self)
         abt.exec_()
+
+    def menuVariables(self):
+        vrs = kpiDescriptions.Variables(self)
+        
+        h = self.hostTable.currentRow()
+        
+        vrs.exec_()
+        
+        self.kpisTable.refill(h)
         
     def menuConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
@@ -457,13 +511,6 @@ class hslWindow(QMainWindow):
             
         if not connConf.get('name') and self.layout:
             connConf['setToName'] = self.layout['connectionName']
-
-        '''
-        if self.layout.lo.get('pwdhash') :
-            pwd = utils.pwdunhash(self.layout['pwdhash'])
-            connConf['password'] = pwd
-            connConf['pwdhash'] = True
-        '''
             
         conf, ok = configDialog.Config.getConfig(connConf, self)
         
@@ -505,7 +552,6 @@ class hslWindow(QMainWindow):
                     self.chartArea.dp.close()
                     del self.chartArea.dp
                     self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
-
 
                 self.statusMessage('Connecting...', False)
                 self.repaint()
@@ -574,14 +620,6 @@ class hslWindow(QMainWindow):
                         log('reload from menuConfig #1', 4)
                         self.chartArea.reloadChart()
                         
-                    '''
-                    if conf['savepwd']:
-                        pwhash = utils.pwdtohash(conf['password'])
-                        log('saving the pwd... %s' % pwhash)
-                        self.layout['pwdhash'] = pwhash
-                    else:
-                        self.layout['pwdhash'] = None
-                    '''                    
                 else:
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
@@ -743,6 +781,7 @@ class hslWindow(QMainWindow):
             console.statusMessage.connect(self.statusMessage)
             
             console.alertSignal.connect(self.popUp)
+            console.tabSwitchSignal.connect(self.switchTab)
             
             ind = indicator()
             console.indicator = ind
@@ -838,6 +877,7 @@ class hslWindow(QMainWindow):
         console.statusMessage.connect(self.statusMessage)
         
         console.alertSignal.connect(self.popUp)
+        console.tabSwitchSignal.connect(self.switchTab)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -956,8 +996,11 @@ class hslWindow(QMainWindow):
                 # kpiDescriptions.vrs = self.layout['variables']
                 log('-----addVars hslWindow-----')
                 
-                for idx in self.layout['variables']:
-                    kpiDescriptions.addVars(idx, self.layout['variables'][idx])
+                try:
+                    for idx in self.layout['variables']:
+                        kpiDescriptions.addVars(idx, self.layout['variables'][idx])
+                except utils.vrsException as e:
+                    log(str(e), 2)
                     
                 log('-----addVars hslWindow-----')
             
@@ -1149,20 +1192,28 @@ class hslWindow(QMainWindow):
             
             actionsMenu.addAction(fontAct)
 
-        if cfg('experimental'):
-            layoutMenu = menubar.addMenu('&Layout')
+        varsMenu = menubar.addMenu('Variables')
+        
+        varsAct = QAction('Show variables', self)
+        varsAct.setShortcut('Alt+V')
+        varsAct.setStatusTip('Shows current variables for all KPIs')
+        varsAct.triggered.connect(self.menuVariables)
+        
+        varsMenu.addAction(varsAct)
             
-            layoutAct = QAction('Save window layout', self)
-            layoutAct.setStatusTip('Saves the window size and position to be able to restore it later')
-            layoutAct.triggered.connect(self.menuLayout)
-            
-            layoutMenu.addAction(layoutAct)
+        layoutMenu = menubar.addMenu('&Layout')
+        
+        layoutAct = QAction('Save window layout', self)
+        layoutAct.setStatusTip('Saves the window size and position to be able to restore it later')
+        layoutAct.triggered.connect(self.menuLayout)
+        
+        layoutMenu.addAction(layoutAct)
 
-            layoutAct = QAction('Restore window layout', self)
-            layoutAct.setStatusTip('Restores the window size and position')
-            layoutAct.triggered.connect(self.menuLayoutRestore)
-            
-            layoutMenu.addAction(layoutAct)
+        layoutAct = QAction('Restore window layout', self)
+        layoutAct.setStatusTip('Restores the window size and position')
+        layoutAct.triggered.connect(self.menuLayoutRestore)
+        
+        layoutMenu.addAction(layoutAct)
             
         # issue #255
         reloadConfigAct = QAction('Reload &Config', self)
@@ -1283,6 +1334,7 @@ class hslWindow(QMainWindow):
                 console.statusMessage.connect(self.statusMessage)
                 
                 console.alertSignal.connect(self.popUp)
+                console.tabSwitchSignal.connect(self.switchTab)
                 
                 ind.iClicked.connect(console.reportRuntime)
                 
@@ -1366,6 +1418,9 @@ class hslWindow(QMainWindow):
         self.chartArea.widget.statusMessage_.connect(self.statusMessage)
 
         self.chartArea.connected.connect(self.setTabName)
+        
+        self.chartArea.setFocus()
+        
         log('init finish()')
 
 
@@ -1395,6 +1450,7 @@ class hslWindow(QMainWindow):
             console.statusMessage.connect(self.statusMessage)
             
             console.alertSignal.connect(self.popUp)
+            console.tabSwitchSignal.connect(self.switchTab)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 

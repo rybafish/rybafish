@@ -160,11 +160,14 @@ class hdbi ():
         pass
         
     def close_connection(self, c):
-        log('close connection call...')
+        log('close connection call...', 5)
         try:
             c.close() # fails with OperationalError always...
         except pyhdb.exceptions.OperationalError:
+            log('close exception...', 5)
             pass
+        
+        log('closed...', 5)
             
         return
         
@@ -186,8 +189,13 @@ class hdbi ():
             
             psid = cursor.prepare(sql_string)
         except pyhdb.exceptions.DatabaseError as e:
+        
             log('[!] SQL Error: %s' % sql_string[0:256])
             log('[!] SQL Error: %s' % (e))
+
+            if str(e).startswith('Lost connection to HANA server'):
+                log('[!] SQL Error: related to connection')
+                raise dbException(str(e), dbException.CONN)
             
             raise dbException(str(e))
         except Exception as e:

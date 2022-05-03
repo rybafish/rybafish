@@ -11,9 +11,12 @@ from utils import cfg
 
 class QPlainTextEditLN(QWidget):
 
+    tabSwitchSignal = pyqtSignal(int)
+
     class PlainTextEdit(QPlainTextEdit):
         
         rehighlightSig = pyqtSignal()
+        tabSwitchSignal = pyqtSignal(int)
         
         def __init__(self, parent = None):
             super().__init__(parent)
@@ -252,6 +255,8 @@ class QPlainTextEditLN(QWidget):
                 txt = cursor.selectedText()
                 
                 cursor.insertText(txt.lower())
+            elif modifiers == Qt.AltModifier and Qt.Key_0 < event.key() <= Qt.Key_9:
+                self.tabSwitchSignal.emit(event.key() - Qt.Key_1)
             else:
                 super().keyPressEvent(event)
 
@@ -407,6 +412,8 @@ class QPlainTextEditLN(QWidget):
         self.setStyleSheet = self.edit.setStyleSheet
         
         self.edit.contextMenuEvent = self.contextMenuEvent # not sure why this works but it does.
+        
+        self.edit.tabSwitchSignal.connect(self.tabSwitchSignal)
         
         #self.insertFromMimeData = self.edit.insertFromMimeData
         

@@ -878,6 +878,7 @@ class console(QPlainTextEditLN):
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_Space:
             self.autocompleteSignal.emit()
+
         else:
             #have to clear each time in case of input right behind the braket
             #elif event.key() not in (Qt.Key_Shift, Qt.Key_Control):
@@ -891,6 +892,7 @@ class console(QPlainTextEditLN):
                 #log('keypress clear highlighting', 5)
                 self.clearHighlighting()
                 
+            #print('console: super')
             super().keyPressEvent(event)
             
             #if modifiers == Qt.ControlModifier and event.key() == Qt.Key_V:
@@ -1351,12 +1353,11 @@ class resultSet(QTableWidget):
             clipboard.setText(self.cols[i][0])
         '''
         
-        #if cfg('experimental') and action == highlightColCh:
         if action == highlightColCh:
             self.highlightColumn = i
+            self.highlightValue = None
             self.highlightRefresh()
 
-        #if cfg('experimental') and action == highlightColVal:
         if action == highlightColVal:
             self.highlightColumn = i
             self.highlightValue = self.item(self.currentRow(), i).text()
@@ -1551,7 +1552,7 @@ class resultSet(QTableWidget):
         
         def abapCopy():
 
-            maxWidth = 32
+            maxWidth = cfg('abap-length', 32)
             widths = []
             
             widths = [0]*len(colList)
@@ -2063,6 +2064,9 @@ class resultSet(QTableWidget):
             super().wheelEvent(event)
         
 class logArea(QPlainTextEdit):
+
+    tabSwitchSignal = pyqtSignal(int)
+
     def __init__(self):
         super().__init__()
 
@@ -2092,6 +2096,14 @@ class logArea(QPlainTextEdit):
         if action == t2:
             self.appendPlainText('random text')
         '''
+    def keyPressEvent (self, event):
+        #log keypress
+        modifiers = QApplication.keyboardModifiers()
+        
+        if modifiers == Qt.AltModifier and Qt.Key_0 < event.key() <= Qt.Key_9:
+            self.tabSwitchSignal.emit(event.key() - Qt.Key_1)
+        else:
+            super().keyPressEvent(event)
               
         
 class sqlConsole(QWidget):
@@ -2100,6 +2112,8 @@ class sqlConsole(QWidget):
     statusMessage = pyqtSignal(['QString', bool])
     selfRaise = pyqtSignal(object)
     alertSignal = pyqtSignal()
+    
+    tabSwitchSignal = pyqtSignal(int)
 
     def __init__(self, window, config, tabname = None):
     
@@ -2184,6 +2198,10 @@ class sqlConsole(QWidget):
         self.cons.disconnectSignal.connect(self.disconnectDB)
         self.cons.abortSignal.connect(self.cancelSession)
         self.cons.autocompleteSignal.connect(self.autocompleteHint)
+        
+        self.cons.tabSwitchSignal.connect(self.tabSwitchSignal)
+        
+        self.logArea.tabSwitchSignal.connect(self.tabSwitchSignal)
         
         self.cons.explainSignal.connect(self.explainPlan)
 
@@ -2384,7 +2402,7 @@ class sqlConsole(QWidget):
             
     def keyPressEvent(self, event):
     
-        #print('sql keypress')
+        #print('sql tab keypress')
    
         modifiers = QApplication.keyboardModifiers()
 
@@ -2514,7 +2532,7 @@ class sqlConsole(QWidget):
         
         self.setFocus()
     
-    def close(self, cancelPossible = True):
+    def close(self, cancelPossible = True, abandoneExecution = False):
     
         log('closing sql console...')
         log('indicator:' + self.indicator.status, 4)
@@ -2546,11 +2564,15 @@ class sqlConsole(QWidget):
         try: 
             self.stopKeepAlive()
             
-            if self.conn is not None:
+            if self.sqlRunning and abandoneExecution:
+                log('Something is running in tab \'%s\', abandoning without connection close()...' % self.tabname.rstrip(' *'), 3)
+            
+            if self.conn is not None and abandoneExecution == False:
                 log('close the connection...', 5)
                 self.indicator.status = 'sync'
                 self.indicator.repaint()
                 self.dbi.close_connection(self.conn)
+                self.conn = None
                 self.dbi = None
                 
         except dbException as e:
@@ -3768,7 +3790,7 @@ class sqlConsole(QWidget):
             
     def sqlFinished(self):
         '''
-            post-process the sql reaults
+            post-process the sql results
             also handle exceptions
         '''
         #print('2 --> sql finished')
@@ -3780,6 +3802,10 @@ class sqlConsole(QWidget):
         self.indicator.repaint()
         
         log('(%s) psid to save --> %s' % (self.tabname.rstrip(' *'), utils.hextostr(self.sqlWorker.psid)), 4)
+        
+        if self.dbi is None:
+            log('dbi is None during sqlFinished. Likely due to close() call executed before, aborting processing', 2)
+            return
         
         if self.wrkException is not None:
             self.log(self.wrkException, True)
