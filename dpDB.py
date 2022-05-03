@@ -814,7 +814,7 @@ class dataProvider(QObject):
             t0 = time.time()
             gb = []
             
-            gbs = {}
+            gbs = {} #dict of lists for group by, key = groupby name, elements: 0 - min, 1 - max, 2 - avg
             
             t = None
             tCount = 0
@@ -845,10 +845,6 @@ class dataProvider(QObject):
                     if gbs[grpby][1] > 0:
                         gbs[grpby][2] += v
                         
-            
-            # not very sure here
-            # the idea was to sort gbs based on second list element descending
-            
             #print(gbs)
             
             if orderby == 'max': 
@@ -861,7 +857,6 @@ class dataProvider(QObject):
                 gbsSorted =  sorted(gbs, key=lambda x: (x), reverse=desc)
             else:
                 gbsSorted =  sorted(gbs, key=lambda x: (gbs[x][1]), reverse=desc)
-            
             
             gb.sort()
             
@@ -903,10 +898,14 @@ class dataProvider(QObject):
         
         if subtype == 'multiline':
             multiline = True
+            others = False
             
             stacked = kpiStylesNN[type][kpis[0]]['stacked']
             orderby = kpiStylesNN[type][kpis[0]]['orderby']
             orderdesc = kpiStylesNN[type][kpis[0]]['desc']
+            
+            if kpiStylesNN[type][kpis[0]].get('others'):
+                others = kpiStylesNN[type][kpis[0]]['legendCount']
             
         i = 0 # just the loop iterration number (row number)
         ii = 0 # data index counter, equals to the row number for regular kpis and very not for multiline...
@@ -1056,7 +1055,61 @@ class dataProvider(QObject):
             log('non-integer kpi value returned: %s' % (str(row[j])))
             raise Exception('Integer only allowed as kpi value')
 
+        
+        # postprocessing after data extraction loop 
+        
+        #kpis_ = ['time:02_2_heap_allocators.yaml', 'cs-allocator']
+        
+        # блин, может быть несколько мультилайн KPI и тогда othersData должен быть списком массивов
+        # это то почему везде стоит len(kpis_), это может быть не один, а два, нпрмр
+        # и тогда вся логика с Others так же должна пойти отдельно для второго.
+        
+        print('process others')
+        if multiline and others and kpis_[0] in data:
+        
+            frames = len(data[kpis_[0]]) # must be time line
+            othersData = [-1] * (frames)
+            
+            for j in range(1, len(kpis_)):
+                kpi = kpis_[j]
+                                
+                scan = data[kpi]
+                
+                print('group by enteis:', len(data[kpi]))
+                
+                for i in range(frames):
+                    
+                    others_value = -1
+                    for gbi in range(len(gb)):
+                    
+                        if gbi >= others:
+                            others_value += scan[gbi][1][i]
+                            
+                    if others_value >= 0:
+                        othersData[i] = others_value
+        
+            # now need to replace N+1 whith others and delete all the rest data and kpis
 
+            data['cs-allocator'][others][0] = 'Others'
+            data['cs-allocator'][others][1] = othersData
+            
+            for j in range(1, len(kpis_)):
+                kpi = kpis_[j]
+                
+                print(others, len(gb))
+                
+                for gbi in range(others+1, len(gb)):
+                    print('kill', gbi)
+                    data[kpi][gbi][1].clear()
+                    data[kpi][gbi].clear()
+                    
+                del data[kpi][others+1:]
+                print('group by enteis:', len(data[kpi]))
+                    
+            gb = gb[:others]
+            gb.append('Others')
+                    
+        # stacked to be processed separately...
         if multiline and stacked and kpis_[0] in data:
             # kpis_[0] in data actually checks if the data dict actuallny not empty, otherwise fails in "frames = len(data[kpis_[0]]) # must be time line"
         
@@ -1072,14 +1125,13 @@ class dataProvider(QObject):
             for j in range(1, len(kpis_)):
                 kpi = kpis_[j]
                 
-                # print('kpi:', kpi)
-                
-                # print(data.keys())
+                #print('kpi:', kpi)
+                #print(data.keys())
                 
                 frames = len(data[kpis_[0]]) # must be time line
                 scan = data[kpi]
                 
-                # print('frames', frames)
+                #print('frames', frames)
                 
                 for i in range(frames):
                     # print(i)

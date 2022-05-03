@@ -1179,8 +1179,13 @@ class myWidget(QWidget):
                                 lkpis.append(kpi)
                                 lkpisl.append(label)
                                 lmeta.append(['multiline', None, 0, 16])
+                                
+                                legendCount = kpiStylesNN[type][kpi]['legendCount']
+                                
+                                if kpiStylesNN[type][kpi].get('others'):
+                                    legendCount += 1
 
-                                gbn = min(len(self.ndata[h][kpi]), kpiStylesNN[type][kpi]['legendCount'])
+                                gbn = min(len(self.ndata[h][kpi]), legendCount)
                                 for i in range(gbn):
                                 
                                     gb = self.ndata[h][kpi][i][0]
