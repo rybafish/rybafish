@@ -3790,7 +3790,7 @@ class sqlConsole(QWidget):
             
     def sqlFinished(self):
         '''
-            post-process the sql reaults
+            post-process the sql results
             also handle exceptions
         '''
         #print('2 --> sql finished')

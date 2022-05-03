@@ -553,7 +553,6 @@ class hslWindow(QMainWindow):
                     del self.chartArea.dp
                     self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
 
-
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
