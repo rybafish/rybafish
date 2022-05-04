@@ -70,17 +70,19 @@ class Variables(QDialog):
             lvrs = vrs
     
         r = 0
-    
+
+        '''
         print('vrsStr')
         for idx in lvrsStr:
             print(idx, ' --> ', lvrsStr[idx])
+        '''
 
-        print('\nvrs')
+        #print('\nvrs')
         for idx in lvrs:
-            print(idx, ' --> ', lvrs[idx])
+            #print(idx, ' --> ', lvrs[idx])
             r += len(lvrs[idx])
             
-        print()
+        #print()
 
         self.vTab.setRowCount(r)
 
@@ -92,9 +94,13 @@ class Variables(QDialog):
                 #print(idx, var, val)
                 
                 if i == 0:
-                    self.vTab.setItem(row, 0, QTableWidgetItem(idx))
+                    item = QTableWidgetItem(idx)
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    self.vTab.setItem(row, 0, item)
                     
-                self.vTab.setItem(row, 1, QTableWidgetItem(var))
+                item = QTableWidgetItem(var)
+                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                self.vTab.setItem(row, 1, item)
                 self.vTab.setItem(row, 2, QTableWidgetItem(val))
                 
                 i += 1
@@ -162,6 +168,8 @@ class Variables(QDialog):
         self.vTab = QTableWidget()
         
         self.vTab.setColumnCount(3)
+        
+        self.vTab.setHorizontalHeaderLabels(['KPI file', 'Variable', 'Value'])
         
         vbox.addWidget(self.vTab)
         
@@ -625,9 +633,9 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 style['multicolor'] = False
 
             if 'desc' in kpi:
-                style['desc'] = kpi['desc']
+                style['descending'] = kpi['desc']
             else:
-                style['desc'] = True
+                style['descending'] = True
 
             if 'legendCount' in kpi:
                 style['legendCount'] = kpi['legendCount']

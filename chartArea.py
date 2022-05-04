@@ -27,7 +27,7 @@ from utils import resourcePath
 import importTrace
 import utils
 
-from utils import log, cfg
+from utils import log, cfg, safeBool, safeInt
 
 import dpDummy
 import dpTrace
@@ -1156,7 +1156,10 @@ class myWidget(QWidget):
                     if  subtype == 'gantt':
                         gantt = True
                     elif subtype == 'multiline':
+                        sqlIdx = kpiStylesNN[type][kpi].get('sql')
                         stacked = kpiStylesNN[type][kpi]['stacked']
+                        stacked = processVars(sqlIdx, stacked)
+                        stacked = safeBool(stacked)
                         multiline = True
                         
                     label = kpiStylesNN[type][kpi]['label']
@@ -1170,6 +1173,8 @@ class myWidget(QWidget):
                         
                         if kpi in self.nscales[h]: #if those are scanned already
                             if multiline:
+                                sqlIdx = kpiStylesNN[type][kpi].get('sql')
+                                
                                 kpiDescriptions.resetRaduga()
                                 label += ': ' + self.nscales[h][kpi]['label'] + unit + ': <$b$>multiline'
                                 
@@ -1181,9 +1186,16 @@ class myWidget(QWidget):
                                 lmeta.append(['multiline', None, 0, 16])
                                 
                                 legendCount = kpiStylesNN[type][kpi]['legendCount']
+                                legendCount = processVars(sqlIdx, legendCount)
+                                legendCount = safeInt(legendCount, 5)
                                 
-                                if kpiStylesNN[type][kpi].get('others'):
-                                    legendCount += 1
+                                others = kpiStylesNN[type][kpi].get('others')
+                                if others:
+                                    others = processVars(sqlIdx, others)
+                                    others = safeBool(others)
+                                    
+                                    if others:
+                                        legendCount += 1
 
                                 gbn = min(len(self.ndata[h][kpi]), legendCount)
                                 for i in range(gbn):

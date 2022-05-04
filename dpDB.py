@@ -11,7 +11,7 @@ from PyQt5.QtCore import QTimer
 
 import dpDBCustom, kpiDescriptions
 from kpiDescriptions import customKpi
-from kpiDescriptions import kpiStylesNN
+from kpiDescriptions import kpiStylesNN, processVars
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -20,7 +20,7 @@ import sql
 #import db
 from dbi import dbi
 
-from utils import cfg, log, yesNoDialog, formatTime
+from utils import cfg, log, yesNoDialog, formatTime, safeBool, safeInt
 from utils import dbException, customKPIException
 
 import traceback
@@ -328,12 +328,6 @@ class dataProvider(QObject):
         else:
             type = 'service'
             
-            
-        '''
-        if self.lock:
-            log('[w] getData lock set, exiting')
-            return
-        '''
 
         if self.connection is None:
             raise dbException('No valid db connection')
@@ -900,12 +894,26 @@ class dataProvider(QObject):
             multiline = True
             others = False
             
-            stacked = kpiStylesNN[type][kpis[0]]['stacked']
-            orderby = kpiStylesNN[type][kpis[0]]['orderby']
-            orderdesc = kpiStylesNN[type][kpis[0]]['desc']
+            gb = []
             
-            if kpiStylesNN[type][kpis[0]].get('others'):
-                others = kpiStylesNN[type][kpis[0]]['legendCount']
+            stacked = kpiStylesNN[type][kpis[0]]['stacked']
+            stacked = processVars(kpiSrc, stacked)
+            stacked = safeBool(stacked)
+            
+            orderby = kpiStylesNN[type][kpis[0]]['orderby']
+            orderdesc = kpiStylesNN[type][kpis[0]]['descending']
+            
+            others = kpiStylesNN[type][kpis[0]].get('others')
+            
+            if others:
+                others = processVars(kpiSrc, others)
+                others = safeBool(others)
+                
+                if others:
+                    lc = kpiStylesNN[type][kpis[0]]['legendCount']
+                    lc = processVars(kpiSrc, lc)
+                    lc = safeInt(lc, 5)
+                    others = lc
             
         i = 0 # just the loop iterration number (row number)
         ii = 0 # data index counter, equals to the row number for regular kpis and very not for multiline...
@@ -1059,13 +1067,14 @@ class dataProvider(QObject):
         # postprocessing after data extraction loop 
         
         #kpis_ = ['time:02_2_heap_allocators.yaml', 'cs-allocator']
-        
-        # блин, может быть несколько мультилайн KPI и тогда othersData должен быть списком массивов
-        # это то почему везде стоит len(kpis_), это может быть не один, а два, нпрмр
-        # и тогда вся логика с Others так же должна пойти отдельно для второго.
-        
-        print('process others')
+
+        if multiline and others != False and others >= len(gb):
+            # there is no enough group by entries to have also 'others'
+            others = False
+
         if multiline and others and kpis_[0] in data:
+        
+            t00 = time.time()
         
             frames = len(data[kpis_[0]]) # must be time line
             othersData = [-1] * (frames)
@@ -1074,9 +1083,7 @@ class dataProvider(QObject):
                 kpi = kpis_[j]
                                 
                 scan = data[kpi]
-                
-                print('group by enteis:', len(data[kpi]))
-                
+                                
                 for i in range(frames):
                     
                     others_value = -1
@@ -1087,27 +1094,26 @@ class dataProvider(QObject):
                             
                     if others_value >= 0:
                         othersData[i] = others_value
-        
-            # now need to replace N+1 whith others and delete all the rest data and kpis
-
-            data['cs-allocator'][others][0] = 'Others'
-            data['cs-allocator'][others][1] = othersData
             
-            for j in range(1, len(kpis_)):
-                kpi = kpis_[j]
-                
-                print(others, len(gb))
-                
+                # explicitly (hopefuly) deallocate everything above 'others'
+
                 for gbi in range(others+1, len(gb)):
-                    print('kill', gbi)
                     data[kpi][gbi][1].clear()
                     data[kpi][gbi].clear()
                     
                 del data[kpi][others+1:]
-                print('group by enteis:', len(data[kpi]))
+        
+                # now need to replace N+1 whith others and delete all the rest data and kpis
+
+                data[kpi][others][0] = 'Others'
+                data[kpi][others][1] = othersData
                     
-            gb = gb[:others]
+            gb = gb[:others] # compensate gb list as it is calculates above for all entries
             gb.append('Others')
+            
+            t01 = time.time()
+            
+            log('Multiline \'others\' processing time: %s' % str(round(t01-t00, 3)), 4)
                     
         # stacked to be processed separately...
         if multiline and stacked and kpis_[0] in data:
@@ -1146,10 +1152,7 @@ class dataProvider(QObject):
                         
             t01 = time.time()
             
-            log('Stacked processing time: %s' % str(round(t01-t00, 3)), 4)
-
-        #printDump(data)
-        #exit(0)
+            log('Multiline \'stacked\' processing time: %s' % str(round(t01-t00, 3)), 4)
 
         t2 = time.time()
 
