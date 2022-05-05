@@ -1068,7 +1068,7 @@ class dataProvider(QObject):
         
         #kpis_ = ['time:02_2_heap_allocators.yaml', 'cs-allocator']
 
-        if multiline and others != False and others >= len(gb):
+        if multiline and others and others >= len(gb):
             # there is no enough group by entries to have also 'others'
             others = False
 
@@ -1086,10 +1086,14 @@ class dataProvider(QObject):
                                 
                 for i in range(frames):
                     
-                    others_value = -1
+                    others_value = -1 
                     for gbi in range(len(gb)):
                     
-                        if gbi >= others:
+                        if gbi >= others and scan[gbi][1][i] > 0:
+                        
+                            if others_value == -1: # otherwise we will have decreased values because of th initial 1
+                                others_value = 0
+                                
                             others_value += scan[gbi][1][i]
                             
                     if others_value >= 0:
@@ -1142,10 +1146,16 @@ class dataProvider(QObject):
                 for i in range(frames):
                     # print(i)
                     
-                    acc_value = 0
+                    acc_value = -1 # have to make it -1 to be consustent with all the other kpis
+                    
                     for gbi in range(len(gb)):
                     
                         if scan[gbi][1][i] > 0:             # otherwise it decreases the stacked values, #568
+                        
+                            if acc_value == -1:
+                                # otherwise accumulated values are -1
+                                acc_value = 0
+                                
                             acc_value += scan[gbi][1][i]
                             
                         scan[gbi][1][i] = acc_value
