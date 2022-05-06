@@ -2361,9 +2361,14 @@ class chartArea(QFrame):
         try:
             self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
         except utils.customKPIException as e:
+            log('[!] initHosts customKPIException: %s' % str(e), 2)
             utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
+        except utils.vrsException as e:
+            log('[!] variables processing exception: %s' % (str(e)), 1)
+            utils.msgDialog('Initialization Error', 'Variables processing error. Check the variables definition, if the message persists, consider deleting layout.yaml\n\n%s' % (str(e)))
         except Exception as e:
-            utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n' + str(e))
+            log('[!] initHosts exception: %s, %s' % (str(type(e)), str(e)), 2)
+            utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n%s: %s' % (str(type(e)), str(e)))
 
         if len(self.widget.hosts) == 0 and cfg('noAccessWarning', False) == False:
             msgBox = QMessageBox(self)

@@ -327,13 +327,25 @@ def addVars(sqlIdx, vStr, overwrite = False):
         else:
             vrs[sqlIdx][vName] = vVal
             
+    #keysDelete = []
     # go throuth the result and remove the stuff that was not supplied in the input string, #602
     if sqlIdx in vrsDef:
         # otherwise it is probably an initial load
         for v in vrs[sqlIdx]:
             if v not in vNames:
-                log('Variable \'%s\' seems missing in %s, restoring default from YAML' % (v, sqlIdx))
-                vrs[sqlIdx][v] = vrsDef[sqlIdx][v]
+                if v in vrsDef[sqlIdx]:
+                    log('Variable \'%s\' seems missing in %s, restoring default from YAML' % (v, sqlIdx))
+                    vrs[sqlIdx][v] = vrsDef[sqlIdx][v]
+                else:
+                    log('Seems variable \'%s\' is excluded from %s, it will be IGNORED' % (v, sqlIdx))
+                    #log('Seems variable \'%s\' is excluded from %s, it will be erased from the runtime values' % (v, sqlIdx))
+                    #keysDelete.append(v)
+                    
+        '''
+        for k in keysDelete:
+            log('deleting %s from %s' %(k, sqlIdx))
+            vrs[sqlIdx].pop(k)
+        '''
             
     # go through defined variables and add missing ones
     
