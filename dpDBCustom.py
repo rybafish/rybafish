@@ -15,7 +15,7 @@ from kpiDescriptions import createStyle, customSql, kpiGroup
 from kpiDescriptions import addVars, vrsStr, vrsStrDef, addVarsDef
 
 from utils import Layout
-from utils import customKPIException
+from utils import customKPIException, vrsException
 
 grouplist = {}
 
@@ -79,24 +79,29 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
         if srcIdx not in vrsStrDef:
             addVarsDef(srcIdx, kpiFile['variables'])
         
-        log('-----addVars dpDBCustom -----')
+        log('----- addVars dpDBCustom start ----')
         #if srcIdx not in vrsStr:
-        addVars(srcIdx, kpiFile['variables'], False)
-        log('-----addVars dpDBCustom -----')
+        try:
+            addVars(srcIdx, kpiFile['variables'], False)
+        except Exception as e:
+            log('[!] addVars processing error: %s: %s' % (str(type(e)), str(e)))
+            raise vrsException('%s: %s' % (str(type(e)), str(e)))
+            
+        log('----- addVars dpDBCustom stop -----')
     
     kpis = kpiFile['kpis']
     
     customSql[srcIdx] = kpiFile['sql']
     
     for kpi in kpis:
-        type = kpi['type']
+        htype = kpi['type']
 
         csName = 'cs-' + kpi['name']
         
-        if not grpname in grouplist[type]:
-            grouplist[type].append(grpname)
+        if not grpname in grouplist[htype]:
+            grouplist[htype].append(grpname)
             
-            if type == 'host': 
+            if htype == 'host': 
                 hostKPIs.append(grpname)
             else:
                 srvcKPIs.append(grpname)
@@ -104,10 +109,10 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
 
         errorSuffix = ''
         
-        while csName + errorSuffix in kpiStylesN[type]:
+        while csName + errorSuffix in kpiStylesN[htype]:
             errorSuffix += '#'
 
-        if type == 'host': 
+        if htype == 'host': 
             hostKPIs.append(csName + errorSuffix)
         else:
             srvcKPIs.append(csName + errorSuffix)
@@ -123,7 +128,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
         style = createStyle(kpi, True, srcIdx)
         
         if style is not None:
-            kpiStylesN[type][csName + errorSuffix] = style
+            kpiStylesN[htype][csName + errorSuffix] = style
             
             if errorSuffix != '':
                 style['disabled'] = True
