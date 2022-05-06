@@ -327,6 +327,10 @@ class hslWindow(QMainWindow):
                     self.layout.lo.pop('tabs')
                 
         self.layout['variables'] = kpiDescriptions.vrsStr
+        
+        if kpiDescriptions.Variables.width:
+            self.layout['variablesLO'] = {'width': kpiDescriptions.Variables.width, 'height': kpiDescriptions.Variables.height}
+            
         log('--> dumpLayout vars: %s' % str(kpiDescriptions.vrsStr), 4)
         #print('dumping', self.layout['variables'])
         
@@ -1003,6 +1007,10 @@ class hslWindow(QMainWindow):
                     log(str(e), 2)
                     
                 log('-----addVars hslWindow-----')
+            
+            if self.layout['variablesLO']:
+                kpiDescriptions.Variables.width = self.layout['variablesLO']['width']
+                kpiDescriptions.Variables.height = self.layout['variablesLO']['height']
             
             if self.layout['running']:
 

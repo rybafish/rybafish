@@ -11,7 +11,7 @@ from PyQt5.QtCore import QTimer
 
 import dpDBCustom, kpiDescriptions
 from kpiDescriptions import customKpi
-from kpiDescriptions import kpiStylesNN
+from kpiDescriptions import kpiStylesNN, processVars
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -20,7 +20,7 @@ import sql
 #import db
 from dbi import dbi
 
-from utils import cfg, log, yesNoDialog, formatTime
+from utils import cfg, log, yesNoDialog, formatTime, safeBool, safeInt
 from utils import dbException, customKPIException
 
 import traceback
@@ -328,12 +328,6 @@ class dataProvider(QObject):
         else:
             type = 'service'
             
-            
-        '''
-        if self.lock:
-            log('[w] getData lock set, exiting')
-            return
-        '''
 
         if self.connection is None:
             raise dbException('No valid db connection')
@@ -814,7 +808,7 @@ class dataProvider(QObject):
             t0 = time.time()
             gb = []
             
-            gbs = {}
+            gbs = {} #dict of lists for group by, key = groupby name, elements: 0 - min, 1 - max, 2 - avg
             
             t = None
             tCount = 0
@@ -845,10 +839,6 @@ class dataProvider(QObject):
                     if gbs[grpby][1] > 0:
                         gbs[grpby][2] += v
                         
-            
-            # not very sure here
-            # the idea was to sort gbs based on second list element descending
-            
             #print(gbs)
             
             if orderby == 'max': 
@@ -861,7 +851,6 @@ class dataProvider(QObject):
                 gbsSorted =  sorted(gbs, key=lambda x: (x), reverse=desc)
             else:
                 gbsSorted =  sorted(gbs, key=lambda x: (gbs[x][1]), reverse=desc)
-            
             
             gb.sort()
             
@@ -903,10 +892,28 @@ class dataProvider(QObject):
         
         if subtype == 'multiline':
             multiline = True
+            others = False
+            
+            gb = []
             
             stacked = kpiStylesNN[type][kpis[0]]['stacked']
+            stacked = processVars(kpiSrc, stacked)
+            stacked = safeBool(stacked)
+            
             orderby = kpiStylesNN[type][kpis[0]]['orderby']
-            orderdesc = kpiStylesNN[type][kpis[0]]['desc']
+            orderdesc = kpiStylesNN[type][kpis[0]]['descending']
+            
+            others = kpiStylesNN[type][kpis[0]].get('others')
+            
+            if others:
+                others = processVars(kpiSrc, others)
+                others = safeBool(others)
+                
+                if others:
+                    lc = kpiStylesNN[type][kpis[0]]['legendCount']
+                    lc = processVars(kpiSrc, lc)
+                    lc = safeInt(lc, 5)
+                    others = lc
             
         i = 0 # just the loop iterration number (row number)
         ii = 0 # data index counter, equals to the row number for regular kpis and very not for multiline...
@@ -1056,7 +1063,63 @@ class dataProvider(QObject):
             log('non-integer kpi value returned: %s' % (str(row[j])))
             raise Exception('Integer only allowed as kpi value')
 
+        
+        # postprocessing after data extraction loop 
+        
+        #kpis_ = ['time:02_2_heap_allocators.yaml', 'cs-allocator']
 
+        if multiline and others and others >= len(gb):
+            # there is no enough group by entries to have also 'others'
+            others = False
+
+        if multiline and others and kpis_[0] in data:
+        
+            t00 = time.time()
+        
+            frames = len(data[kpis_[0]]) # must be time line
+            othersData = [-1] * (frames)
+            
+            for j in range(1, len(kpis_)):
+                kpi = kpis_[j]
+                                
+                scan = data[kpi]
+                                
+                for i in range(frames):
+                    
+                    others_value = -1 
+                    for gbi in range(len(gb)):
+                    
+                        if gbi >= others and scan[gbi][1][i] > 0:
+                        
+                            if others_value == -1: # otherwise we will have decreased values because of th initial 1
+                                others_value = 0
+                                
+                            others_value += scan[gbi][1][i]
+                            
+                    if others_value >= 0:
+                        othersData[i] = others_value
+            
+                # explicitly (hopefuly) deallocate everything above 'others'
+
+                for gbi in range(others+1, len(gb)):
+                    data[kpi][gbi][1].clear()
+                    data[kpi][gbi].clear()
+                    
+                del data[kpi][others+1:]
+        
+                # now need to replace N+1 whith others and delete all the rest data and kpis
+
+                data[kpi][others][0] = 'Others'
+                data[kpi][others][1] = othersData
+                    
+            gb = gb[:others] # compensate gb list as it is calculates above for all entries
+            gb.append('Others')
+            
+            t01 = time.time()
+            
+            log('Multiline \'others\' processing time: %s' % str(round(t01-t00, 3)), 4)
+                    
+        # stacked to be processed separately...
         if multiline and stacked and kpis_[0] in data:
             # kpis_[0] in data actually checks if the data dict actuallny not empty, otherwise fails in "frames = len(data[kpis_[0]]) # must be time line"
         
@@ -1072,32 +1135,34 @@ class dataProvider(QObject):
             for j in range(1, len(kpis_)):
                 kpi = kpis_[j]
                 
-                # print('kpi:', kpi)
-                
-                # print(data.keys())
+                #print('kpi:', kpi)
+                #print(data.keys())
                 
                 frames = len(data[kpis_[0]]) # must be time line
                 scan = data[kpi]
                 
-                # print('frames', frames)
+                #print('frames', frames)
                 
                 for i in range(frames):
                     # print(i)
                     
-                    acc_value = 0
+                    acc_value = -1 # have to make it -1 to be consustent with all the other kpis
+                    
                     for gbi in range(len(gb)):
                     
                         if scan[gbi][1][i] > 0:             # otherwise it decreases the stacked values, #568
+                        
+                            if acc_value == -1:
+                                # otherwise accumulated values are -1
+                                acc_value = 0
+                                
                             acc_value += scan[gbi][1][i]
                             
                         scan[gbi][1][i] = acc_value
                         
             t01 = time.time()
             
-            log('Stacked processing time: %s' % str(round(t01-t00, 3)), 4)
-
-        #printDump(data)
-        #exit(0)
+            log('Multiline \'stacked\' processing time: %s' % str(round(t01-t00, 3)), 4)
 
         t2 = time.time()
 

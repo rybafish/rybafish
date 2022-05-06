@@ -547,3 +547,20 @@ def securePath(filename, backslash = False):
     fnsecure = filename.replace(cwd, '..')
     
     return fnsecure
+    
+def safeBool(s):
+    return False if s.lower().strip() == 'false' else True
+    
+def safeInt(s, default = 0):
+    
+    try:
+        i = int(s)
+    except ValueError as e:
+        log('error converting %s to integer: %s' % (s, str(e)), 2)
+        return default
+        
+    return i
+    
+    
+    
+    

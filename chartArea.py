@@ -27,7 +27,7 @@ from utils import resourcePath
 import importTrace
 import utils
 
-from utils import log, cfg
+from utils import log, cfg, safeBool, safeInt
 
 import dpDummy
 import dpTrace
@@ -1156,7 +1156,10 @@ class myWidget(QWidget):
                     if  subtype == 'gantt':
                         gantt = True
                     elif subtype == 'multiline':
+                        sqlIdx = kpiStylesNN[type][kpi].get('sql')
                         stacked = kpiStylesNN[type][kpi]['stacked']
+                        stacked = processVars(sqlIdx, stacked)
+                        stacked = safeBool(stacked)
                         multiline = True
                         
                     label = kpiStylesNN[type][kpi]['label']
@@ -1170,6 +1173,8 @@ class myWidget(QWidget):
                         
                         if kpi in self.nscales[h]: #if those are scanned already
                             if multiline:
+                                sqlIdx = kpiStylesNN[type][kpi].get('sql')
+                                
                                 kpiDescriptions.resetRaduga()
                                 label += ': ' + self.nscales[h][kpi]['label'] + unit + ': <$b$>multiline'
                                 
@@ -1179,8 +1184,20 @@ class myWidget(QWidget):
                                 lkpis.append(kpi)
                                 lkpisl.append(label)
                                 lmeta.append(['multiline', None, 0, 16])
+                                
+                                legendCount = kpiStylesNN[type][kpi]['legendCount']
+                                legendCount = processVars(sqlIdx, legendCount)
+                                legendCount = safeInt(legendCount, 5)
+                                
+                                others = kpiStylesNN[type][kpi].get('others')
+                                if others:
+                                    others = processVars(sqlIdx, others)
+                                    others = safeBool(others)
+                                    
+                                    if others:
+                                        legendCount += 1
 
-                                gbn = min(len(self.ndata[h][kpi]), kpiStylesNN[type][kpi]['legendCount'])
+                                gbn = min(len(self.ndata[h][kpi]), legendCount)
                                 for i in range(gbn):
                                 
                                     gb = self.ndata[h][kpi][i][0]
@@ -2344,9 +2361,14 @@ class chartArea(QFrame):
         try:
             self.dp.initHosts(self.widget.hosts, self.hostKPIs, self.srvcKPIs)
         except utils.customKPIException as e:
+            log('[!] initHosts customKPIException: %s' % str(e), 2)
             utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
+        except utils.vrsException as e:
+            log('[!] variables processing exception: %s' % (str(e)), 1)
+            utils.msgDialog('Initialization Error', 'Variables processing error. Check the variables definition, if the message persists, consider deleting layout.yaml\n\n%s' % (str(e)))
         except Exception as e:
-            utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n' + str(e))
+            log('[!] initHosts exception: %s, %s' % (str(type(e)), str(e)), 2)
+            utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n%s: %s' % (str(type(e)), str(e)))
 
         if len(self.widget.hosts) == 0 and cfg('noAccessWarning', False) == False:
             msgBox = QMessageBox(self)
