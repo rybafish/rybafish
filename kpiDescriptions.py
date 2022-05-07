@@ -698,7 +698,10 @@ def getTimeKey(type, kpi):
 
 def getSubtype(type, kpi):
 
-    subtype = kpiStylesNN[type][kpi]['subtype']
+    if kpi in kpiStylesNN[type]:
+        subtype = kpiStylesNN[type][kpi]['subtype']
+    else:
+        subtype = None
         
     return subtype
         
