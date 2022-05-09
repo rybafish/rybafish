@@ -489,7 +489,18 @@ def cfg(param, default = None):
         return config[param]
     else:
         return default
+     
+def getlog(prefix):
+    pref = None
+    
+    pref = prefix
+    def logf(s, *args, **kwargs):
+        s = '[%s] %s' % (pref, s)
         
+        log(s, *args, **kwargs)
+    
+    return logf
+
 def log(s, loglevel = 3, nots = False, nonl = False):
     '''
         log the stuff one way or another...
