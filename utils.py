@@ -560,7 +560,10 @@ def securePath(filename, backslash = False):
     return fnsecure
     
 def safeBool(s):
-    return False if s.lower().strip() == 'false' else True
+    if type(s) == str:
+        return False if s.lower().strip() == 'false' else True
+    else:
+        return s
     
 def safeInt(s, default = 0):
     

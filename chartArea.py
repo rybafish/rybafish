@@ -21,7 +21,8 @@ from PyQt5.QtCore import pyqtSignal
 
 # my stuff
 import kpiDescriptions
-from kpiDescriptions import kpiStylesNN, hType, processVars
+from kpiDescriptions import kpiStylesNN, hType
+#, processVars
 from utils import resourcePath
 
 import importTrace
@@ -815,11 +816,13 @@ class myWidget(QWidget):
 
                 yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
                 
-                sqlIdx = kpiStylesNN[type][kpi]['sql']
+                #sqlIdx = kpiStylesNN[type][kpi]['sql']
 
                 try:
-                    yr0p = processVars(sqlIdx, yr0)
-                    yr1p = processVars(sqlIdx, yr1)
+                    #yr0p = processVars(sqlIdx, yr0)
+                    #yr1p = processVars(sqlIdx, yr1)
+                    yr0p = yr0
+                    yr1p = yr1
                     yr0 = 100 - max(0, int(yr0p))
                     yr1 = 100 - min(100, int(yr1p))
                 except ValueError:
@@ -1156,24 +1159,26 @@ class myWidget(QWidget):
                     if  subtype == 'gantt':
                         gantt = True
                     elif subtype == 'multiline':
-                        sqlIdx = kpiStylesNN[type][kpi].get('sql')
+                        #sqlIdx = kpiStylesNN[type][kpi].get('sql')
                         stacked = kpiStylesNN[type][kpi]['stacked']
-                        stacked = processVars(sqlIdx, stacked)
+                        #stacked = processVars(sqlIdx, stacked)
                         stacked = safeBool(stacked)
                         multiline = True
                         
                     label = kpiStylesNN[type][kpi]['label']
                     
+                    '''
                     if kpiStylesNN[type][kpi].get('sql'):
                         sqlIdx = kpiStylesNN[type][kpi].get('sql')
                         label = processVars(sqlIdx, label)
+                    '''
                         
                     if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
                         unit = ' ' + self.nscales[h][kpi]['unit']
                         
                         if kpi in self.nscales[h]: #if those are scanned already
                             if multiline:
-                                sqlIdx = kpiStylesNN[type][kpi].get('sql')
+                                #sqlIdx = kpiStylesNN[type][kpi].get('sql')
                                 
                                 kpiDescriptions.resetRaduga()
                                 label += ': ' + self.nscales[h][kpi]['label'] + unit + ': <$b$>multiline'
@@ -1186,12 +1191,12 @@ class myWidget(QWidget):
                                 lmeta.append(['multiline', None, 0, 16])
                                 
                                 legendCount = kpiStylesNN[type][kpi]['legendCount']
-                                legendCount = processVars(sqlIdx, legendCount)
+                                #legendCount = processVars(sqlIdx, legendCount)
                                 legendCount = safeInt(legendCount, 5)
                                 
                                 others = kpiStylesNN[type][kpi].get('others')
                                 if others:
-                                    others = processVars(sqlIdx, others)
+                                    #others = processVars(sqlIdx, others)
                                     others = safeBool(others)
                                     
                                     if others:
@@ -1642,8 +1647,10 @@ class myWidget(QWidget):
                         sqlIdx = kpiStylesNN[type][kpi]['sql']
                         
                         try:
-                            yr0p = processVars(sqlIdx, yr0)
-                            yr1p = processVars(sqlIdx, yr1)
+                            #yr0p = processVars(sqlIdx, yr0)
+                            #yr1p = processVars(sqlIdx, yr1)
+                            yr0p = yr0
+                            yr1p = yr1
                             yr0 = 100 - max(0, int(yr0p))
                             yr1 = 100 - min(100, int(yr1p))
                         except ValueError:

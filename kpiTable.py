@@ -437,9 +437,9 @@ class kpiTable(QTableWidget):
                 if style.get('sql'):
                     # sql exists and not None
                     
-                    idx = style['sql']
-                    desc = kpiDescriptions.processVars(idx, style['desc'])
-                    label = kpiDescriptions.processVars(idx, style['label'])
+                    #idx = style['sql']
+                    desc = style['desc'] #kpiDescriptions.processVars(idx, style['desc'])
+                    label = style['label'] # '123' #kpiDescriptions.processVars(idx, style['label'])
                 else:
                     desc = style['desc']
                     label = style['label']
@@ -574,7 +574,7 @@ class kpiTable(QTableWidget):
                     
                     idx = style['sql']
                     #desc = kpiDescriptions.processVars(idx, style['desc'])
-                    label = kpiDescriptions.processVars(idx, style['label'])
+                    label = style['label'] # kpiDescriptions.processVars(idx, style['label'])
                 else:
                     #desc = style['desc']
                     label = style['label']

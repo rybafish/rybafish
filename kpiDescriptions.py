@@ -16,6 +16,7 @@ import utils
 from utils import log, cfg
 from utils import vrsException
 from utils import resourcePath
+from collections import UserDict
 
 currentIndex = None
 
@@ -25,6 +26,34 @@ vrsStrErr = {}      # True/False in case of parsing issues
 
 vrsStr = {}         # current string representation (for KPIs table
 vrs = {}            # actual dict
+
+class Style(UserDict):
+    exclude = ['sql'] # keys excluded from vars processing
+    def __init__(self, idx, *args):
+        self.idx = idx
+        super().__init__(*args)
+        
+    def __missing__(self, key):
+        log('[!] Style key missing: %s' % key, 1)
+        raise KeyError(key)
+            
+    def __getitem__(self, key):
+        if key in self.data:
+            value = self.data[key]
+            
+            # if key == 'y_range': log(f'Style getitem[{self.idx}]: {key}/{value}')
+            
+            if self.idx and type(value) in (str, list):
+                if self.idx in vrs and value != '' and key not in Style.exclude:
+                    value = processVars(self.idx, value)
+                    # if key == 'y_range': log(f'Post-process:[{self.idx}]: {key}/{value}')
+            
+            return value
+            
+        if hasattr(self.__class__, "__missing__"):
+            return self.__class__.__missing__(self, key)
+            
+        raise KeyError(key)
 
 class Variables(QDialog):
 
@@ -361,41 +390,65 @@ def addVars(sqlIdx, vStr, overwrite = False):
     log('Actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])), 4)
 
 
-def processVars(sqlIdx, s):
+def processVars(sqlIdx, src):
     '''
         makes the actual replacement based on global variable vrs
         sqlIdx is a custom KPI file name with extention, example: 10_exp_st.yaml
         
-        s is the string for processing
+        s is the string or list of strings for processing
+        
+        this function does not evaluate source definition, only vrs
+        vrs actualization done in addVars - it restores missed values, etc
     '''
 
     global vrs
     
-    s = str(s)
-    
     # is it custom kpi at all?
-    if sqlIdx is None:
-        return s
+    if not sqlIdx:
+        return src
 
     # are there any variables?
     if sqlIdx not in vrs:
-        return s
+        return src
 
-    #log('---process vars...---------------------------------------', 5)
-    #log('sqlIdx: ' + str(sqlIdx))
-    #log('vrs: ' + str(vrs[sqlIdx]))
-    #log('>>' + s, 5)
-    #log('  -- -- -- --', 5)
 
-    if sqlIdx in vrs:
-        for v in vrs[sqlIdx]:
-            if v == '':
-                continue
+    outList = []
+    
+    if type(src) != list:
+        srcList = [str(src)]
+    else:
+        srcList = src
+
+    # go through list values
+    for s in srcList:
+        #if s is not None:
+            #s = str(s)
+        if type(s) == str:
+
+            #log('---process vars...---------------------------------------', 5)
+            #log('sqlIdx: ' + str(sqlIdx))
+            #log('vrs: ' + str(vrs[sqlIdx]))
+            #log('>>' + s, 5)
+            #log('  -- -- -- --', 5)
+
+            if sqlIdx in vrs:
+                for v in vrs[sqlIdx]:
+                    if v == '':
+                        continue
+                        
+                    s = s.replace('$'+v, str(vrs[sqlIdx][v]))
                 
-            s = s.replace('$'+v, str(vrs[sqlIdx][v]))
+            #log('<<' + s, 5)
+            #log('---------------------------------------------------------', 5)
         
-    #log('<<' + s, 5)
-    #log('---------------------------------------------------------', 5)
+        outList.append(s)
+        
+    # return the same type: single string or list of strings
+    if type(src) != list:
+        return outList[0]
+    else:
+        return outList
+        
     return s
 
 def removeDeadKPIs(kpis, type):
@@ -453,7 +506,8 @@ customSql = {}
 
 def createStyle(kpi, custom = False, sqlIdx = None):
 
-    style = {}
+    #style = {}
+    style = Style(sqlIdx)
     
     #try: 
     # mandatory stuff
@@ -605,18 +659,17 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             if 'y_range' in kpi and kpi['y_range'] != '':
                 yr = kpi['y_range']
                 
+                '''
                 style['y_range'] = [None]*2
 
-                '''
                 y1 = int(processVars(sqlIdx, yr[0]))
                 y2 = int(processVars(sqlIdx, yr[1]))
                 
                 style['y_range'][0] = 100 - max(0, y1)
                 style['y_range'][1] = 100 - min(100, y2)
                 '''
-                
-                style['y_range'][0] = yr[0]
-                style['y_range'][1] = yr[1]
+
+                style['y_range'] = yr
             else:
                 style['y_range'] = [0, 100]
                 
@@ -872,9 +925,7 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
     '''
     
     for kpi in rows:
-    
-        print(kpi)
-    
+        
         if kpi[1].lower() == 'm_load_history_host':
             type = 'host'
         else:
