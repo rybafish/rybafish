@@ -162,8 +162,21 @@ class Variables(QDialog):
             val = self.vTab.item(i, 2).text()
             
             nvrs[idx][var] = val
+
+            '''
+            vv2 = None
+            try:
+                vv2 = eval(val,{"__builtins__":None},{})
+
+                if val != vv2:
+                    print(f'result: {vv2} != {val}')
+                    val = vv2
+            except:
+                log(f'[W] EVAL: {val}', 1)
+
             
             print('--->', idx, var, val)
+            '''
 
         print('\nnew vrs:')
         for idx in nvrs:
@@ -340,7 +353,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
         if p > 0:
             vName = v[:p].strip()
             vVal = v[p+1:].strip()
-            
+                        
             vNames.append(vName)
         else:
             '''
@@ -506,62 +519,30 @@ customSql = {}
 
 def createStyle(kpi, custom = False, sqlIdx = None):
 
+    log(str(kpi))
+
     #style = {}
     style = Style(sqlIdx)
     
-    #try: 
     # mandatory stuff
-    if 'subtype' in kpi:
-        style['subtype'] = kpi['subtype']
-    else:
-        style['subtype'] = None
     
-    if 'name' in kpi:
-        if custom:
-            style['name'] = 'cs-' + kpi['name']
-        else:
-            style['name'] = kpi['name']
+    style['type'] = 's' if kpi['type'] == 'service' else 'h'
+    style['subtype'] = kpi.get('subtype')
+    
+    if custom:
+        style['name'] = 'cs-' + kpi['name']
     else:
-        return None
-        
-    if 'type' in kpi:
-        if kpi['type'] == 'service':
-            style['type'] = 's'
-        else:
-            style['type'] = 'h'
-    else:
-        return None
+        style['name'] = kpi['name']
         
     if custom:
-        if kpi.get('nofilter'):
-            style['nofilter'] = True
-        else:
-            style['nofilter'] = False
-            
-        if 'sqlname' in kpi:
-            style['sqlname'] = kpi['sqlname']
-        else:
-            if 'subtype' in kpi and kpi['subtype'] == 'gantt':
-                style['sqlname'] = 'None'
-            else:
-                return None
+        style['sqlname'] = kpi.get('sqlname', '') # gantt subtype always uses START/STOP so no sql column name used
+        style['nofilter'] = True if kpi.get('nofilter') else False
             
     # optional stuff
-    if 'group' in kpi:
-        style['group'] = kpi['group']
-    else:
-        style['group'] = ''
+    style['group'] = kpi.get('group', '')
+    style['desc'] = kpi.get('description', '')
+    style['label'] = kpi.get('label', '')
         
-    if 'description' in kpi:
-        style['desc'] = kpi['description']
-    else:
-        style['desc'] = ''
-
-    if 'label' in kpi:
-        style['label'] = kpi['label']
-    else:
-        style['label'] = ''
-
     if 'sUnit' in kpi and 'dUnit' in kpi:
         sUnit = kpi['sUnit'].split('/')
         dUnit = kpi['dUnit'].split('/')
@@ -582,21 +563,25 @@ def createStyle(kpi, custom = False, sqlIdx = None):
     else:
         color = QColor('#DDD')
         
-    if 'style' in kpi and kpi['style'] != '':
-        if kpi['style'] == 'solid':
-            penStyle = Qt.SolidLine
-        elif kpi['style'] == 'dotted':
-            penStyle = Qt.DotLine
-        elif kpi['style'] == 'dashed':
-            penStyle = Qt.DashLine
-        elif kpi['style'] == 'dotline':
-            penStyle = Qt.DotLine
-        elif kpi['style'] == 'bar' or kpi['style'] == 'candle':
-            penStyle = Qt.SolidLine
-        else:
-            log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])))
-            penStyle = Qt.DashDotDotLine
+        
+        
+    penStyles = {
+        'solid': Qt.SolidLine,
+        'dotted': Qt.DotLine,
+        'dashed': Qt.DashLine,
+        'dotline': Qt.DotLine,
+        'bar': Qt.DotLine,
+        'candle': Qt.DotLine,
+        'unknown': Qt.DashDotDotLine
+    }
+        
+    if 'style' in kpi:
+        st = kpi.get('style', 'unknown')
+        penStyle = penStyles[st]
+        
+        if st == 'unknown': log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])), 2)
     else:
+        log('[W] pen style not defined for %s, using default' % (kpi['name']), 2)
         if style['type'] == 'h':
             penStyle = Qt.DashLine
         else:
@@ -605,111 +590,58 @@ def createStyle(kpi, custom = False, sqlIdx = None):
     if kpi['name'][:7] == '---#---':
         style['pen'] = '-'
     else:
-        if 'subtype' in kpi and kpi['subtype'] == 'gantt':
+        if kpi.get('subtype') == 'gantt':
             # gantt stuff
-            if 'width' in kpi:
-                style['width'] = int(kpi['width'])
-            else:
-                style['width'] = 8
-
-            if 'fontSize' in kpi:
-                style['font'] = int(kpi['fontSize'])
-            else:
-                style['font'] = 8
-
-            if 'titleFontSize' in kpi:
-                style['tfont'] = int(kpi['titleFontSize'])
-            else:
-                style['tfont'] = style['font'] - 1 
-
-            if 'shift' in kpi:
-                style['shift'] = int(kpi['shift'])
-            else:
-                style['shift'] = 2
+            style['width'] = kpi.get('width', 8)
+            style['font'] = kpi.get('fontSize', 8)
+            style['tfont'] = kpi.get('titleFontSize', -1)
+            style['shift'] = kpi.get('shift', 2)
+            style['title'] = kpi.get('title')
+            style['gradient'] = kpi.get('gradient')
             
-            if 'style' in kpi and (kpi['style'] == 'bar' or kpi['style'] == 'candle'):
-                style['style'] = kpi['style']
-            else:
+            style['style'] = kpi.get('style', 'bar')
+            
+            if style['style'] not in ('bar', 'candle'):
+                log('[W] unsupported gantt style (%s), using default' % style['style'], 2)
                 style['style'] = 'bar'
 
-            if 'title' in kpi:
-                style['title'] = kpi['title']
-            else:
-                style['title'] = None
-
-            if 'gradient' in kpi:
-                style['gradient'] = kpi['gradient']
-            else:
-                style['gradient'] = None
-
-            if 'gradientTo' in kpi:
-                brightnessTo = kpi['gradientTo']
-            else:
-                brightnessTo = '#F00'
-                
             clr = QColor(color)
             style['brush'] = clr
 
+            penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+            style['pen'] = QPen(penColor, 1, penStyle)
+
+            brightnessTo = kpi.get('gradientTo', '#F00')
             clrFade = QColor(brightnessTo)
             style['gradientTo'] = clrFade
 
-            penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
-            style['pen'] = QPen(penColor, 1, penStyle)
+            yr = kpi.get('y_range')
             
-            if 'y_range' in kpi and kpi['y_range'] != '':
-                yr = kpi['y_range']
-                
-                '''
-                style['y_range'] = [None]*2
-
-                y1 = int(processVars(sqlIdx, yr[0]))
-                y2 = int(processVars(sqlIdx, yr[1]))
-                
-                style['y_range'][0] = 100 - max(0, y1)
-                style['y_range'][1] = 100 - min(100, y2)
-                '''
-
+            if type(yr) == list and len(yr) == 2:
                 style['y_range'] = yr
             else:
+                log('[W] unsupported y_range value for %s: %s, using default: 0, 100' % (kpi['name'], str(yr)), 2)
                 style['y_range'] = [0, 100]
-                
-        elif 'subtype' in kpi and kpi['subtype'] == 'multiline':
+            
+        elif kpi.get('subtype') == 'multiline':
         
             if 'splitby' not in kpi:
                 log('[W] multiline KPI (%s) must have splitby definition, skipping!' % (kpi['name']), 2)
                 return None
 
             style['groupby'] = kpi['splitby']
+            style['stacked'] = kpi.get('stacked', False)
+            style['multicolor'] = kpi.get('multicolor', False)
+            style['descending'] = kpi.get('desc', False)
+            style['legendCount'] = kpi.get('legendCount', 5)
+            style['others'] = kpi.get('others', False)
+
+            ordby = kpi.get('orderby', 'unknown')
+            if ordby not in ['max', 'avg', 'name', 'deviation']:
+                log('[W] unsupported orderby value %s/%s, using default (max)' % (kpi['name'], kpi.get('orderby')), 2)
+                    
+            style['orderby'] = ordby
             
-            if 'stacked' in kpi:
-                style['stacked'] = kpi['stacked']
-            else:
-                style['stacked'] = False
-
-            style['orderby'] = 'max'
-            
-            if 'orderby' in kpi:
-                if kpi['orderby'] in ['max', 'avg', 'name', 'deviation']:
-                    style['orderby'] = kpi['orderby']
-            
-            if 'multicolor' in kpi:
-                style['multicolor'] = kpi['multicolor']
-            else:
-                style['multicolor'] = False
-
-            if 'desc' in kpi:
-                style['descending'] = kpi['desc']
-            else:
-                style['descending'] = True
-
-            if 'legendCount' in kpi:
-                style['legendCount'] = kpi['legendCount']
-            else:
-                style['legendCount'] = 5
-
-            if 'others' in kpi:
-                style['others'] = kpi['others']
-                
             if style['multicolor']:
                 style['pen'] = QPen(QColor('#48f'), 1, Qt.SolidLine)
             else:
@@ -717,7 +649,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 
             style['brush'] = None
             style['style'] = 'multiline'
-            #kpi['groupby'] = None
+            
         else:
             # regular kpis
             style['pen'] = QPen(color, 1, penStyle)
