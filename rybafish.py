@@ -69,7 +69,6 @@ class ExceptionHandler(QtCore.QObject):
 
         log(details, nots = True)
 
-
         if ryba is not None and ryba.tabs:
             for i in range(ryba.tabs.count() -1, 0, -1):
 
@@ -155,6 +154,10 @@ if __name__ == '__main__':
 
     log('Starting %s build %s' % (version, build_date))
     log('qt version: %s' %(QtCore.QT_VERSION_STR))
+    
+    from profiler import calibrate
+    calibrate()
+    log('-----------------------')
 
     ryba = hslWindow.hslWindow()
 

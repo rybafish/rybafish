@@ -24,6 +24,8 @@ vrsStrDef = {}      # yaml definition, strings
 vrsDef = {}         # yaml definition, dicts
 vrsStrErr = {}      # True/False in case of parsing issues
 
+vrsRepl = {}        # dict of pairs from/to per sqlIdx for character replacements
+
 vrsStr = {}         # current string representation (for KPIs table
 vrs = {}            # actual dict
 
@@ -253,6 +255,11 @@ class Variables(QDialog):
             self.move(self.x, self.y)
 
 
+def addVarsRepl(sqlIdx, repl):
+    global vrsRepl
+    
+    vrsRepl[sqlIdx] = repl
+    
 def addVarsDef(sqlIdx, vStr):
     '''
         builds a dict for default values as it is defined in yaml definition
@@ -292,12 +299,25 @@ def addVarsDef(sqlIdx, vStr):
 def addVars(sqlIdx, vStr, overwrite = False):
     '''
         this one called on manual update of variables from the KPIs table
+        
+        (seems) it also actualizes vrs dict
     '''
 
     global vrs
     global vrsStr
     global vrsDef
+    global vrsRepl
     
+    def repl(idx, s):
+        r = vrsRepl.get(idx)
+        
+        if r:
+            print('do replace:', s, s.replace(r[0], r[1]))
+            return s.replace(r[0], r[1])
+        else:
+            print('no replace:', s)
+            return s
+        
     def validate(s):
         '''
             very simple validation routine
@@ -365,9 +385,9 @@ def addVars(sqlIdx, vStr, overwrite = False):
         if vName in vrs[sqlIdx]:
             if overwrite:
                 log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 2)
-                vrs[sqlIdx][vName] = vVal
+                vrs[sqlIdx][vName] = repl(sqlIdx, vVal)
         else:
-            vrs[sqlIdx][vName] = vVal
+            vrs[sqlIdx][vName] = repl(sqlIdx, vVal)
             
     #keysDelete = []
     # go throuth the result and remove the stuff that was not supplied in the input string, #602
@@ -397,7 +417,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
         log('Variables YAML defaults: %s' % str(vrsDef[sqlIdx]), 5)
         for k in vrsDef[sqlIdx]:
             if k not in vrs[sqlIdx]:
-                vrs[sqlIdx][k] = vrsDef[sqlIdx][k]
+                vrs[sqlIdx][k] = repl(sqlIdx, vrsDef[sqlIdx][k])
                 log('[W] MUST NOT REACH THIS POINT #602\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
         
     log('Actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])), 4)
@@ -609,7 +629,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['brush'] = clr
 
             penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
-            style['pen'] = QPen(penColor, 1, penStyle)
+            style['pen'] = QPen(penColor, 1, Qt.SolidLine)
 
             brightnessTo = kpi.get('gradientTo', '#F00')
             clrFade = QColor(brightnessTo)

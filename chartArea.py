@@ -34,6 +34,8 @@ import dpDummy
 import dpTrace
 import dpDB
 
+from profiler import timer
+
 class myWidget(QWidget):
 
     '''
@@ -1381,7 +1383,8 @@ class myWidget(QWidget):
                         
         if drawTimeScale:
             qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+2) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
-                    
+              
+    @timer
     def drawChart(self, qp, startX, stopX):
     
         '''
@@ -1897,6 +1900,7 @@ class myWidget(QWidget):
         if self.legend is not None:
             self.drawLegend(qp, startX, stopX)
         
+    @timer
     def drawGrid(self, qp, startX, stopX):
         '''
             draws grid and labels
@@ -1923,9 +1927,6 @@ class myWidget(QWidget):
                     # self.left_margin = 100
                     break
         '''
-
-        
-        t0 = time.time()
         
         wsize = self.size()
         
@@ -1978,9 +1979,7 @@ class myWidget(QWidget):
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
         delta = self.delta
-        
-        t1 = time.time()
-        
+                
         x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
         x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
 
@@ -2064,11 +2063,7 @@ class myWidget(QWidget):
                     label_width = self.font_width2
                  
                 # #587
-                
-                #print('>> >> x-label_width', x-label_width)
-                #print('>> >> wsize.height() - bottom_margin + self.font_height', wsize.height() - bottom_margin + self.font_height)
-                #print('>> >> label', label)
-                
+                                
                 qp.drawText(int(x-label_width), wsize.height() - bottom_margin + self.font_height, label)
                 
                 if date_mark:
@@ -2078,12 +2073,6 @@ class myWidget(QWidget):
                 qp.setPen(self.gridColor)
         
             x += self.step_size
-        #log(seconds / t_scale * 10)
-        
-        t2 = time.time()
-        
-        #log('grid: prep/draw: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
-        
         
     def paintEvent(self, QPaintEvent):
 
@@ -2093,27 +2082,18 @@ class myWidget(QWidget):
             
         startX = QPaintEvent.rect().x()
         stopX = startX + QPaintEvent.rect().width()
-
-        # prnt(' --- paint event ---  from: %i, to: %i, %s' % (startX, stopX, str(self.paintLock)))
         
-        t0 = time.time()
         qp = QPainter()
         
         super().paintEvent(QPaintEvent)
         
         qp.begin(self)
 
-        t1 = time.time()
         self.drawGrid(qp, startX, stopX)
-        t2 = time.time()
         self.drawChart(qp, startX, stopX)
-        t3 = time.time()
         
         qp.end()
-
-        t4 = time.time()
         
-        #log('paintEvent: prep/grid/chart/end: %s/%s/%s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), str(round(t4-t3, 3))))
 
 class chartArea(QFrame):
     

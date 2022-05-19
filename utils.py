@@ -13,6 +13,7 @@ from decimal import Decimal
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
 from binascii import hexlify
+from profiler import timer
 
 logmode = 'file'
 config = {}
@@ -218,6 +219,7 @@ class customKPIException(Exception):
     def __init__ (self, message):
         super().__init__(message)
     
+@timer
 def timestampToStr(ts, trimZeroes = True):
 
     if trimZeroes:
@@ -230,6 +232,7 @@ def timestampToStr(ts, trimZeroes = True):
         
     return s
 
+@timer
 def numberToStr(num, d = 0, fix = True):
 
     global localeCfg
@@ -254,6 +257,7 @@ def numberToStr(num, d = 0, fix = True):
     
     return s
 
+@timer
 def numberToStrCSV(num, grp = True):
 
     global localeCfg
@@ -288,6 +292,7 @@ def numberToStrCSV(num, grp = True):
     
     return s
 
+@timer
 def formatTimeShort(t):
     (ti, ms) = divmod(t, 1)
     
@@ -305,6 +310,7 @@ def formatTimeShort(t):
     
     return s
 
+@timer
 def formatTime(t, skipSeconds = False, skipMs = False):
     
     (ti, ms) = divmod(t, 1)
@@ -391,6 +397,7 @@ def msgDialog(title, message):
     return
         
 
+@timer
 def GB(bytes, scale = 'GB'):
     '''
         returns same number but in GB (/=1023^3)
@@ -408,6 +415,7 @@ def GB(bytes, scale = 'GB'):
     
     return bytes/mult
     
+@timer
 def antiGB(gb, scale = 'GB'):
     '''
         returns same number but in bytes (*=1023^3)
@@ -423,6 +431,7 @@ def antiGB(gb, scale = 'GB'):
     return gb*mult
     
     
+@timer
 def strftime(time):
 
     #ms = time.strftime('%f')
@@ -481,6 +490,7 @@ def cfgSet(param, value):
 
     config[param] = value
 
+@timer
 def cfg(param, default = None):
 
     global config
@@ -491,6 +501,9 @@ def cfg(param, default = None):
         return default
      
 def getlog(prefix):
+    '''
+        returns logging function with provided prefix
+    '''
     pref = None
     
     pref = prefix
@@ -501,6 +514,7 @@ def getlog(prefix):
     
     return logf
 
+@timer
 def log(s, loglevel = 3, nots = False, nonl = False):
     '''
         log the stuff one way or another...
@@ -533,6 +547,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         
         f.close()
         
+@timer
 def normalize_header(header):
     if header.isupper() and (header[0].isalpha() or header[0] == '_'):
         if cfg('lowercase-columns', False):
@@ -559,12 +574,14 @@ def securePath(filename, backslash = False):
     
     return fnsecure
     
+@timer
 def safeBool(s):
     if type(s) == str:
         return False if s.lower().strip() == 'false' else True
     else:
         return s
     
+@timer
 def safeInt(s, default = 0):
     
     try:

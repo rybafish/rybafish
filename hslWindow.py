@@ -50,6 +50,8 @@ from _constants import build_date, version
 
 from updatesCheck import checkUpdates
 
+from profiler import timer
+
 class hslWindow(QMainWindow):
 
     statusbar = None
@@ -66,6 +68,7 @@ class hslWindow(QMainWindow):
         self.tabs = None
     
         super().__init__()
+        
         self.initUI()
         
         if cfg('updatesCheckInterval', '7'):
@@ -169,6 +172,9 @@ class hslWindow(QMainWindow):
                 self.repaint()
         
     def closeEvent(self, event):
+
+        timer.report()
+
         log('Exiting...')
 
         if cfg('saveLayout', True):
