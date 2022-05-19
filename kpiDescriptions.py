@@ -26,7 +26,7 @@ vrsStrErr = {}      # True/False in case of parsing issues
 
 vrsRepl = {}        # dict of pairs from/to per sqlIdx for character replacements
 
-vrsStr = {}         # current string representation (for KPIs table
+vrsStr = {}         # current string representation (for KPIs table)
 vrs = {}            # actual dict
 
 class Style(UserDict):
@@ -95,10 +95,30 @@ class Variables(QDialog):
     
         if mode == 'defaults':
             lvrsStr = vrsStrDef
-            lvrs = vrsDef
+            #lvrs = vrsDef -- those already parsed/replaced, cannot use those
         else:
             lvrsStr = vrsStr
-            lvrs = vrs
+            #lvrs = vrs -- those already parsed/replaced, cannot use those
+            
+            
+        # need to parse str variables representation an build a dict to display in form of table
+        # duplicated code from add Vars, sorry
+        lvrs = {}
+        
+        for idx in lvrsStr:
+            
+            lvrs[idx] = {}
+            
+            vlist = [s.strip() for s in lvrsStr[idx].split(',')]
+            
+            vNames = []
+            for v in vlist:
+                p = v.find(':')
+                if p > 0:
+                    vName = v[:p].strip()
+                    vVal = v[p+1:].strip()
+                    
+                lvrs[idx][vName] = vVal
     
         r = 0
 
@@ -106,6 +126,7 @@ class Variables(QDialog):
         print('vrsStr')
         for idx in lvrsStr:
             print(idx, ' --> ', lvrsStr[idx])
+            print(idx, ' --> ', lvrs[idx])
         '''
 
         #print('\nvrs')
@@ -165,33 +186,27 @@ class Variables(QDialog):
             
             nvrs[idx][var] = val
 
-            '''
-            vv2 = None
-            try:
-                vv2 = eval(val,{"__builtins__":None},{})
-
-                if val != vv2:
-                    print(f'result: {vv2} != {val}')
-                    val = vv2
-            except:
-                log(f'[W] EVAL: {val}', 1)
-
-            
-            print('--->', idx, var, val)
-            '''
-
-        print('\nnew vrs:')
+        #print('\nnew vrs:')
+        
+        #combone string representation...
         for idx in nvrs:
-            print(idx, '-->', nvrs[idx])
+            #print(idx, '-->', nvrs[idx])
             
             nvrsStr[idx] = ', '.join(['%s: %s' % (key, value) for (key, value) in nvrs[idx].items()])
             
-        print('\nvrsStr')
+        #print('\nvrsStr')
         for idx in nvrsStr:
-            print(idx, ' --> ', nvrsStr[idx])
+            #print(idx, ' --> ', nvrsStr[idx])
             
+            try:
+                addVars(idx, nvrsStr[idx], overwrite=True) #use common processing
+            except vrsException as ex:
+                utils.msgDialog('Error', f'There is an error parsing {idx}:\n\n{ex}\n\nChanges were not applied.')
+            
+        '''
         vrsStr = nvrsStr
         vrs = nvrs
+        '''
             
         Variables.width = self.size().width()
         Variables.height = self.size().height()
@@ -200,7 +215,6 @@ class Variables(QDialog):
         Variables.y = self.pos().y()
         
         self.accept()
-        
         
     def initUI(self):
     
@@ -312,10 +326,16 @@ def addVars(sqlIdx, vStr, overwrite = False):
         r = vrsRepl.get(idx)
         
         if r:
-            print('do replace:', s, s.replace(r[0], r[1]))
-            return s.replace(r[0], r[1])
+            smod = s.replace(r[0], r[1])
+            if s != smod:
+                log(f'Variable replace {idx}: {s} --> {smod}', 4)
+            else:
+                log(f'Didn\'t make any changes {idx}: {s} --> {smod}', 4)
+            
+                
+            return smod
         else:
-            print('no replace:', s)
+            log(f'no replacement for {idx}, s = {s}', 4)
             return s
         
     def validate(s):
@@ -326,7 +346,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
         
         for v in vlist:
             if v.find(':') <= 0:
-                log('Not a valid variable definition: [%s]' % v, 3)
+                log('Not a valid variable definition: [%s]' % v, 2)
                 return False
                 
         return True
@@ -347,7 +367,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
     '''
     
     if not validate(vStr):
-        log('[E] Variables parsing error!')
+        log('[E] Variables parsing error!', 2)
         
         #vrsStr[sqlIdx] = None
         msg = 'Variables cannot have commas inside'
@@ -384,8 +404,11 @@ def addVars(sqlIdx, vStr, overwrite = False):
             
         if vName in vrs[sqlIdx]:
             if overwrite:
-                log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 2)
+                #log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 4)
                 vrs[sqlIdx][vName] = repl(sqlIdx, vVal)
+            else:
+                # log(f'Overwrite is off, so only do the replacement {vName}', 4)
+                vrs[sqlIdx][vName] = repl(sqlIdx, vrs[sqlIdx][vName])
         else:
             vrs[sqlIdx][vName] = repl(sqlIdx, vVal)
             
@@ -420,7 +443,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
                 vrs[sqlIdx][k] = repl(sqlIdx, vrsDef[sqlIdx][k])
                 log('[W] MUST NOT REACH THIS POINT #602\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
         
-    log('Actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])), 4)
+    log(f'Actual variables for {sqlIdx} now are {vrs[sqlIdx]}', 4)
 
 
 def processVars(sqlIdx, src):

@@ -74,11 +74,14 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
 
     vrs = {}
     
+    log(f'-----> kpi file: {file}')
+    
     if 'variables' in kpiFile:
     
         log('---- init dpDBCustom variables  ----')
 
         if 'variablesReplace' in kpiFile:
+            log(f'-----> variablesReplace: {file}')
             repl = kpiFile['variablesReplace']
             
             if type(repl) == list and len(repl) == 2:
@@ -87,6 +90,8 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
                 addVarsRepl(srcIdx, repl)
             else:
                 log(f'Unexpected variablesReplace format: {repl!r}')
+        else:
+            log(f'-----> no variables repl: {kpiFile}')
 
         if srcIdx not in vrsStrDef:
             addVarsDef(srcIdx, kpiFile['variables'])

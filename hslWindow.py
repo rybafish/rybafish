@@ -173,7 +173,8 @@ class hslWindow(QMainWindow):
         
     def closeEvent(self, event):
 
-        timer.report()
+        if hasattr(timer, 'report'):
+            timer.report()
 
         log('Exiting...')
 
@@ -485,7 +486,9 @@ class hslWindow(QMainWindow):
         
         h = self.hostTable.currentRow()
         
+        log('--------- variables s')
         vrs.exec_()
+        log('--------- variables end')
         
         self.kpisTable.refill(h)
         
