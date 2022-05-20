@@ -63,27 +63,29 @@ def timePrint():
 class cfgManager():
 
     configs = {}
+    path = None
     
-    def __init__(self, ):
+    def reload(self):
         from cryptography.fernet import Fernet
-        
-        script = sys.argv[0]
-        path, file = os.path.split(script)
-        
-        self.fname = os.path.join(path, 'connections.yaml')
-        
         self.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
-        
+    
         cfs = None
 
         self.configs = {}
 
         try: 
-            f = open(self.fname, 'r')
-            cfs = safe_load(f)
+            log(f'Opening connections file: {self.fname}', 3)
             
+            f = open(self.fname, 'r')
         except:
-            log('no configs, using defaults')
+            log('Cannot open the file, using defaults...', 2)
+            
+            return
+        
+        try:
+            cfs = safe_load(f)
+        except:
+            log('Error reading yaml file', 2)
             return
             
         if not cfs:
@@ -99,19 +101,27 @@ class cfgManager():
                 confEntry['pwd'] = pwd
                 
             self.configs[n] = confEntry
+
+    def __init__(self, fname = None):
+
+        if fname is None:
+            script = sys.argv[0]
+            path, file = os.path.split(script)
+        
+            self.fname = os.path.join(path, 'connections.yaml')
+            
+        else:
+            self.fname = fname
+            
+        self.reload()
         
     def updateConf(self, confEntry):
-        
-        
-        #if confEntry['name'] in self.configs:
-        #    self.configs.remove()
-        
+
         name = confEntry.pop('name')
         
         self.configs[name] = confEntry
         
         self.dump()
-        
     
     def removeConf(self, entryName):
         if entryName in self.configs:

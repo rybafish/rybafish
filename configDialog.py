@@ -43,7 +43,7 @@ class Config(QDialog):
         super(Config, self).__init__(parent)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         
-        self.cfgManager = cfgManager()
+        self.cfgManager = cfgManager(cfg('connectionsFile', None))
         self.initUI()
         
         self.conf = conf
