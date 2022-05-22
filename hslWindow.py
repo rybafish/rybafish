@@ -50,7 +50,7 @@ from _constants import build_date, version
 
 from updatesCheck import checkUpdates
 
-from profiler import timer
+from profiler import profiler
 
 class hslWindow(QMainWindow):
 
@@ -173,8 +173,8 @@ class hslWindow(QMainWindow):
         
     def closeEvent(self, event):
 
-        if hasattr(timer, 'report'):
-            timer.report()
+        if hasattr(profiler, 'report'):
+            profiler.report()
 
         log('Exiting...')
 

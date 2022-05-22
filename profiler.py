@@ -60,7 +60,7 @@ def humanize(i):
         
     return f'{i:.01f}{pf}'
 
-class Timer():
+class Profiler():
 
     timers = {}
 
@@ -106,7 +106,7 @@ class Timer():
 
         nothing = 0
         
-        timers = timer.timers
+        timers = profiler.timers
                 
         if '__doNothingProfile' in timers:
             calibrate = timers.pop('__doNothingProfile')
@@ -152,14 +152,14 @@ class Timer():
 
 
 if useProfiler:
-    print('Init profiler')
-    timer = Timer()
+    log('Init profiler')
+    profiler = Profiler()
 else:
-    print('Dummy profiler')
-    def timer(f):
+    log('Dummy profiler')
+    def profiler(f):
         return f
 
-@timer    
+@profiler    
 def __doNothingProfile():
     pass
 
@@ -184,6 +184,6 @@ def calibrate(n = 1000*1000):
     
     overhead = withProfile - noProfile
     
-    if hasattr(timer, 'timers'):
-        timer.timers['__doNothingProfile'] = [n, overhead]
-        log(f'calibration: {overhead=:.10f}, measured={timer.timers["__doNothingProfile"][1]:.10f}')
+    if hasattr(profiler, 'timers'):
+        profiler.timers['__doNothingProfile'] = [n, overhead]
+        log(f'calibration: {overhead=:.10f}, measured={profiler.timers["__doNothingProfile"][1]:.10f}')

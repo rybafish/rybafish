@@ -34,7 +34,7 @@ import dpDummy
 import dpTrace
 import dpDB
 
-from profiler import timer
+from profiler import profiler
 
 class myWidget(QWidget):
 
@@ -760,6 +760,7 @@ class myWidget(QWidget):
             
         return
         
+    @profiler
     def scanForHint(self, pos, host, kpis, scales, data):
         tolerance = 2 # number of pixels of allowed miss
         
@@ -1384,7 +1385,7 @@ class myWidget(QWidget):
         if drawTimeScale:
             qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+2) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
               
-    @timer
+    @profiler
     def drawChart(self, qp, startX, stopX):
     
         '''
@@ -1880,7 +1881,8 @@ class myWidget(QWidget):
 
                     points_to_draw = calculateOne()
 
-                    qp.drawPolyline(QPolygon(points[:points_to_draw]))
+                    with profiler('myWidget.drawPolyline'):
+                        qp.drawPolyline(QPolygon(points[:points_to_draw]))
                 
                 points.clear()
 
@@ -1900,7 +1902,7 @@ class myWidget(QWidget):
         if self.legend is not None:
             self.drawLegend(qp, startX, stopX)
         
-    @timer
+    @profiler
     def drawGrid(self, qp, startX, stopX):
         '''
             draws grid and labels
@@ -2843,6 +2845,9 @@ class chartArea(QFrame):
         self.widget.update()
         
         
+    #  - does not work, #635
+    
+    @profiler
     def renewMaxValues(self):
         '''
             scans max value and last value for kpi
