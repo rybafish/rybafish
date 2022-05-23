@@ -70,8 +70,10 @@ class hostsTable(QTableWidget):
             i+=1
             
         self.resizeColumnsToContents();
+
+        # change of the host to first one with following implicit call of refill(0)
+        self.setCurrentCell(0, 0)
         
-        self.hostChanged.emit(0) # does work
             
     def initTable(self):
 

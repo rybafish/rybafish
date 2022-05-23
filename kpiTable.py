@@ -124,7 +124,7 @@ class kpiTable(QTableWidget):
     def __init__(self):
 
         self.silentMode = True
-        self.kpiNames = [] # list of current kpis
+        self.kpiNames = [] # list of current kpis for RMC and variables dialog
         
         self.host = None # current host 
         
@@ -136,7 +136,7 @@ class kpiTable(QTableWidget):
         self.rowKpi = [] #list of current kpis
         
         self.vrsLock = False # suppress variables signal on cell update
-
+        
         super().__init__()
 
         self.initTable()
@@ -311,6 +311,7 @@ class kpiTable(QTableWidget):
             
                 log('<-----addVars kpiTable -----', 4)
                 
+            log('item change refill', 5)
             self.refill(self.host)
             
             self.vrsUpdate.emit()

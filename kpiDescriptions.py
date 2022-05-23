@@ -64,34 +64,13 @@ class Variables(QDialog):
     x = None
     y = None
 
-    def __init__(self, hwnd):
+    def __init__(self, hwnd, idx = None):
         super().__init__(hwnd)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         
-        self.initUI()
-        
-    '''
-    def eventFilter(self, source, event):
-        if (event.type() == QtCore.QEvent.KeyPress and event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter)):
-            res = super().eventFilter(source, event)
-            
-            print('enter')
-            return res
-            
-        return super().eventFilter(source, event)
-    '''
-        
+        self.initUI(idx)
+
     def fillVariables(self, mode = None):
-    
-        '''
-            надо сделать чтоб он шёл по YAML определениям
-            и показывал, если там пусто - то их, а если нет - то рантаймные значения
-            
-            а потом ещё что-то из рантайма то чего не было в дефолтах? чтоб почистить было можно
-            надо всё это барахло выносить в отдельный файл как минимум, тут будет чёрт ногу сломать что
-            
-            Надо ещё свериться как и внутри чего обновляет значения правка переменных в таблице, куда оно попадает, каким вызовом?
-        '''
     
         if mode == 'defaults':
             lvrsStr = vrsStrDef
@@ -216,7 +195,16 @@ class Variables(QDialog):
         
         self.accept()
         
-    def initUI(self):
+    def highlightIdx(self, idx):
+        log(f'Need to highlight {idx}', 5)
+        
+        for i in range(self.vTab.rowCount()):
+            item = self.vTab.item(i, 0)
+            if item is not None and item.text() == idx:
+                self.vTab.setCurrentItem(item)
+        
+        
+    def initUI(self, idx):
     
         iconPath = resourcePath('ico\\favicon.png')
         
@@ -261,6 +249,7 @@ class Variables(QDialog):
         self.setWindowTitle('Variables')
         
         self.fillVariables()
+        self.highlightIdx(idx)
         
         if self.width and self.height:
             self.resize(self.width, self.height)

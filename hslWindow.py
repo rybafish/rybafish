@@ -439,7 +439,8 @@ class hslWindow(QMainWindow):
         #really unsure if this one can be called twice...
         kpiDescriptions.clarifyGroups()
         
-        #trigger refill        
+        #trigger refill
+        log('menuReloadCustomKPIs refill', 5)
         self.kpisTable.refill(self.hostTable.currentRow())
         
         self.statusMessage('Custom KPIs reload finish', False)
@@ -482,15 +483,29 @@ class hslWindow(QMainWindow):
         abt.exec_()
 
     def menuVariables(self):
-        vrs = kpiDescriptions.Variables(self)
+        
+        # detect the sql source for currently selected custom KPI if any
+        idx = None
         
         h = self.hostTable.currentRow()
+        kpi = self.kpisTable.currentRow()
         
-        log('--------- variables s')
+        if h >= 0 and kpi >= 0 and kpi < len(self.kpisTable.kpiNames):
+            kpiName = self.kpisTable.kpiNames[kpi]
+            
+            ht = kpiDescriptions.hType(h, self.chartArea.widget.hosts)
+                        
+            if kpiName in kpiDescriptions.kpiStylesNN[ht]:
+                idx = kpiDescriptions.kpiStylesNN[ht][kpiName].get('sql')
+        
+        # pass this value to be selected in variables UI
+        vrs = kpiDescriptions.Variables(self, idx)
+
         vrs.exec_()
-        log('--------- variables end')
         
-        self.kpisTable.refill(h)
+        if h >= 0:
+            log('menuVariables refill', 5)
+            self.kpisTable.refill(h)
         
     def menuConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
@@ -511,7 +526,7 @@ class hslWindow(QMainWindow):
             self.chartArea.initDP(self.layout['kpis'])
         else:
             self.chartArea.initDP()
-        
+
     def menuConfig(self):
         
         if self.connectionConf is None:
