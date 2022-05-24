@@ -80,7 +80,7 @@ class Variables(QDialog):
             #lvrs = vrs -- those already parsed/replaced, cannot use those
             
             
-        # need to parse str variables representation an build a dict to display in form of table
+        # need to parse str variables representation and build a dict to display in form of table
         # duplicated code from add Vars, sorry
         lvrs = {}
         
@@ -100,9 +100,9 @@ class Variables(QDialog):
                 lvrs[idx][vName] = vVal
     
         r = 0
-
+        
         '''
-        print('vrsStr')
+        print('lvrsStr')
         for idx in lvrsStr:
             print(idx, ' --> ', lvrsStr[idx])
             print(idx, ' --> ', lvrs[idx])
@@ -123,15 +123,22 @@ class Variables(QDialog):
             for var in lvrs[idx]:
                 val = lvrs[idx][var]
                 #print(idx, var, val)
-                
+
+                # idx
                 if i == 0:
-                    item = QTableWidgetItem(idx)
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    self.vTab.setItem(row, 0, item)
+                    item1 = QTableWidgetItem(idx)
+                else:
+                    item1 = QTableWidgetItem('') # must be empty
                     
-                item = QTableWidgetItem(var)
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                self.vTab.setItem(row, 1, item)
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                self.vTab.setItem(row, 0, item1)
+                    
+                # variable
+                item2 = QTableWidgetItem(var)
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+                self.vTab.setItem(row, 1, item2)
+                
+                #value
                 self.vTab.setItem(row, 2, QTableWidgetItem(val))
                 
                 i += 1
@@ -156,7 +163,7 @@ class Variables(QDialog):
         nvrs = {}
         
         for i in range(rowsCount):
-            if self.vTab.item(i, 0) and self.vTab.item(i, 0).text() != idx:
+            if self.vTab.item(i, 0) and self.vTab.item(i, 0).text() != '' and self.vTab.item(i, 0).text() != idx:
                 idx = self.vTab.item(i, 0).text()
                 nvrs[idx] = {}
                 
