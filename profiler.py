@@ -1,6 +1,7 @@
 import sys, os, time
 from yaml import safe_load
 from datetime import datetime
+from _constants import isbeta
 
 # have to manually check the setting 
 # in order to avoid cyclic imports
@@ -8,18 +9,21 @@ from datetime import datetime
 script = sys.argv[0]
 path, file = os.path.split(script)
     
+
+useProfiler = False
+
 cfgFile = os.path.join(path, 'config.yaml')
 
 try: 
     f = open(cfgFile, 'r')
     config = safe_load(f)
     
-    useProfiler = config.get('useProfiler', False)
+    useProfiler = config.get('useProfiler', isbeta) # default is True in case of beta version
         
 except:
     useProfiler = False
     log('cannot load config, profiler not to be used')
-
+    
     
 # again, to avoid cyclic imports...
 def log(s):

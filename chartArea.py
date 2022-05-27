@@ -716,11 +716,10 @@ class myWidget(QWidget):
     def checkForHint(self, pos):
         '''
             1 actually we have to check the x scale 
-             and check 2 _pixels_ around and scan Y variations inside
+            and check 2 _pixels_ around and scan Y variations inside
              
-             because when we have 50 data points in same pixel (easy)
-             we don't know actual Y, it's too noizy
-             
+            because when we have 50 data points in same pixel (easy)
+            we don't know actual Y, it's too noizy
         '''
         
         found = None
@@ -2192,7 +2191,30 @@ class chartArea(QFrame):
             self.statusMessage_.emit(str, False)
             
     def keyPressEventZ(self, event):
-    
+        def moveHighlight(direction):
+            '''
+                #639 
+                to make it having sence regular there should be:
+                
+                for regular KPIs:
+                    1. loop to identify closest value to the selected timestamp
+                    2. calculate y-value on the screen for those values
+                    3. chose closest one to prevoiusly selected one
+                    
+                    4. somehow deal with collisions - same Y value possible
+                    
+                Gantt KPIs:
+                    up/down should move through entity, should be simple, 
+                    but also consider timing
+                    
+                Multiline KPIs:
+                    probably the simplised one as it is on the same Y-scale
+                    
+                Still want to try to implement this?
+                
+            '''
+            self.statusMessage('Not implemented yet.')
+            
         def reportHighlight(host, kpi, point):
             #this is black magic copy paste from scanforhint
             type = hType(host, self.widget.hosts)
@@ -2225,7 +2247,11 @@ class chartArea(QFrame):
             self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
             
         modifiers = QApplication.keyboardModifiers()
-        
+
+        if event.key() == Qt.Key_Up:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+                moveHighlight('up')
+            
         if event.key() == Qt.Key_Left:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
                 # move highlighted point one step left
