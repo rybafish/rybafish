@@ -11,14 +11,17 @@ from io import StringIO
 import csv
 
 from utils import cfg
-from utils import log as ulog
+#from utils import log as ulog
+from utils import getlog
 from utils import dbException
 
 from dbi_extention import getDBProperties
 
+'''
 def log(s, p = 3):
     ulog('[S2J] ' + s, p)
-
+'''
+log = getlog('HDB')
 
 class s2j():
 

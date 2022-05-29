@@ -24,15 +24,19 @@ import sql
 import sys
 
 from utils import cfg, hextostr
-from utils import log as ulog
+#from utils import log as ulog
+from utils import getlog
 from utils import dbException
 
 from dbi_extention import getDBProperties
 
 from os import getlogin
 
-def log(s, p = 3):
+'''def log(s, p = 3):
     ulog('[HDB] ' + s, p)
+'''
+
+log = getlog('HDB')
 
 class hdbi ():
 

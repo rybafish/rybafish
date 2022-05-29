@@ -25,6 +25,7 @@ from utils import dbException, customKPIException
 
 import traceback
 from os import getcwd
+from profiler import profiler
 
 class dataProvider(QObject):
     
@@ -567,6 +568,7 @@ class dataProvider(QObject):
 
     def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
         
+        @profiler
         def normalizeGradient(brMin, brMax, fromTo = (0, 100)):
         
             (targetMin, targetMax) = fromTo
@@ -798,7 +800,8 @@ class dataProvider(QObject):
                     for r in data[k]:
                         print('\t%i -'%(i), r)
                         i += 1
-                
+            
+        @profiler
         def multilineStats(rows, kpis, orderby, desc):
             
             #for r in rows:

@@ -21,7 +21,8 @@ from PyQt5.QtCore import pyqtSignal
 
 # my stuff
 import kpiDescriptions
-from kpiDescriptions import kpiStylesNN, hType, processVars
+from kpiDescriptions import kpiStylesNN, hType
+#, processVars
 from utils import resourcePath
 
 import importTrace
@@ -32,6 +33,8 @@ from utils import log, cfg, safeBool, safeInt
 import dpDummy
 import dpTrace
 import dpDB
+
+from profiler import profiler
 
 class myWidget(QWidget):
 
@@ -713,11 +716,10 @@ class myWidget(QWidget):
     def checkForHint(self, pos):
         '''
             1 actually we have to check the x scale 
-             and check 2 _pixels_ around and scan Y variations inside
+            and check 2 _pixels_ around and scan Y variations inside
              
-             because when we have 50 data points in same pixel (easy)
-             we don't know actual Y, it's too noizy
-             
+            because when we have 50 data points in same pixel (easy)
+            we don't know actual Y, it's too noizy
         '''
         
         found = None
@@ -757,6 +759,7 @@ class myWidget(QWidget):
             
         return
         
+    @profiler
     def scanForHint(self, pos, host, kpis, scales, data):
         tolerance = 2 # number of pixels of allowed miss
         
@@ -815,11 +818,13 @@ class myWidget(QWidget):
 
                 yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
                 
-                sqlIdx = kpiStylesNN[type][kpi]['sql']
+                #sqlIdx = kpiStylesNN[type][kpi]['sql']
 
                 try:
-                    yr0p = processVars(sqlIdx, yr0)
-                    yr1p = processVars(sqlIdx, yr1)
+                    #yr0p = processVars(sqlIdx, yr0)
+                    #yr1p = processVars(sqlIdx, yr1)
+                    yr0p = yr0
+                    yr1p = yr1
                     yr0 = 100 - max(0, int(yr0p))
                     yr1 = 100 - min(100, int(yr1p))
                 except ValueError:
@@ -1156,24 +1161,26 @@ class myWidget(QWidget):
                     if  subtype == 'gantt':
                         gantt = True
                     elif subtype == 'multiline':
-                        sqlIdx = kpiStylesNN[type][kpi].get('sql')
+                        #sqlIdx = kpiStylesNN[type][kpi].get('sql')
                         stacked = kpiStylesNN[type][kpi]['stacked']
-                        stacked = processVars(sqlIdx, stacked)
+                        #stacked = processVars(sqlIdx, stacked)
                         stacked = safeBool(stacked)
                         multiline = True
                         
                     label = kpiStylesNN[type][kpi]['label']
                     
+                    '''
                     if kpiStylesNN[type][kpi].get('sql'):
                         sqlIdx = kpiStylesNN[type][kpi].get('sql')
                         label = processVars(sqlIdx, label)
+                    '''
                         
                     if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
                         unit = ' ' + self.nscales[h][kpi]['unit']
                         
                         if kpi in self.nscales[h]: #if those are scanned already
                             if multiline:
-                                sqlIdx = kpiStylesNN[type][kpi].get('sql')
+                                #sqlIdx = kpiStylesNN[type][kpi].get('sql')
                                 
                                 kpiDescriptions.resetRaduga()
                                 label += ': ' + self.nscales[h][kpi]['label'] + unit + ': <$b$>multiline'
@@ -1186,12 +1193,12 @@ class myWidget(QWidget):
                                 lmeta.append(['multiline', None, 0, 16])
                                 
                                 legendCount = kpiStylesNN[type][kpi]['legendCount']
-                                legendCount = processVars(sqlIdx, legendCount)
+                                #legendCount = processVars(sqlIdx, legendCount)
                                 legendCount = safeInt(legendCount, 5)
                                 
                                 others = kpiStylesNN[type][kpi].get('others')
                                 if others:
-                                    others = processVars(sqlIdx, others)
+                                    #others = processVars(sqlIdx, others)
                                     others = safeBool(others)
                                     
                                     if others:
@@ -1376,7 +1383,8 @@ class myWidget(QWidget):
                         
         if drawTimeScale:
             qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+2) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
-                    
+              
+    @profiler
     def drawChart(self, qp, startX, stopX):
     
         '''
@@ -1642,8 +1650,10 @@ class myWidget(QWidget):
                         sqlIdx = kpiStylesNN[type][kpi]['sql']
                         
                         try:
-                            yr0p = processVars(sqlIdx, yr0)
-                            yr1p = processVars(sqlIdx, yr1)
+                            #yr0p = processVars(sqlIdx, yr0)
+                            #yr1p = processVars(sqlIdx, yr1)
+                            yr0p = yr0
+                            yr1p = yr1
                             yr0 = 100 - max(0, int(yr0p))
                             yr1 = 100 - min(100, int(yr1p))
                         except ValueError:
@@ -1870,7 +1880,8 @@ class myWidget(QWidget):
 
                     points_to_draw = calculateOne()
 
-                    qp.drawPolyline(QPolygon(points[:points_to_draw]))
+                    with profiler('myWidget.drawPolyline'):
+                        qp.drawPolyline(QPolygon(points[:points_to_draw]))
                 
                 points.clear()
 
@@ -1890,6 +1901,7 @@ class myWidget(QWidget):
         if self.legend is not None:
             self.drawLegend(qp, startX, stopX)
         
+    @profiler
     def drawGrid(self, qp, startX, stopX):
         '''
             draws grid and labels
@@ -1916,9 +1928,6 @@ class myWidget(QWidget):
                     # self.left_margin = 100
                     break
         '''
-
-        
-        t0 = time.time()
         
         wsize = self.size()
         
@@ -1971,9 +1980,7 @@ class myWidget(QWidget):
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
         delta = self.delta
-        
-        t1 = time.time()
-        
+                
         x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
         x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
 
@@ -2057,11 +2064,7 @@ class myWidget(QWidget):
                     label_width = self.font_width2
                  
                 # #587
-                
-                #print('>> >> x-label_width', x-label_width)
-                #print('>> >> wsize.height() - bottom_margin + self.font_height', wsize.height() - bottom_margin + self.font_height)
-                #print('>> >> label', label)
-                
+                                
                 qp.drawText(int(x-label_width), wsize.height() - bottom_margin + self.font_height, label)
                 
                 if date_mark:
@@ -2071,12 +2074,6 @@ class myWidget(QWidget):
                 qp.setPen(self.gridColor)
         
             x += self.step_size
-        #log(seconds / t_scale * 10)
-        
-        t2 = time.time()
-        
-        #log('grid: prep/draw: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
-        
         
     def paintEvent(self, QPaintEvent):
 
@@ -2086,27 +2083,18 @@ class myWidget(QWidget):
             
         startX = QPaintEvent.rect().x()
         stopX = startX + QPaintEvent.rect().width()
-
-        # prnt(' --- paint event ---  from: %i, to: %i, %s' % (startX, stopX, str(self.paintLock)))
         
-        t0 = time.time()
         qp = QPainter()
         
         super().paintEvent(QPaintEvent)
         
         qp.begin(self)
 
-        t1 = time.time()
         self.drawGrid(qp, startX, stopX)
-        t2 = time.time()
         self.drawChart(qp, startX, stopX)
-        t3 = time.time()
         
         qp.end()
-
-        t4 = time.time()
         
-        #log('paintEvent: prep/grid/chart/end: %s/%s/%s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), str(round(t4-t3, 3))))
 
 class chartArea(QFrame):
     
@@ -2203,7 +2191,30 @@ class chartArea(QFrame):
             self.statusMessage_.emit(str, False)
             
     def keyPressEventZ(self, event):
-    
+        def moveHighlight(direction):
+            '''
+                #639 
+                to make it having sence regular there should be:
+                
+                for regular KPIs:
+                    1. loop to identify closest value to the selected timestamp
+                    2. calculate y-value on the screen for those values
+                    3. chose closest one to prevoiusly selected one
+                    
+                    4. somehow deal with collisions - same Y value possible
+                    
+                Gantt KPIs:
+                    up/down should move through entity, should be simple, 
+                    but also consider timing
+                    
+                Multiline KPIs:
+                    probably the simplised one as it is on the same Y-scale
+                    
+                Still want to try to implement this?
+                
+            '''
+            self.statusMessage('Not implemented yet.')
+            
         def reportHighlight(host, kpi, point):
             #this is black magic copy paste from scanforhint
             type = hType(host, self.widget.hosts)
@@ -2236,7 +2247,11 @@ class chartArea(QFrame):
             self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
             
         modifiers = QApplication.keyboardModifiers()
-        
+
+        if event.key() == Qt.Key_Up:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+                moveHighlight('up')
+            
         if event.key() == Qt.Key_Left:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
                 # move highlighted point one step left
@@ -2856,6 +2871,9 @@ class chartArea(QFrame):
         self.widget.update()
         
         
+    #  - does not work, #635
+    
+    @profiler
     def renewMaxValues(self):
         '''
             scans max value and last value for kpi
