@@ -46,6 +46,8 @@ import customSQLs
 
 from PyQt5.QtCore import pyqtSignal
 
+from profiler import profiler
+
 reExpPlan = re.compile('explain\s+plan\s+for\s+sql\s+plan\s+cache\s+entry\s+(\d+)\s*$', re.I)
 
 class sqlWorker(QObject):
@@ -59,6 +61,7 @@ class sqlWorker(QObject):
         self.cons = cons
         self.args = []
     
+    @profiler
     def executeStatement(self):
     
         #print('0 --> main thread method')
@@ -365,6 +368,7 @@ class console(QPlainTextEditLN):
         #log('add layout: %s' % str(lo), 5)
         self.modifiedLayouts.append([position, lo, af])
             
+    @profiler
     def highlight(self):
         '''
             highlights word in document based on self.highlightedWords[]
@@ -453,6 +457,7 @@ class console(QPlainTextEditLN):
             
         return
         
+    @profiler
     def consSelection(self):
         #512 
         if self.manualSelection:
@@ -497,6 +502,7 @@ class console(QPlainTextEditLN):
         
         self.explainSignal.emit(st)
     
+    @profiler
     def formatSelection(self):
         cursor = self.textCursor()
 
@@ -593,6 +599,7 @@ class console(QPlainTextEditLN):
         if action == explainPlan:
             self.explainPlan()
             
+    @profiler
     def findString(self, str = None):
     
         if str is None:
@@ -905,6 +912,7 @@ class console(QPlainTextEditLN):
             '''
 
     #def clearHighlighting(self, type):
+    @profiler
     def clearHighlighting(self):
         #log('modifiedLayouts count: %i' % len(self.modifiedLayouts), 5)
         #return
@@ -942,6 +950,7 @@ class console(QPlainTextEditLN):
             self.haveHighlighrs = False
         '''
 
+    @profiler
     def clearManualSelection(self):
         #print('clear manualSelectionPos', self.manualSelectionPos)
         
@@ -961,6 +970,7 @@ class console(QPlainTextEditLN):
         self.viewport().repaint()
         
 
+    @profiler
     def cursorPositionChangedSignal(self):
         #log('cursorPositionChangedSignal', 5)
     
@@ -980,6 +990,7 @@ class console(QPlainTextEditLN):
         
         #log('cursorPositionChangedSignal: %s ms' % (str(round(t1-t0, 3))), 5)
         
+    @profiler
     def highlightBrackets(self, block, pos1, pos2, mode):
         #print ('highlight here: ', pos1, pos2)
     
@@ -1038,6 +1049,7 @@ class console(QPlainTextEditLN):
         
         self.viewport().repaint()
         
+    @profiler
     def checkBrackets(self):
     
         if self.bracketsHighlighted:
@@ -1545,6 +1557,7 @@ class resultSet(QTableWidget):
             
         return ';'.join(values)
         
+    @profiler
     def copyCells(self, abapMode = False):
         '''
             copy cells or rows or columns implementation
@@ -1866,6 +1879,7 @@ class resultSet(QTableWidget):
         else:
             super().keyPressEvent(event)
             
+    @profiler
     def populate(self, refreshMode = False):
         '''
             populates the result set based on
@@ -2343,7 +2357,7 @@ class sqlConsole(QWidget):
             
             #msgBox.move(x, y)
             '''
-    
+    @profiler
     def delayBackup(self):
         '''
             self.backup is a full path to a backup file
@@ -3439,6 +3453,7 @@ class sqlConsole(QWidget):
             
         self.cons.viewport().repaint()
             
+    @profiler
     def executeSelectionParse(self):
     
         txt = ''
@@ -3636,15 +3651,6 @@ class sqlConsole(QWidget):
                 
         ### print('[just stop]')
 
-
-        '''
-        print('F9?', F9)
-        print('cursorPos', cursorPos)
-        # print('startDelta', startDelta)
-        print('scanFrom, scanTo', scanFrom, scanTo)
-        print('start, stop', start, stop)
-        print('str:', str)
-        '''
         
         if stop == 0:
             # no semicolon met
@@ -3679,17 +3685,6 @@ class sqlConsole(QWidget):
             self.executeStatement(st, result)
 
         else:
-            '''
-            for st in statements:
-                #print('--> [%s]' % st)
-                
-                result = self.newResult(self.conn, st)
-                self.executeStatement(st, result)
-                
-                #self.update()
-                self.repaint()
-            '''
-            
             if len(statements) > 1:
                 self.stQueue = statements.copy()
                 self.launchStatementQueue()
@@ -3700,12 +3695,6 @@ class sqlConsole(QWidget):
                 #empty string selected
                 pass
                 
-        #move the cursor to initial position
-        #cursor = console.cons.textCursor()
-        #print('exiting, move to', cursorPos)
-        #cursor.setPosition(cursorPos, cursor.MoveAnchor)
-        #self.cons.setTextCursor(cursor)
-
         return
         
     def launchStatementQueue(self):

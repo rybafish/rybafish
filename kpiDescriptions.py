@@ -16,6 +16,7 @@ import utils
 from utils import log, cfg
 from utils import vrsException
 from utils import resourcePath
+from collections import UserDict
 
 currentIndex = None
 
@@ -23,8 +24,38 @@ vrsStrDef = {}      # yaml definition, strings
 vrsDef = {}         # yaml definition, dicts
 vrsStrErr = {}      # True/False in case of parsing issues
 
-vrsStr = {}         # current string representation (for KPIs table
+vrsRepl = {}        # dict of pairs from/to per sqlIdx for character replacements
+
+vrsStr = {}         # current string representation (for KPIs table)
 vrs = {}            # actual dict
+
+class Style(UserDict):
+    exclude = ['sql'] # keys excluded from vars processing
+    def __init__(self, idx, *args):
+        self.idx = idx
+        super().__init__(*args)
+        
+    def __missing__(self, key):
+        log('[!] Style key missing: %s' % key, 1)
+        raise KeyError(key)
+            
+    def __getitem__(self, key):
+        if key in self.data:
+            value = self.data[key]
+            
+            # if key == 'y_range': log(f'Style getitem[{self.idx}]: {key}/{value}')
+            
+            if self.idx and type(value) in (str, list):
+                if self.idx in vrs and value != '' and key not in Style.exclude:
+                    value = processVars(self.idx, value)
+                    # if key == 'y_range': log(f'Post-process:[{self.idx}]: {key}/{value}')
+            
+            return value
+            
+        if hasattr(self.__class__, "__missing__"):
+            return self.__class__.__missing__(self, key)
+            
+        raise KeyError(key)
 
 class Variables(QDialog):
 
@@ -33,48 +64,48 @@ class Variables(QDialog):
     x = None
     y = None
 
-    def __init__(self, hwnd):
+    def __init__(self, hwnd, idx = None):
         super().__init__(hwnd)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         
-        self.initUI()
-        
-    '''
-    def eventFilter(self, source, event):
-        if (event.type() == QtCore.QEvent.KeyPress and event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter)):
-            res = super().eventFilter(source, event)
-            
-            print('enter')
-            return res
-            
-        return super().eventFilter(source, event)
-    '''
-        
+        self.initUI(idx)
+
     def fillVariables(self, mode = None):
-    
-        '''
-            надо сделать чтоб он шёл по YAML определениям
-            и показывал, если там пусто - то их, а если нет - то рантаймные значения
-            
-            а потом ещё что-то из рантайма то чего не было в дефолтах? чтоб почистить было можно
-            надо всё это барахло выносить в отдельный файл как минимум, тут будет чёрт ногу сломать что
-            
-            Надо ещё свериться как и внутри чего обновляет значения правка переменных в таблице, куда оно попадает, каким вызовом?
-        '''
     
         if mode == 'defaults':
             lvrsStr = vrsStrDef
-            lvrs = vrsDef
+            #lvrs = vrsDef -- those already parsed/replaced, cannot use those
         else:
             lvrsStr = vrsStr
-            lvrs = vrs
+            #lvrs = vrs -- those already parsed/replaced, cannot use those
+            
+            
+        # need to parse str variables representation and build a dict to display in form of table
+        # duplicated code from add Vars, sorry
+        lvrs = {}
+        
+        for idx in lvrsStr:
+            
+            lvrs[idx] = {}
+            
+            vlist = [s.strip() for s in lvrsStr[idx].split(',')]
+            
+            vNames = []
+            for v in vlist:
+                p = v.find(':')
+                if p > 0:
+                    vName = v[:p].strip()
+                    vVal = v[p+1:].strip()
+                    
+                lvrs[idx][vName] = vVal
     
         r = 0
-
+        
         '''
-        print('vrsStr')
+        print('lvrsStr')
         for idx in lvrsStr:
             print(idx, ' --> ', lvrsStr[idx])
+            print(idx, ' --> ', lvrs[idx])
         '''
 
         #print('\nvrs')
@@ -92,15 +123,22 @@ class Variables(QDialog):
             for var in lvrs[idx]:
                 val = lvrs[idx][var]
                 #print(idx, var, val)
-                
+
+                # idx
                 if i == 0:
-                    item = QTableWidgetItem(idx)
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    self.vTab.setItem(row, 0, item)
+                    item1 = QTableWidgetItem(idx)
+                else:
+                    item1 = QTableWidgetItem('') # must be empty
                     
-                item = QTableWidgetItem(var)
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                self.vTab.setItem(row, 1, item)
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                self.vTab.setItem(row, 0, item1)
+                    
+                # variable
+                item2 = QTableWidgetItem(var)
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+                self.vTab.setItem(row, 1, item2)
+                
+                #value
                 self.vTab.setItem(row, 2, QTableWidgetItem(val))
                 
                 i += 1
@@ -125,7 +163,7 @@ class Variables(QDialog):
         nvrs = {}
         
         for i in range(rowsCount):
-            if self.vTab.item(i, 0) and self.vTab.item(i, 0).text() != idx:
+            if self.vTab.item(i, 0) and self.vTab.item(i, 0).text() != '' and self.vTab.item(i, 0).text() != idx:
                 idx = self.vTab.item(i, 0).text()
                 nvrs[idx] = {}
                 
@@ -133,21 +171,28 @@ class Variables(QDialog):
             val = self.vTab.item(i, 2).text()
             
             nvrs[idx][var] = val
-            
-            print('--->', idx, var, val)
 
-        print('\nnew vrs:')
+        #print('\nnew vrs:')
+        
+        #combone string representation...
         for idx in nvrs:
-            print(idx, '-->', nvrs[idx])
+            #print(idx, '-->', nvrs[idx])
             
             nvrsStr[idx] = ', '.join(['%s: %s' % (key, value) for (key, value) in nvrs[idx].items()])
             
-        print('\nvrsStr')
+        #print('\nvrsStr')
         for idx in nvrsStr:
-            print(idx, ' --> ', nvrsStr[idx])
+            #print(idx, ' --> ', nvrsStr[idx])
             
+            try:
+                addVars(idx, nvrsStr[idx], overwrite=True) #use common processing
+            except vrsException as ex:
+                utils.msgDialog('Error', f'There is an error parsing {idx}:\n\n{ex}\n\nChanges were not applied.')
+            
+        '''
         vrsStr = nvrsStr
         vrs = nvrs
+        '''
             
         Variables.width = self.size().width()
         Variables.height = self.size().height()
@@ -157,8 +202,16 @@ class Variables(QDialog):
         
         self.accept()
         
+    def highlightIdx(self, idx):
+        log(f'Need to highlight {idx}', 5)
         
-    def initUI(self):
+        for i in range(self.vTab.rowCount()):
+            item = self.vTab.item(i, 0)
+            if item is not None and item.text() == idx:
+                self.vTab.setCurrentItem(item)
+        
+        
+    def initUI(self, idx):
     
         iconPath = resourcePath('ico\\favicon.png')
         
@@ -203,6 +256,7 @@ class Variables(QDialog):
         self.setWindowTitle('Variables')
         
         self.fillVariables()
+        self.highlightIdx(idx)
         
         if self.width and self.height:
             self.resize(self.width, self.height)
@@ -211,6 +265,11 @@ class Variables(QDialog):
             self.move(self.x, self.y)
 
 
+def addVarsRepl(sqlIdx, repl):
+    global vrsRepl
+    
+    vrsRepl[sqlIdx] = repl
+    
 def addVarsDef(sqlIdx, vStr):
     '''
         builds a dict for default values as it is defined in yaml definition
@@ -250,12 +309,31 @@ def addVarsDef(sqlIdx, vStr):
 def addVars(sqlIdx, vStr, overwrite = False):
     '''
         this one called on manual update of variables from the KPIs table
+        
+        (seems) it also actualizes vrs dict
     '''
 
     global vrs
     global vrsStr
     global vrsDef
+    global vrsRepl
     
+    def repl(idx, s):
+        r = vrsRepl.get(idx)
+        
+        if r:
+            smod = s.replace(r[0], r[1])
+            if s != smod:
+                log(f'Variable replace {idx}: {s} --> {smod}', 4)
+            else:
+                log(f'Didn\'t make any changes {idx}: {s} --> {smod}', 4)
+            
+                
+            return smod
+        else:
+            log(f'no replacement for {idx}, s = {s}', 4)
+            return s
+        
     def validate(s):
         '''
             very simple validation routine
@@ -264,7 +342,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
         
         for v in vlist:
             if v.find(':') <= 0:
-                log('Not a valid variable definition: [%s]' % v, 3)
+                log('Not a valid variable definition: [%s]' % v, 2)
                 return False
                 
         return True
@@ -285,7 +363,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
     '''
     
     if not validate(vStr):
-        log('[E] Variables parsing error!')
+        log('[E] Variables parsing error!', 2)
         
         #vrsStr[sqlIdx] = None
         msg = 'Variables cannot have commas inside'
@@ -311,7 +389,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
         if p > 0:
             vName = v[:p].strip()
             vVal = v[p+1:].strip()
-            
+                        
             vNames.append(vName)
         else:
             '''
@@ -322,10 +400,13 @@ def addVars(sqlIdx, vStr, overwrite = False):
             
         if vName in vrs[sqlIdx]:
             if overwrite:
-                log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 2)
-                vrs[sqlIdx][vName] = vVal
+                #log('Variable already in the list, will update...: %s -> %s' % (vName, vVal), 4)
+                vrs[sqlIdx][vName] = repl(sqlIdx, vVal)
+            else:
+                # log(f'Overwrite is off, so only do the replacement {vName}', 4)
+                vrs[sqlIdx][vName] = repl(sqlIdx, vrs[sqlIdx][vName])
         else:
-            vrs[sqlIdx][vName] = vVal
+            vrs[sqlIdx][vName] = repl(sqlIdx, vVal)
             
     #keysDelete = []
     # go throuth the result and remove the stuff that was not supplied in the input string, #602
@@ -355,47 +436,71 @@ def addVars(sqlIdx, vStr, overwrite = False):
         log('Variables YAML defaults: %s' % str(vrsDef[sqlIdx]), 5)
         for k in vrsDef[sqlIdx]:
             if k not in vrs[sqlIdx]:
-                vrs[sqlIdx][k] = vrsDef[sqlIdx][k]
+                vrs[sqlIdx][k] = repl(sqlIdx, vrsDef[sqlIdx][k])
                 log('[W] MUST NOT REACH THIS POINT #602\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
         
-    log('Actual variables for %s defined as %s' % (sqlIdx, str(vrs[sqlIdx])), 4)
+    log(f'Actual variables for {sqlIdx} now are {vrs[sqlIdx]}', 4)
 
 
-def processVars(sqlIdx, s):
+def processVars(sqlIdx, src):
     '''
         makes the actual replacement based on global variable vrs
         sqlIdx is a custom KPI file name with extention, example: 10_exp_st.yaml
         
-        s is the string for processing
+        s is the string or list of strings for processing
+        
+        this function does not evaluate source definition, only vrs
+        vrs actualization done in addVars - it restores missed values, etc
     '''
 
     global vrs
     
-    s = str(s)
-    
     # is it custom kpi at all?
-    if sqlIdx is None:
-        return s
+    if not sqlIdx:
+        return src
 
     # are there any variables?
     if sqlIdx not in vrs:
-        return s
+        return src
 
-    #log('---process vars...---------------------------------------', 5)
-    #log('sqlIdx: ' + str(sqlIdx))
-    #log('vrs: ' + str(vrs[sqlIdx]))
-    #log('>>' + s, 5)
-    #log('  -- -- -- --', 5)
 
-    if sqlIdx in vrs:
-        for v in vrs[sqlIdx]:
-            if v == '':
-                continue
+    outList = []
+    
+    if type(src) != list:
+        srcList = [str(src)]
+    else:
+        srcList = src
+
+    # go through list values
+    for s in srcList:
+        #if s is not None:
+            #s = str(s)
+        if type(s) == str:
+
+            #log('---process vars...---------------------------------------', 5)
+            #log('sqlIdx: ' + str(sqlIdx))
+            #log('vrs: ' + str(vrs[sqlIdx]))
+            #log('>>' + s, 5)
+            #log('  -- -- -- --', 5)
+
+            if sqlIdx in vrs:
+                for v in vrs[sqlIdx]:
+                    if v == '':
+                        continue
+                        
+                    s = s.replace('$'+v, str(vrs[sqlIdx][v]))
                 
-            s = s.replace('$'+v, str(vrs[sqlIdx][v]))
+            #log('<<' + s, 5)
+            #log('---------------------------------------------------------', 5)
         
-    #log('<<' + s, 5)
-    #log('---------------------------------------------------------', 5)
+        outList.append(s)
+        
+    # return the same type: single string or list of strings
+    if type(src) != list:
+        return outList[0]
+    else:
+        return outList
+        
     return s
 
 def removeDeadKPIs(kpis, type):
@@ -453,61 +558,30 @@ customSql = {}
 
 def createStyle(kpi, custom = False, sqlIdx = None):
 
-    style = {}
+    log(str(kpi))
+
+    #style = {}
+    style = Style(sqlIdx)
     
-    #try: 
     # mandatory stuff
-    if 'subtype' in kpi:
-        style['subtype'] = kpi['subtype']
-    else:
-        style['subtype'] = None
     
-    if 'name' in kpi:
-        if custom:
-            style['name'] = 'cs-' + kpi['name']
-        else:
-            style['name'] = kpi['name']
+    style['type'] = 's' if kpi['type'] == 'service' else 'h'
+    style['subtype'] = kpi.get('subtype')
+    
+    if custom:
+        style['name'] = 'cs-' + kpi['name']
     else:
-        return None
-        
-    if 'type' in kpi:
-        if kpi['type'] == 'service':
-            style['type'] = 's'
-        else:
-            style['type'] = 'h'
-    else:
-        return None
+        style['name'] = kpi['name']
         
     if custom:
-        if kpi.get('nofilter'):
-            style['nofilter'] = True
-        else:
-            style['nofilter'] = False
-            
-        if 'sqlname' in kpi:
-            style['sqlname'] = kpi['sqlname']
-        else:
-            if 'subtype' in kpi and kpi['subtype'] == 'gantt':
-                style['sqlname'] = 'None'
-            else:
-                return None
+        style['sqlname'] = kpi.get('sqlname', '') # gantt subtype always uses START/STOP so no sql column name used
+        style['nofilter'] = True if kpi.get('nofilter') else False
             
     # optional stuff
-    if 'group' in kpi:
-        style['group'] = kpi['group']
-    else:
-        style['group'] = ''
+    style['group'] = kpi.get('group', '')
+    style['desc'] = kpi.get('description', '')
+    style['label'] = kpi.get('label', '')
         
-    if 'description' in kpi:
-        style['desc'] = kpi['description']
-    else:
-        style['desc'] = ''
-
-    if 'label' in kpi:
-        style['label'] = kpi['label']
-    else:
-        style['label'] = ''
-
     if 'sUnit' in kpi and 'dUnit' in kpi:
         sUnit = kpi['sUnit'].split('/')
         dUnit = kpi['dUnit'].split('/')
@@ -528,21 +602,25 @@ def createStyle(kpi, custom = False, sqlIdx = None):
     else:
         color = QColor('#DDD')
         
-    if 'style' in kpi and kpi['style'] != '':
-        if kpi['style'] == 'solid':
-            penStyle = Qt.SolidLine
-        elif kpi['style'] == 'dotted':
-            penStyle = Qt.DotLine
-        elif kpi['style'] == 'dashed':
-            penStyle = Qt.DashLine
-        elif kpi['style'] == 'dotline':
-            penStyle = Qt.DotLine
-        elif kpi['style'] == 'bar' or kpi['style'] == 'candle':
-            penStyle = Qt.SolidLine
-        else:
-            log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])))
-            penStyle = Qt.DashDotDotLine
+        
+        
+    penStyles = {
+        'solid': Qt.SolidLine,
+        'dotted': Qt.DotLine,
+        'dashed': Qt.DashLine,
+        'dotline': Qt.DotLine,
+        'bar': Qt.DotLine,
+        'candle': Qt.DotLine,
+        'unknown': Qt.DashDotDotLine
+    }
+        
+    if 'style' in kpi:
+        st = kpi.get('style', 'unknown')
+        penStyle = penStyles[st]
+        
+        if st == 'unknown': log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])), 2)
     else:
+        log('[W] pen style not defined for %s, using default' % (kpi['name']), 2)
         if style['type'] == 'h':
             penStyle = Qt.DashLine
         else:
@@ -551,112 +629,58 @@ def createStyle(kpi, custom = False, sqlIdx = None):
     if kpi['name'][:7] == '---#---':
         style['pen'] = '-'
     else:
-        if 'subtype' in kpi and kpi['subtype'] == 'gantt':
+        if kpi.get('subtype') == 'gantt':
             # gantt stuff
-            if 'width' in kpi:
-                style['width'] = int(kpi['width'])
-            else:
-                style['width'] = 8
-
-            if 'fontSize' in kpi:
-                style['font'] = int(kpi['fontSize'])
-            else:
-                style['font'] = 8
-
-            if 'titleFontSize' in kpi:
-                style['tfont'] = int(kpi['titleFontSize'])
-            else:
-                style['tfont'] = style['font'] - 1 
-
-            if 'shift' in kpi:
-                style['shift'] = int(kpi['shift'])
-            else:
-                style['shift'] = 2
+            style['width'] = kpi.get('width', 8)
+            style['font'] = kpi.get('fontSize', 8)
+            style['tfont'] = kpi.get('titleFontSize', -1)
+            style['shift'] = kpi.get('shift', 2)
+            style['title'] = kpi.get('title')
+            style['gradient'] = kpi.get('gradient')
             
-            if 'style' in kpi and (kpi['style'] == 'bar' or kpi['style'] == 'candle'):
-                style['style'] = kpi['style']
-            else:
+            style['style'] = kpi.get('style', 'bar')
+            
+            if style['style'] not in ('bar', 'candle'):
+                log('[W] unsupported gantt style (%s), using default' % style['style'], 2)
                 style['style'] = 'bar'
 
-            if 'title' in kpi:
-                style['title'] = kpi['title']
-            else:
-                style['title'] = None
-
-            if 'gradient' in kpi:
-                style['gradient'] = kpi['gradient']
-            else:
-                style['gradient'] = None
-
-            if 'gradientTo' in kpi:
-                brightnessTo = kpi['gradientTo']
-            else:
-                brightnessTo = '#F00'
-                
             clr = QColor(color)
             style['brush'] = clr
 
+            penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+            style['pen'] = QPen(penColor, 1, Qt.SolidLine)
+
+            brightnessTo = kpi.get('gradientTo', '#F00')
             clrFade = QColor(brightnessTo)
             style['gradientTo'] = clrFade
 
-            penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
-            style['pen'] = QPen(penColor, 1, penStyle)
+            yr = kpi.get('y_range')
             
-            if 'y_range' in kpi and kpi['y_range'] != '':
-                yr = kpi['y_range']
-                
-                style['y_range'] = [None]*2
-
-                '''
-                y1 = int(processVars(sqlIdx, yr[0]))
-                y2 = int(processVars(sqlIdx, yr[1]))
-                
-                style['y_range'][0] = 100 - max(0, y1)
-                style['y_range'][1] = 100 - min(100, y2)
-                '''
-                
-                style['y_range'][0] = yr[0]
-                style['y_range'][1] = yr[1]
+            if type(yr) == list and len(yr) == 2:
+                style['y_range'] = yr
             else:
+                log('[W] unsupported y_range value for %s: %s, using default: 0, 100' % (kpi['name'], str(yr)), 2)
                 style['y_range'] = [0, 100]
-                
-        elif 'subtype' in kpi and kpi['subtype'] == 'multiline':
+            
+        elif kpi.get('subtype') == 'multiline':
         
             if 'splitby' not in kpi:
                 log('[W] multiline KPI (%s) must have splitby definition, skipping!' % (kpi['name']), 2)
                 return None
 
             style['groupby'] = kpi['splitby']
+            style['stacked'] = kpi.get('stacked', False)
+            style['multicolor'] = kpi.get('multicolor', False)
+            style['descending'] = kpi.get('desc', False)
+            style['legendCount'] = kpi.get('legendCount', 5)
+            style['others'] = kpi.get('others', False)
+
+            ordby = kpi.get('orderby', 'unknown')
+            if ordby not in ['max', 'avg', 'name', 'deviation']:
+                log('[W] unsupported orderby value %s/%s, using default (max)' % (kpi['name'], kpi.get('orderby')), 2)
+                    
+            style['orderby'] = ordby
             
-            if 'stacked' in kpi:
-                style['stacked'] = kpi['stacked']
-            else:
-                style['stacked'] = False
-
-            style['orderby'] = 'max'
-            
-            if 'orderby' in kpi:
-                if kpi['orderby'] in ['max', 'avg', 'name', 'deviation']:
-                    style['orderby'] = kpi['orderby']
-            
-            if 'multicolor' in kpi:
-                style['multicolor'] = kpi['multicolor']
-            else:
-                style['multicolor'] = False
-
-            if 'desc' in kpi:
-                style['descending'] = kpi['desc']
-            else:
-                style['descending'] = True
-
-            if 'legendCount' in kpi:
-                style['legendCount'] = kpi['legendCount']
-            else:
-                style['legendCount'] = 5
-
-            if 'others' in kpi:
-                style['others'] = kpi['others']
-                
             if style['multicolor']:
                 style['pen'] = QPen(QColor('#48f'), 1, Qt.SolidLine)
             else:
@@ -664,7 +688,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
                 
             style['brush'] = None
             style['style'] = 'multiline'
-            #kpi['groupby'] = None
+            
         else:
             # regular kpis
             style['pen'] = QPen(color, 1, penStyle)
@@ -698,7 +722,10 @@ def getTimeKey(type, kpi):
 
 def getSubtype(type, kpi):
 
-    subtype = kpiStylesNN[type][kpi]['subtype']
+    if kpi in kpiStylesNN[type]:
+        subtype = kpiStylesNN[type][kpi]['subtype']
+    else:
+        subtype = None
         
     return subtype
         
@@ -869,9 +896,7 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
     '''
     
     for kpi in rows:
-    
-        print(kpi)
-    
+        
         if kpi[1].lower() == 'm_load_history_host':
             type = 'host'
         else:

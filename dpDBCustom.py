@@ -12,7 +12,7 @@ from utils import log
 from kpiDescriptions import createStyle, customSql, kpiGroup
 
 # variables...
-from kpiDescriptions import addVars, vrsStr, vrsStrDef, addVarsDef
+from kpiDescriptions import addVars, vrsStr, vrsStrDef, addVarsDef, addVarsRepl
 
 from utils import Layout
 from utils import customKPIException, vrsException
@@ -74,8 +74,25 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
 
     vrs = {}
     
+    log(f'-----> kpi file: {file}')
+    
     if 'variables' in kpiFile:
     
+        log('---- init dpDBCustom variables  ----')
+
+        if 'variablesReplace' in kpiFile:
+            log(f'-----> variablesReplace: {file}')
+            repl = kpiFile['variablesReplace']
+            
+            if type(repl) == list and len(repl) == 2:
+                repl = [str(x) for x in repl]
+                log(f"Variables replace: '{repl[0]}' -> '{repl[1]}'")
+                addVarsRepl(srcIdx, repl)
+            else:
+                log(f'Unexpected variablesReplace format: {repl!r}')
+        else:
+            log(f'-----> no variables repl: {kpiFile}')
+
         if srcIdx not in vrsStrDef:
             addVarsDef(srcIdx, kpiFile['variables'])
         
@@ -88,7 +105,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
             raise vrsException('%s: %s' % (str(type(e)), str(e)))
             
         log('----- addVars dpDBCustom stop -----')
-    
+
     kpis = kpiFile['kpis']
     
     customSql[srcIdx] = kpiFile['sql']

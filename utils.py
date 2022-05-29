@@ -13,6 +13,7 @@ from decimal import Decimal
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
 from binascii import hexlify
+from profiler import profiler
 
 logmode = 'file'
 config = {}
@@ -62,27 +63,29 @@ def timePrint():
 class cfgManager():
 
     configs = {}
+    path = None
     
-    def __init__(self, ):
+    def reload(self):
         from cryptography.fernet import Fernet
-        
-        script = sys.argv[0]
-        path, file = os.path.split(script)
-        
-        self.fname = os.path.join(path, 'connections.yaml')
-        
         self.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
-        
+    
         cfs = None
 
         self.configs = {}
 
         try: 
-            f = open(self.fname, 'r')
-            cfs = safe_load(f)
+            log(f'Opening connections file: {self.fname}', 3)
             
+            f = open(self.fname, 'r')
         except:
-            log('no configs, using defaults')
+            log('Cannot open the file, using defaults...', 2)
+            
+            return
+        
+        try:
+            cfs = safe_load(f)
+        except:
+            log('Error reading yaml file', 2)
             return
             
         if not cfs:
@@ -98,19 +101,27 @@ class cfgManager():
                 confEntry['pwd'] = pwd
                 
             self.configs[n] = confEntry
+
+    def __init__(self, fname = None):
+
+        if fname is None:
+            script = sys.argv[0]
+            path, file = os.path.split(script)
+        
+            self.fname = os.path.join(path, 'connections.yaml')
+            
+        else:
+            self.fname = fname
+            
+        self.reload()
         
     def updateConf(self, confEntry):
-        
-        
-        #if confEntry['name'] in self.configs:
-        #    self.configs.remove()
-        
+
         name = confEntry.pop('name')
         
         self.configs[name] = confEntry
         
         self.dump()
-        
     
     def removeConf(self, entryName):
         if entryName in self.configs:
@@ -218,6 +229,7 @@ class customKPIException(Exception):
     def __init__ (self, message):
         super().__init__(message)
     
+@profiler
 def timestampToStr(ts, trimZeroes = True):
 
     if trimZeroes:
@@ -230,6 +242,7 @@ def timestampToStr(ts, trimZeroes = True):
         
     return s
 
+@profiler
 def numberToStr(num, d = 0, fix = True):
 
     global localeCfg
@@ -254,6 +267,7 @@ def numberToStr(num, d = 0, fix = True):
     
     return s
 
+@profiler
 def numberToStrCSV(num, grp = True):
 
     global localeCfg
@@ -288,6 +302,7 @@ def numberToStrCSV(num, grp = True):
     
     return s
 
+@profiler
 def formatTimeShort(t):
     (ti, ms) = divmod(t, 1)
     
@@ -305,6 +320,7 @@ def formatTimeShort(t):
     
     return s
 
+@profiler
 def formatTime(t, skipSeconds = False, skipMs = False):
     
     (ti, ms) = divmod(t, 1)
@@ -391,6 +407,7 @@ def msgDialog(title, message):
     return
         
 
+@profiler
 def GB(bytes, scale = 'GB'):
     '''
         returns same number but in GB (/=1023^3)
@@ -408,6 +425,7 @@ def GB(bytes, scale = 'GB'):
     
     return bytes/mult
     
+@profiler
 def antiGB(gb, scale = 'GB'):
     '''
         returns same number but in bytes (*=1023^3)
@@ -423,6 +441,7 @@ def antiGB(gb, scale = 'GB'):
     return gb*mult
     
     
+@profiler
 def strftime(time):
 
     #ms = time.strftime('%f')
@@ -481,6 +500,7 @@ def cfgSet(param, value):
 
     config[param] = value
 
+@profiler
 def cfg(param, default = None):
 
     global config
@@ -489,7 +509,22 @@ def cfg(param, default = None):
         return config[param]
     else:
         return default
+     
+def getlog(prefix):
+    '''
+        returns logging function with provided prefix
+    '''
+    pref = None
+    
+    pref = prefix
+    def logf(s, *args, **kwargs):
+        s = '[%s] %s' % (pref, s)
         
+        log(s, *args, **kwargs)
+    
+    return logf
+
+@profiler
 def log(s, loglevel = 3, nots = False, nonl = False):
     '''
         log the stuff one way or another...
@@ -522,6 +557,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         
         f.close()
         
+@profiler
 def normalize_header(header):
     if header.isupper() and (header[0].isalpha() or header[0] == '_'):
         if cfg('lowercase-columns', False):
@@ -548,9 +584,14 @@ def securePath(filename, backslash = False):
     
     return fnsecure
     
+@profiler
 def safeBool(s):
-    return False if s.lower().strip() == 'false' else True
+    if type(s) == str:
+        return False if s.lower().strip() == 'false' else True
+    else:
+        return s
     
+@profiler
 def safeInt(s, default = 0):
     
     try:

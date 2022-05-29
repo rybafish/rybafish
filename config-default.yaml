@@ -72,7 +72,7 @@ keepalive: 1200
 #saveKPIs: True
 #saveOpenTabs: True
 
-#lowercase column named for "Generate Filter" and "Insert Column Names" features
+## lowercase column named for "Generate Filter" and "Insert Column Names" features
 #lowercase-columns: False
 
 ## colors for Colorize KPIs menu option:
@@ -81,19 +81,19 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
         '#ff1493', '#7b68ee', '#ffa07a', '#008000', '#3cb371', '#b8860b', '#4682b4', '#000080', 
         '#9acd32', '#afeeee', '#7fffd4', '#ffdead', '#2f4f4f', '#556b2f', '#a0522d', '#483d8b']
 
-# string that will trigger the alert sound when selected:
+## string that will trigger the alert sound when selected:
 #alertTriggerOn: '{alert}'
 
-# default sound to play when '{alert}' value selected
+## default sound to play when '{alert}' value selected
 #alertSound: 'default.wav'
 
-# alert sounds volume
+## alert sounds volume
 #alertVolume: 80
 
-# Popup the window on alert
+## Popup the window on alert
 #alertAutoPopup: True
 
-# Play a sound when the autorefresh console is disconnected
+## Play a sound when the autorefresh console is disconnected
 #alertDisconnected: 'disconnected.wav'
 
 ## max value length for ABAP-copy
@@ -102,3 +102,9 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 ## automatic check for updates parameters
 #updatesCheckInterval: 7
 #updatesCheckBeta: True
+
+## use execution profiler: enabled by default for beta builds
+#useProfiler: True
+
+## location of the connections.yaml file, by default - RybaFish directory
+# connectionsFile: '<path to>...\connections.yaml'
