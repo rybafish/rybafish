@@ -633,7 +633,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             # gantt stuff
             style['width'] = kpi.get('width', 8)
             style['font'] = kpi.get('fontSize', 8)
-            style['tfont'] = kpi.get('titleFontSize', -1)
+            style['tfont'] = kpi.get('titleFontSize', style['font']-1)
             style['shift'] = kpi.get('shift', 2)
             style['title'] = kpi.get('title')
             style['gradient'] = kpi.get('gradient')

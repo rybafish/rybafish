@@ -559,13 +559,16 @@ class myWidget(QWidget):
             self._parent.dp.fakeDisconnect = True
         
         if action == savePNG:
-            if not os.path.isdir('screens'):
-                os.mkdir('screens')
-                
-            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
-            fn = os.path.join('screens', fn)
             
-            log('Saving PNG image (%s)' % fn)
+            screensFolder = cfg('screensFolder', 'screens')
+            
+            if not os.path.isdir(screensFolder):
+                os.mkdir(screensFolder)
+                
+            filename = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
+            fn = os.path.join(screensFolder, filename)
+            
+            log('Saving PNG image (%s)' % filename)
             
             pixmap = QPixmap(self.size())
             self.render(pixmap)
@@ -600,13 +603,15 @@ class myWidget(QWidget):
             self.repaint()
         
         if action == saveVAPNG:
-            if not os.path.isdir('screens'):
-                os.mkdir('screens')
-                
-            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
-            fn = os.path.join('screens', fn)
+            screensFolder = cfg('screensFolder', 'screens')
             
-            log('Saving PNG image (%s)' % fn)
+            if not os.path.isdir(screensFolder):
+                os.mkdir(screensFolder)
+                
+            filename = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
+            fn = os.path.join(screensFolder, filename)
+            
+            log('Saving PNG image (%s)' % filename)
             
             pixmap = QPixmap(self.parentWidget().size())
             self.parentWidget().render(pixmap)

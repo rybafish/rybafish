@@ -108,3 +108,12 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 
 ## location of the connections.yaml file, by default - RybaFish directory
 # connectionsFile: '<path to>...\connections.yaml'
+
+## optional path to screen shots folder
+#screensFolder: '<path to>...\screens'
+
+## optional path to custom KPIs folder
+#customKPIsFolder: '<path to>...\sql'
+
+## optional path to context SQLs folder
+#contextSQLsFolder: '<path to>...\ContextSQLs'
