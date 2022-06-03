@@ -740,6 +740,9 @@ class myWidget(QWidget):
                 if found == True: #we only can find one kpi to highlight (one for all the hosts)
                     return
 
+        self.collisionsCurrent = None
+        self.collisionsDirection = None
+
         if not found:
             if (self.highlightedKpi):
             
@@ -2135,6 +2138,9 @@ class chartArea(QFrame):
     fromTime = None
     toTime = None
     
+    collisionsCurrent = None
+    collisionsDirection = None
+    
     suppressStatus = None # supress status update, intended for autorefresh theshold vialation message
     
     def dpDisconnected(self):
@@ -2194,31 +2200,262 @@ class chartArea(QFrame):
             self.statusMessage_.emit(str, True)
         else:
             self.statusMessage_.emit(str, False)
+        
+    @profiler
+    def moveHighlight(self, direction):
+        '''
+            #639 
+            to make it having sence regular there should be:
             
+            for regular KPIs:
+                1. loop to identify closest value to the selected timestamp
+                2. calculate y-value on the screen for those values
+                3. chose closest one to prevoiusly selected one
+                
+                4. somehow deal with collisions - same Y value possible
+                
+            Gantt KPIs:
+                up/down should move through entity, should be simple, 
+                but also consider timing
+                
+            Multiline KPIs:
+                probably the simplised one as it is on the same Y-scale
+                
+            Still want to try to implement this?
+            
+        '''
+        @profiler
+        def getY(data, host, timeKey, kpi, pointTime, idxKnown=None):
+            @profiler
+            def scan(a, v):
+                '''Scans for a value t in ordered array a, returns index of first value greather t'''
+                
+                i = 0
+                
+                l = len(a)
+                
+                if l < 2:
+                    return None
+                
+                while i<l and a[i]<v:
+                    i += 1
+
+                if i == l:
+                    i -= 1
+                    
+                return i
+                
+            if not idxKnown:
+                idx = scan(data[timeKey], pointTime)
+            else:
+                idx = idxKnown
+                
+            #print(f'get y for {timeKey}/{kpi} at {pointTime}, detected idx is {idx}, len: {len(data[timeKey])}')
+            
+            if idx is None:
+                print('No proper point in time detected')
+                return None, None
+
+            # calculate y of that:
+            if self.widget.nscales[host][kpi]['y_max'] == 0:
+                y_scale = 0
+            else:
+                y_scale = (
+                    (wsize.height() - self.widget.top_margin - self.widget.bottom_margin - 2 - 1)/
+                    (self.widget.nscales[host][kpi]['y_max'] - self.widget.nscales[host][kpi]['y_min'])
+                )
+
+            '''
+            print(data.keys())
+            
+            for k in data.keys():
+                print(f'len data {k}: {len(data[k])}')
+            '''
+                
+            y = data[kpi][idx]
+
+            if y < 0:
+                y = wsize.height() - self.widget.bottom_margin - 1
+            else:
+                #y = self.nscales[h][kpi]['y_min'] + y*y_scale #562
+                y = (y - self.widget.nscales[host][kpi]['y_min']) * y_scale #562
+                y = round(wsize.height() - self.widget.bottom_margin - y) - 2
+            
+            return y, idx
+        
+        h = self.widget.highlightedKpiHost
+        kpiName = self.widget.highlightedKpi
+        point = self.widget.highlightedPoint
+
+        data = self.widget.ndata[h]
+        #print(f'Selected KPIs: {self.widget.nkpis}')
+        
+        #time key detection:
+        kpis = data.keys()
+        
+        ht = hType(h, self.widget.hosts)
+        timeKey = kpiDescriptions.getTimeKey(ht, kpiName)
+                
+        if timeKey is None:
+            log(f'Cannot identify time key for {kpiName} in {kpis}', 2)
+            self.statusMessage('Cannot identify time key, check logs, please report this issue.')
+            return
+            
+        #print(f'host: {h}, type: {ht}, time key: {timeKey}')
+        
+        pointTime = data[timeKey][point]
+        pointTS = datetime.datetime.fromtimestamp(pointTime)
+        
+        #print(f"timestamp: {pointTime}, {pointTS.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # this will be required in messy getY implementation
+        wsize = self.widget.size()
+        
+        targetY, idx = getY(data, h, timeKey, kpiName, None, point)
+            
+        #print(f'calculated y: {targetY}')
+        
+        # now iterate through the KPIs of the same style and detect the closest one somehow
+        
+        #print(type(kpis), kpis)
+        
+        ys = [] # list of tuples: (host, kpi, Y)
+        
+        collisions = 0
+        
+        surogateIdx = 0
+        
+        for checkHost in range(len(self.widget.nkpis)):
+            if len(self.widget.nkpis[checkHost]) == 0:
+                continue
+
+            #print('checking host', checkHost, self.widget.nkpis[checkHost])
+
+            ht = hType(checkHost, self.widget.hosts)
+            
+            for checkKPI in self.widget.nkpis[checkHost]:
+            
+                #if checkHost == self.widget.highlightedKpiHost and checkKPI == self.widget.highlightedKpi:
+                #    continue
+
+                timeKey = kpiDescriptions.getTimeKey(ht, checkKPI)
+                y, idx = getY(self.widget.ndata[checkHost], checkHost, timeKey, checkKPI, pointTime)
+                
+                if y is None:
+                    continue
+                
+                if y == targetY:
+                    if not (checkHost == self.widget.highlightedKpiHost and checkKPI == self.widget.highlightedKpi):
+                        collisions += 1
+                    
+                surogateIdx += 1
+                    
+                if direction == 'up':
+                    if y <= targetY:
+                        ys.append((checkHost, checkKPI, y, idx, surogateIdx))
+                else:
+                    if y >= targetY:
+                        ys.append((checkHost, checkKPI, y, idx, surogateIdx))
+
+        #ys = sorted(ys, lambda x: x[2], reverse=(direction=='up'))
+        
+        # collisions detected already means that we are in collisions _second_ time so + 1
+        # but the original kpi is not listed in ys, so -1 
+        print(f'--> collisions current: {self.collisionsCurrent}, detected: {collisions}')
+        
+        compensate = 0
+        if self.collisionsDirection != direction:
+            compensate = 1
+            
+        if self.collisionsCurrent is None and collisions:
+            if direction == 'up':
+                self.collisionsCurrent = 0 + 1
+            else:
+                self.collisionsCurrent = collisions
+            
+        print(f'--> collisions current: {self.collisionsCurrent}, detected: {collisions}')
+        
+        if not ys:
+            self.statusMessage(f'Nothing identified {direction}')
+            return
+            
+        #ys = sorted(ys, key=lambda x: (x[2], x[1], x[0]), reverse=(direction=='up'))
+        
+        if direction=='up':
+            sign = 1
+            revOrder = True
+        else:
+            sign = 1
+            revOrder = False
+        
+        ys = sorted(ys, key=lambda x: (x[2], sign*x[4]), reverse=revOrder)
+        
+        print(f'sorted {sign=}, {revOrder=}')
+
+        for zz in ys:
+            print(zz)
+
+        if self.collisionsCurrent is None:
+            shift = 1
+        else: 
+            if direction == 'up':
+                if collisions and compensate:
+                    self.collisionsCurrent += 1
+                shift = self.collisionsCurrent
+            else:
+                if collisions and compensate:
+                    self.collisionsCurrent -= 1
+                shift = collisions - self.collisionsCurrent + 1
+                
+           
+        '''
+        if collisions and compensate:
+            if direction == 'up':
+                shift += 1 
+                self.collisionsCurrent -= 2
+            else:
+                shift += 1 
+                self.collisionsCurrent -= 1
+                
+            print('failll', shift)
+        '''
+        
+        print(f'shift: {shift}, collisionsCurrent: {self.collisionsCurrent}')
+        
+        if shift >= len(ys):
+            self.statusMessage(f'Nothing identified {direction}')
+            return
+            
+        yVal = ys[shift]
+        
+        if self.collisionsCurrent is not None:
+            if collisions:
+                if direction == 'up':
+                    self.collisionsCurrent += 1
+                    
+                    if self.collisionsCurrent > collisions+1:
+                        self.collisionsCurrent = None
+                    
+                else:
+                    self.collisionsCurrent -= 1
+
+                    if self.collisionsCurrent < 0:
+                        self.collisionsCurrent = None
+            else:
+                self.collisionsCurrent = None
+                
+        print(f'<-- collisions current: {self.collisionsCurrent}, detected: {collisions}')
+                
+        print(f'okay, the leader is: {yVal[0]}/{yVal[1]}')
+        
+        self.collisionsDirection = direction
+        
+        self.widget.highlightedKpiHost = yVal[0]
+        self.widget.highlightedKpi = yVal[1]
+        self.widget.highlightedPoint = yVal[3]
+        self.widget.update()
+
     def keyPressEventZ(self, event):
-        def moveHighlight(direction):
-            '''
-                #639 
-                to make it having sence regular there should be:
-                
-                for regular KPIs:
-                    1. loop to identify closest value to the selected timestamp
-                    2. calculate y-value on the screen for those values
-                    3. chose closest one to prevoiusly selected one
-                    
-                    4. somehow deal with collisions - same Y value possible
-                    
-                Gantt KPIs:
-                    up/down should move through entity, should be simple, 
-                    but also consider timing
-                    
-                Multiline KPIs:
-                    probably the simplised one as it is on the same Y-scale
-                    
-                Still want to try to implement this?
-                
-            '''
-            self.statusMessage('Not implemented yet.')
             
         def reportHighlight(host, kpi, point):
             #this is black magic copy paste from scanforhint
@@ -2255,7 +2492,11 @@ class chartArea(QFrame):
 
         if event.key() == Qt.Key_Up:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
-                moveHighlight('up')
+                self.moveHighlight('up')
+
+        if event.key() == Qt.Key_Down:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+                self.moveHighlight('down')
             
         if event.key() == Qt.Key_Left:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
