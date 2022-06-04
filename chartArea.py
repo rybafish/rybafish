@@ -361,6 +361,8 @@ class myWidget(QWidget):
                     
                     yScaleLow = 0
                     
+                    kpiStylesNN[type][kpi]['decimal'] = 0
+                    
                     if groupName == 0:
                         if 'manual_scale' in kpiStylesNN[type][kpi]:
                             manualScale = True
@@ -2301,6 +2303,12 @@ class chartArea(QFrame):
             self.statusMessage('Cannot identify time key, check logs, please report this issue.')
             return
             
+        subtype = kpiDescriptions.getSubtype(ht, kpiName)
+        
+        if subtype in ('gantt', 'multiline'):
+            self.statusMessage(f'Not implemented for {subtype} yet.')
+            return
+            
         #print(f'host: {h}, type: {ht}, time key: {timeKey}')
         
         pointTime = data[timeKey][point]
@@ -2406,20 +2414,7 @@ class chartArea(QFrame):
                 if collisions and compensate:
                     self.collisionsCurrent -= 1
                 shift = collisions - self.collisionsCurrent + 1
-                
-           
-        '''
-        if collisions and compensate:
-            if direction == 'up':
-                shift += 1 
-                self.collisionsCurrent -= 2
-            else:
-                shift += 1 
-                self.collisionsCurrent -= 1
-                
-            print('failll', shift)
-        '''
-        
+
         print(f'shift: {shift}, collisionsCurrent: {self.collisionsCurrent}')
         
         if shift >= len(ys):
