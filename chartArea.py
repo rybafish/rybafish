@@ -2304,6 +2304,15 @@ class chartArea(QFrame):
             return
             
         subtype = kpiDescriptions.getSubtype(ht, kpiName)
+
+        '''
+        if subtype == 'multiline':
+            scan = data[kpi][rc][1]
+            gb = data[kpi][rc][0]
+        else:
+            gb = None
+            scan = data[kpi]
+        '''
         
         if subtype in ('gantt', 'multiline'):
             self.statusMessage(f'Not implemented for {subtype} yet.')
@@ -2332,6 +2341,14 @@ class chartArea(QFrame):
         collisions = 0
         
         surogateIdx = 0
+        
+        '''
+            надо переопределить логику получения self.widget.ndata[checkHost]
+        
+            для мультилайна это будет: 
+                - пройти по всем раундам rc внутри мультилайна
+                - подсветить выбранный должным образом
+        '''
         
         for checkHost in range(len(self.widget.nkpis)):
             if len(self.widget.nkpis[checkHost]) == 0:
@@ -2469,7 +2486,7 @@ class chartArea(QFrame):
                 normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
 
             self.widget.highlightedNormVal = normVal
-            
+
             scaled_value = utils.numberToStr(normVal, d)
             tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
             
