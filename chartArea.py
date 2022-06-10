@@ -1049,6 +1049,7 @@ class myWidget(QWidget):
                         self.highlightedGBI = rc # groupby index
                         ml = '/' + gb
                     else:
+                        self.highlightedGBI = None
                         ml = ''
 
                     log('click on %s(%i).%s%s = %i, %s' % (self.hosts[host]['host'], host, kpi, ml, scan[j], scaled_value))
@@ -2227,7 +2228,7 @@ class chartArea(QFrame):
             
         '''
         @profiler
-        def getY(data, host, timeKey, kpi, pointTime, idxKnown=None):
+        def getY(data, host, timeKey, kpi, pointTime, idxKnown=None, gbi=None):
             @profiler
             def scan(a, v):
                 '''Scans for a value t in ordered array a, returns index of first value greather t'''
@@ -2248,7 +2249,7 @@ class chartArea(QFrame):
                 return i
                 
             if not idxKnown:
-                idx = scan(data[timeKey], pointTime)
+                idx = scan(data[timeKey], pointTime) # despite multiline, time has the same layout
             else:
                 idx = idxKnown
                 
@@ -2273,8 +2274,11 @@ class chartArea(QFrame):
             for k in data.keys():
                 print(f'len data {k}: {len(data[k])}')
             '''
-                
-            y = data[kpi][idx]
+               
+            if gbi is None:
+                y = data[kpi][idx]
+            else:
+                y = data[kpi][gbi][1][idx]
 
             if y < 0:
                 y = wsize.height() - self.widget.bottom_margin - 1
@@ -2288,6 +2292,7 @@ class chartArea(QFrame):
         h = self.widget.highlightedKpiHost
         kpiName = self.widget.highlightedKpi
         point = self.widget.highlightedPoint
+        tgbi = self.widget.highlightedGBI
 
         data = self.widget.ndata[h]
         #print(f'Selected KPIs: {self.widget.nkpis}')
@@ -2304,17 +2309,8 @@ class chartArea(QFrame):
             return
             
         subtype = kpiDescriptions.getSubtype(ht, kpiName)
-
-        '''
-        if subtype == 'multiline':
-            scan = data[kpi][rc][1]
-            gb = data[kpi][rc][0]
-        else:
-            gb = None
-            scan = data[kpi]
-        '''
         
-        if subtype in ('gantt', 'multiline'):
+        if subtype == 'gantt':
             self.statusMessage(f'Not implemented for {subtype} yet.')
             return
             
@@ -2328,7 +2324,7 @@ class chartArea(QFrame):
         # this will be required in messy getY implementation
         wsize = self.widget.size()
         
-        targetY, idx = getY(data, h, timeKey, kpiName, None, point)
+        targetY, idx = getY(data, h, timeKey, kpiName, None, idxKnown=point, gbi=tgbi)
             
         #print(f'calculated y: {targetY}')
         
@@ -2336,7 +2332,7 @@ class chartArea(QFrame):
         
         #print(type(kpis), kpis)
         
-        ys = [] # list of tuples: (host, kpi, Y)
+        ys = [] # list of tuples: (host, kpi, Y, gbi) gbi is not None for multilines
         
         collisions = 0
         
@@ -2364,23 +2360,39 @@ class chartArea(QFrame):
                 #    continue
 
                 timeKey = kpiDescriptions.getTimeKey(ht, checkKPI)
-                y, idx = getY(self.widget.ndata[checkHost], checkHost, timeKey, checkKPI, pointTime)
-                
-                if y is None:
-                    continue
-                
-                if y == targetY:
-                    if not (checkHost == self.widget.highlightedKpiHost and checkKPI == self.widget.highlightedKpi):
-                        collisions += 1
-                    
-                surogateIdx += 1
-                    
-                if direction == 'up':
-                    if y <= targetY:
-                        ys.append((checkHost, checkKPI, y, idx, surogateIdx))
+                subtype = kpiDescriptions.getSubtype(ht, checkKPI)
+
+                if subtype == 'multiline':
+                    rounds = len(self.widget.ndata[checkHost][checkKPI])
                 else:
-                    if y >= targetY:
-                        ys.append((checkHost, checkKPI, y, idx, surogateIdx))
+                    rounds = 1
+                
+                for rc in range(rounds):
+
+                    if subtype == 'multiline':
+                        gbi = rc
+                    else:
+                        gbi = None
+                
+                    y, idx = getY(self.widget.ndata[checkHost], checkHost, timeKey, checkKPI, pointTime, idxKnown=None, gbi=gbi)
+                    
+                    #print(f'y: {y}, idx:{idx}, gbi:{gbi}')
+                    
+                    if y is None:
+                        continue
+                    
+                    if y == targetY:
+                        if not (checkHost == self.widget.highlightedKpiHost and checkKPI == self.widget.highlightedKpi and tgbi==gbi):
+                            collisions += 1
+                        
+                    surogateIdx += 1
+                        
+                    if direction == 'up':
+                        if y <= targetY:
+                            ys.append((checkHost, checkKPI, y, idx, surogateIdx, gbi))
+                    else:
+                        if y >= targetY:
+                            ys.append((checkHost, checkKPI, y, idx, surogateIdx, gbi))
 
         #ys = sorted(ys, lambda x: x[2], reverse=(direction=='up'))
         
@@ -2457,14 +2469,21 @@ class chartArea(QFrame):
                 self.collisionsCurrent = None
                 
         print(f'<-- collisions current: {self.collisionsCurrent}, detected: {collisions}')
-                
-        print(f'okay, the leader is: {yVal[0]}/{yVal[1]}')
-        
+
+        if yVal[5] is not None:
+            gb = self.widget.ndata[checkHost][yVal[1]][yVal[5]][0]
+            mls = f'[{gb}] ({yVal[5]})'
+        else:
+            mls = ''
+
+        print(f'okay, the leader is: {yVal[0]}/{yVal[1]}{mls}')
+
         self.collisionsDirection = direction
         
         self.widget.highlightedKpiHost = yVal[0]
         self.widget.highlightedKpi = yVal[1]
         self.widget.highlightedPoint = yVal[3]
+        self.widget.highlightedGBI = yVal[5]
         self.widget.update()
 
     def keyPressEventZ(self, event):
