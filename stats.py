@@ -35,7 +35,7 @@ def stats():
         tnerows += nerows
         tsize += size
         
-    print(f'Rows: {trows}, non-empty: {tnerows}, size: {tsize}')
+    print(f'Rows: {trows}, non-empty: {tnerows}, size: {tsize} ({tsize/1024:.1f}kb)')
         
 if __name__ == '__main__':
     stats()
