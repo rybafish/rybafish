@@ -2425,7 +2425,8 @@ class chartArea(QFrame):
             sign = 1
             revOrder = False
         
-        ys = sorted(ys, key=lambda x: (x[2], sign*x[4]), reverse=revOrder)
+        #ys = sorted(ys, key=lambda x: (x[2], sign*x[4]), reverse=revOrder)
+        ys = sorted(ys, key=lambda x: (x[2], -1*(x[5] or 0), sign*x[4]), reverse=revOrder)
         
         print(f'sorted {sign=}, {revOrder=}')
 
