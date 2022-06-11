@@ -2484,40 +2484,51 @@ class chartArea(QFrame):
         self.widget.highlightedKpi = yVal[1]
         self.widget.highlightedPoint = yVal[3]
         self.widget.highlightedGBI = yVal[5]
+
+        self.reportHighlighted()
         self.widget.update()
+        
 
+    def reportHighlighted(self):
+    
+        point = self.widget.highlightedPoint
+        host = self.widget.highlightedKpiHost
+        kpi = self.widget.highlightedKpi
+        
+        #this is black magic copy paste from scanforhint
+        type = hType(host, self.widget.hosts)
+        timeKey = kpiDescriptions.getTimeKey(type, kpi)
+        
+        d = kpiStylesNN[type][kpi].get('decimal', 0)
+        
+        subtype = kpiDescriptions.getSubtype(type, kpi)
+        
+        if subtype == 'multiline':
+            gbi = self.widget.highlightedGBI
+            gb = self.widget.ndata[host][kpi][gbi][0]
+            value = self.widget.ndata[host][kpi][gbi][1][point]
+            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], value, d)
+            
+            kpiLabel = f'{kpi}/{gb}'
+        else:
+            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
+            kpiLabel = kpi
+
+        self.widget.highlightedNormVal = normVal
+
+        scaled_value = utils.numberToStr(normVal, d)
+        tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
+        
+        unit = self.widget.nscales[host][kpi]['unit']
+
+        hst = self.widget.hosts[host]['host']
+        if self.widget.hosts[host]['port'] != '':
+            hst += ':'+str(self.widget.hosts[host]['port'])
+        
+        self.widget.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpiLabel, scaled_value, unit, tm))
+        self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpiLabel, scaled_value, unit, tm))
+        
     def keyPressEventZ(self, event):
-            
-        def reportHighlight(host, kpi, point):
-            #this is black magic copy paste from scanforhint
-            type = hType(host, self.widget.hosts)
-            timeKey = kpiDescriptions.getTimeKey(type, kpi)
-            
-            d = kpiStylesNN[type][kpi].get('decimal', 0)
-            
-            subtype = kpiDescriptions.getSubtype(type, kpi)
-            
-            if subtype == 'multiline':
-                gbi = self.widget.highlightedGBI
-                value = self.widget.ndata[host][kpi][gbi][1][point]
-                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], value, d)
-            else:
-                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
-
-            self.widget.highlightedNormVal = normVal
-
-            scaled_value = utils.numberToStr(normVal, d)
-            tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
-            
-            unit = self.widget.nscales[host][kpi]['unit']
-
-            hst = self.widget.hosts[host]['host']
-            if self.widget.hosts[host]['port'] != '':
-                hst += ':'+str(self.widget.hosts[host]['port'])
-            
-            self.widget.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
-
-            self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
             
         modifiers = QApplication.keyboardModifiers()
 
@@ -2539,7 +2550,7 @@ class chartArea(QFrame):
                     self.widget.highlightedPoint -= 1
                     self.widget.update()
                     
-                    reportHighlight(host, kpi, self.widget.highlightedPoint)
+                    self.reportHighlighted()
             else:
                 x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
                 self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
@@ -2564,7 +2575,7 @@ class chartArea(QFrame):
                     self.widget.highlightedPoint += 1
                     self.widget.update()
                     
-                    reportHighlight(host, kpi, self.widget.highlightedPoint)
+                    self.reportHighlighted()
 
             else:
                 x = 0 - self.widget.pos().x() 
