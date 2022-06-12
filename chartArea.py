@@ -2253,10 +2253,8 @@ class chartArea(QFrame):
             else:
                 idx = idxKnown
                 
-            #print(f'get y for {timeKey}/{kpi} at {pointTime}, detected idx is {idx}, len: {len(data[timeKey])}')
-            
             if idx is None:
-                print('No proper point in time detected')
+                log('No proper point in time detected', 5)
                 return None, None
 
             # calculate y of that:
@@ -2267,13 +2265,6 @@ class chartArea(QFrame):
                     (wsize.height() - self.widget.top_margin - self.widget.bottom_margin - 2 - 1)/
                     (self.widget.nscales[host][kpi]['y_max'] - self.widget.nscales[host][kpi]['y_min'])
                 )
-
-            '''
-            print(data.keys())
-            
-            for k in data.keys():
-                print(f'len data {k}: {len(data[k])}')
-            '''
                
             if gbi is None:
                 y = data[kpi][idx]
@@ -2295,9 +2286,7 @@ class chartArea(QFrame):
         tgbi = self.widget.highlightedGBI
 
         data = self.widget.ndata[h]
-        #print(f'Selected KPIs: {self.widget.nkpis}')
         
-        #time key detection:
         kpis = data.keys()
         
         ht = hType(h, self.widget.hosts)
@@ -2313,52 +2302,31 @@ class chartArea(QFrame):
         if subtype == 'gantt':
             self.statusMessage(f'Not implemented for {subtype} yet.')
             return
-            
-        #print(f'host: {h}, type: {ht}, time key: {timeKey}')
-        
+
         pointTime = data[timeKey][point]
         pointTS = datetime.datetime.fromtimestamp(pointTime)
-        
-        #print(f"timestamp: {pointTime}, {pointTS.strftime('%Y-%m-%d %H:%M:%S')}")
-        
+                
         # this will be required in messy getY implementation
         wsize = self.widget.size()
         
         targetY, idx = getY(data, h, timeKey, kpiName, None, idxKnown=point, gbi=tgbi)
             
-        #print(f'calculated y: {targetY}')
-        
         # now iterate through the KPIs of the same style and detect the closest one somehow
-        
-        #print(type(kpis), kpis)
-        
+                
         ys = [] # list of tuples: (host, kpi, Y, gbi) gbi is not None for multilines
         
         collisions = 0
         
         surogateIdx = 0
-        
-        '''
-            надо переопределить логику получения self.widget.ndata[checkHost]
-        
-            для мультилайна это будет: 
-                - пройти по всем раундам rc внутри мультилайна
-                - подсветить выбранный должным образом
-        '''
-        
+                
         for checkHost in range(len(self.widget.nkpis)):
             if len(self.widget.nkpis[checkHost]) == 0:
                 continue
-
-            #print('checking host', checkHost, self.widget.nkpis[checkHost])
 
             ht = hType(checkHost, self.widget.hosts)
             
             for checkKPI in self.widget.nkpis[checkHost]:
             
-                #if checkHost == self.widget.highlightedKpiHost and checkKPI == self.widget.highlightedKpi:
-                #    continue
-
                 timeKey = kpiDescriptions.getTimeKey(ht, checkKPI)
                 subtype = kpiDescriptions.getSubtype(ht, checkKPI)
 
@@ -2375,8 +2343,6 @@ class chartArea(QFrame):
                         gbi = None
                 
                     y, idx = getY(self.widget.ndata[checkHost], checkHost, timeKey, checkKPI, pointTime, idxKnown=None, gbi=gbi)
-                    
-                    #print(f'y: {y}, idx:{idx}, gbi:{gbi}')
                     
                     if y is None:
                         continue
@@ -2398,7 +2364,7 @@ class chartArea(QFrame):
         
         # collisions detected already means that we are in collisions _second_ time so + 1
         # but the original kpi is not listed in ys, so -1 
-        print(f'--> collisions current: {self.collisionsCurrent}, detected: {collisions}')
+        log(f'--> collisions current: {self.collisionsCurrent}, detected: {collisions}', 5)
         
         compensate = 0
         if self.collisionsDirection != direction:
@@ -2410,7 +2376,7 @@ class chartArea(QFrame):
             else:
                 self.collisionsCurrent = collisions
             
-        print(f'--> collisions current: {self.collisionsCurrent}, detected: {collisions}')
+        log(f'--> collisions current: {self.collisionsCurrent}, detected: {collisions}', 5)
         
         if not ys:
             self.statusMessage(f'Nothing identified {direction}')
@@ -2419,19 +2385,17 @@ class chartArea(QFrame):
         #ys = sorted(ys, key=lambda x: (x[2], x[1], x[0]), reverse=(direction=='up'))
         
         if direction=='up':
-            sign = 1
             revOrder = True
         else:
-            sign = 1
             revOrder = False
         
         #ys = sorted(ys, key=lambda x: (x[2], sign*x[4]), reverse=revOrder)
-        ys = sorted(ys, key=lambda x: (x[2], -1*(x[5] or 0), sign*x[4]), reverse=revOrder)
+        ys = sorted(ys, key=lambda x: (x[2], -1*(x[5] or 0), x[4]), reverse=revOrder) #652 add gbi into ordering...
         
-        print(f'sorted {sign=}, {revOrder=}')
+        log(f'sorted, {revOrder=}', 5)
 
         for zz in ys:
-            print(zz)
+            log(zz, 5)
 
         if self.collisionsCurrent is None:
             shift = 1
@@ -2445,7 +2409,7 @@ class chartArea(QFrame):
                     self.collisionsCurrent -= 1
                 shift = collisions - self.collisionsCurrent + 1
 
-        print(f'shift: {shift}, collisionsCurrent: {self.collisionsCurrent}')
+        log(f'shift: {shift}, collisionsCurrent: {self.collisionsCurrent}', 5)
         
         if shift >= len(ys):
             self.statusMessage(f'Nothing identified {direction}')
@@ -2469,7 +2433,7 @@ class chartArea(QFrame):
             else:
                 self.collisionsCurrent = None
                 
-        print(f'<-- collisions current: {self.collisionsCurrent}, detected: {collisions}')
+        log(f'<-- collisions current: {self.collisionsCurrent}, detected: {collisions}', 5)
 
         if yVal[5] is not None:
             gb = self.widget.ndata[checkHost][yVal[1]][yVal[5]][0]
@@ -2477,7 +2441,7 @@ class chartArea(QFrame):
         else:
             mls = ''
 
-        print(f'okay, the leader is: {yVal[0]}/{yVal[1]}{mls}')
+        log(f'okay, the leader is: {yVal[0]}/{yVal[1]}{mls}', 5)
 
         self.collisionsDirection = direction
         
@@ -2499,12 +2463,33 @@ class chartArea(QFrame):
         #this is black magic copy paste from scanforhint
         type = hType(host, self.widget.hosts)
         timeKey = kpiDescriptions.getTimeKey(type, kpi)
+
+        hst = self.widget.hosts[host]['host']
+        if self.widget.hosts[host]['port'] != '':
+            hst += ':'+str(self.widget.hosts[host]['port'])
         
         d = kpiStylesNN[type][kpi].get('decimal', 0)
         
         subtype = kpiDescriptions.getSubtype(type, kpi)
         
-        if subtype == 'multiline':
+        if subtype == 'gantt':
+            entity = self.widget.highlightedEntity
+            reportRange = self.widget.highlightedRange
+            
+            t = self.widget.ndata[host][kpi][entity][reportRange]
+
+            t0 = t[0].time().isoformat(timespec='milliseconds')
+            t1 = t[1].time().isoformat(timespec='milliseconds')
+
+            interval = '[%s - %s]' % (t0, t1)
+            
+            det = '%s, %s.%s, %s: %s/%i %s' % (hst, type, kpi, entity, interval, t[3], t[2])
+            
+            self.statusMessage(det)
+            return
+
+            
+        elif subtype == 'multiline':
             gbi = self.widget.highlightedGBI
             gb = self.widget.ndata[host][kpi][gbi][0]
             value = self.widget.ndata[host][kpi][gbi][1][point]
@@ -2522,13 +2507,80 @@ class chartArea(QFrame):
         
         unit = self.widget.nscales[host][kpi]['unit']
 
-        hst = self.widget.hosts[host]['host']
-        if self.widget.hosts[host]['port'] != '':
-            hst += ':'+str(self.widget.hosts[host]['port'])
-        
         self.widget.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpiLabel, scaled_value, unit, tm))
         self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpiLabel, scaled_value, unit, tm))
         
+    @profiler
+    def moveHighlightGantt(self, direction):
+        def getClosest(d, target):
+            '''
+                finds closest interval in d to target based on center of intervals
+                returns index
+            '''
+        
+            closest = 0
+            
+            minDelta = abs((d[0][0].timestamp()+d[0][1].timestamp())/2 - target)
+        
+            for i in range(len(d)):
+                delta = abs((d[i][0].timestamp()+d[i][1].timestamp())/2 - target)
+                
+                if minDelta > delta:
+                    minDelta = delta
+                    closest = i
+        
+            return closest
+        
+        host = self.widget.highlightedKpiHost
+        kpi = self.widget.highlightedKpi
+        entity = self.widget.highlightedEntity
+        
+        data = self.widget.ndata[host][kpi]
+        
+        entities = list(self.widget.ndata[host][kpi].keys())
+        el = len(data[entity])
+        
+        changesDone = False
+        
+        if direction == 'right':
+            if self.widget.highlightedRange < el-1:
+                self.widget.highlightedRange += 1
+                changesDone = True
+                
+        if direction == 'left':
+            if self.widget.highlightedRange > 0:
+                self.widget.highlightedRange -= 1
+                changesDone = True
+
+        if changesDone:
+            self.widget.update()
+            self.reportHighlighted()
+            return
+            
+        entry = data[entity][self.widget.highlightedRange]
+        
+        midt = (entry[0].timestamp()+entry[1].timestamp())/2
+
+        if direction == 'up':
+            i = entities.index(entity)
+            
+            if i < len(entities)-1:
+                self.widget.highlightedEntity = entities[i+1]
+                self.widget.highlightedRange = getClosest(data[self.widget.highlightedEntity], midt)
+                changesDone = True
+                
+        if direction == 'down':
+            i = entities.index(entity)
+            
+            if i > 0:
+                self.widget.highlightedEntity = entities[i-1]
+                self.widget.highlightedRange = getClosest(data[self.widget.highlightedEntity], midt)
+                changesDone = True
+                
+        if changesDone:
+            self.widget.update()
+            self.reportHighlighted()
+
     def keyPressEventZ(self, event):
             
         modifiers = QApplication.keyboardModifiers()
@@ -2536,10 +2588,14 @@ class chartArea(QFrame):
         if event.key() == Qt.Key_Up:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
                 self.moveHighlight('up')
+            elif modifiers == Qt.AltModifier and self.widget.highlightedEntity:
+                self.moveHighlightGantt('up')
 
         if event.key() == Qt.Key_Down:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
                 self.moveHighlight('down')
+            elif modifiers == Qt.AltModifier and self.widget.highlightedEntity:
+                self.moveHighlightGantt('down')
             
         if event.key() == Qt.Key_Left:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
@@ -2552,6 +2608,8 @@ class chartArea(QFrame):
                     self.widget.update()
                     
                     self.reportHighlighted()
+            elif modifiers == Qt.AltModifier and self.widget.highlightedEntity is not None:
+                self.moveHighlightGantt('left')
             else:
                 x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
                 self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
@@ -2577,7 +2635,8 @@ class chartArea(QFrame):
                     self.widget.update()
                     
                     self.reportHighlighted()
-
+            elif modifiers == Qt.AltModifier and self.widget.highlightedEntity is not None:
+                self.moveHighlightGantt('right')
             else:
                 x = 0 - self.widget.pos().x() 
                 self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
