@@ -2574,7 +2574,7 @@ class sqlConsole(QWidget):
                 
         log('closing results...', 5)
         
-        self.closeResults()
+        self.closeResults(abandoneExecution)
 
         try: 
             self.stopKeepAlive()
@@ -3037,12 +3037,16 @@ class sqlConsole(QWidget):
                     self.indicator.status = 'error'
                     self.indicator.repaint()
     
-    def closeResults(self):
+    def closeResults(self, abandon=False):
         '''
             closes all results tabs, detaches resultsets if any LOBs
         '''
         
-        self.stopResults()
+        if abandon == True:
+            cname = self.tabname.rstrip(' *')
+            log(f'Ignore closing the results due to abandon=True ({cname})')
+        else:
+            self.stopResults()
         
         for i in range(len(self.results) - 1, -1, -1):
             
