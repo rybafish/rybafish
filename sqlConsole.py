@@ -4178,6 +4178,7 @@ class sqlConsole(QWidget):
                 
         super().keyPressEvent(event)
         
+    @profiler
     def updateRuntime(self, mode = None):
         '''
             manages the indicator hint and calculates it's value
@@ -4188,9 +4189,7 @@ class sqlConsole(QWidget):
         '''
         t0 = self.t0
         t1 = time.time()
-        
-        print(f'updateRuntime, {mode}, {self.indicator.status}')
-        
+                
         if mode == 'on':
             if t0 is not None: # normal hint for running console
                 if self.runtimeTimer == None: 
