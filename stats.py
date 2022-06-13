@@ -35,7 +35,8 @@ def stats():
         tnerows += nerows
         tsize += size
         
-    print(f'Rows: {trows}, non-empty: {tnerows}, size: {tsize} ({tsize/1024:.1f}kb)')
+    print('RybaFish source code stats:')
+    print(f'Rows: {trows}, non-white space rows: {tnerows}, size: {tsize} ({tsize/1024:.1f}kb)')
         
 if __name__ == '__main__':
     stats()
