@@ -2180,6 +2180,7 @@ class sqlConsole(QWidget):
         # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
         
         self.timerAutorefresh = None
+        self.nextAutorefresh = None     # datetime of next planned autorefresh
         
         self.defaultTimer = [60]
         
@@ -2862,6 +2863,8 @@ class sqlConsole(QWidget):
 
         self.refresh(0)
         
+        interval = self.timerAutorefresh.interval()/1000
+        self.nextAutorefresh = datetime.datetime.now() + datetime.timedelta(seconds=interval)
         self.timerAutorefresh.start()
     
     def setupAutorefresh(self, interval, suppressLog = False):
@@ -2897,6 +2900,7 @@ class sqlConsole(QWidget):
         if self.timerAutorefresh is None:
             self.timerAutorefresh = QTimer(self)
             self.timerAutorefresh.timeout.connect(self.autorefreshRun)
+            self.nextAutorefresh = datetime.datetime.now() + datetime.timedelta(seconds=interval)
             self.timerAutorefresh.start(1000 * interval)
         else:
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
@@ -3925,7 +3929,7 @@ class sqlConsole(QWidget):
             self.log(logText)
 
             self.indicator.runtime = None
-            self.updateRuntime('off')
+            self.updateRuntime('stop')
 
             self.indicator.repaint()
             
@@ -4065,7 +4069,7 @@ class sqlConsole(QWidget):
                 self.indicator.status = 'idle'
             
         self.indicator.runtime = None
-        self.updateRuntime('off')
+        self.updateRuntime('stop')
         self.indicator.repaint()
         
         # should rather be some kind of mutex here...
@@ -4171,66 +4175,63 @@ class sqlConsole(QWidget):
         super().keyPressEvent(event)
         
     def updateRuntime(self, mode = None):
+        '''
+            manages the indicator hint and calculates it's value
+        
+            mode = 'on': enable the hint, emmited by indicator on mouse hover
+                'off': emmited by indicator on exit
+                'stop': triggered manually on stop of sql execution.
+        '''
         t0 = self.t0
         t1 = time.time()
         
-        if mode == 'on' and t0 is not None:
-            if self.runtimeTimer == None:
-                self.runtimeTimer = QTimer(self)
-                self.runtimeTimer.timeout.connect(self.updateRuntime)
-                self.runtimeTimer.start(1000)
-                
-        elif mode == 'off':
-            if self.runtimeTimer is not None:
-                self.indicator.runtime = None
-                self.runtimeTimer.stop()
-                self.runtimeTimer = None  
-
-                self.indicator.updateRuntime()
-                
-                return
+        print(f'updateRuntime, {mode}, {self.indicator.status}')
         
+        if mode == 'on':
+            if t0 is not None: # normal hint for running console
+                if self.runtimeTimer == None: 
+                    self.runtimeTimer = QTimer(self)
+                    self.runtimeTimer.timeout.connect(self.updateRuntime)
+                    self.runtimeTimer.start(1000)
+            elif self.indicator.status == 'autorefresh': # autorefresh backward counter
+                if self.runtimeTimer == None:
+                    self.runtimeTimer = QTimer(self)
+                    self.runtimeTimer.timeout.connect(self.updateRuntime)
+                    self.runtimeTimer.start(1000)
+                
+        elif mode == 'off' or mode == 'stop':
+            if mode == 'stop' and self.indicator.status == 'autorefresh':
+                pass
+            else:
+                if self.runtimeTimer is not None:
+                    self.indicator.runtime = None
+                    self.runtimeTimer.stop()
+                    self.runtimeTimer = None  
+
+                    self.indicator.updateRuntime()
+                    
+                    return
+                
+        if mode == 'off' or mode == 'stop':
+            self.indicator.runtime = None
+            self.indicator.updateRuntime()
+            return
+            
         if t0 is not None:
             self.indicator.runtime = utils.formatTimeShort(t1-t0)
+        elif self.indicator.status == 'autorefresh': # autorefresh backward counter
+            delta = self.nextAutorefresh - datetime.datetime.now()
+            deltaSec = round(delta.seconds + delta.microseconds/1000000)
+            self.indicator.runtime = 'Run in: ' + utils.formatTimeShort(deltaSec)
+        else:
+            self.indicator.runtime = None
             
         self.indicator.updateRuntime()
                 
-    '''
-    def updateRuntime(self):
-        t0 = self.t0
-        t1 = time.time()
-        
-        if t0 is not None:
-            self.indicator.runtime = utils.formatTime(t1-t0)
-            
-            self.indicator.updateRuntime()
-            
-            if self.runtimeTimer == None:
-                self.runtimeTimer = QTimer(self)
-                self.runtimeTimer.timeout.connect(self.updateRuntime)
-                self.runtimeTimer.start(500)
-            
-        else:
-            if self.runtimeTimer is not None:
-                self.indicator.runtime = None
-                self.runtimeTimer.stop()
-                self.runtimeTimer = None    
-    '''
-        
+
     def reportRuntime(self):
+            self.selfRaise.emit(self)
     
-        self.selfRaise.emit(self)
-    
-        '''
-        t0 = self.t0
-        t1 = time.time()
-        
-        if t0 is not None:
-            self.log('Current run time: %s' % (utils.formatTime(t1-t0)))
-        else:
-            self.log('Nothing is running')
-            
-        '''
     
     def initUI(self):
         '''

@@ -128,7 +128,7 @@ class hslWindow(QMainWindow):
             if cons.sqlRunning:
                 log('Sems the sql still running, need to show a warning', 4)
                 
-                answer = utils.yesNoDialog('Warning', 'It seems the SQL is still running.\n\nAre you sure you want to close the console and abandone the execution?')
+                answer = utils.yesNoDialog('Warning', 'It seems the SQL is still running.\n\nAre you sure you want to close the console and abandon the execution?')
                             
                 if not answer:
                     return False
