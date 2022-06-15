@@ -50,6 +50,9 @@ layout.yaml
 # custom sql folder
 sql/
 
+# sql scripts folder
+scripts/
+
 # custom KPIs folder - now included into build
 # CustomKPIs/
 

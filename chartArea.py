@@ -3522,7 +3522,7 @@ class chartArea(QFrame):
         self.reloadLock = True
         
         actualRequest = False
-        
+                
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):

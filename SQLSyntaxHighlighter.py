@@ -79,7 +79,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
             c = comments[0]
             if c[0] == 0 and c[1] == len(text):
                 return
-                
+
         for (reg, fmt, stop) in self.rules:
             #(reg, format, stop) = (r[0], r[1], r[2])
 
