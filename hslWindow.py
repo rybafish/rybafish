@@ -509,10 +509,11 @@ class hslWindow(QMainWindow):
             if isinstance(w, sqlConsole.sqlConsole):
                 txt = extractFile(file)
 
-                if txt[-1] == '\n' and txt[-2] != '\n':
-                    txt += '\n'
-                elif txt[-1] != '\n':
-                    txt += '\n\n'
+                if len(txt) >= 2:
+                    if txt[-1] == '\n' and txt[-2] != '\n':
+                        txt += '\n'
+                    elif txt[-1] != '\n':
+                        txt += '\n\n'
 
                 pos = w.cons.textCursor().position()
                 w.cons.insertTextS(txt)
