@@ -1,13 +1,13 @@
 import sys
 
 from PyQt5.QtWidgets import (QPushButton, QDialog, 
-    QHBoxLayout, QVBoxLayout, QApplication, QLabel, QTreeView, QStyle, QLineEdit)
+    QHBoxLayout, QVBoxLayout, QApplication, QLabel, QTreeView, QStyle, QLineEdit, QStatusBar)
     
 from PyQt5.QtGui import QIcon, QStandardItemModel, QStandardItem
 
 import os, time
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QObject, QThread
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -15,13 +15,74 @@ from utils import resourcePath
 from utils import log, cfg
 
 from profiler import profiler
+
+
+class descScanner(QObject):
+    finished = pyqtSignal()
     
+    def __init__(self, cons):
+        super().__init__()
+        
+        self.flatStructure = None
+        
+    @profiler
+    def updateDescriptions(self):
+       
+        self.flatStructureOut = []
+        
+        time.sleep(5)
+
+        for f in self.flatStructure:
+            comment = self.getComment(f[1], f[3])
+            
+            if comment:
+                f[2] = comment
+                
+        self.finished.emit()
+
+    @profiler
+    def getComment(self, filename, mode=1):
+    
+        trigger = False
+
+        try:
+            with open(filename) as f:
+                try:
+                    
+                    for i in range(16):
+                    
+                        l = next(f)
+                        l = l.strip()
+                        
+                        if mode == 1:
+                            if l[0:2] == '--':
+                                return l[2:].lstrip()
+                        
+                        if mode == 2:
+                            if l == '[DESCRIPTION]':
+                                trigger = True
+                                continue
+                                
+                            if trigger and l:
+                                return l
+                                                
+                except StopIteration:
+                    return None
+                except Exception as e:
+                    log(f'[E] {filename}:{e}', 2)
+        except Exception as e:
+            log(f'[E] {filename}:{e}', 2)
+    
+
 class SQLBrowser(QTreeView):
 
     filterUpdated = pyqtSignal()
+    modelReady = pyqtSignal()
 
-    def __init__(self, folder=cfg('scriptsFolder', 'scripts')):
+    def __init__(self):
         super().__init__()
+        
+        self.expandedNodes = []
         
         self.folderIcon = self.style().standardIcon(QStyle.SP_DirIcon)
         self.filter = ''
@@ -34,9 +95,36 @@ class SQLBrowser(QTreeView):
         self.boldFont.setBold(True)
 
         self.model = QStandardItemModel()
-        self.buildModel(folder)
-        
 
+        self.thread = QThread()
+        self.descWorker = descScanner(self)
+        
+        self.expanded.connect(self.nodeExpanded)
+        self.collapsed.connect(self.nodeCollapsed)
+
+        # one time thread init...
+        self.descWorker.moveToThread(self.thread)
+        self.descWorker.finished.connect(self.modelUpdated)
+        self.thread.started.connect(self.descWorker.updateDescriptions)
+
+    def nodeExpanded(self, index):
+        self.expandedNodes.append(index.data(role=Qt.UserRole + 1))
+
+    def nodeCollapsed(self, index):
+        self.expandedNodes.remove(index.data(role=Qt.UserRole + 1))
+    
+    def resetStructure(self):
+        self.flatStructure = None # need reload
+        
+    def modelUpdated(self):
+        self.thread.quit()
+        self.modelReady.emit()
+        
+    @profiler
+    def updateModel(self):
+        self.descWorker.flatStructure = self.flatStructure
+        self.thread.start()
+        
     def flatFolder(self, files):
         '''checks if the folder seems to have "flat" structure'''
     
@@ -68,11 +156,31 @@ class SQLBrowser(QTreeView):
         nodez = []
     
         j = 0
-        for (f, fpath, fdesc) in files:
+        for (f, fpath, fdesc, fmode) in files:
         
-            if filter and f.lower().find(filter) < 0 and fdesc and fdesc.lower().find(filter) < 0:
-                continue
-                                
+            if filter:
+                if (
+                    (f.lower().find(filter) < 0) 
+                    and 
+                    (fdesc is None or (fdesc is not None and fdesc.lower().find(filter) < 0))):
+
+                    '''
+                    fstr = f'[{filter}] {f}, {f.lower().find(filter)}'
+                    if fdesc:
+                        fstr += f' {fdesc=} [{fdesc.lower().find(filter)}]'
+                        
+                    print(fstr)
+                    '''
+                    continue
+            
+            '''
+            fstr = f'[{filter}] {f}, {f.lower().find(filter)}'
+            if fdesc:
+                fstr += f' {fdesc=} [{fdesc.lower().find(filter)}]'
+                
+            print(fstr)
+            '''
+            
             hier = f.split(os.sep)
             
             for i in range(len(hier)-1):
@@ -123,7 +231,7 @@ class SQLBrowser(QTreeView):
         for file in leaves.keys():
             f = leaves[file]
             nodez.append((f[1], None, f[0], f[2], f[3]))
-            
+
         return nodez
 
     @profiler
@@ -148,45 +256,21 @@ class SQLBrowser(QTreeView):
             fnew = os.sep.join(hier)
             fnew = os.path.join(folder, fnew)
             
-            desc = self.getComment(fold, mode=2)
+            #desc = self.getComment(fold, mode=2)
+            desc = None
                         
-            filelist.append((fnew, fold, desc))
+            filelist.append([fnew, fold, desc, 2])
         
         return filelist
-           
-    @profiler
-    def getComment(self, filename, mode=1):
-    
-        trigger = False
-
-        try:
-            with open(filename) as f:
-                try:
-                    
-                    for i in range(16):
-                    
-                        l = next(f)
-                        l = l.strip()
-                        
-                        if mode == 1:
-                            if l[0:2] == '--':
-                                return l[2:].lstrip()
-                        
-                        if mode == 2:
-                            if l == '[DESCRIPTION]':
-                                trigger = True
-                                continue
-                                
-                            if trigger and l:
-                                return l
-                                                
-                except StopIteration:
-                    return None
-                except Exception as e:
-                    log(f'[E] {filename}:{e}', 2)
-        except Exception as e:
-            log(f'[E] {filename}:{e}', 2)
             
+    '''
+    def updateComments(self):
+        for f in self.flatStructure:
+            comment = self.getComment(f[1], f[3])
+            if comment is not None:
+                f[2] = comment
+    '''
+        
     @profiler
     def flattenFolder(self, path):
         '''
@@ -206,25 +290,34 @@ class SQLBrowser(QTreeView):
                 else:
                     for f in files:
                         filename = os.path.join(root, f)
-                        desc = self.getComment(filename)
-                        flatlist.append((filename, None, desc))
+                        #desc = self.getComment(filename)
+                        desc = None
+                        flatlist.append([filename, None, desc, 1])
                    
         return flatlist
 
     @profiler
     def buildModel(self, folder='', filter = ''):
-    
+        '''builds the content of self.tree (QTreeView)
+        
+            if/when self.flatStructure is None - it builds it first
+        '''
         #nodes = {}
+        
+        needComments = False
 
+        
         self.model.clear()
+
+        #somehow this MUST be done after model.clear()
+        #otherwise it resets self.flatStructure to None
+        
         parentItem = self.model.invisibleRootItem()
         
-        #self.model.setHorizontalHeaderLabels(['sql', 'size', 'date'])
         self.model.setHorizontalHeaderLabels(['File', 'Comment'])
         
-        #xxx
-
         if self.flatStructure is None:
+            needComments = True
             self.flatStructure = self.flattenFolder(folder)
             
         nodez = self.parseFlat(folder, self.flatStructure, filter=filter)
@@ -263,10 +356,16 @@ class SQLBrowser(QTreeView):
                 
             if data is None:
                 item.setIcon(self.folderIcon)
+                
+                item.setData(mine, role=Qt.UserRole + 1)    # required only to reproduce expanded nodes
 
                 parentNodes[parent].appendRow(item)
                 parentNodes[mine] = item
                 parents.append(mine)
+                
+                if mine in self.expandedNodes:
+                    self.expand(item.index())
+                
             else:
                 item.setData(data, role=Qt.UserRole + 1)
                 
@@ -283,13 +382,17 @@ class SQLBrowser(QTreeView):
                     parentNodes[parent].appendRow(item)
         
         self.setModel(self.model)
-
+        
         self.setColumnWidth(0, 350)
         self.setColumnWidth(1, 200)
         #self.setColumnWidth(2, 150)
 
+        if needComments:
+            self.descWorker.flatStructure = self.flatStructure
+            self.thread.start()
+
     def keyPressEvent(self, event):
-    
+        '''keypress on the QTreeView, actual model update to be handled by parent dialog'''
         k = event.text()
 
         if k.isalnum() or k == '_':
@@ -318,6 +421,7 @@ class SQLBrowserDialog(QDialog):
         #self.insertBtn.setFocus()
         
     def filterChanged(self, s):
+        '''bound to filter editbox textChanged signal'''
         self.tree.filter = s
         
         self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filter=self.tree.filter)
@@ -325,13 +429,20 @@ class SQLBrowserDialog(QDialog):
             self.tree.expandAll()
     
     def updateFilter(self):
+        '''triggered manual from keypress callback'''
         self.filterEdit.setText(self.tree.filter)
         
+        # and it will trigger filterChanged itself
+        return
+        '''
+        print('update filter')
         self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filter=self.tree.filter)
         if len(self.tree.filter) >= 3:
             self.tree.expandAll()
+        '''
 
     def keyPressEvent(self, event):
+        '''keypress anywhere on the dialog (QTreeView has very similar handler'''
     
         k = event.text()
         
@@ -355,15 +466,20 @@ class SQLBrowserDialog(QDialog):
     
         result = sqld.exec_()
         
-        indexes = sqld.tree.selectionModel().selectedIndexes()
-        
-        file = None
-        
-        if len(indexes):
-            idx = indexes[0]
-            file = idx.data(role=Qt.UserRole + 1)
-        
         if result == QDialog.Accepted:
+            model = sqld.tree.selectionModel()
+            
+            if model is None:
+                return (None, None)
+                
+            indexes = model.selectedIndexes()
+            
+            file = None
+            
+            if len(indexes):
+                idx = indexes[0]
+                file = idx.data(role=Qt.UserRole + 1)
+                
             return (sqld.mode, file)
         else:
             return (None, None)
@@ -387,13 +503,34 @@ class SQLBrowserDialog(QDialog):
         self.accept()
         
     def reloadModel(self):
-        self.tree.filter = ''
-        self.updateFilter()
+        #self.tree.filter = ''
+        #self.updateFilter()
         
-        self.tree.flatStructure = None # need reload
+        self.tree.resetStructure() #meaning the flat structure
+        
+        pos = self.tree.verticalScrollBar().value()
         self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filter=self.tree.filter)
-        self.repaint()
 
+        self.reloadBtn.setEnabled(False)
+        self.sb.showMessage('Loading descriptions...')
+        
+        self.repaint()
+        self.tree.verticalScrollBar().setValue(pos)
+        
+        self.tree.updateModel()
+
+    def modelReady(self):
+        pos = self.tree.verticalScrollBar().value()
+        
+        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filter=self.tree.filter)
+        
+        self.tree.repaint()
+        self.tree.verticalScrollBar().setValue(pos)
+        pos = self.tree.verticalScrollBar().value()
+        
+        self.reloadBtn.setEnabled(True)
+        self.sb.showMessage('Ready')
+        
     def initUI(self):
 
         iconPath = resourcePath('ico\\favicon.ico')
@@ -402,6 +539,8 @@ class SQLBrowserDialog(QDialog):
         
         self.tree.filterUpdated.connect(self.updateFilter)
         self.tree.doubleClicked.connect(self.itemSelected)
+        
+        self.tree.modelReady.connect(self.modelReady)
         
         self.vbox = QVBoxLayout()
         hbox = QHBoxLayout()
@@ -419,13 +558,13 @@ class SQLBrowserDialog(QDialog):
         cancelBtn = QPushButton('Cancel')
         cancelBtn.clicked.connect(self.reject)
         
-        reloadBtn = QPushButton('Reload')
-        reloadBtn.clicked.connect(self.reloadModel)
+        self.reloadBtn = QPushButton('Reload')
+        self.reloadBtn.clicked.connect(self.reloadModel)
         
         hbox.addWidget(self.insertBtn)
         hbox.addWidget(newconsBtn)
         hbox.addWidget(editBtn)
-        hbox.addWidget(reloadBtn)
+        hbox.addWidget(self.reloadBtn)
         hbox.addWidget(cancelBtn)
         
         self.filterl = QLabel('filter')
@@ -439,9 +578,15 @@ class SQLBrowserDialog(QDialog):
         self.vbox.addWidget(self.tree)
         self.vbox.addLayout(hboxfilter)
         self.vbox.addLayout(hbox)
-
+        
+        self.sb = QStatusBar()
+        self.vbox.addWidget(self.sb)
+        
         self.setLayout(self.vbox)
         
+        
+        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'))
+        self.sb.showMessage('Loading descriptions...')
         self.resize(600, 300)
         
         self.setWindowTitle('SQL Browser')
@@ -455,5 +600,4 @@ if __name__ == '__main__':
     
     profiler.report()
     sys.exit()
-    
     
