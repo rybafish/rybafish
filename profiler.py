@@ -146,7 +146,10 @@ class Profiler():
             total += count
             totalTime += t
             
-            log(f'{k:{maxLen}} {humanize(count):>{countLen}},{tp:>12f}{t/count:>16g}{nothing*count:>12f}')
+            if count > 0:
+                log(f'{k:{maxLen}} {humanize(count):>{countLen}},{tp:>12f}{t/count:>16g}{nothing*count:>12f}')
+            else:
+                log(f'{k:{maxLen}} {humanize(count):>{countLen}},{tp:>12f}{"n/a":>16}{nothing*count:>12f}')
             
         if nothing != 0:
             log('-')

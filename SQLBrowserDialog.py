@@ -27,8 +27,6 @@ class descScanner(QObject):
         
     @profiler
     def updateDescriptions(self):
-       
-        time.sleep(2)
 
         for f in self.flatStructure:
             comment = self.getComment(f[1], f[3])
@@ -154,10 +152,13 @@ class SQLBrowser(QTreeView):
         nodez = []
     
         j = 0
+        
+        filterLen = len(filter)
+        
         for (f, fpath, fdesc, fmode) in files:
             if filter:
                 if (
-                    (f.lower().find(filter) < 0) 
+                    (f.lower().find(filter, filterLen) < 0) 
                     and 
                     (fdesc is None or (fdesc is not None and fdesc.lower().find(filter) < 0))):
 
@@ -307,6 +308,16 @@ class SQLBrowser(QTreeView):
         
         i = 0
         
+        if len(nodez) == 0:
+            item1 = QStandardItem(f'[E] Nothing found in "{folder}" folder.')
+            item1.setEditable(False)
+
+            item2 = QStandardItem(f'Check the folder content and "scriptsFolder" setting value.')
+            item2.setEditable(False)
+
+            parentItem.appendRow([item1, item2])
+        
+        
         for i in range(len(nodez)):
 
             (parent, mine, node, data, desc) = nodez[i]
@@ -428,7 +439,6 @@ class SQLBrowserDialog(QDialog):
         else:
             super().keyPressEvent(event)
         
-        
     @staticmethod
     def getFile(parent):
 
@@ -477,19 +487,23 @@ class SQLBrowserDialog(QDialog):
     def insertText(self):
         self.mode = 'insert'
         self.accept()
+        
 
     def newCons(self):
         self.mode = 'open'
         self.accept()
+        
     
     def itemSelected(self, item):
         # and the itec actually ignored because it is extracted in getFile()
         self.mode = 'insert'
         self.accept()
+        
     
     def editFile(self):
         self.mode = 'edit'
         self.accept()
+        
         
     def reloadModel(self):
         #self.tree.filter = ''
@@ -507,6 +521,7 @@ class SQLBrowserDialog(QDialog):
         self.tree.verticalScrollBar().setValue(pos)
         
         self.tree.updateModel()
+        
 
     def modelReady(self):
         pos = self.tree.verticalScrollBar().value()
@@ -519,6 +534,7 @@ class SQLBrowserDialog(QDialog):
         
         self.reloadBtn.setEnabled(True)
         self.sb.showMessage('Ready')
+        
         
     def restoreLayout(wnd):
         if SQLBrowserDialog.layout:
@@ -598,6 +614,7 @@ class SQLBrowserDialog(QDialog):
         self.sb.showMessage('Loading descriptions...')
                 
         self.setWindowTitle('SQL Browser')
+        
 
 if __name__ == '__main__':
     
