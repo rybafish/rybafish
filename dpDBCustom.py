@@ -14,30 +14,33 @@ from kpiDescriptions import createStyle, customSql, kpiGroup
 # variables...
 from kpiDescriptions import addVars, vrsStr, vrsStrDef, addVarsDef, addVarsRepl
 
-from utils import Layout
+from utils import Layout, cfg
 from utils import customKPIException, vrsException
 
 grouplist = {}
 
 def scanKPIsN(hostKPIs, srvcKPIs, kpiStylesN):
-    if not os.path.isdir('sql'):
+
+    sqlFolder = cfg('customKPIsFolder', 'sql')
+    
+    if not os.path.isdir(sqlFolder):
         return
 
-    dir = os.listdir('sql')
+    dir = os.listdir(sqlFolder)
     
     grouplist['host'] = []
     grouplist['service'] = []
     
     for fl in dir:
-        if os.path.isdir(os.path.join('sql',fl)):
+        if os.path.isdir(os.path.join(sqlFolder,fl)):
             # process subfolders
-            d2 = os.listdir(os.path.join('sql',fl))
+            d2 = os.listdir(os.path.join(sqlFolder,fl))
             
             grpname = fl
             
             for yamlFile in d2:
                 if yamlFile[-5:].lower() == '.yaml':
-                    makeKPIsN(os.path.join('sql', fl), yamlFile, hostKPIs, srvcKPIs, kpiStylesN, grpname)
+                    makeKPIsN(os.path.join(sqlFolder, fl), yamlFile, hostKPIs, srvcKPIs, kpiStylesN, grpname)
         else:
             # no subfolders
             yamlFile = fl
@@ -45,7 +48,7 @@ def scanKPIsN(hostKPIs, srvcKPIs, kpiStylesN):
             #srvcKPIs.append('.Custom')
                         
             if yamlFile[-5:].lower() == '.yaml':
-                makeKPIsN(os.path.join('sql'), yamlFile, hostKPIs, srvcKPIs, kpiStylesN)
+                makeKPIsN(os.path.join(sqlFolder), yamlFile, hostKPIs, srvcKPIs, kpiStylesN)
                 
 
 def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):

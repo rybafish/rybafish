@@ -2,7 +2,7 @@ from yaml import safe_load, YAMLError, parser
 
 import os
 
-from utils import log
+from utils import log, cfg
 
 columns = []
 menu = {}
@@ -14,7 +14,7 @@ def loadSQLs():
     menu.clear()
     sqls.clear()
     
-    folder = 'ContextSQLs'
+    folder = cfg('contextSQLsFolder', 'ContextSQLs')
 
     if not os.path.isdir(folder):
         log('no context sqls folder exist (%s), skipping' % folder)

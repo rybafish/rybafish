@@ -131,10 +131,12 @@ class Profiler():
         #syntax sugar coma:
         countLen =  len(humanize(timers[max(timers.keys(), key=lambda x: len(humanize(timers[x][0])))][0])) + 1
 
-        repWidth = maxLen + countLen + 2 + 12 + 1 + 12 + 3 + 15
+        repWidth = maxLen + countLen + 2 + 12 + 1 + 12 + 3 + 15 - 3
         repWidthD = (repWidth - 17) % 2
              
         log('-' * (int((repWidth - 17) / 2)) + ' profiler report ' + '-' * (repWidthD + int((repWidth - 17) / 2)))
+        
+        log(f'{"Function":{maxLen}} {"N":>{countLen}},{"Total, s":>12}{"AVG":>16}{"Profiler":>12}')
         
         for (k, v) in srt:
             count = v[0]
@@ -144,7 +146,10 @@ class Profiler():
             total += count
             totalTime += t
             
-            log(f'{k:{maxLen}} {humanize(count):>{countLen}},{tp:>12f}:{t:>12f} s, ({t/count:>g})')
+            if count > 0:
+                log(f'{k:{maxLen}} {humanize(count):>{countLen}},{tp:>12f}{t/count:>16g}{nothing*count:>12f}')
+            else:
+                log(f'{k:{maxLen}} {humanize(count):>{countLen}},{tp:>12f}{"n/a":>16}{nothing*count:>12f}')
             
         if nothing != 0:
             log('-')

@@ -36,6 +36,8 @@ from utils import cfg
 from utils import Layout
 from utils import dbException, msgDialog
 
+from SQLBrowserDialog import SQLBrowserDialog
+
 import utils
 
 import customSQLs
@@ -128,7 +130,7 @@ class hslWindow(QMainWindow):
             if cons.sqlRunning:
                 log('Sems the sql still running, need to show a warning', 4)
                 
-                answer = utils.yesNoDialog('Warning', 'It seems the SQL is still running.\n\nAre you sure you want to close the console and abandone the execution?')
+                answer = utils.yesNoDialog('Warning', 'It seems the SQL is still running.\n\nAre you sure you want to close the console and abandon the execution?')
                             
                 if not answer:
                     return False
@@ -253,6 +255,9 @@ class hslWindow(QMainWindow):
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
+        
+        if SQLBrowserDialog.layout:
+            self.layout['SQLBrowser.Layout'] = SQLBrowserDialog.layout
         
         # block the position on topof the file
                 
@@ -482,6 +487,57 @@ class hslWindow(QMainWindow):
         abt = aboutDialog.About(self)
         abt.exec_()
 
+    def menuSQLBrowser(self):
+        '''
+        sql = SQLBrowserDialog(self)
+        s = sql.exec_()
+        '''
+        
+        def extractFile(filename):
+            try:
+                with open(file) as f:
+                    txt = f.read()
+            except Exception as e:
+                txt = '-- [E]: ' + str(e)
+                
+            return txt
+            
+        
+        (result, file) = SQLBrowserDialog.getFile(self)
+        
+        if result == 'insert':
+            tabIndex = self.tabs.currentIndex()
+            w = self.tabs.widget(tabIndex)
+            
+            if isinstance(w, sqlConsole.sqlConsole):
+                txt = extractFile(file)
+
+                if len(txt) >= 2:
+                    if txt[-1] == '\n' and txt[-2] != '\n':
+                        txt += '\n'
+                    elif txt[-1] != '\n':
+                        txt += '\n\n'
+
+                pos = w.cons.textCursor().position()
+                w.cons.insertTextS(txt)
+                
+                cursor = w.cons.textCursor()
+                cursor.setPosition(pos, cursor.MoveAnchor)
+                w.cons.setTextCursor(cursor)
+            else:
+                self.statusMessage('Warning: SQL Console needs to be open to use this option.', True)
+                
+        elif result == 'open':
+            console = self.newConsole(generateName=True)
+            txt = extractFile(file)
+            console.cons.insertTextS(txt)
+            
+            cursor = console.cons.textCursor()
+            cursor.setPosition(0, cursor.MoveAnchor)
+            console.cons.setTextCursor(cursor)
+        elif result == 'edit':
+            self.newConsole(filename=file, generateName=False)
+    
     def menuVariables(self):
         
         # detect the sql source for currently selected custom KPI if any
@@ -755,6 +811,57 @@ class hslWindow(QMainWindow):
         w.delayBackup()
         w.saveFile()
     
+    
+    def newConsole(self, filename=None, generateName=False):
+        conf = self.connectionConf
+        
+        self.statusMessage('Connecting console...', True)
+        
+        if generateName == True:
+            tabName = self.generateTabName()
+        else:
+            tabName = 'sqlopen'
+        
+        try:
+            console = sqlConsole.sqlConsole(self, conf, tabName)
+        except:
+            self.statusMessage('Failed', True)
+            log('[!] error creating console for the file')
+            return
+        
+        self.statusMessage('', False)
+        
+        console.nameChanged.connect(self.changeActiveTabName)
+        console.cons.closeSignal.connect(self.closeTab)
+
+        self.tabs.addTab(console, console.tabname)
+        
+        console.selfRaise.connect(self.raiseTab)
+        console.statusMessage.connect(self.statusMessage)
+        
+        console.alertSignal.connect(self.popUp)
+        console.tabSwitchSignal.connect(self.switchTab)
+        
+        ind = indicator()
+        console.indicator = ind
+        
+        ind.iClicked.connect(console.reportRuntime)
+        
+        ind.iToggle.connect(console.updateRuntime)
+                    
+        self.statusbar.addPermanentWidget(ind)
+        
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
+        
+        if filename:
+            console.openFile(filename)
+        
+        if self.layout == None:
+            # switch backups off to avoid conflicts...
+            console.noBackup = True
+        
+        return console
+        
     def menuOpen(self):
         '''
             so much duplicate code with menuSqlConsole
@@ -786,58 +893,32 @@ class hslWindow(QMainWindow):
                 self.tabs.setCurrentIndex(idx)
                 continue
                 
-            conf = self.connectionConf
-            
-            self.statusMessage('Connecting console...', True)
-            
-            try:
-                console = sqlConsole.sqlConsole(self, conf, 'sqlopen')
-            except:
-                self.statusMessage('Failed', True)
-                log('[!] error creating console for the file')
-                return
-                
-            
-            self.statusMessage('', False)
-            
-            console.nameChanged.connect(self.changeActiveTabName)
-            console.cons.closeSignal.connect(self.closeTab)
-
-            self.tabs.addTab(console, console.tabname)
-            
-            console.selfRaise.connect(self.raiseTab)
-            console.statusMessage.connect(self.statusMessage)
-            
-            console.alertSignal.connect(self.popUp)
-            console.tabSwitchSignal.connect(self.switchTab)
-            
-            ind = indicator()
-            console.indicator = ind
-            
-            ind.iClicked.connect(console.reportRuntime)
-            
-            ind.iToggle.connect(console.updateRuntime)
-                        
-            self.statusbar.addPermanentWidget(ind)
-            
-            self.tabs.setCurrentIndex(self.tabs.count() - 1)
-            
-            console.openFile(filename)
-
-            '''
-            path, file = os.path.split(filename)
-            file, ext = os.path.splitext(file)
-
-            print(path, file, ext)
-            print(os.path.join(path, file))
-            print('open file', filename)
-            '''
-
-            if self.layout == None:
-                # no backups to avoid conflicts...
-                console.noBackup = True
+            self.newConsole(filename=filename, generateName=False)
 
     #def populateConsoleTab(self):
+    
+    def generateTabName(self):
+        noname = True
+        
+        while noname:
+            self.sqlTabCounter += 1
+            idx = self.sqlTabCounter
+            
+            if idx > 1:
+                tname = 'sql' + str(idx)
+            else:
+                tname = 'sql'
+                
+            for i in range(self.tabs.count() -1, 0, -1):
+                w = self.tabs.widget(i)
+                if isinstance(w, sqlConsole.sqlConsole):
+                    if w.tabname == tname or w.tabname == tname + ' *': # so not nice...
+                        break
+            else:
+                noname = False
+                
+        return tname
+        
 
     def menuSQLConsole(self):
     
@@ -857,24 +938,7 @@ class hslWindow(QMainWindow):
         
         log('menuSQLConsole...')
         
-        noname = True
-        
-        while noname:
-            self.sqlTabCounter += 1
-            idx = self.sqlTabCounter
-            
-            if idx > 1:
-                tname = 'sql' + str(idx)
-            else:
-                tname = 'sql'
-                
-            for i in range(self.tabs.count() -1, 0, -1):
-                w = self.tabs.widget(i)
-                if isinstance(w, sqlConsole.sqlConsole):
-                    if w.tabname == tname or w.tabname == tname + ' *': # so not nice...
-                        break
-            else:
-                noname = False
+        tname = self.generateTabName()
                 
         try:
             console = sqlConsole.sqlConsole(self, conf, tname) # self = window
@@ -1036,6 +1100,9 @@ class hslWindow(QMainWindow):
                 kpiDescriptions.Variables.width = self.layout['variablesLO']['width']
                 kpiDescriptions.Variables.height = self.layout['variablesLO']['height']
             
+            if self.layout['SQLBrowser.Layout']:
+                SQLBrowserDialog.layout = self.layout['SQLBrowser.Layout']
+                
             if self.layout['running']:
 
                 try:
@@ -1232,7 +1299,14 @@ class hslWindow(QMainWindow):
         varsAct.triggered.connect(self.menuVariables)
         
         varsMenu.addAction(varsAct)
-            
+
+        sqlMenu = menubar.addMenu('SQL')
+        sqlAct = QAction('SQL Browser', self)
+        sqlAct.setShortcut('F11')
+        sqlAct.setStatusTip('Open SQL Browser')
+        sqlAct.triggered.connect(self.menuSQLBrowser)
+        sqlMenu.addAction(sqlAct)
+        
         layoutMenu = menubar.addMenu('&Layout')
         
         layoutAct = QAction('Save window layout', self)

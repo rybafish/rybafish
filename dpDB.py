@@ -302,6 +302,8 @@ class dataProvider(QObject):
                 kpisList['-'].append(kpi)
                         
         return kpisList
+        
+        
     def getData(self, h, fromto, kpiIn, data, wnd = None):
         '''
             returns boolean
@@ -555,8 +557,6 @@ class dataProvider(QObject):
         
         for kpi in kpiIn.copy():
             #print('kpi: ', kpi)
-            
-            
             
             if kpi not in kpiDescriptions.kpiStylesNN[type] or 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
                 # this will affect the actual list of enabled kpis, which is good!

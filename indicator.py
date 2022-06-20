@@ -31,7 +31,7 @@ class indicator(QWidget):
         self.bkpStatus = 'idle'
         self.status = 'idle'
         
-        self.runtime = None
+        self.runtime = None         # str to be displayed, not a number/timer/whatever
         super().__init__(parent)
         
         self.setMinimumSize(QSize(15, 15))
@@ -43,7 +43,6 @@ class indicator(QWidget):
     
     def enterEvent(self, event):
         self.iToggle.emit('on')
-        
         
     def updateRuntime(self):
         if self.runtime is not None:

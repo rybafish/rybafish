@@ -361,6 +361,8 @@ class myWidget(QWidget):
                     
                     yScaleLow = 0
                     
+                    kpiStylesNN[type][kpi]['decimal'] = 0
+                    
                     if groupName == 0:
                         if 'manual_scale' in kpiStylesNN[type][kpi]:
                             manualScale = True
@@ -559,13 +561,16 @@ class myWidget(QWidget):
             self._parent.dp.fakeDisconnect = True
         
         if action == savePNG:
-            if not os.path.isdir('screens'):
-                os.mkdir('screens')
-                
-            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
-            fn = os.path.join('screens', fn)
             
-            log('Saving PNG image (%s)' % fn)
+            screensFolder = cfg('screensFolder', 'screens')
+            
+            if not os.path.isdir(screensFolder):
+                os.mkdir(screensFolder)
+                
+            filename = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
+            fn = os.path.join(screensFolder, filename)
+            
+            log('Saving PNG image (%s)' % filename)
             
             pixmap = QPixmap(self.size())
             self.render(pixmap)
@@ -600,13 +605,15 @@ class myWidget(QWidget):
             self.repaint()
         
         if action == saveVAPNG:
-            if not os.path.isdir('screens'):
-                os.mkdir('screens')
-                
-            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
-            fn = os.path.join('screens', fn)
+            screensFolder = cfg('screensFolder', 'screens')
             
-            log('Saving PNG image (%s)' % fn)
+            if not os.path.isdir(screensFolder):
+                os.mkdir(screensFolder)
+                
+            filename = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
+            fn = os.path.join(screensFolder, filename)
+            
+            log('Saving PNG image (%s)' % filename)
             
             pixmap = QPixmap(self.parentWidget().size())
             self.parentWidget().render(pixmap)
@@ -734,6 +741,9 @@ class myWidget(QWidget):
                 
                 if found == True: #we only can find one kpi to highlight (one for all the hosts)
                     return
+
+        self.collisionsCurrent = None
+        self.collisionsDirection = None
 
         if not found:
             if (self.highlightedKpi):
@@ -1039,6 +1049,7 @@ class myWidget(QWidget):
                         self.highlightedGBI = rc # groupby index
                         ml = '/' + gb
                     else:
+                        self.highlightedGBI = None
                         ml = ''
 
                     log('click on %s(%i).%s%s = %i, %s' % (self.hosts[host]['host'], host, kpi, ml, scan[j], scaled_value))
@@ -2130,6 +2141,9 @@ class chartArea(QFrame):
     fromTime = None
     toTime = None
     
+    collisionsCurrent = None
+    collisionsDirection = None
+    
     suppressStatus = None # supress status update, intended for autorefresh theshold vialation message
     
     def dpDisconnected(self):
@@ -2189,68 +2203,399 @@ class chartArea(QFrame):
             self.statusMessage_.emit(str, True)
         else:
             self.statusMessage_.emit(str, False)
+        
+    @profiler
+    def moveHighlight(self, direction):
+        '''
+            #639 
+            to make it having sence regular there should be:
             
-    def keyPressEventZ(self, event):
-        def moveHighlight(direction):
-            '''
-                #639 
-                to make it having sence regular there should be:
+            for regular KPIs:
+                1. loop to identify closest value to the selected timestamp
+                2. calculate y-value on the screen for those values
+                3. chose closest one to prevoiusly selected one
                 
-                for regular KPIs:
-                    1. loop to identify closest value to the selected timestamp
-                    2. calculate y-value on the screen for those values
-                    3. chose closest one to prevoiusly selected one
-                    
-                    4. somehow deal with collisions - same Y value possible
-                    
-                Gantt KPIs:
-                    up/down should move through entity, should be simple, 
-                    but also consider timing
-                    
-                Multiline KPIs:
-                    probably the simplised one as it is on the same Y-scale
-                    
-                Still want to try to implement this?
+                4. somehow deal with collisions - same Y value possible
                 
-            '''
-            self.statusMessage('Not implemented yet.')
+            Gantt KPIs:
+                up/down should move through entity, should be simple, 
+                but also consider timing
+                
+            Multiline KPIs:
+                probably the simplised one as it is on the same Y-scale
+                
+            Still want to try to implement this?
             
-        def reportHighlight(host, kpi, point):
-            #this is black magic copy paste from scanforhint
-            type = hType(host, self.widget.hosts)
-            timeKey = kpiDescriptions.getTimeKey(type, kpi)
-            
-            d = kpiStylesNN[type][kpi].get('decimal', 0)
-            
-            subtype = kpiDescriptions.getSubtype(type, kpi)
-            
-            if subtype == 'multiline':
-                gbi = self.widget.highlightedGBI
-                value = self.widget.ndata[host][kpi][gbi][1][point]
-                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], value, d)
+        '''
+        @profiler
+        def getY(data, host, timeKey, kpi, pointTime, idxKnown=None, gbi=None):
+            @profiler
+            def scan(a, v):
+                '''Scans for a value t in ordered array a, returns index of first value greather t'''
+                
+                i = 0
+                
+                l = len(a)
+                
+                if l < 2:
+                    return None
+                
+                while i<l and a[i]<v:
+                    i += 1
+
+                if i == l:
+                    i -= 1
+                    
+                return i
+                
+            if not idxKnown:
+                idx = scan(data[timeKey], pointTime) # despite multiline, time has the same layout
             else:
-                normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
+                idx = idxKnown
+                
+            if idx is None:
+                log('No proper point in time detected', 5)
+                return None, None
 
-            self.widget.highlightedNormVal = normVal
-            
-            scaled_value = utils.numberToStr(normVal, d)
-            tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
-            
-            unit = self.widget.nscales[host][kpi]['unit']
+            # calculate y of that:
+            if self.widget.nscales[host][kpi]['y_max'] == 0:
+                y_scale = 0
+            else:
+                y_scale = (
+                    (wsize.height() - self.widget.top_margin - self.widget.bottom_margin - 2 - 1)/
+                    (self.widget.nscales[host][kpi]['y_max'] - self.widget.nscales[host][kpi]['y_min'])
+                )
+               
+            if gbi is None:
+                y = data[kpi][idx]
+            else:
+                y = data[kpi][gbi][1][idx]
 
-            hst = self.widget.hosts[host]['host']
-            if self.widget.hosts[host]['port'] != '':
-                hst += ':'+str(self.widget.hosts[host]['port'])
+            if y < 0:
+                y = wsize.height() - self.widget.bottom_margin - 1
+            else:
+                #y = self.nscales[h][kpi]['y_min'] + y*y_scale #562
+                y = (y - self.widget.nscales[host][kpi]['y_min']) * y_scale #562
+                y = round(wsize.height() - self.widget.bottom_margin - y) - 2
             
-            self.widget.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
+            return y, idx
+        
+        h = self.widget.highlightedKpiHost
+        kpiName = self.widget.highlightedKpi
+        point = self.widget.highlightedPoint
+        tgbi = self.widget.highlightedGBI
 
-            self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpi, scaled_value, unit, tm))
+        data = self.widget.ndata[h]
+        
+        kpis = data.keys()
+        
+        ht = hType(h, self.widget.hosts)
+        timeKey = kpiDescriptions.getTimeKey(ht, kpiName)
+                
+        if timeKey is None:
+            log(f'Cannot identify time key for {kpiName} in {kpis}', 2)
+            self.statusMessage('Cannot identify time key, check logs, please report this issue.')
+            return
+            
+        subtype = kpiDescriptions.getSubtype(ht, kpiName)
+        
+        if subtype == 'gantt':
+            self.statusMessage(f'Not implemented for {subtype} yet.')
+            return
+
+        pointTime = data[timeKey][point]
+        pointTS = datetime.datetime.fromtimestamp(pointTime)
+                
+        # this will be required in messy getY implementation
+        wsize = self.widget.size()
+        
+        targetY, idx = getY(data, h, timeKey, kpiName, None, idxKnown=point, gbi=tgbi)
+            
+        # now iterate through the KPIs of the same style and detect the closest one somehow
+                
+        ys = [] # list of tuples: (host, kpi, Y, gbi) gbi is not None for multilines
+        
+        collisions = 0
+        
+        surogateIdx = 0
+                
+        for checkHost in range(len(self.widget.nkpis)):
+            if len(self.widget.nkpis[checkHost]) == 0:
+                continue
+
+            ht = hType(checkHost, self.widget.hosts)
+            
+            for checkKPI in self.widget.nkpis[checkHost]:
+            
+                timeKey = kpiDescriptions.getTimeKey(ht, checkKPI)
+                subtype = kpiDescriptions.getSubtype(ht, checkKPI)
+
+                if subtype == 'multiline':
+                    rounds = len(self.widget.ndata[checkHost][checkKPI])
+                else:
+                    rounds = 1
+                
+                for rc in range(rounds):
+
+                    if subtype == 'multiline':
+                        gbi = rc
+                    else:
+                        gbi = None
+                
+                    y, idx = getY(self.widget.ndata[checkHost], checkHost, timeKey, checkKPI, pointTime, idxKnown=None, gbi=gbi)
+                    
+                    if y is None:
+                        continue
+                    
+                    if y == targetY:
+                        if not (checkHost == self.widget.highlightedKpiHost and checkKPI == self.widget.highlightedKpi and tgbi==gbi):
+                            collisions += 1
+                        
+                    surogateIdx += 1
+                        
+                    if direction == 'up':
+                        if y <= targetY:
+                            ys.append((checkHost, checkKPI, y, idx, surogateIdx, gbi))
+                    else:
+                        if y >= targetY:
+                            ys.append((checkHost, checkKPI, y, idx, surogateIdx, gbi))
+
+        #ys = sorted(ys, lambda x: x[2], reverse=(direction=='up'))
+        
+        # collisions detected already means that we are in collisions _second_ time so + 1
+        # but the original kpi is not listed in ys, so -1 
+        log(f'--> collisions current: {self.collisionsCurrent}, detected: {collisions}', 5)
+        
+        compensate = 0
+        if self.collisionsDirection != direction:
+            compensate = 1
+            
+        if self.collisionsCurrent is None and collisions:
+            if direction == 'up':
+                self.collisionsCurrent = 0 + 1
+            else:
+                self.collisionsCurrent = collisions
+            
+        log(f'--> collisions current: {self.collisionsCurrent}, detected: {collisions}', 5)
+        
+        if not ys:
+            self.statusMessage(f'Nothing identified {direction}')
+            return
+            
+        #ys = sorted(ys, key=lambda x: (x[2], x[1], x[0]), reverse=(direction=='up'))
+        
+        if direction=='up':
+            revOrder = True
+        else:
+            revOrder = False
+        
+        #ys = sorted(ys, key=lambda x: (x[2], sign*x[4]), reverse=revOrder)
+        ys = sorted(ys, key=lambda x: (x[2], -1*(x[5] or 0), x[4]), reverse=revOrder) #652 add gbi into ordering...
+        
+        log(f'sorted, {revOrder=}', 5)
+
+        for zz in ys:
+            log(zz, 5)
+
+        if self.collisionsCurrent is None:
+            shift = 1
+        else: 
+            if direction == 'up':
+                if collisions and compensate:
+                    self.collisionsCurrent += 1
+                shift = self.collisionsCurrent
+            else:
+                if collisions and compensate:
+                    self.collisionsCurrent -= 1
+                shift = collisions - self.collisionsCurrent + 1
+
+        log(f'shift: {shift}, collisionsCurrent: {self.collisionsCurrent}', 5)
+        
+        if shift >= len(ys):
+            self.statusMessage(f'Nothing identified {direction}')
+            return
+            
+        yVal = ys[shift]
+        
+        if self.collisionsCurrent is not None:
+            if collisions:
+                if direction == 'up':
+                    self.collisionsCurrent += 1
+                    
+                    if self.collisionsCurrent > collisions+1:
+                        self.collisionsCurrent = None
+                    
+                else:
+                    self.collisionsCurrent -= 1
+
+                    if self.collisionsCurrent < 0:
+                        self.collisionsCurrent = None
+            else:
+                self.collisionsCurrent = None
+                
+        log(f'<-- collisions current: {self.collisionsCurrent}, detected: {collisions}', 5)
+
+        if yVal[5] is not None:
+            gb = self.widget.ndata[checkHost][yVal[1]][yVal[5]][0]
+            mls = f'[{gb}] ({yVal[5]})'
+        else:
+            mls = ''
+
+        log(f'okay, the leader is: {yVal[0]}/{yVal[1]}{mls}', 5)
+
+        self.collisionsDirection = direction
+        
+        self.widget.highlightedKpiHost = yVal[0]
+        self.widget.highlightedKpi = yVal[1]
+        self.widget.highlightedPoint = yVal[3]
+        self.widget.highlightedGBI = yVal[5]
+
+        self.reportHighlighted()
+        self.widget.update()
+        
+
+    def reportHighlighted(self):
+    
+        point = self.widget.highlightedPoint
+        host = self.widget.highlightedKpiHost
+        kpi = self.widget.highlightedKpi
+        
+        #this is black magic copy paste from scanforhint
+        type = hType(host, self.widget.hosts)
+        timeKey = kpiDescriptions.getTimeKey(type, kpi)
+
+        hst = self.widget.hosts[host]['host']
+        if self.widget.hosts[host]['port'] != '':
+            hst += ':'+str(self.widget.hosts[host]['port'])
+        
+        d = kpiStylesNN[type][kpi].get('decimal', 0)
+        
+        subtype = kpiDescriptions.getSubtype(type, kpi)
+        
+        if subtype == 'gantt':
+            entity = self.widget.highlightedEntity
+            reportRange = self.widget.highlightedRange
+            
+            t = self.widget.ndata[host][kpi][entity][reportRange]
+
+            t0 = t[0].time().isoformat(timespec='milliseconds')
+            t1 = t[1].time().isoformat(timespec='milliseconds')
+
+            interval = '[%s - %s]' % (t0, t1)
+            
+            det = '%s, %s.%s, %s: %s/%i %s' % (hst, type, kpi, entity, interval, t[3], t[2])
+            
+            self.statusMessage(det)
+            return
+
+            
+        elif subtype == 'multiline':
+            gbi = self.widget.highlightedGBI
+            gb = self.widget.ndata[host][kpi][gbi][0]
+            value = self.widget.ndata[host][kpi][gbi][1][point]
+            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], value, d)
+            
+            kpiLabel = f'{kpi}/{gb}'
+        else:
+            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
+            kpiLabel = kpi
+
+        self.widget.highlightedNormVal = normVal
+
+        scaled_value = utils.numberToStr(normVal, d)
+        tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
+        
+        unit = self.widget.nscales[host][kpi]['unit']
+
+        self.widget.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpiLabel, scaled_value, unit, tm))
+        self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpiLabel, scaled_value, unit, tm))
+        
+    @profiler
+    def moveHighlightGantt(self, direction):
+        def getClosest(d, target):
+            '''
+                finds closest interval in d to target based on center of intervals
+                returns index
+            '''
+        
+            closest = 0
+            
+            minDelta = abs((d[0][0].timestamp()+d[0][1].timestamp())/2 - target)
+        
+            for i in range(len(d)):
+                delta = abs((d[i][0].timestamp()+d[i][1].timestamp())/2 - target)
+                
+                if minDelta > delta:
+                    minDelta = delta
+                    closest = i
+        
+            return closest
+        
+        host = self.widget.highlightedKpiHost
+        kpi = self.widget.highlightedKpi
+        entity = self.widget.highlightedEntity
+        
+        data = self.widget.ndata[host][kpi]
+        
+        entities = list(self.widget.ndata[host][kpi].keys())
+        el = len(data[entity])
+        
+        changesDone = False
+        
+        if direction == 'right':
+            if self.widget.highlightedRange < el-1:
+                self.widget.highlightedRange += 1
+                changesDone = True
+                
+        if direction == 'left':
+            if self.widget.highlightedRange > 0:
+                self.widget.highlightedRange -= 1
+                changesDone = True
+
+        if changesDone:
+            self.widget.update()
+            self.reportHighlighted()
+            return
+            
+        entry = data[entity][self.widget.highlightedRange]
+        
+        midt = (entry[0].timestamp()+entry[1].timestamp())/2
+
+        if direction == 'up':
+            i = entities.index(entity)
+            
+            if i < len(entities)-1:
+                self.widget.highlightedEntity = entities[i+1]
+                self.widget.highlightedRange = getClosest(data[self.widget.highlightedEntity], midt)
+                changesDone = True
+                
+        if direction == 'down':
+            i = entities.index(entity)
+            
+            if i > 0:
+                self.widget.highlightedEntity = entities[i-1]
+                self.widget.highlightedRange = getClosest(data[self.widget.highlightedEntity], midt)
+                changesDone = True
+                
+        if changesDone:
+            self.widget.update()
+            self.reportHighlighted()
+
+    def keyPressEventZ(self, event):
             
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_Up:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
-                moveHighlight('up')
+                self.moveHighlight('up')
+            elif modifiers == Qt.AltModifier and self.widget.highlightedEntity:
+                self.moveHighlightGantt('up')
+
+        if event.key() == Qt.Key_Down:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+                self.moveHighlight('down')
+            elif modifiers == Qt.AltModifier and self.widget.highlightedEntity:
+                self.moveHighlightGantt('down')
             
         if event.key() == Qt.Key_Left:
             if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
@@ -2262,7 +2607,9 @@ class chartArea(QFrame):
                     self.widget.highlightedPoint -= 1
                     self.widget.update()
                     
-                    reportHighlight(host, kpi, self.widget.highlightedPoint)
+                    self.reportHighlighted()
+            elif modifiers == Qt.AltModifier and self.widget.highlightedEntity is not None:
+                self.moveHighlightGantt('left')
             else:
                 x = 0 - self.widget.pos().x() # pos().x() is negative if scrolled to the right
                 self.scrollarea.horizontalScrollBar().setValue(x - self.widget.step_size*10)
@@ -2287,8 +2634,9 @@ class chartArea(QFrame):
                     self.widget.highlightedPoint += 1
                     self.widget.update()
                     
-                    reportHighlight(host, kpi, self.widget.highlightedPoint)
-
+                    self.reportHighlighted()
+            elif modifiers == Qt.AltModifier and self.widget.highlightedEntity is not None:
+                self.moveHighlightGantt('right')
             else:
                 x = 0 - self.widget.pos().x() 
                 self.scrollarea.horizontalScrollBar().setValue(x + self.widget.step_size*10)
@@ -3174,7 +3522,7 @@ class chartArea(QFrame):
         self.reloadLock = True
         
         actualRequest = False
-        
+                
         while allOk is None:
             try:
                 for host in range(0, len(self.widget.hosts)):

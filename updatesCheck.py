@@ -8,7 +8,7 @@ from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
 from yaml import safe_load, YAMLError
 from utils import log as ulog
 from utils import resourcePath
-from _constants import build_date, version
+from _constants import build_date, version, isbeta
 
 from PyQt5.QtCore import Qt, QUrl
 
@@ -104,7 +104,7 @@ def gotResponse(QNetworkReply):
     for (k) in ver:
         log('ver: %s = %s' % (k, str(ver[k])), 5)
     
-    if cfg('updatesCheckBeta', False) and ver.get('versionBeta'):
+    if cfg('updatesCheckBeta', isbeta) and ver.get('versionBeta'):
         log('There is a beta version available...')
         lastVersion = ver.get('versionBeta')
         lastBuild = ver.get('dateBeta')
