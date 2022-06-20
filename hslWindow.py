@@ -256,6 +256,9 @@ class hslWindow(QMainWindow):
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
         self.layout['size'] = [self.size().width(), self.size().height()]
         
+        if SQLBrowserDialog.layout:
+            self.layout['SQLBrowser.Layout'] = SQLBrowserDialog.layout
+        
         # block the position on topof the file
                 
         self.layout['mainSplitter'] = self.mainSplitter.sizes()
@@ -1097,6 +1100,9 @@ class hslWindow(QMainWindow):
                 kpiDescriptions.Variables.width = self.layout['variablesLO']['width']
                 kpiDescriptions.Variables.height = self.layout['variablesLO']['height']
             
+            if self.layout['SQLBrowser.Layout']:
+                SQLBrowserDialog.layout = self.layout['SQLBrowser.Layout']
+                
             if self.layout['running']:
 
                 try:

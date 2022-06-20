@@ -28,16 +28,14 @@ class descScanner(QObject):
     @profiler
     def updateDescriptions(self):
        
-        self.flatStructureOut = []
-        
-        time.sleep(5)
+        time.sleep(2)
 
         for f in self.flatStructure:
             comment = self.getComment(f[1], f[3])
             
             if comment:
                 f[2] = comment
-                
+                                
         self.finished.emit()
 
     @profiler
@@ -157,29 +155,14 @@ class SQLBrowser(QTreeView):
     
         j = 0
         for (f, fpath, fdesc, fmode) in files:
-        
             if filter:
                 if (
                     (f.lower().find(filter) < 0) 
                     and 
                     (fdesc is None or (fdesc is not None and fdesc.lower().find(filter) < 0))):
 
-                    '''
-                    fstr = f'[{filter}] {f}, {f.lower().find(filter)}'
-                    if fdesc:
-                        fstr += f' {fdesc=} [{fdesc.lower().find(filter)}]'
-                        
-                    print(fstr)
-                    '''
                     continue
             
-            '''
-            fstr = f'[{filter}] {f}, {f.lower().find(filter)}'
-            if fdesc:
-                fstr += f' {fdesc=} [{fdesc.lower().find(filter)}]'
-                
-            print(fstr)
-            '''
             
             hier = f.split(os.sep)
             
@@ -187,14 +170,6 @@ class SQLBrowser(QTreeView):
                 
                 noSlice = False
                 
-                '''
-                if hier[:i]:
-                    parentPath = folder + '\\' + '\\'.join(hier[:i])
-                else:
-                    # avoid trailing slash
-                    parentPath = folder
-                '''
-
                 if hier[:i]:
                     parentPath = '\\'.join(hier[:i])
                 else:
@@ -236,6 +211,7 @@ class SQLBrowser(QTreeView):
 
     @profiler
     def flatten(self, folder, files):
+        '''translates flat folder to common flat structure with os.sep separators'''
         maxdepth = 2
         prefix = 'HANA_'
         sep = '_'
@@ -280,7 +256,9 @@ class SQLBrowser(QTreeView):
             filtering performed on this structure and actual tree model build on top
         '''
     
-        flatlist = []
+        flatlist = [] # [presented file name, actual name, description, comment extraction mode]
+                      # presented file name - includes path that will be translated to hierarchy later (in buildModel)
+                      # itmight differ from actual path based on maxdepth or specific "flat" folders tructure (flatten deals with that)
     
         for root, dirs, files in os.walk(path):
             if files:
@@ -292,8 +270,8 @@ class SQLBrowser(QTreeView):
                         filename = os.path.join(root, f)
                         #desc = self.getComment(filename)
                         desc = None
-                        flatlist.append([filename, None, desc, 1])
-                   
+                        flatlist.append([filename, filename, desc, 1])
+                                           
         return flatlist
 
     @profiler
@@ -386,7 +364,7 @@ class SQLBrowser(QTreeView):
         self.setColumnWidth(0, 350)
         self.setColumnWidth(1, 200)
         #self.setColumnWidth(2, 150)
-
+        
         if needComments:
             self.descWorker.flatStructure = self.flatStructure
             self.thread.start()
@@ -408,6 +386,7 @@ class SQLBrowser(QTreeView):
 class SQLBrowserDialog(QDialog):
 
     inst = None
+    layout = {}
     
     def __init__(self, parent = None):
 
@@ -434,12 +413,6 @@ class SQLBrowserDialog(QDialog):
         
         # and it will trigger filterChanged itself
         return
-        '''
-        print('update filter')
-        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filter=self.tree.filter)
-        if len(self.tree.filter) >= 3:
-            self.tree.expandAll()
-        '''
 
     def keyPressEvent(self, event):
         '''keypress anywhere on the dialog (QTreeView has very similar handler'''
@@ -458,13 +431,29 @@ class SQLBrowserDialog(QDialog):
         
     @staticmethod
     def getFile(parent):
+
+    
         if SQLBrowserDialog.inst is None:
             sqld = SQLBrowserDialog(parent)
             SQLBrowserDialog.inst = sqld
         else:
             sqld = SQLBrowserDialog.inst
-    
+            
+
+        sqld.restoreLayout()
         result = sqld.exec_()
+        
+        SQLBrowserDialog.layout['width'] = sqld.size().width()
+        SQLBrowserDialog.layout['height'] = sqld.size().height()
+        SQLBrowserDialog.layout['pos_x'] = sqld.pos().x()
+        SQLBrowserDialog.layout['pos_y'] = sqld.pos().y()
+        
+        colwidth = []
+        
+        for i in range(2):
+            colwidth.append(sqld.tree.columnWidth(i))
+            
+        SQLBrowserDialog.layout['col_width'] = colwidth
         
         if result == QDialog.Accepted:
             model = sqld.tree.selectionModel()
@@ -531,6 +520,26 @@ class SQLBrowserDialog(QDialog):
         self.reloadBtn.setEnabled(True)
         self.sb.showMessage('Ready')
         
+    def restoreLayout(wnd):
+        if SQLBrowserDialog.layout:
+            width = SQLBrowserDialog.layout.get('width', 600)
+            height = SQLBrowserDialog.layout.get('height', 600)
+            
+            x = SQLBrowserDialog.layout.get('pos_x')
+            y = SQLBrowserDialog.layout.get('pos_y')
+            
+            wnd.resize(width, height)
+            wnd.move(x, y)
+
+            i = 0
+            for colwidth in SQLBrowserDialog.layout['col_width']:
+                wnd.tree.setColumnWidth(i, colwidth)
+                i += 1
+
+        else:
+            wnd.resize(600, 300)
+    
+        
     def initUI(self):
 
         iconPath = resourcePath('ico\\favicon.ico')
@@ -587,8 +596,7 @@ class SQLBrowserDialog(QDialog):
         
         self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'))
         self.sb.showMessage('Loading descriptions...')
-        self.resize(600, 300)
-        
+                
         self.setWindowTitle('SQL Browser')
 
 if __name__ == '__main__':
