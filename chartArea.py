@@ -2329,6 +2329,9 @@ class chartArea(QFrame):
             
                 timeKey = kpiDescriptions.getTimeKey(ht, checkKPI)
                 subtype = kpiDescriptions.getSubtype(ht, checkKPI)
+                
+                if subtype == 'gantt':
+                    continue
 
                 if subtype == 'multiline':
                     rounds = len(self.widget.ndata[checkHost][checkKPI])

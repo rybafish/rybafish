@@ -117,3 +117,6 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 
 ## optional path to context SQLs folder
 #contextSQLsFolder: '<path to>...\ContextSQLs'
+
+## sql scripts folder
+#scriptsFolder: 'scripts'
