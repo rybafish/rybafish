@@ -503,12 +503,30 @@ class hslWindow(QMainWindow):
             return txt
             
         
-        (result, file) = SQLBrowserDialog.getFile(self)
+        (result, file, offset) = SQLBrowserDialog.getFile(self)
         
-        if result == 'insert':
-            tabIndex = self.tabs.currentIndex()
-            w = self.tabs.widget(tabIndex)
+        tabIndex = self.tabs.currentIndex()
+        w = self.tabs.widget(tabIndex)
+        
+        if result == 'open' or (file and not isinstance(w, sqlConsole.sqlConsole)):
+            # chart tab is actually PyQt5.QtWidgets.QSplitter, it does not have proper class on top
+            console = self.newConsole(generateName=True)
+            txt = extractFile(file)
+            console.cons.insertTextS(txt)
             
+            cursor = console.cons.textCursor()
+            
+            if offset:
+                cursor.setPosition(offset, cursor.MoveAnchor)
+            else:
+                cursor.setPosition(0, cursor.MoveAnchor)
+                
+            console.cons.setTextCursor(cursor)
+            
+        elif result == 'edit':
+            self.newConsole(filename=file, generateName=False)
+            
+        elif result == 'insert':
             if isinstance(w, sqlConsole.sqlConsole):
                 txt = extractFile(file)
 
@@ -521,22 +539,14 @@ class hslWindow(QMainWindow):
                 pos = w.cons.textCursor().position()
                 w.cons.insertTextS(txt)
                 
+                if offset:
+                    pos += offset
+                
                 cursor = w.cons.textCursor()
                 cursor.setPosition(pos, cursor.MoveAnchor)
                 w.cons.setTextCursor(cursor)
             else:
                 self.statusMessage('Warning: SQL Console needs to be open to use this option.', True)
-                
-        elif result == 'open':
-            console = self.newConsole(generateName=True)
-            txt = extractFile(file)
-            console.cons.insertTextS(txt)
-            
-            cursor = console.cons.textCursor()
-            cursor.setPosition(0, cursor.MoveAnchor)
-            console.cons.setTextCursor(cursor)
-        elif result == 'edit':
-            self.newConsole(filename=file, generateName=False)
     
     def menuVariables(self):
         
@@ -565,6 +575,8 @@ class hslWindow(QMainWindow):
         
     def menuConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
+    def menuChangelogHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/changelog'))
 
     def menuCustomConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/customKPI'))
@@ -1371,17 +1383,19 @@ class hslWindow(QMainWindow):
         confTipsAct = QAction('Tips and tricks', self)
         confTipsAct.setStatusTip('Tips and tricks description')
         confTipsAct.triggered.connect(self.menuTips)
+
+        confChangeAct = QAction('Changelog', self)
+        confChangeAct.setStatusTip('Changelog and recent features')
+        confChangeAct.triggered.connect(self.menuChangelogHelp)
         
         helpMenu = menubar.addMenu('&Help')
         helpMenu.addAction(confHelpAct)
         
         
         helpMenu.addAction(confCustomHelpAct)
-        
         helpMenu.addAction(confContextHelpAct)
-        
         helpMenu.addAction(confTipsAct)
-            
+        helpMenu.addAction(confChangeAct)
         helpMenu.addAction(aboutAct)
 
         # finalization        

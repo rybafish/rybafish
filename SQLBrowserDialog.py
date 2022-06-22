@@ -29,10 +29,11 @@ class descScanner(QObject):
     def updateDescriptions(self):
 
         for f in self.flatStructure:
-            comment = self.getComment(f[1], f[3])
+            comment, offset = self.getComment(f[1], f[3])
             
             if comment:
                 f[2] = comment
+                f[4] = offset
                                 
         self.finished.emit()
 
@@ -52,7 +53,7 @@ class descScanner(QObject):
                         
                         if mode == 1:
                             if l[0:2] == '--':
-                                return l[2:].lstrip()
+                                return l[2:].lstrip(), len(l)
                         
                         if mode == 2:
                             if l == '[DESCRIPTION]':
@@ -60,14 +61,16 @@ class descScanner(QObject):
                                 continue
                                 
                             if trigger and l:
-                                return l
+                                return l, None
                                                 
                 except StopIteration:
-                    return None
+                    return None, None
                 except Exception as e:
                     log(f'[E] {filename}:{e}', 2)
         except Exception as e:
             log(f'[E] {filename}:{e}', 2)
+            
+        return None, None
     
 
 class SQLBrowser(QTreeView):
@@ -155,7 +158,7 @@ class SQLBrowser(QTreeView):
         
         filterLen = len(filter)
         
-        for (f, fpath, fdesc, fmode) in files:
+        for (f, fpath, fdesc, fmode, offset) in files:
             if filter:
                 if (
                     (f.lower().find(filter, filterLen) < 0) 
@@ -186,12 +189,12 @@ class SQLBrowser(QTreeView):
                         st = st[:i]
                         st.append(hier[i])
                                                 
-                        nodez.append((parentPath, nodePath, hier[i], None, None))
+                        nodez.append((parentPath, nodePath, hier[i], None, None, None))
 
                 else:
                     st.append(hier[i])
                                         
-                    nodez.append((parentPath, nodePath, hier[i], None, None))
+                    nodez.append((parentPath, nodePath, hier[i], None, None, None))
                     
             if noSlice == False and i+1 < len(st):
                 st = st[:i+1]
@@ -201,12 +204,12 @@ class SQLBrowser(QTreeView):
             else:
                 filename = fpath
             #print(f'filename: [{hier[-1]}], [{nodePath=}]]: {filename=}')
-            leaves[f] = (hier[-1], nodePath, filename, fdesc)
+            leaves[f] = (hier[-1], nodePath, filename, fdesc, offset)
                         
         # populate leaves now:
         for file in leaves.keys():
             f = leaves[file]
-            nodez.append((f[1], None, f[0], f[2], f[3]))
+            nodez.append((f[1], None, f[0], f[2], f[3], f[4]))
 
         return nodez
 
@@ -236,7 +239,7 @@ class SQLBrowser(QTreeView):
             #desc = self.getComment(fold, mode=2)
             desc = None
                         
-            filelist.append([fnew, fold, desc, 2])
+            filelist.append([fnew, fold, desc, 2, None])
         
         return filelist
             
@@ -271,13 +274,14 @@ class SQLBrowser(QTreeView):
                         filename = os.path.join(root, f)
                         #desc = self.getComment(filename)
                         desc = None
-                        flatlist.append([filename, filename, desc, 1])
+                        flatlist.append([filename, filename, desc, 1, None])
                                            
         return flatlist
 
     @profiler
     def buildModel(self, folder='', filter = ''):
-        '''builds the content of self.tree (QTreeView)
+        '''
+            builds the content of self.tree (QTreeView)
         
             if/when self.flatStructure is None - it builds it first
         '''
@@ -320,7 +324,7 @@ class SQLBrowser(QTreeView):
         
         for i in range(len(nodez)):
 
-            (parent, mine, node, data, desc) = nodez[i]
+            (parent, mine, node, data, desc, offset) = nodez[i]
 
             if parent == '':
                 continue
@@ -343,10 +347,10 @@ class SQLBrowser(QTreeView):
             if filter and node.lower().find(filter) >= 0:
                 item.setFont(self.boldFont)
                 
-            if data is None:
+            if data is None:                                #folder
                 item.setIcon(self.folderIcon)
                 
-                item.setData(mine, role=Qt.UserRole + 1)    # required only to reproduce expanded nodes
+                item.setData(mine, role=Qt.UserRole + 1)    # required only to be able to reproduce expanded nodes
 
                 parentNodes[parent].appendRow(item)
                 parentNodes[mine] = item
@@ -361,6 +365,7 @@ class SQLBrowser(QTreeView):
                 if desc:
                     itemDesc = QStandardItem(desc)
                     itemDesc.setEditable(False)
+                    item.setData(offset and offset+1, role=Qt.UserRole + 2)
 
                     if filter and desc.lower().find(filter) >= 0:
                         itemDesc.setFont(self.boldFont)
@@ -469,7 +474,7 @@ class SQLBrowserDialog(QDialog):
             model = sqld.tree.selectionModel()
             
             if model is None:
-                return (None, None)
+                return (None, None, None)
                 
             indexes = model.selectedIndexes()
             
@@ -478,10 +483,11 @@ class SQLBrowserDialog(QDialog):
             if len(indexes):
                 idx = indexes[0]
                 file = idx.data(role=Qt.UserRole + 1)
+                posOffset = idx.data(role=Qt.UserRole + 2)
                 
-            return (sqld.mode, file)
+            return (sqld.mode, file, posOffset)
         else:
-            return (None, None)
+            return (None, None, None)
 
 
     def insertText(self):
