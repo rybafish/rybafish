@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt, QUrl, QEvent, QRect
+from PyQt5.QtCore import Qt, QUrl, QEvent, QRect, QProcess
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -487,6 +487,10 @@ class hslWindow(QMainWindow):
         abt = aboutDialog.About(self)
         abt.exec_()
 
+    def menuSQLFolder(self):
+        prc = QProcess()
+        prc.startDetached('explorer.exe', [cfg('scriptsFolder', 'scripts')])
+        
     def menuSQLBrowser(self):
         '''
         sql = SQLBrowserDialog(self)
@@ -1318,6 +1322,11 @@ class hslWindow(QMainWindow):
         sqlAct.setStatusTip('Open SQL Browser')
         sqlAct.triggered.connect(self.menuSQLBrowser)
         sqlMenu.addAction(sqlAct)
+
+        sqlFolderAct = QAction('Open scripts folder', self)
+        sqlFolderAct.setStatusTip('Open SQL folder in explorer (ms windows only...)')
+        sqlFolderAct.triggered.connect(self.menuSQLFolder)
+        sqlMenu.addAction(sqlFolderAct)
         
         layoutMenu = menubar.addMenu('&Layout')
         

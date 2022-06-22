@@ -313,14 +313,18 @@ class SQLBrowser(QTreeView):
         i = 0
         
         if len(nodez) == 0:
-            item1 = QStandardItem(f'[E] Nothing found in "{folder}" folder.')
-            item1.setEditable(False)
-
-            item2 = QStandardItem(f'Check the folder content and "scriptsFolder" setting value.')
-            item2.setEditable(False)
+            if  filter:
+                item1 = QStandardItem(f'no matches')
+                item1.setEditable(False)
+                
+                item2 = None
+            else:
+                item1 = QStandardItem(f'[E] Nothing found in "{folder}" folder.')
+                item1.setEditable(False)
+                item2 = QStandardItem(f'Check the folder content and "scriptsFolder" setting value.')
+                item2.setEditable(False)
 
             parentItem.appendRow([item1, item2])
-        
         
         for i in range(len(nodez)):
 
