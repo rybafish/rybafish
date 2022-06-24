@@ -450,7 +450,8 @@ class SQLBrowserDialog(QDialog):
         
     @staticmethod
     def getFile(parent):
-
+    
+        posOffset = None # #663
     
         if SQLBrowserDialog.inst is None:
             sqld = SQLBrowserDialog(parent)

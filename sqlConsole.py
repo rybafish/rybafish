@@ -1449,8 +1449,6 @@ class resultSet(QTableWidget):
             
             if ok:
                 self.triggerAutorefresh.emit(value)
-                #self.timerSet[0] = True
-                #self.defaultTimer[0] = value
 
         if action == refreshTimerStop:
             log('disabeling the timer...')
@@ -2775,6 +2773,9 @@ class sqlConsole(QWidget):
                 
                 self.conn = None
                 self.connection_id = None
+                
+                self.indicator.status = 'disconnected'
+                self.indicator.repaint()
                 self.log('\nDisconnected')
                 
         except dbException as e:
@@ -2797,6 +2798,11 @@ class sqlConsole(QWidget):
             return
         
     def connectDB(self):
+    
+        if self.config is None:
+            self.log('No connection, connect RybaFish to the DB first.')
+            return
+    
         try: 
             log('connectDB, indicator sync', 4)
             self.indicator.status = 'sync'
@@ -2818,9 +2824,9 @@ class sqlConsole(QWidget):
                 self.dbi = dbimpl.dbinterface
                 
                 self.sqlWorker.dbi = self.dbi
-
+                
             self.conn = self.dbi.console_connection(self.config)                
-
+            
             rows = self.dbi.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
             
             if len(rows):
@@ -2911,6 +2917,10 @@ class sqlConsole(QWidget):
             return
          
         
+        if self.resultTabs.count() == 0:
+            self.log('Execute some SQL first, autorefresh related to result set.')
+            return
+            
         if self.resultTabs.count() != 1:
             self.log('Autorefresh only possible for single resultset output.', True)
             return
@@ -2934,7 +2944,7 @@ class sqlConsole(QWidget):
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
             self.log('Autorefresh is already running? Ignoring the new one...', True)
             
-        self.timerSet[0] = False
+        self.timerSet[0] = True
             
     def alertProcessing(self, fileName, manual = False):
     
@@ -4296,10 +4306,7 @@ class sqlConsole(QWidget):
     def toolbarRefresh(self, state):
     
         if self.lockRefreshTB:
-            print(f'toolbar locked, exit ({state})')
             return
-            
-        print(f'refresh toolbar: ({state})')
         
         if state:
             id = QInputDialog
@@ -4308,9 +4315,13 @@ class sqlConsole(QWidget):
             
             if ok:
                 self.setupAutorefresh(value)
-                #self.timerSet[0] = True
-                
                 self.defaultTimer[0] = value
+                
+                if self.timerSet[0] == False: # bounce back
+                    self.lockRefreshTB = True
+                    self.tbRefresh.setChecked(False)
+                    self.lockRefreshTB = False
+                
             else:
                 self.tbRefresh.setChecked(False)
 
@@ -4320,7 +4331,6 @@ class sqlConsole(QWidget):
         return False
         
     def toolbarABAP(self, state):
-        print(state)
         self.abapCopyFlag[0] = state
         
     def toolbarEnable(self):
@@ -4340,7 +4350,7 @@ class sqlConsole(QWidget):
             tbExecuteLeaveResult.triggered.connect(self.toolbarExecuteLeaveResults)
             self.toolbar.addAction(tbExecuteLeaveResult)
             
-            tbFormat = QAction(QIcon(resourcePath('ico\\icon_format.png')), 'Beautify code [Ctrl+Shift+O]', self)
+            tbFormat = QAction(QIcon(resourcePath('ico\\format.png')), 'Beautify code [Ctrl+Shift+O]', self)
             tbFormat.triggered.connect(self.toolbarFormat)
             self.toolbar.addAction(tbFormat)
 
@@ -4351,12 +4361,12 @@ class sqlConsole(QWidget):
             # connect/discinnect
             self.toolbar.addSeparator()
             
-            tbConnect = QAction(QIcon(resourcePath(r'ico\connect.png')), 'Connect console', self)
+            tbConnect = QAction(QIcon(resourcePath(r'ico\connect.png')), '(re)Connect', self)
             tbConnect.triggered.connect(self.toolbarConnect)
             # tbConnect.setEnabled(False)
             self.toolbar.addAction(tbConnect)
 
-            tbDisconnect = QAction(QIcon(resourcePath(r'ico\disconnect.png')), 'Disconnect console', self)
+            tbDisconnect = QAction(QIcon(resourcePath(r'ico\disconnect.png')), 'Disconnect', self)
             tbDisconnect.triggered.connect(self.toolbarDisconnect)
             self.toolbar.addAction(tbDisconnect)
 

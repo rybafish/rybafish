@@ -1126,8 +1126,9 @@ class hslWindow(QMainWindow):
                     
                 log('-----addVars hslWindow-----')
             
-            for setting in self.layout.lo.get('settings'):
-                utils.cfgSet(setting, self.layout.lo['settings'][setting])
+            if 'setting' in self.layout.lo:
+                for setting in self.layout.lo['settings']:
+                    utils.cfgSet(setting, self.layout.lo['settings'][setting])
             
             if self.layout['variablesLO']:
                 kpiDescriptions.Variables.width = self.layout['variablesLO']['width']

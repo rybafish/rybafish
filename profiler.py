@@ -14,6 +14,8 @@ useProfiler = False
 
 cfgFile = os.path.join(path, 'config.yaml')
 
+config = {}
+
 try: 
     f = open(cfgFile, 'r')
     config = safe_load(f)
@@ -22,8 +24,19 @@ try:
         
 except:
     useProfiler = False
-    log('cannot load config, profiler not to be used')
+        
+    s = 'cannot load config, profiler not to be used'
     
+    print(s)
+    
+    f = open('.log', 'a')
+    f.seek(os.SEEK_END, 0)
+    
+    ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' '
+
+    f.write(ts + str(s) + '\n')
+    
+    f.close()        
     
 # again, to avoid cyclic imports...
 def log(s):
