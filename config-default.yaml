@@ -10,6 +10,10 @@ server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 # loglevel, 3 is default, 0 - no log at all, 5 - log all messages (including SQL strings)
 loglevel: 3
 
+
+#Scale graphics and fonts according to system display settings. Enabled by default.
+#DPIAwareness: True
+
 # chart keep-alives timer
 keepalive: 1200
 

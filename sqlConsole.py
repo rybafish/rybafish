@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidget, QTableWidgetItem,
-        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog, QMessageBox, QInputDialog)
+        QTabWidget, QApplication, QAbstractItemView, QMenu, QFileDialog, QMessageBox, QInputDialog,
+        QToolBar, QAction, QStyle, QCheckBox, QToolButton)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap, QIcon
 from PyQt5.QtGui import QTextCharFormat, QBrush, QPainter
@@ -1183,7 +1184,7 @@ class resultSet(QTableWidget):
         self.timer = None
         self.timerDelay = None
         
-        self.timerSet = None        # autorefresh menu switch flag
+        #self.timerSet = None        # autorefresh menu switch flag
         
         self.alerted = None         # one time alarm signal flag
         
@@ -1232,6 +1233,8 @@ class resultSet(QTableWidget):
         
         self.highlightColumn = None     # column index to highlight
         self.highlightValue = None      # value to highlight, when None - changes will be highlighted
+        
+        self.abapCopyFlag = [False]
 
         
     def highlightRefresh(self):
@@ -1343,7 +1346,7 @@ class resultSet(QTableWidget):
 
         cmenu.addSeparator()
         
-        if not self.timerSet:
+        if not self.timerSet[0]:
             refreshTimerStart = cmenu.addAction('Schedule automatic refresh for this result set')
         else:
             refreshTimerStop = cmenu.addAction('Stop autorefresh')
@@ -1446,14 +1449,13 @@ class resultSet(QTableWidget):
             
             if ok:
                 self.triggerAutorefresh.emit(value)
-                self.timerSet = True
-                
-                self.defaultTimer[0] = value
+                #self.timerSet[0] = True
+                #self.defaultTimer[0] = value
 
         if action == refreshTimerStop:
             log('disabeling the timer...')
             self.triggerAutorefresh.emit(0)
-            self.timerSet = False
+            #self.timerSet[0] = False
 
         if action == abapCopy:
             self.copyCells(abapMode=True)
@@ -1874,7 +1876,7 @@ class resultSet(QTableWidget):
                 self.selectAll()
             
             if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
-                self.copyCells()
+                self.copyCells(abapMode=self.abapCopyFlag[0])
         
         else:
             super().keyPressEvent(event)
@@ -2127,6 +2129,8 @@ class sqlConsole(QWidget):
     selfRaise = pyqtSignal(object)
     alertSignal = pyqtSignal()
     
+    sqlBrowserSignal = pyqtSignal()
+    
     tabSwitchSignal = pyqtSignal(int)
 
     def __init__(self, window, config, tabname = None):
@@ -2176,13 +2180,24 @@ class sqlConsole(QWidget):
         self.connection_id = None
         
         self.runtimeTimer = None
+        
+        self.toolbar = None
 
         # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
         
         self.timerAutorefresh = None
         self.nextAutorefresh = None     # datetime of next planned autorefresh
         
-        self.defaultTimer = [60]
+        self.defaultTimer = [60]        # list used to trick static value for all tabs in this console.
+                                        # wouldn't it be clearer to have this value as console attribue, ha?
+                                        # plust refresh timer itself, insead of self.timerSet,  - also a result set attribue
+                                        # should be rather on console (especially considering toolbar)
+                                        
+        self.timerSet = [False]
+        
+        self.lockRefreshTB = False      # lock the toolbar button due to change from resultset context menu
+        
+        self.abapCopyFlag = [False]     # to be shared with child results instances
         
         super().__init__()
         self.initUI()
@@ -2741,7 +2756,10 @@ class sqlConsole(QWidget):
                 cursor.insertText(normalize_header(line))
                 
     def cancelSession(self):
-        self.log("\nNOTE: the SQL needs to be executed manually from the other SQL console:\nalter system cancel session '%s'" % (str(self.connection_id)))
+        if self.connection_id:
+            self.log(f"\nNOTE: the SQL needs to be executed manually from the other SQL console:\nalter system cancel session '{str(self.connection_id)}'")
+        else:
+            self.log('\nConsole seems to be disconnected')
         
     def disconnectDB(self):
 
@@ -2883,6 +2901,12 @@ class sqlConsole(QWidget):
             if self.timerAutorefresh is not None:
                 self.timerAutorefresh.stop()
                 self.timerAutorefresh = None
+                
+            self.lockRefreshTB = True
+            self.tbRefresh.setChecked(False)
+            self.lockRefreshTB = False
+            
+            self.timerSet[0] = False
             
             return
          
@@ -2890,6 +2914,10 @@ class sqlConsole(QWidget):
         if self.resultTabs.count() != 1:
             self.log('Autorefresh only possible for single resultset output.', True)
             return
+        
+        self.lockRefreshTB = True
+        self.tbRefresh.setChecked(True)
+        self.lockRefreshTB = False
         
         self.indicator.status = 'autorefresh'
         self.indicator.repaint()
@@ -2905,6 +2933,8 @@ class sqlConsole(QWidget):
         else:
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
             self.log('Autorefresh is already running? Ignoring the new one...', True)
+            
+        self.timerSet[0] = False
             
     def alertProcessing(self, fileName, manual = False):
     
@@ -2980,7 +3010,10 @@ class sqlConsole(QWidget):
         
         result.statement = st
         
-        result.defaultTimer = self.defaultTimer
+        result.defaultTimer = self.defaultTimer     #cross-link the lists from sql console to result
+        result.timerSet = self.timerSet
+        
+        result.abapCopyFlag = self.abapCopyFlag     # same for ABAP-copy
         
         result._connection = conn
         
@@ -4236,11 +4269,135 @@ class sqlConsole(QWidget):
             self.selfRaise.emit(self)
     
     
+    def toolbarExecuteNormal(self):
+        self.executeSelection('normal')
+
+    def toolbarExecuteSelection(self):
+        self.cons.executionTriggered.emit('no parse')
+    
+    def toolbarExecuteLeaveResults(self):
+        self.cons.executionTriggered.emit('leave results')
+        
+    def toolbarFormat(self):
+        self.cons.formatSelection()
+
+    def toolbarBrowser(self):
+        self.sqlBrowserSignal.emit()
+    
+    def toolbarConnect(self):
+        self.connectDB()
+
+    def toolbarDisconnect(self):
+        self.disconnectDB()
+        
+    def toolbarAbort(self):
+        self.cancelSession()
+        
+    def toolbarRefresh(self, state):
+    
+        if self.lockRefreshTB:
+            print(f'toolbar locked, exit ({state})')
+            return
+            
+        print(f'refresh toolbar: ({state})')
+        
+        if state:
+            id = QInputDialog
+
+            value, ok = id.getInt(self, 'Refresh interval', 'Input the refresh interval in seconds                          ', self.defaultTimer[0], 0, 3600, 5)
+            
+            if ok:
+                self.setupAutorefresh(value)
+                #self.timerSet[0] = True
+                
+                self.defaultTimer[0] = value
+            else:
+                self.tbRefresh.setChecked(False)
+
+        else:
+            self.setupAutorefresh(0)
+        
+        return False
+        
+    def toolbarABAP(self, state):
+        print(state)
+        self.abapCopyFlag[0] = state
+        
+    def toolbarEnable(self):
+        if self.toolbar is None:
+            self.toolbar = QToolBar('SQL', self)
+
+            #tbExecuteNormal = QAction('[F8]', self)
+            tbExecuteNormal = QAction(QIcon(resourcePath('ico\\F8_icon.png')), 'Execute statement [F8]', self)
+            tbExecuteNormal.triggered.connect(self.toolbarExecuteNormal)
+            self.toolbar.addAction(tbExecuteNormal)
+
+            tbExecuteSelection = QAction(QIcon(resourcePath('ico\\F8alt_icon.png')), 'Execute selection without parsing [Alt+F8]', self)
+            tbExecuteSelection.triggered.connect(self.toolbarExecuteSelection)
+            self.toolbar.addAction(tbExecuteSelection)
+
+            tbExecuteLeaveResult = QAction(QIcon(resourcePath('ico\\F8ctrl_icon.png')), 'Execute opening a new result set tab [Ctrl+F8]', self)
+            tbExecuteLeaveResult.triggered.connect(self.toolbarExecuteLeaveResults)
+            self.toolbar.addAction(tbExecuteLeaveResult)
+            
+            tbFormat = QAction(QIcon(resourcePath('ico\\icon_format.png')), 'Beautify code [Ctrl+Shift+O]', self)
+            tbFormat.triggered.connect(self.toolbarFormat)
+            self.toolbar.addAction(tbFormat)
+
+            tbBrowser = QAction(QIcon(resourcePath(r'ico\F11sql_icon.png')), 'SQL Browser [F11]', self)
+            tbBrowser.triggered.connect(self.toolbarBrowser)
+            self.toolbar.addAction(tbBrowser)
+
+            # connect/discinnect
+            self.toolbar.addSeparator()
+            
+            tbConnect = QAction(QIcon(resourcePath(r'ico\connect.png')), 'Connect console', self)
+            tbConnect.triggered.connect(self.toolbarConnect)
+            # tbConnect.setEnabled(False)
+            self.toolbar.addAction(tbConnect)
+
+            tbDisconnect = QAction(QIcon(resourcePath(r'ico\disconnect.png')), 'Disconnect console', self)
+            tbDisconnect.triggered.connect(self.toolbarDisconnect)
+            self.toolbar.addAction(tbDisconnect)
+
+            tbAbort = QAction(QIcon(resourcePath(r'ico\abort.png')), 'Generate cancel session SQL', self)
+            tbAbort.triggered.connect(self.toolbarAbort)
+            self.toolbar.addAction(tbAbort)
+            
+            self.toolbar.addSeparator()
+            
+            
+            self.tbRefresh = QToolButton()
+            self.tbRefresh.setIcon(QIcon(resourcePath(r'ico\refresh.png')))
+            self.tbRefresh.setToolTip('Schedule automatic refresh for the result set')
+            self.tbRefresh.setCheckable(True)
+            self.tbRefresh.toggled.connect(self.toolbarRefresh)
+            self.toolbar.addWidget(self.tbRefresh)
+            
+            self.toolbar.addSeparator()
+            
+            self.ABAPCopy = QToolButton()
+            self.ABAPCopy.setIcon(QIcon(resourcePath(r'ico\abapcopy.png')))
+            self.ABAPCopy.setToolTip('Use ABAP-style result copy by default.')
+            self.ABAPCopy.setCheckable(True)
+            self.ABAPCopy.toggled.connect(self.toolbarABAP)
+            self.toolbar.addWidget(self.ABAPCopy)
+            
+            #self.vbar.addWidget(self.toolbar)
+            self.vbar.insertWidget(0, self.toolbar)
+        else:
+            self.toolbar.show()
+
+    def toolbarDisable(self):
+        if self.toolbar:
+            self.toolbar.hide()
+
+
     def initUI(self):
         '''
             main sqlConsole UI 
         '''
-        vbar = QVBoxLayout()
+        self.vbar = QVBoxLayout()
         hbar = QHBoxLayout()
         
         #self.cons = QPlainTextEdit()
@@ -4268,9 +4425,12 @@ class sqlConsole(QWidget):
         
         self.spliter.setSizes([300, 200, 10])
         
-        vbar.addWidget(self.spliter)
+        if cfg('sqlConsoleToolbar', True):
+            self.toolbarEnable()
         
-        self.setLayout(vbar)
+        self.vbar.addWidget(self.spliter)
+        
+        self.setLayout(self.vbar)
         
         # self.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())
         self.cons.SQLSyntax = SQLSyntaxHighlighter(self.cons.document())

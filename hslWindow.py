@@ -492,10 +492,6 @@ class hslWindow(QMainWindow):
         prc.startDetached('explorer.exe', [cfg('scriptsFolder', 'scripts')])
         
     def menuSQLBrowser(self):
-        '''
-        sql = SQLBrowserDialog(self)
-        s = sql.exec_()
-        '''
         
         def extractFile(filename):
             try:
@@ -505,7 +501,6 @@ class hslWindow(QMainWindow):
                 txt = '-- [E]: ' + str(e)
                 
             return txt
-            
         
         (result, file, offset) = SQLBrowserDialog.getFile(self)
         
@@ -857,6 +852,7 @@ class hslWindow(QMainWindow):
         
         console.alertSignal.connect(self.popUp)
         console.tabSwitchSignal.connect(self.switchTab)
+        console.sqlBrowserSignal.connect(self.menuSQLBrowser)
         
         ind = indicator()
         console.indicator = ind
@@ -986,6 +982,7 @@ class hslWindow(QMainWindow):
         
         console.alertSignal.connect(self.popUp)
         console.tabSwitchSignal.connect(self.switchTab)
+        console.sqlBrowserSignal.connect(self.menuSQLBrowser)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -1062,7 +1059,24 @@ class hslWindow(QMainWindow):
             self.chartArea.fromEdit.setText(fromTime.strftime('%Y-%m-%d %H:%M:%S'))
             
             self.chartArea.reloadChart()
-        
+
+    def menuSQLToolbar(self):
+        state = self.tbAct.isChecked()
+        if state:
+            utils.cfgPersist('sqlConsoleToolbar', True, self.layout.lo)
+        else:
+            utils.cfgPersist('sqlConsoleToolbar', False, self.layout.lo)
+            
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            if isinstance(w, sqlConsole.sqlConsole):
+                if state:
+                    w.toolbarEnable()
+                else:
+                    w.toolbarDisable()
+
+            
+            
     def popUp(self):
     
         state = self.windowState()
@@ -1111,6 +1125,9 @@ class hslWindow(QMainWindow):
                     log(str(e), 2)
                     
                 log('-----addVars hslWindow-----')
+            
+            for setting in self.layout.lo.get('settings'):
+                utils.cfgSet(setting, self.layout.lo['settings'][setting])
             
             if self.layout['variablesLO']:
                 kpiDescriptions.Variables.width = self.layout['variablesLO']['width']
@@ -1366,6 +1383,16 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(self.colorizeAct)
 
+        self.tbAct = QAction('SQL Console Toolbar', self, checkable=True)
+        self.tbAct.setStatusTip('Toggle the toolbar in SQL consoles.')
+        
+        if cfg('sqlConsoleToolbar'):
+            self.tbAct.setChecked(True)
+            
+        self.tbAct.triggered.connect(self.menuSQLToolbar)
+
+        actionsMenu.addAction(self.tbAct)
+        
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
         self.essAct.triggered.connect(self.menuEss)
@@ -1406,7 +1433,7 @@ class hslWindow(QMainWindow):
         helpMenu.addAction(confTipsAct)
         helpMenu.addAction(confChangeAct)
         helpMenu.addAction(aboutAct)
-
+        
         # finalization        
 
         if self.layout is not None and self.layout['pos'] and self.layout['size']:
@@ -1415,10 +1442,6 @@ class hslWindow(QMainWindow):
             
             log('Screen Y DPI, logical: %i, physical %i' % (self.logicalDpiY(), self.physicalDpiY()))
             log('Screen X DPI, logical: %i, phisical %i' % (self.logicalDpiX(), self.physicalDpiX()))
-            #print('screen number', QApplication.desktop().screenNumber())
-            #print('number of screens', QApplication.desktop().screenCount())
-            #print('available geometry:', QApplication.desktop().availableGeometry())
-            #print('screen geometry:', QApplication.desktop().screenGeometry())
             
             r = QRect(pos[0], pos[1], size[0], size[1])
 
@@ -1427,9 +1450,6 @@ class hslWindow(QMainWindow):
                 if not QApplication.desktop().screenGeometry().contains(r) and not cfg('dontAutodetectScreen'):
                     #the window will not be visible so jump to the main screen:
                     (pos[0], pos[1]) = (100, 50)
-            
-            #self.setGeometry(pos[0] + 8, pos[1] + 31, size[0], size[1])
-            #self.setGeometry(pos[0], pos[1], size[0], size[1])
             
             self.move(pos[0], pos[1])
             self.resize(size[0], size[1])
@@ -1464,6 +1484,7 @@ class hslWindow(QMainWindow):
                 
                 console.alertSignal.connect(self.popUp)
                 console.tabSwitchSignal.connect(self.switchTab)
+                console.sqlBrowserSignal.connect(self.menuSQLBrowser)
                 
                 ind.iClicked.connect(console.reportRuntime)
                 
@@ -1580,6 +1601,7 @@ class hslWindow(QMainWindow):
             
             console.alertSignal.connect(self.popUp)
             console.tabSwitchSignal.connect(self.switchTab)
+            console.sqlBrowserSignal.connect(self.menuSQLBrowser)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 

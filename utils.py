@@ -500,6 +500,14 @@ def cfgSet(param, value):
 
     config[param] = value
 
+def cfgPersist(param, value, layout):
+    cfgSet(param, value)
+    
+    if 'settings' not in layout:
+        layout['settings'] = {}
+        
+    layout['settings'][param] = value
+
 @profiler
 def cfg(param, default = None):
 
