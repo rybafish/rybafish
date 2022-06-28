@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, 
         QToolBar, QAction, QStyle, QCheckBox, QToolButton)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QPixmap, QIcon
-from PyQt5.QtGui import QTextCharFormat, QBrush, QPainter
+from PyQt5.QtGui import QTextCharFormat, QBrush, QPainter, QDesktopServices
 
 from PyQt5.QtCore import QTimer, QPoint
 
@@ -1887,7 +1887,7 @@ class resultSet(QTableWidget):
         '''
     
         self.clear()
-    
+        
         cols = self.cols
         rows = self.rows
     
@@ -1901,7 +1901,6 @@ class resultSet(QTableWidget):
         self.setColumnCount(len(row0))
 
         self.setHorizontalHeaderLabels(row0)
-        
         
         if not refreshMode:
             self.resizeColumnsToContents()
@@ -2010,7 +2009,6 @@ class resultSet(QTableWidget):
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                     
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                
                 
                 self.setItem(r, c, item) # Y-Scale
 
@@ -3097,6 +3095,8 @@ class sqlConsole(QWidget):
 
             result = self.results[i]
             
+            #log(f'[w] Result rows reference count: {sys.getrefcount(result.rows)}', 4)
+            #log(f'[w] Result reference count: {sys.getrefcount(result)}', 4)
             
             #model = result.model()
             #model.removeRows(0, 10000)
@@ -3105,6 +3105,8 @@ class sqlConsole(QWidget):
 
             del(result.cols)
             del(result.rows)
+            #result.cols.clear()
+            #result.rows.clear()
             
             #same code in refresh()
             
@@ -4043,8 +4045,11 @@ class sqlConsole(QWidget):
             if i > 0:
                 result = self.newResult(self.conn, result.statement)
                 
+                
             result.rows = rows_list[i]
             result.cols = cols_list[i]
+
+            #log(f'sqlFinished rowlist reference count: {sys.getrefcount(result.rows)}', 4)
             
             result.psid = self.sqlWorker.psid
             log('psid saved: %s' % utils.hextostr(result.psid), 4)
@@ -4333,6 +4338,11 @@ class sqlConsole(QWidget):
     def toolbarABAP(self, state):
         self.abapCopyFlag[0] = state
         
+    def toolbarHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/sqlconsole'))
+
+        
+        
     def toolbarEnable(self):
         if self.toolbar is None:
             self.toolbar = QToolBar('SQL', self)
@@ -4354,7 +4364,7 @@ class sqlConsole(QWidget):
             tbFormat.triggered.connect(self.toolbarFormat)
             self.toolbar.addAction(tbFormat)
 
-            tbBrowser = QAction(QIcon(resourcePath(r'ico\F11sql_icon.png')), 'SQL Browser [F11]', self)
+            tbBrowser = QAction(QIcon(resourcePath(r'ico\sqlbrowser.png')), 'SQL Browser [F11]', self)
             tbBrowser.triggered.connect(self.toolbarBrowser)
             self.toolbar.addAction(tbBrowser)
 
@@ -4393,7 +4403,10 @@ class sqlConsole(QWidget):
             self.ABAPCopy.toggled.connect(self.toolbarABAP)
             self.toolbar.addWidget(self.ABAPCopy)
             
-            #self.vbar.addWidget(self.toolbar)
+            tbHelp = QAction(QIcon(resourcePath(r'ico\help.png')), 'SQL Usage Help', self)
+            tbHelp.triggered.connect(self.toolbarHelp)
+            self.toolbar.addAction(tbHelp)
+
             self.vbar.insertWidget(0, self.toolbar)
         else:
             self.toolbar.show()

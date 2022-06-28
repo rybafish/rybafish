@@ -572,8 +572,12 @@ class hslWindow(QMainWindow):
             log('menuVariables refill', 5)
             self.kpisTable.refill(h)
         
+    def menuSQLHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/sqlconsole'))
+
     def menuConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
+        
     def menuChangelogHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/changelog'))
 
@@ -1405,6 +1409,10 @@ class hslWindow(QMainWindow):
         aboutAct.setStatusTip('About this app')
         aboutAct.triggered.connect(self.menuAbout)
 
+        confSQLAct = QAction('SQL Console Reference', self)
+        confSQLAct.setStatusTip('Short SQL Console reference')
+        confSQLAct.triggered.connect(self.menuSQLHelp)
+
         confHelpAct = QAction('Configuration', self)
         confHelpAct.setStatusTip('Configuration options description')
         confHelpAct.triggered.connect(self.menuConfHelp)
@@ -1426,9 +1434,9 @@ class hslWindow(QMainWindow):
         confChangeAct.triggered.connect(self.menuChangelogHelp)
         
         helpMenu = menubar.addMenu('&Help')
+        
+        helpMenu.addAction(confSQLAct)
         helpMenu.addAction(confHelpAct)
-        
-        
         helpMenu.addAction(confCustomHelpAct)
         helpMenu.addAction(confContextHelpAct)
         helpMenu.addAction(confTipsAct)
