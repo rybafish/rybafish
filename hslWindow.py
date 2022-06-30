@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt, QUrl, QEvent, QRect
+from PyQt5.QtCore import Qt, QUrl, QEvent, QRect, QProcess
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -487,11 +487,11 @@ class hslWindow(QMainWindow):
         abt = aboutDialog.About(self)
         abt.exec_()
 
+    def menuSQLFolder(self):
+        prc = QProcess()
+        prc.startDetached('explorer.exe', [cfg('scriptsFolder', 'scripts')])
+        
     def menuSQLBrowser(self):
-        '''
-        sql = SQLBrowserDialog(self)
-        s = sql.exec_()
-        '''
         
         def extractFile(filename):
             try:
@@ -501,14 +501,31 @@ class hslWindow(QMainWindow):
                 txt = '-- [E]: ' + str(e)
                 
             return txt
-            
         
-        (result, file) = SQLBrowserDialog.getFile(self)
+        (result, file, offset) = SQLBrowserDialog.getFile(self)
         
-        if result == 'insert':
-            tabIndex = self.tabs.currentIndex()
-            w = self.tabs.widget(tabIndex)
+        tabIndex = self.tabs.currentIndex()
+        w = self.tabs.widget(tabIndex)
+        
+        if result == 'open' or (file and not isinstance(w, sqlConsole.sqlConsole)):
+            # chart tab is actually PyQt5.QtWidgets.QSplitter, it does not have proper class on top
+            console = self.newConsole(generateName=True)
+            txt = extractFile(file)
+            console.cons.insertTextS(txt)
             
+            cursor = console.cons.textCursor()
+            
+            if offset:
+                cursor.setPosition(offset, cursor.MoveAnchor)
+            else:
+                cursor.setPosition(0, cursor.MoveAnchor)
+                
+            console.cons.setTextCursor(cursor)
+            
+        elif result == 'edit':
+            self.newConsole(filename=file, generateName=False)
+            
+        elif result == 'insert':
             if isinstance(w, sqlConsole.sqlConsole):
                 txt = extractFile(file)
 
@@ -521,22 +538,14 @@ class hslWindow(QMainWindow):
                 pos = w.cons.textCursor().position()
                 w.cons.insertTextS(txt)
                 
+                if offset:
+                    pos += offset
+                
                 cursor = w.cons.textCursor()
                 cursor.setPosition(pos, cursor.MoveAnchor)
                 w.cons.setTextCursor(cursor)
             else:
                 self.statusMessage('Warning: SQL Console needs to be open to use this option.', True)
-                
-        elif result == 'open':
-            console = self.newConsole(generateName=True)
-            txt = extractFile(file)
-            console.cons.insertTextS(txt)
-            
-            cursor = console.cons.textCursor()
-            cursor.setPosition(0, cursor.MoveAnchor)
-            console.cons.setTextCursor(cursor)
-        elif result == 'edit':
-            self.newConsole(filename=file, generateName=False)
     
     def menuVariables(self):
         
@@ -563,8 +572,14 @@ class hslWindow(QMainWindow):
             log('menuVariables refill', 5)
             self.kpisTable.refill(h)
         
+    def menuSQLHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/sqlconsole'))
+
     def menuConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
+        
+    def menuChangelogHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/changelog'))
 
     def menuCustomConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/customKPI'))
@@ -841,6 +856,7 @@ class hslWindow(QMainWindow):
         
         console.alertSignal.connect(self.popUp)
         console.tabSwitchSignal.connect(self.switchTab)
+        console.sqlBrowserSignal.connect(self.menuSQLBrowser)
         
         ind = indicator()
         console.indicator = ind
@@ -970,6 +986,7 @@ class hslWindow(QMainWindow):
         
         console.alertSignal.connect(self.popUp)
         console.tabSwitchSignal.connect(self.switchTab)
+        console.sqlBrowserSignal.connect(self.menuSQLBrowser)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -1046,7 +1063,24 @@ class hslWindow(QMainWindow):
             self.chartArea.fromEdit.setText(fromTime.strftime('%Y-%m-%d %H:%M:%S'))
             
             self.chartArea.reloadChart()
-        
+
+    def menuSQLToolbar(self):
+        state = self.tbAct.isChecked()
+        if state:
+            utils.cfgPersist('sqlConsoleToolbar', True, self.layout.lo)
+        else:
+            utils.cfgPersist('sqlConsoleToolbar', False, self.layout.lo)
+            
+        for i in range(self.tabs.count() -1, 0, -1):
+            w = self.tabs.widget(i)
+            if isinstance(w, sqlConsole.sqlConsole):
+                if state:
+                    w.toolbarEnable()
+                else:
+                    w.toolbarDisable()
+
+            
+            
     def popUp(self):
     
         state = self.windowState()
@@ -1095,6 +1129,10 @@ class hslWindow(QMainWindow):
                     log(str(e), 2)
                     
                 log('-----addVars hslWindow-----')
+            
+            if 'settings' in self.layout.lo:
+                for setting in self.layout.lo['settings']:
+                    utils.cfgSet(setting, self.layout.lo['settings'][setting])
             
             if self.layout['variablesLO']:
                 kpiDescriptions.Variables.width = self.layout['variablesLO']['width']
@@ -1306,6 +1344,11 @@ class hslWindow(QMainWindow):
         sqlAct.setStatusTip('Open SQL Browser')
         sqlAct.triggered.connect(self.menuSQLBrowser)
         sqlMenu.addAction(sqlAct)
+
+        sqlFolderAct = QAction('Open scripts folder', self)
+        sqlFolderAct.setStatusTip('Open SQL folder in explorer (ms windows only...)')
+        sqlFolderAct.triggered.connect(self.menuSQLFolder)
+        sqlMenu.addAction(sqlFolderAct)
         
         layoutMenu = menubar.addMenu('&Layout')
         
@@ -1345,6 +1388,16 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(self.colorizeAct)
 
+        self.tbAct = QAction('SQL Console Toolbar', self, checkable=True)
+        self.tbAct.setStatusTip('Toggle the toolbar in SQL consoles.')
+        
+        if cfg('sqlConsoleToolbar', True):
+            self.tbAct.setChecked(True)
+            
+        self.tbAct.triggered.connect(self.menuSQLToolbar)
+
+        actionsMenu.addAction(self.tbAct)
+        
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
         self.essAct.triggered.connect(self.menuEss)
@@ -1355,6 +1408,10 @@ class hslWindow(QMainWindow):
         aboutAct = QAction(QIcon(iconPath), '&About', self)
         aboutAct.setStatusTip('About this app')
         aboutAct.triggered.connect(self.menuAbout)
+
+        confSQLAct = QAction('SQL Console Reference', self)
+        confSQLAct.setStatusTip('Short SQL Console reference')
+        confSQLAct.triggered.connect(self.menuSQLHelp)
 
         confHelpAct = QAction('Configuration', self)
         confHelpAct.setStatusTip('Configuration options description')
@@ -1371,19 +1428,21 @@ class hslWindow(QMainWindow):
         confTipsAct = QAction('Tips and tricks', self)
         confTipsAct.setStatusTip('Tips and tricks description')
         confTipsAct.triggered.connect(self.menuTips)
+
+        confChangeAct = QAction('Changelog', self)
+        confChangeAct.setStatusTip('Changelog and recent features')
+        confChangeAct.triggered.connect(self.menuChangelogHelp)
         
         helpMenu = menubar.addMenu('&Help')
+        
+        helpMenu.addAction(confSQLAct)
         helpMenu.addAction(confHelpAct)
-        
-        
         helpMenu.addAction(confCustomHelpAct)
-        
         helpMenu.addAction(confContextHelpAct)
-        
         helpMenu.addAction(confTipsAct)
-            
+        helpMenu.addAction(confChangeAct)
         helpMenu.addAction(aboutAct)
-
+        
         # finalization        
 
         if self.layout is not None and self.layout['pos'] and self.layout['size']:
@@ -1392,10 +1451,6 @@ class hslWindow(QMainWindow):
             
             log('Screen Y DPI, logical: %i, physical %i' % (self.logicalDpiY(), self.physicalDpiY()))
             log('Screen X DPI, logical: %i, phisical %i' % (self.logicalDpiX(), self.physicalDpiX()))
-            #print('screen number', QApplication.desktop().screenNumber())
-            #print('number of screens', QApplication.desktop().screenCount())
-            #print('available geometry:', QApplication.desktop().availableGeometry())
-            #print('screen geometry:', QApplication.desktop().screenGeometry())
             
             r = QRect(pos[0], pos[1], size[0], size[1])
 
@@ -1404,9 +1459,6 @@ class hslWindow(QMainWindow):
                 if not QApplication.desktop().screenGeometry().contains(r) and not cfg('dontAutodetectScreen'):
                     #the window will not be visible so jump to the main screen:
                     (pos[0], pos[1]) = (100, 50)
-            
-            #self.setGeometry(pos[0] + 8, pos[1] + 31, size[0], size[1])
-            #self.setGeometry(pos[0], pos[1], size[0], size[1])
             
             self.move(pos[0], pos[1])
             self.resize(size[0], size[1])
@@ -1441,6 +1493,7 @@ class hslWindow(QMainWindow):
                 
                 console.alertSignal.connect(self.popUp)
                 console.tabSwitchSignal.connect(self.switchTab)
+                console.sqlBrowserSignal.connect(self.menuSQLBrowser)
                 
                 ind.iClicked.connect(console.reportRuntime)
                 
@@ -1466,7 +1519,7 @@ class hslWindow(QMainWindow):
                         console.cons.setTextCursor(cursor)
                         
             indx = self.layout['currentTab']
-            
+                        
             if isinstance(indx, int):
                 self.tabs.setCurrentIndex(indx)
 
@@ -1525,10 +1578,9 @@ class hslWindow(QMainWindow):
 
         self.chartArea.connected.connect(self.setTabName)
         
-        self.chartArea.setFocus()
+        #self.chartArea.setFocus() set above
         
         log('init finish()')
-
 
         customSQLs.loadSQLs()
 
@@ -1557,6 +1609,7 @@ class hslWindow(QMainWindow):
             
             console.alertSignal.connect(self.popUp)
             console.tabSwitchSignal.connect(self.switchTab)
+            console.sqlBrowserSignal.connect(self.menuSQLBrowser)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 

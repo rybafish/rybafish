@@ -482,6 +482,7 @@ def loadConfig():
     try: 
         f = open(cfgFile, 'r')
         config = safe_load(f)
+        f.close()
         
         if 'raduga' not in config:
             log('raduga list of colors is not defined in config, so using a pre-defined list...', 2)
@@ -499,6 +500,14 @@ def cfgSet(param, value):
     global config
 
     config[param] = value
+
+def cfgPersist(param, value, layout):
+    cfgSet(param, value)
+    
+    if 'settings' not in layout:
+        layout['settings'] = {}
+        
+    layout['settings'][param] = value
 
 @profiler
 def cfg(param, default = None):

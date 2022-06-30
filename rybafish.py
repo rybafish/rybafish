@@ -78,7 +78,7 @@ class ExceptionHandler(QtCore.QObject):
                     w.delayBackup()
 
         try:
-            if utils.cfg('saveLayout', True):
+            if utils.cfg('saveLayout', True) and ryba:
                 ryba.dumpLayout()
         except Exception as e:
             log('[!] Exception during exception handler: %s' % str(e))
