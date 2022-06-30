@@ -19,6 +19,7 @@ config = {}
 try: 
     f = open(cfgFile, 'r')
     config = safe_load(f)
+    f.close()
     
     useProfiler = config.get('useProfiler', isbeta) # default is True in case of beta version
         

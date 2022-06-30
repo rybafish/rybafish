@@ -21,6 +21,16 @@ class QPlainTextEditLN(QWidget):
         def __init__(self, parent = None):
             super().__init__(parent)
         
+        '''
+        def focusInEvent(self, event):
+            super().focusInEvent(event)
+            print('---- >>>>>>>>>>>>>>>> got focus!')
+
+        def focusOutEvent(self, event):
+            super().focusOutEvent(event)
+            print('---- <<<<<<<<<<<<<<<< lost focus :((')
+        '''
+        
         def insertFromMimeData(self, src):
             # need to force re-highlight manually because of #476
             # actually we only need to call it if there was a selection
@@ -382,6 +392,8 @@ class QPlainTextEditLN(QWidget):
         #self.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
 
         self.edit = self.PlainTextEdit(self)
+        
+        self.setFocusProxy(self.edit)
         
         self.lineNumbers = self.LineNumberArea(self.edit)
 

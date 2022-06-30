@@ -64,7 +64,8 @@ create type outtab2 as table (
     gh nvarchar(5)
 );
 
-create procedure test04_multiple1(out a outtab1, b outtab2)
+create procedure test04_multiple1(out a outtab1, out b outtab2)
+
 as
 begin
 

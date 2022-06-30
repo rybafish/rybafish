@@ -41,6 +41,8 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 import datetime
 import os
 
+#import gc
+
 from sqlparse import format
 
 import customSQLs
@@ -2128,6 +2130,8 @@ class sqlConsole(QWidget):
     sqlBrowserSignal = pyqtSignal()
     
     tabSwitchSignal = pyqtSignal(int)
+    
+    #gc.set_debug(gc.gc.DEBUG_LEAK)
 
     def __init__(self, window, config, tabname = None):
     
@@ -4346,7 +4350,7 @@ class sqlConsole(QWidget):
     def toolbarEnable(self):
         if self.toolbar is None:
             self.toolbar = QToolBar('SQL', self)
-
+            
             #tbExecuteNormal = QAction('[F8]', self)
             tbExecuteNormal = QAction(QIcon(resourcePath('ico\\F8_icon.png')), 'Execute statement [F8]', self)
             tbExecuteNormal.triggered.connect(self.toolbarExecuteNormal)
@@ -4408,6 +4412,12 @@ class sqlConsole(QWidget):
             self.toolbar.addAction(tbHelp)
 
             self.vbar.insertWidget(0, self.toolbar)
+
+            #self.setTabOrder(self.cons, self.toolbar)
+            #self.toolbar.setFocusPolicy(Qt.NoFocus)
+            #self.cons.setFocus()
+            #self.toolbar.clearFocus()
+            #self.toolbar.setFocusProxy(self.cons)
         else:
             self.toolbar.show()
 
@@ -4450,7 +4460,7 @@ class sqlConsole(QWidget):
         
         if cfg('sqlConsoleToolbar', True):
             self.toolbarEnable()
-        
+                    
         self.vbar.addWidget(self.spliter)
         
         self.setLayout(self.vbar)

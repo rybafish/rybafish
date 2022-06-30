@@ -482,6 +482,7 @@ def loadConfig():
     try: 
         f = open(cfgFile, 'r')
         config = safe_load(f)
+        f.close()
         
         if 'raduga' not in config:
             log('raduga list of colors is not defined in config, so using a pre-defined list...', 2)

@@ -1130,7 +1130,7 @@ class hslWindow(QMainWindow):
                     
                 log('-----addVars hslWindow-----')
             
-            if 'setting' in self.layout.lo:
+            if 'settings' in self.layout.lo:
                 for setting in self.layout.lo['settings']:
                     utils.cfgSet(setting, self.layout.lo['settings'][setting])
             
@@ -1391,7 +1391,7 @@ class hslWindow(QMainWindow):
         self.tbAct = QAction('SQL Console Toolbar', self, checkable=True)
         self.tbAct.setStatusTip('Toggle the toolbar in SQL consoles.')
         
-        if cfg('sqlConsoleToolbar'):
+        if cfg('sqlConsoleToolbar', True):
             self.tbAct.setChecked(True)
             
         self.tbAct.triggered.connect(self.menuSQLToolbar)
@@ -1519,7 +1519,7 @@ class hslWindow(QMainWindow):
                         console.cons.setTextCursor(cursor)
                         
             indx = self.layout['currentTab']
-            
+                        
             if isinstance(indx, int):
                 self.tabs.setCurrentIndex(indx)
 
@@ -1578,10 +1578,9 @@ class hslWindow(QMainWindow):
 
         self.chartArea.connected.connect(self.setTabName)
         
-        self.chartArea.setFocus()
+        #self.chartArea.setFocus() set above
         
         log('init finish()')
-
 
         customSQLs.loadSQLs()
 
