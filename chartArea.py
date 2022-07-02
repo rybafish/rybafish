@@ -127,6 +127,9 @@ class myWidget(QWidget):
     def __init__(self):
         super().__init__()
         
+        self.t_to = None
+        self.t_from = None
+        
         if cfg('fontSize') is not None:
             self.conf_fontSize = cfg('fontSize')
             
@@ -1111,6 +1114,9 @@ class myWidget(QWidget):
         self.checkForHint(pos)
             
     def resizeWidget(self):
+        if self.t_to is None:
+            return
+            
         seconds = (self.t_to - self.t_from).total_seconds()
         number_of_cells = int(seconds / self.t_scale) + 1
         self.resize(number_of_cells * self.step_size + self.side_margin*2 + self.left_margin, self.size().height()) #dummy size
@@ -2926,6 +2932,10 @@ class chartArea(QFrame):
             # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
             # self.widget.paintLock = True
             
+            if self.dp is None:
+                self.statusMessage('Not connected to the DB', True)
+                return False
+            
             self.setStatus('sync')
             
             sm = 'Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi)
@@ -3426,26 +3436,7 @@ class chartArea(QFrame):
         log('self.scalesUpdated.emit() #2', 5)
         self.scalesUpdated.emit()
 
-    def reloadChart(self):
-
-        if self.lastReloadTime is not None and self.lastReloadTime > 1:
-            sm = 'Reload... (last reload request took: %s)' % str(round(self.lastReloadTime, 3))
-        else:
-            sm = 'Reload...'
-            
-        self.statusMessage(sm, True)
-        self.repaint()
-        
-        timerF = None
-        
-        if self.timer is not None:
-            timerF = True
-            self.timer.stop()
-        
-        t0 = time.time()
-        log('  reloadChart()', 5)
-        log('  hosts: %s' % str(self.widget.hosts), 5)
-        
+    def understandTimes(self):
         #time.sleep(2)
         fromTime = self.fromEdit.text().strip()
         toTime = self.toEdit.text().strip()
@@ -3457,7 +3448,6 @@ class chartArea(QFrame):
         if fromTime[:1] == '-' and toTime == '':
             try:
                 hours = int(fromTime[1:])
-                #self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
                 
                 log('timeZoneDelta: %i' % self.widget.timeZoneDelta, 4)
                 starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600 - self.widget.timeZoneDelta)
@@ -3467,7 +3457,7 @@ class chartArea(QFrame):
             except:
                 self.fromEdit.setStyleSheet("color: red;")
                 self.statusMessage('datetime syntax error')
-                return
+                return False
         else:
             try:
                 
@@ -3492,7 +3482,7 @@ class chartArea(QFrame):
             except:
                 self.fromEdit.setStyleSheet("color: red;")
                 self.statusMessage('datetime syntax error')
-                return
+                return False
             
         if toTime == '':
             self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
@@ -3514,8 +3504,37 @@ class chartArea(QFrame):
                 self.toEdit.setStyleSheet("color: black;")
             except:
                 self.statusMessage('datetime syntax error')
-                return
+                return False
                 
+        return True
+                
+    def reloadChart(self):
+    
+        if self.understandTimes() == False:
+            return
+
+        if self.dp is None:
+            self.statusMessage('Not connected to the DB', True)
+            return
+
+        if self.lastReloadTime is not None and self.lastReloadTime > 1:
+            sm = 'Reload... (last reload request took: %s)' % str(round(self.lastReloadTime, 3))
+        else:
+            sm = 'Reload...'
+            
+        self.statusMessage(sm, True)
+        self.repaint()
+        
+        timerF = None
+        
+        if self.timer is not None:
+            timerF = True
+            self.timer.stop()
+        
+        t0 = time.time()
+        log('  reloadChart()', 5)
+        log('  hosts: %s' % str(self.widget.hosts), 5)
+                        
         fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
         
         allOk = None
@@ -3564,6 +3583,7 @@ class chartArea(QFrame):
         
         self.widget.update()
 
+        toTime = self.toEdit.text().strip()
         #autoscroll to the right
         if toTime == '': # probably we want to see the most recent data...
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
