@@ -3357,6 +3357,10 @@ class sqlConsole(QWidget):
         if self.timerAutorefresh:
             self.setupAutorefresh(0)
             
+        
+        # reset block numbering, #672
+        self.cons.lineNumbers.fromLine = None
+        
         if mode == 'normal':
             self.executeSelectionParse()
         elif mode == 'no parsing':
