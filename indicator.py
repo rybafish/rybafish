@@ -17,11 +17,13 @@ class indicator(QWidget):
         'disconnected': '#FCC',
         'alert': '#FAC',
         'autorefresh': '#cfc',
+        'detach': '#AAA',
+        #'detach': '#EEC',
     }
 
 
     iClicked = pyqtSignal()
-    iHover = pyqtSignal()
+    #iHover = pyqtSignal() 2022-07-03
     
     iToggle = pyqtSignal(['QString'])
     

@@ -1159,6 +1159,7 @@ class resultSet(QTableWidget):
     insertText = pyqtSignal(['QString'])
     executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
+    detachSignal = pyqtSignal()
     
     def __init__(self, conn):
     
@@ -1504,6 +1505,8 @@ class resultSet(QTableWidget):
                 self.detached = True
             except Exception as e:
                 log('[!] Exception: ' + str(e))
+                
+            self.detachSignal.emit()
         else:
             log('[?] already detached?: %s' % result_str)
 
@@ -2950,6 +2953,10 @@ class sqlConsole(QWidget):
             
         self.timerSet[0] = True
             
+    def resultDetached(self):
+        self.indicator.status = 'idle'
+        self.indicator.repaint()
+        
     def alertProcessing(self, fileName, manual = False):
     
         #print('alertProcessing')
@@ -3036,6 +3043,7 @@ class sqlConsole(QWidget):
         result.insertText.connect(self.cons.insertTextS)
         result.executeSQL.connect(self.surprizeSQL)
         result.alertSignal.connect(self.alertProcessing)
+        result.detachSignal.connect(self.resultDetached)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:
@@ -4142,6 +4150,8 @@ class sqlConsole(QWidget):
             '''
             if self.timerAutorefresh:
                 self.indicator.status = 'autorefresh'
+            elif result.LOBs:
+                self.indicator.status = 'detach'
             else:
                 self.indicator.status = 'idle'
             
