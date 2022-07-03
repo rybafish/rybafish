@@ -2199,6 +2199,8 @@ class sqlConsole(QWidget):
         
         self.abapCopyFlag = [False]     # to be shared with child results instances
         
+        self.resultsLeft = False        # when True - warning will be displayed before closing results
+        
         super().__init__()
         self.initUI()
         
@@ -3342,6 +3344,21 @@ class sqlConsole(QWidget):
         if self.config is None:
             self.log('No connection, connect RybaFish to the DB first.')
             return
+            
+        if self.resultsLeft and mode != 'leave results' and len(self.results) >= 1:
+            answer = utils.yesNoDialog('Warning',
+                'You were saving some results, are you sure you want to abandon those now?', 
+                parent=self
+            )
+            
+            if answer == False:
+                self.log('Execution cancelled')
+                return
+                
+            self.resultsLeft = False
+            
+        if mode == 'leave results':
+            self.resultsLeft = True
             
         if self.conn is None:
             self.log('The console is disconnected...')

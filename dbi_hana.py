@@ -32,6 +32,8 @@ from dbi_extention import getDBProperties
 
 from os import getlogin
 
+from profiler import profiler
+
 '''def log(s, p = 3):
     ulog('[HDB] ' + s, p)
 '''
@@ -228,6 +230,7 @@ class hdbi ():
 
         return rows
 
+    @profiler
     def drop_statement(self, connection, statement_id):
 
         log('psid to drop --> %s' % (hextostr(statement_id)), 4)
