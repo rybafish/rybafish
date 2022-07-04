@@ -884,7 +884,6 @@ class myWidget(QWidget):
                         self.highlightedKpiHost = host
                         self.highlightedEntity = entity
                         self.highlightedRange = reportRange
-
             
                         # self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
     
@@ -1174,6 +1173,8 @@ class myWidget(QWidget):
                 if self.legend == 'hosts': ## it is either hosts or None now so 'hosts' basically mean it is enabled
                 
                     subtype = kpiDescriptions.getSubtype(type, kpi)
+                    
+                    kpiKey = f"{self.hosts[h]['host']}:{self.hosts[h]['port']}/{kpi}"
 
                     if  subtype == 'gantt':
                         gantt = True
@@ -1196,6 +1197,7 @@ class myWidget(QWidget):
                         unit = ' ' + self.nscales[h][kpi]['unit']
                         
                         if kpi in self.nscales[h]: #if those are scanned already
+                        
                             if multiline:
                                 #sqlIdx = kpiStylesNN[type][kpi].get('sql')
                                 
@@ -1256,8 +1258,7 @@ class myWidget(QWidget):
                                 if utils.cfg('colorize'):
                                     pen = kpiDescriptions.getRadugaPen()
                                 else:
-                                    pen = self.kpiPen[type][kpi]
-                                    
+                                    pen = kpiDescriptions.customPen(kpiKey, self.kpiPen[type][kpi])
                                     
                                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
                                     pen = QPen(pen)
@@ -1273,7 +1274,16 @@ class myWidget(QWidget):
 
                         lkpis.append(kpi)
                         lkpisl.append(label)
-                        lmeta.append(['gantt', [QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]], 0, 44])
+                        
+                        if kpiKey in kpiDescriptions.customColors:
+                            c = kpiDescriptions.customColors[kpiKey]
+                            pen = QPen(QColor(c[0]*0.75, c[1]*0.75 ,c[2]*0.75))
+                            brshColor = QColor(c[0], c[1], c[2])
+                        else:
+                            pen = self.kpiPen[type][kpi]
+                            brshColor = kpiStylesNN[type][kpi]['brush']
+                        
+                        lmeta.append(['gantt', [QBrush(brshColor), pen], 0, 44])
                     
                 # print(self.highlightedKpi, self.highlightedKpiHost)
 
@@ -1578,6 +1588,8 @@ class myWidget(QWidget):
                 continue
                 
             type = hType(h, self.hosts)
+            hostKey = self.hosts[h]['host'] + ':' + self.hosts[h]['port']
+            
             for kpi in self.nkpis[h]:
                 #print('draw kpi', kpi)
                 #print('draw kpi, h', h)
@@ -1595,7 +1607,8 @@ class myWidget(QWidget):
                     return
             
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
-
+                
+                kpiKey = hostKey + '/' + kpi
 
                 if kpi not in kpiStylesNN[type]:
                     log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
@@ -1655,7 +1668,11 @@ class myWidget(QWidget):
 
                     x_scale = self.step_size / self.t_scale
 
-                    qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
+                    if kpiKey in kpiDescriptions.customColors:
+                        c = kpiDescriptions.customColors[kpiKey]
+                        qp.setBrush(QColor(c[0], c[1], c[2])) # bar fill color
+                    else:
+                        qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
                     
                     ganttBaseColor = kpiStylesNN[type][kpi]['brush']
                     ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']
@@ -1713,7 +1730,13 @@ class myWidget(QWidget):
                             else:
                                 highlight = False
                             
-                            ganttPen = kpiStylesNN[type][kpi]['pen']
+                            #ganttPen = kpiStylesNN[type][kpi]['pen']
+                            
+                            if kpiKey in kpiDescriptions.customColors:
+                                c = kpiDescriptions.customColors[kpiKey]
+                                ganttPen = QPen(QColor(c[0]*0.75, c[1]*0.75, c[2]*0.75))
+                            else:
+                                ganttPen = kpiStylesNN[type][kpi]['pen']
                             
                             clr = ganttPen.color()
                             
@@ -1825,7 +1848,12 @@ class myWidget(QWidget):
                         i += 1
 
                         if hlDesc is not None:
-                            ganttPen = kpiStylesNN[type][kpi]['pen']
+                            #ganttPen = kpiStylesNN[type][kpi]['pen']
+                            if kpiKey in kpiDescriptions.customColors:
+                                c = kpiDescriptions.customColors[kpiKey]
+                                ganttPen = QPen(QColor(c[0]*0.75, c[1]*0.75, c[2]*0.75))
+                            else:
+                                ganttPen = kpiStylesNN[type][kpi]['pen']
                             
                             clr = ganttPen.color()
                             clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
@@ -1844,7 +1872,13 @@ class myWidget(QWidget):
                     kpiPen = kpiDescriptions.radugaPens[raduga_i % radugaSize]
                     raduga_i += 1
                 else:
+                    '''
                     kpiPen = self.kpiPen[type][kpi]
+                    if kpiDescriptions.customColors.get(kpiKey):
+                        c = kpiDescriptions.customColors[kpiKey]
+                        kpiPen = QPen((QColor(c[0],c[1],c[2])))
+                    '''
+                    kpiPen = kpiDescriptions.customPen(kpiKey, self.kpiPen[type][kpi])
                 
                 highlight = False
                 

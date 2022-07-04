@@ -11,6 +11,8 @@ kpiGroup = {}
 radugaColors = []
 radugaPens = []
 
+customColors = {}       # color customization
+
 import utils
         
 from utils import log, cfg
@@ -49,7 +51,7 @@ class Style(UserDict):
                 if self.idx in vrs and value != '' and key not in Style.exclude:
                     value = processVars(self.idx, value)
                     # if key == 'y_range': log(f'Post-process:[{self.idx}]: {key}/{value}')
-            
+                    
             return value
             
         if hasattr(self.__class__, "__missing__"):
@@ -57,6 +59,70 @@ class Style(UserDict):
             
         raise KeyError(key)
 
+def addCustomColor(kpiKey, color):
+    '''
+        adds color customization
+        
+        kpiKey is in form hostname:port/kpi
+        
+        color is QColor
+    '''
+    
+    customColors[kpiKey] = (color.red(), color.green(), color.blue())
+    #customColorsPen[kpiKey] = QPen(color)
+
+def colorsHTML(colors):
+    d = {}
+    
+    for key, value in colors.items():
+        v = value[0]*256*256 + value[1]*256 + value[2]
+        
+        d[key] = '#' + hex(v)[2:]
+    
+    return d
+    
+
+def colorsHTMLinit(colors):
+    '''
+        to be called once during layout load
+    '''
+
+    for key, value in colors.items():
+        
+        v = value.lstrip('#')
+        r = int(v[0:2], 16)
+        g = int(v[2:4], 16)
+        b = int(v[4:6], 16)
+        
+        customColors[key] = (r, g, b)
+
+    
+def customPen(kpiKey, defaultPen):
+    '''
+        extracts custom pen if available,
+        if not - the default one returned
+    '''
+
+    # dirty parsing of thr host:port/kpi string
+    split1 = kpiKey.split(':')
+    split2 = split1[1].split('/')
+    
+    host = split1[0]
+    port = split2[0]
+    kpi = split2[1]
+    
+    c = customColors.get(kpiKey)
+    
+    if c:
+        clr = QColor(c[0], c[1], c[2])
+        
+        pen = QPen(defaultPen)
+        pen.setColor(clr)
+    
+        return pen
+        
+    return defaultPen
+        
 class Variables(QDialog):
 
     width = None

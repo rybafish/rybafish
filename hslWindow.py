@@ -348,6 +348,10 @@ class hslWindow(QMainWindow):
         
         if 'running' in self.layout.lo:
             self.layout.lo.pop('running')
+            
+        if kpiDescriptions.customColors:
+            colorsHTML = kpiDescriptions.colorsHTML(kpiDescriptions.customColors)
+            self.layout['customColors'] = colorsHTML
            
         self.layout.dump()
         
@@ -1133,6 +1137,9 @@ class hslWindow(QMainWindow):
             if 'settings' in self.layout.lo:
                 for setting in self.layout.lo['settings']:
                     utils.cfgSet(setting, self.layout.lo['settings'][setting])
+                    
+            if 'customColors' in self.layout.lo:
+                kpiDescriptions.colorsHTMLinit(self.layout.lo['customColors'])
             
             if self.layout['variablesLO']:
                 kpiDescriptions.Variables.width = self.layout['variablesLO']['width']
