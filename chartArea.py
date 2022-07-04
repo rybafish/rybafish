@@ -1671,12 +1671,12 @@ class myWidget(QWidget):
                     if kpiKey in kpiDescriptions.customColors:
                         c = kpiDescriptions.customColors[kpiKey]
                         qp.setBrush(QColor(c[0], c[1], c[2])) # bar fill color
+                        ganttBaseColor = QColor(c[0], c[1], c[2])
                     else:
                         qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
-                    
-                    ganttBaseColor = kpiStylesNN[type][kpi]['brush']
-                    ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']
-                    
+                        ganttBaseColor = kpiStylesNN[type][kpi]['brush']
+                        
+                    ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']  # does not depend of custom colors
                                         
                     if len(gc) > 0:
                         yr0, yr1 = kpiStylesNN[type][kpi]['y_range']

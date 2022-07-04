@@ -120,6 +120,7 @@ class kpiTable(QTableWidget):
     setScale = pyqtSignal([int, 'QString', int, int])
     
     vrsUpdate = pyqtSignal()
+    refreshRequest = pyqtSignal()
 
     def __init__(self):
 
@@ -162,6 +163,8 @@ class kpiTable(QTableWidget):
                 
                 if isinstance(cellCheckBox, myCheckBox):
                     self.refill(cellCheckBox.host)
+                    
+                self.refreshRequest.emit()
             
             if action == resetColor:
                 i = self.currentRow()
@@ -178,6 +181,8 @@ class kpiTable(QTableWidget):
                         del kpiDescriptions.customColors[kpiKey]
                         
                         self.refill(cellCheckBox.host)
+                        
+                self.refreshRequest.emit()
             
             if action == changeColor:
                 i = self.currentRow()
