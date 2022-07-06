@@ -2978,7 +2978,9 @@ class sqlConsole(QWidget):
             pass
         else:
             #try open normal file first
-            fileName = 'snd\\' + fileName
+            #fileName = 'snd\\' + fileName
+            fileName = os.path.join('snd', fileName)
+            
             if os.path.isfile(fileName):
                 log('seems there is a file in the rybafish snd folder: %s' % (fileName), 4)
             else:
@@ -3818,7 +3820,7 @@ class sqlConsole(QWidget):
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
@@ -3905,10 +3907,10 @@ class sqlConsole(QWidget):
                     
                         #print('selection lines:', fromLine, toLine)
                         
-                        self.cons.lineNumbers.fromLine = fromLine
-                        self.cons.lineNumbers.toLine = toLine
+                        #self.cons.lineNumbers.fromLine = fromLine   #674
+                        #self.cons.lineNumbers.toLine = toLine
                         
-                        self.cons.lineNumbers.repaint()
+                        #self.cons.lineNumbers.repaint()
                         
                         # exception text example: sql syntax error: incorrect syntax near "...": line 2 col 4 (at pos 13)
                         # at pos NNN - absolute number
@@ -3916,8 +3918,15 @@ class sqlConsole(QWidget):
                         linePos = self.wrkException.find(': line ')
                         posPos = self.wrkException.find(' pos ')
                         
-                        if linePos > 0 or posPos > 0:
+                        print(linePos, posPos)
                         
+                        if linePos > 0 or posPos > 0:
+
+                            self.cons.lineNumbers.fromLine = fromLine   #674 moved inside if
+                            self.cons.lineNumbers.toLine = toLine
+                            
+                            self.cons.lineNumbers.repaint()
+                            
                             linePos += 7
                             posPos += 5
                             
@@ -4383,39 +4392,39 @@ class sqlConsole(QWidget):
             self.toolbar = QToolBar('SQL', self)
             
             #tbExecuteNormal = QAction('[F8]', self)
-            tbExecuteNormal = QAction(QIcon(resourcePath('ico\\F8_icon.png')), 'Execute statement [F8]', self)
+            tbExecuteNormal = QAction(QIcon(resourcePath('ico', 'F8_icon.png')), 'Execute statement [F8]', self)
             tbExecuteNormal.triggered.connect(self.toolbarExecuteNormal)
             self.toolbar.addAction(tbExecuteNormal)
 
-            tbExecuteSelection = QAction(QIcon(resourcePath('ico\\F8alt_icon.png')), 'Execute selection without parsing [Alt+F8]', self)
+            tbExecuteSelection = QAction(QIcon(resourcePath('ico', 'F8alt_icon.png')), 'Execute selection without parsing [Alt+F8]', self)
             tbExecuteSelection.triggered.connect(self.toolbarExecuteSelection)
             self.toolbar.addAction(tbExecuteSelection)
 
-            tbExecuteLeaveResult = QAction(QIcon(resourcePath('ico\\F8ctrl_icon.png')), 'Execute opening a new result set tab [Ctrl+F8]', self)
+            tbExecuteLeaveResult = QAction(QIcon(resourcePath('ico', 'F8ctrl_icon.png')), 'Execute opening a new result set tab [Ctrl+F8]', self)
             tbExecuteLeaveResult.triggered.connect(self.toolbarExecuteLeaveResults)
             self.toolbar.addAction(tbExecuteLeaveResult)
             
-            tbFormat = QAction(QIcon(resourcePath('ico\\format.png')), 'Beautify code [Ctrl+Shift+O]', self)
+            tbFormat = QAction(QIcon(resourcePath('ico', 'format.png')), 'Beautify code [Ctrl+Shift+O]', self)
             tbFormat.triggered.connect(self.toolbarFormat)
             self.toolbar.addAction(tbFormat)
 
-            tbBrowser = QAction(QIcon(resourcePath(r'ico\sqlbrowser.png')), 'SQL Browser [F11]', self)
+            tbBrowser = QAction(QIcon(resourcePath('ico', 'sqlbrowser.png')), 'SQL Browser [F11]', self)
             tbBrowser.triggered.connect(self.toolbarBrowser)
             self.toolbar.addAction(tbBrowser)
 
             # connect/discinnect
             self.toolbar.addSeparator()
             
-            tbConnect = QAction(QIcon(resourcePath(r'ico\connect.png')), '(re)Connect', self)
+            tbConnect = QAction(QIcon(resourcePath('ico', 'connect.png')), '(re)Connect', self)
             tbConnect.triggered.connect(self.toolbarConnect)
             # tbConnect.setEnabled(False)
             self.toolbar.addAction(tbConnect)
 
-            tbDisconnect = QAction(QIcon(resourcePath(r'ico\disconnect.png')), 'Disconnect', self)
+            tbDisconnect = QAction(QIcon(resourcePath('ico', 'disconnect.png')), 'Disconnect', self)
             tbDisconnect.triggered.connect(self.toolbarDisconnect)
             self.toolbar.addAction(tbDisconnect)
 
-            tbAbort = QAction(QIcon(resourcePath(r'ico\abort.png')), 'Generate cancel session SQL', self)
+            tbAbort = QAction(QIcon(resourcePath('ico', 'abort.png')), 'Generate cancel session SQL', self)
             tbAbort.triggered.connect(self.toolbarAbort)
             self.toolbar.addAction(tbAbort)
             
@@ -4423,7 +4432,7 @@ class sqlConsole(QWidget):
             
             
             self.tbRefresh = QToolButton()
-            self.tbRefresh.setIcon(QIcon(resourcePath(r'ico\refresh.png')))
+            self.tbRefresh.setIcon(QIcon(resourcePath('ico', 'refresh.png')))
             self.tbRefresh.setToolTip('Schedule automatic refresh for the result set')
             self.tbRefresh.setCheckable(True)
             self.tbRefresh.toggled.connect(self.toolbarRefresh)
@@ -4432,13 +4441,13 @@ class sqlConsole(QWidget):
             self.toolbar.addSeparator()
             
             self.ABAPCopy = QToolButton()
-            self.ABAPCopy.setIcon(QIcon(resourcePath(r'ico\abapcopy.png')))
+            self.ABAPCopy.setIcon(QIcon(resourcePath('ico', 'abapcopy.png')))
             self.ABAPCopy.setToolTip('Use ABAP-style result copy by default.')
             self.ABAPCopy.setCheckable(True)
             self.ABAPCopy.toggled.connect(self.toolbarABAP)
             self.toolbar.addWidget(self.ABAPCopy)
             
-            tbHelp = QAction(QIcon(resourcePath(r'ico\help.png')), 'SQL Usage Help', self)
+            tbHelp = QAction(QIcon(resourcePath('ico', 'help.png')), 'SQL Usage Help', self)
             tbHelp.triggered.connect(self.toolbarHelp)
             self.toolbar.addAction(tbHelp)
 

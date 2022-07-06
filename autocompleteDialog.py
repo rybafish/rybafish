@@ -90,7 +90,7 @@ class autocompleteDialog(QDialog):
         
     def initUI(self):
 
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico', 'favicon.ico')
         
         self.linesList = QListWidgetMod()
 

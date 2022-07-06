@@ -2781,7 +2781,7 @@ class chartArea(QFrame):
             msgBox.setWindowTitle('Connection init error')
             msgBox.setText('Initial connection did not return any data from m_load_history* views.\n\nCheck if your user has proper access:\nMONITORING role?\n\nYou can disable this message by setting "noAccessWarning: True" in config.yaml\n\nYou still can open SQL console (Alt+S) and check manually:\nselect * from m_load_history_host;')
             msgBox.setStandardButtons(QMessageBox.Ok)
-            iconPath = resourcePath('ico\\favicon.png')
+            iconPath = resourcePath('ico', 'favicon.png')
             msgBox.setWindowIcon(QIcon(iconPath))
             msgBox.setIcon(QMessageBox.Warning)
 
@@ -2922,7 +2922,7 @@ class chartArea(QFrame):
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 

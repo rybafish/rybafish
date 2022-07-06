@@ -372,7 +372,7 @@ def yesNoDialog(title, message, cancel = False, ignore = False, parent = None):
         
     msgBox.setStandardButtons(buttons)
     msgBox.setDefaultButton(QMessageBox.Yes)
-    iconPath = resourcePath('ico\\favicon.png')
+    iconPath = resourcePath('ico', 'favicon.png')
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)
     
@@ -397,7 +397,7 @@ def msgDialog(title, message):
     buttons = QMessageBox.Ok
         
     msgBox.setStandardButtons(buttons)
-    iconPath = resourcePath('ico\\favicon.png')
+    iconPath = resourcePath('ico', 'favicon.png')
     
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)
@@ -451,7 +451,7 @@ def strftime(time):
     return '%s.%i' % (str, ms)
     
     
-def resourcePath(file):
+def resourcePath(folder, file):
     '''
         resource path calculator
         for pyinstall
@@ -462,7 +462,8 @@ def resourcePath(file):
     except:
         base = '.'
 
-    return base + '\\' + file
+    #return base + '\\' + file
+    return os.path.join(base, folder, file)
     
 def fakeRaduga():
     global config

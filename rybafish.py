@@ -91,7 +91,7 @@ class ExceptionHandler(QtCore.QObject):
         
         msgBox.setIcon(QMessageBox.Critical)
         msgBox.setDetailedText(details)
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.exec_()
         

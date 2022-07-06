@@ -352,6 +352,9 @@ class hslWindow(QMainWindow):
         if kpiDescriptions.customColors:
             colorsHTML = kpiDescriptions.colorsHTML(kpiDescriptions.customColors)
             self.layout['customColors'] = colorsHTML
+        else:
+            if 'customColors' in self.layout.lo:
+                del self.layout.lo['customColors']
            
         self.layout.dump()
         
@@ -771,7 +774,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.png')
+                iconPath = resourcePath('ico', 'favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -786,7 +789,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Error')
                 msgBox.setText('Init failed: %s \n\nSee more deteails in the log file.' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.png')
+                iconPath = resourcePath('ico', 'favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -801,7 +804,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
-                iconPath = resourcePath('ico\\favicon.png')
+                iconPath = resourcePath('ico', 'favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -1272,7 +1275,7 @@ class hslWindow(QMainWindow):
         self.statusbar.addPermanentWidget(ind)
 
         #menu
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
 
         exitAct = QAction('&Exit', self)        
         exitAct.setShortcut('Alt+Q')

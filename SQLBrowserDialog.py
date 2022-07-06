@@ -569,7 +569,7 @@ class SQLBrowserDialog(QDialog):
         
     def initUI(self):
 
-        iconPath = resourcePath('ico\\favicon.ico')
+        iconPath = resourcePath('ico', 'favicon.ico')
         
         self.tree = SQLBrowser()
         

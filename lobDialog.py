@@ -23,7 +23,7 @@ class lobDialog(QDialog):
         
     def initUI(self, lob):
 
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
         
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Ok,

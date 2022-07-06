@@ -279,7 +279,7 @@ class Variables(QDialog):
         
     def initUI(self, idx):
     
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
         
         vbox = QVBoxLayout()
         ocBox = QHBoxLayout()
