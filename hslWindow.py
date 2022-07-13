@@ -882,6 +882,8 @@ class hslWindow(QMainWindow):
         if self.layout == None:
             # switch backups off to avoid conflicts...
             console.noBackup = True
+            
+        console.cons.setFocus()
         
         return console
         
@@ -1005,6 +1007,8 @@ class hslWindow(QMainWindow):
         if self.layout == None:
             # no backups to avoid conflicts...
             console.noBackup = True
+            
+        console.cons.setFocus()
         
         self.statusMessage('', False)
         console.indicator.status = 'idle'
@@ -1527,6 +1531,7 @@ class hslWindow(QMainWindow):
                         cursor = console.cons.textCursor()
                         cursor.setPosition(pos, cursor.MoveAnchor)
                         console.cons.setTextCursor(cursor)
+                        console.cons.setFocus()
                         
             indx = self.layout['currentTab']
                         
@@ -1535,8 +1540,8 @@ class hslWindow(QMainWindow):
 
                 w = self.tabs.widget(indx)
                 
-                if isinstance(w, sqlConsole.sqlConsole):
-                    w.cons.setFocus()
+                #if isinstance(w, sqlConsole.sqlConsole):
+                #    w.cons.setFocus()
                 
             else:
                 self.tabs.setCurrentIndex(0)
