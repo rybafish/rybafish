@@ -753,7 +753,8 @@ class myWidget(QWidget):
             
                 hlType = hType(self.highlightedKpiHost, self.hosts)
             
-                self.kpiPen[hlType][self.highlightedKpi].setWidth(1)
+                if self.highlightedKpi in self.kpiPen[hlType]:
+                    self.kpiPen[hlType][self.highlightedKpi].setWidth(1)
                 
                 self.highlightedKpiHost = None
                 self.highlightedKpi = None
@@ -2720,11 +2721,18 @@ class chartArea(QFrame):
         self.widget.nscales.clear()
         self.widget.ndata.clear()
         
+        
         # 2021-11-12
         
         # need to clear the kpis list as it will be reloaded anyhow
         kpiStylesNN['host'].clear()
         kpiStylesNN['service'].clear()
+
+        # 2022-07-14, #676
+        self.widget.highlightedKpi = None
+        self.widget.highlightedKpiHost = None
+        self.widget.highlightedPoint = None
+        self.widget.highlightedGBI = None
         
         log('cleanup complete')
         
