@@ -174,6 +174,7 @@ class Profiler():
         log('-' * repWidth)
 
 
+'''
 if useProfiler:
     log('Init profiler')
     profiler = Profiler()
@@ -181,6 +182,27 @@ else:
     log('Dummy profiler')
     def profiler(f):
         return f
+'''
+
+class dummyProfiler():
+    def __enter__(self, s=None):
+        return self
+        
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        return self
+
+    def __call__(self, f):
+        if type(f) == str:
+            return self
+        else:
+            return f
+
+if useProfiler:
+    log('Init profiler')
+    profiler = Profiler()
+else:
+    log('Dummy profiler')
+    profiler = dummyProfiler()
 
 @profiler    
 def __doNothingProfile():

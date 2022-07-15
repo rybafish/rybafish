@@ -2,6 +2,8 @@ import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QIcon
 
+from PyQt5.QtCore import QMutex
+
 from datetime import datetime
 
 import os
@@ -469,7 +471,7 @@ def fakeRaduga():
     global config
     config['raduga'] = ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00fa9a', '#8a2be2']
     
-def loadConfig():
+def loadConfig(silent=False):
 
     global config
     
@@ -490,7 +492,9 @@ def loadConfig():
             fakeRaduga()
             
     except:
-        log('no config file? <-')
+        if not silent:
+            log('no config file? <-')
+            
         config = {}
         
         return False
@@ -533,6 +537,23 @@ def getlog(prefix):
         log(s, *args, **kwargs)
     
     return logf
+    
+class fakeMutex():
+    def tryLock(self, timeout=0):
+        pass
+        
+    def lock(self):
+        pass
+        
+    def unlock(self):
+        pass
+
+loadConfig(silent=True) # try to silently init config...
+
+if cfg('dev'):
+    mtx = QMutex()
+else:
+    mtx = fakeMutex()
 
 @profiler
 def log(s, loglevel = 3, nots = False, nonl = False):
@@ -557,6 +578,10 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         nl = '\n'
     
     if cfg('logmode') != 'screen':
+    
+        with profiler('log mutex lock'):
+            mtx.tryLock(1000)
+            
         f = open('.log', 'a')
         f.seek(os.SEEK_END, 0)
         try:
@@ -566,6 +591,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
             f.write(ts + str(e) + nl)
         
         f.close()
+        mtx.unlock()
         
 @profiler
 def normalize_header(header):
