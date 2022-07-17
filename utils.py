@@ -550,7 +550,7 @@ class fakeMutex():
 
 loadConfig(silent=True) # try to silently init config...
 
-if cfg('dev'):
+if cfg('threadSafeLogging', False):
     mtx = QMutex()
 else:
     mtx = fakeMutex()
@@ -580,18 +580,27 @@ def log(s, loglevel = 3, nots = False, nonl = False):
     if cfg('logmode') != 'screen':
     
         with profiler('log mutex lock'):
-            mtx.tryLock(1000)
+            mtx.tryLock(200)
             
         f = open('.log', 'a')
-        f.seek(os.SEEK_END, 0)
+        #f.seek(os.SEEK_END, 0)
+    
         try:
             f.write(ts + str(s) + nl)
 
         except Exception as e:
             f.write(ts + str(e) + nl)
-        
+    
         f.close()
+        
         mtx.unlock()
+
+if cfg('threadSafeLogging', False):
+    log('threadSafeLogging should be enabled')
+    mtx = QMutex()
+else:
+    log('threadSafeLogging should be disabled')
+    mtx = fakeMutex()
         
 @profiler
 def normalize_header(header):
