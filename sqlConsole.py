@@ -2979,13 +2979,15 @@ class sqlConsole(QWidget):
         else:
             #try open normal file first
             #fileName = 'snd\\' + fileName
-            fileName = os.path.join('snd', fileName)
+            fileNamePath = os.path.join('snd', fileName)
             
-            if os.path.isfile(fileName):
-                log('seems there is a file in the rybafish snd folder: %s' % (fileName), 4)
+            if os.path.isfile(fileNamePath):
+                log('seems there is a file in the rybafish snd folder: %s' % (fileNamePath), 4)
             else:
                 #okay, take it from the build then...
-                fileName = resourcePath(fileName)
+                fileNamePath = resourcePath('snd', fileName)
+                
+            fileName = fileNamePath
                 
         #print('filename:', fileName)
 
