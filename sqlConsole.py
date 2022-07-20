@@ -1569,6 +1569,8 @@ class resultSet(QTableWidget):
         '''
         
         def abapCopy():
+        
+            mdMode = cfg('copy-markdown', True)
 
             maxWidth = cfg('abap-length', 32)
             widths = []
@@ -1589,16 +1591,35 @@ class resultSet(QTableWidget):
                         else:
                             widths[c] = len(copypaste[r][c])
                             
-                            
+
+            '''
             tableWidth = 0
             
             for c in widths:
                 tableWidth += c + 1
                 
             tableWidth -= 1
-                
+            '''
+            
+            tableWidth = sum(widths) + len(widths) - 1
+
             topLine = '-' + '-'.rjust(tableWidth, '-') + '-'
-            mdlLine = '|' + '-'.rjust(tableWidth, '-') + '|'
+            
+            if mdMode:
+                mdlLine = '|'
+
+                for j in range(len(widths)):
+                    if widths[j] > 1:
+                        if self.dbi.ifNumericType(types[j]):
+                            mdlLine += '-'*(widths[j]-1) + ':|'
+                        else:
+                            mdlLine += ':' + '-'*(widths[j]-1) + '|'
+                    else:
+                        log(f'column width <= 1? {widths[j]}, {j}', 2)
+                        mdlLine += '-'*widths[j] + '|'
+
+            else:
+                mdlLine = '|' + '-'.rjust(tableWidth, '-') + '|'
                             
             csv = topLine + '\n'
             
@@ -1706,7 +1727,6 @@ class resultSet(QTableWidget):
                     
             if hdrrow:
                 copypaste.append(hdrrow)
-    
     
             for r in rowIndex:
                 values = []
