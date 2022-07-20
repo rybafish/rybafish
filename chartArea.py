@@ -881,10 +881,13 @@ class myWidget(QWidget):
                     if reportRange is not None:
                         t = gc[entity][reportRange]
                         
+                        self.highlightedPoint = None #690
+                        
                         self.highlightedKpi = kpi
                         self.highlightedKpiHost = host
                         self.highlightedEntity = entity
                         self.highlightedRange = reportRange
+                        
             
                         # self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
     
@@ -2938,7 +2941,7 @@ class chartArea(QFrame):
         self.statusMessage('Connection error (%s)' % err_str, True)
         
         msgBox = QMessageBox(self)
-        msgBox.setWindowTitle('Connection lost')
+        msgBox.setWindowTitle('Charts connection lost')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)

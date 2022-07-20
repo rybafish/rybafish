@@ -3807,7 +3807,9 @@ class sqlConsole(QWidget):
         '''
         disconnectAlert = None
         
-        log('Connection Lost...')
+        tname = self.tabname.rstrip(' *')
+        
+        log(f'Connection Lost (tname)...')
 
         if self.timerAutorefresh is not None and cfg('alertDisconnected'):      # Need to do this before stopResults as it resets timerAutorefresh
             log('disconnectAlert = True', 5)
@@ -3817,8 +3819,9 @@ class sqlConsole(QWidget):
         
         self.stopResults()
         
+        
         msgBox = QMessageBox(self)
-        msgBox.setWindowTitle('Connection lost')
+        msgBox.setWindowTitle(f'Console connection lost ({tname})')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)
