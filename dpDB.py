@@ -303,7 +303,7 @@ class dataProvider(QObject):
                         
         return kpisList
         
-        
+    @profiler
     def getData(self, h, fromto, kpiIn, data, wnd = None):
         '''
             returns boolean
@@ -783,6 +783,7 @@ class dataProvider(QObject):
                 print(i[2], i[0], i[1], i[3])
         '''
     
+    @profiler
     def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
         '''
             performs query to a data source for specific host.port

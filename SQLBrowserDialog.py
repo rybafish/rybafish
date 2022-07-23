@@ -338,7 +338,7 @@ class SQLBrowser(QTreeView):
                 
             #print(parent, mine, node)
             
-            with profiler('pop'):
+            with profiler('SQLBrowser.pop'):
                 while len(parent) < len(parents[-1]):
                     # one level back
                     parents.pop()

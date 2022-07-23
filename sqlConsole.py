@@ -1345,7 +1345,7 @@ class resultSet(QTableWidget):
             
         cmenu.addSeparator()
         
-        abapCopy = cmenu.addAction('ABAP-style copy')
+        abapCopy = cmenu.addAction('ABAP-style (markdown) copy')
 
         cmenu.addSeparator()
         
@@ -3023,7 +3023,7 @@ class sqlConsole(QWidget):
             self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
             
             
-        vol = cfg('alertVolume', 80)
+        vol = cfg('alertVolume', 50)
         
         try:
             vol = int(vol)
@@ -4467,7 +4467,7 @@ class sqlConsole(QWidget):
             
             self.ABAPCopy = QToolButton()
             self.ABAPCopy.setIcon(QIcon(resourcePath('ico', 'abapcopy.png')))
-            self.ABAPCopy.setToolTip('Use ABAP-style result copy by default.')
+            self.ABAPCopy.setToolTip('Use ABAP-style (markdown) result copy by default.')
             self.ABAPCopy.setCheckable(True)
             self.ABAPCopy.toggled.connect(self.toolbarABAP)
             self.toolbar.addWidget(self.ABAPCopy)

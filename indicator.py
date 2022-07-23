@@ -14,7 +14,8 @@ class indicator(QWidget):
         'running': '#8F8',
         'error': '#CCC',
         'render': '#FFF',
-        'disconnected': '#FCC',
+        'disconnected': '#888',
+        #'disconnected': '#FCC',
         'alert': '#FAC',
         'autorefresh': '#cfc',
         'detach': '#999',
@@ -76,7 +77,7 @@ class indicator(QWidget):
             qp.setBrush(QBrush(QColor('#F00'), Qt.SolidPattern))
             #qp.setBrush(QBrush(QColor('#8C8'), Qt.SolidPattern))
         
-        if self.status == 'disconnected' or self.status == 'error':
+        if self.status == 'disconnected was' or self.status == 'error':
             qp.setPen(QColor('#F00'))
         else:
             qp.setPen(QColor('#888'))
