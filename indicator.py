@@ -11,14 +11,14 @@ class indicator(QWidget):
     styles = {
         'idle': '#CCC',
         'sync': '#44F',
-        'running': '#8F8',
-        'error': '#CCC',
+        'running': ('#8F8', '#4A4'),
+        'error': ('#CCC', '#F00'),
         'render': '#FFF',
         'disconnected': '#888',
         #'disconnected': '#FCC',
         'alert': '#FAC',
         'autorefresh': '#cfc',
-        'detach': '#999',
+        'detach': ('#CCC', '#444'),
         #'detach': '#EEC',
     }
 
@@ -71,16 +71,30 @@ class indicator(QWidget):
         '''
 
         if self.status in self.styles:
-            color = QColor(self.styles[self.status])
-            qp.setBrush(QBrush(color, Qt.SolidPattern))
-        else:
-            qp.setBrush(QBrush(QColor('#F00'), Qt.SolidPattern))
-            #qp.setBrush(QBrush(QColor('#8C8'), Qt.SolidPattern))
         
+            st = self.styles[self.status]
+            
+            if isinstance(st, tuple):
+                brush = st[0]
+                frame = st[1]
+            else:
+                brush = st
+                frame = '#888'
+        
+            color = QColor(brush)
+            qp.setBrush(QBrush(color, Qt.SolidPattern))
+            qp.setPen(QColor(frame))
+        else:
+            # unknown status
+            qp.setBrush(QBrush(QColor('#F00'), Qt.SolidPattern))
+            qp.setPen(QColor('#A00'))
+        
+        '''
         if self.status == 'disconnected was' or self.status == 'error':
             qp.setPen(QColor('#F00'))
         else:
             qp.setPen(QColor('#888'))
+        '''
             
         qp.drawRect((h - 10 )/2, (w - 10 )/2, 10, 10)
         

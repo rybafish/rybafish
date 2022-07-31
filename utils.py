@@ -17,8 +17,11 @@ from yaml import safe_load, dump, YAMLError #pip install pyyaml
 from binascii import hexlify
 from profiler import profiler
 
+import re
+
 logmode = 'file'
 config = {}
+alertReg = None
 
 timers = []
 
@@ -474,6 +477,7 @@ def fakeRaduga():
 def loadConfig(silent=False):
 
     global config
+    global alertReg
     
     script = sys.argv[0]
     path, file = os.path.split(script)
@@ -498,6 +502,13 @@ def loadConfig(silent=False):
         config = {}
         
         return False
+
+    alertStr = cfg('alertTriggerOn')
+
+    if alertStr and alertStr[0] == '{' and alertStr[-1:] == '}':
+        alertReg = re.compile('^{' + alertStr[1:-1] + '(:[^!]*)?(!\d{1,3})?}$')
+    else:
+        alertReg = None
         
     return True
     
@@ -647,6 +658,53 @@ def safeInt(s, default = 0):
         
     return i
     
+
+@profiler
+def parseAlertString(value):
+    '''parses alert string to extract filename and volume
     
+        format: '{alert:soundFile!volume}'
+        
+        soundFile is uptional, could be just a filname or path
+        volume - 2-digits, will be converted to integer
+        
+        alert - cfg('alertTriggerOn')
+        if the string is not wrapped in {} - no any parsing will be executed, only sound file will be extracted
+    '''
     
+    print('alertReg: ', alertReg, cfg('alertTriggerOn'))
     
+    if alertReg is None:
+        return None, None
+    
+    alertStr = cfg('alertTriggerOn')
+    volume = cfg('alertVolume', 80)
+    vol = None
+    sound = ''
+    
+    if value[0] == '{' and value[-1:] == '}':
+        #ml = re.search('^{alert(:[^!]*)?(!\d{1,3})?}$', value)
+        ml = alertReg.search(value)
+        
+        if ml is None:
+            return None, None
+            
+        for g in ml.groups():
+            if g and g[0] == ':':
+                sound = g[1:]
+
+            if g and g[0] == '!':
+                vol = g[1:]
+            
+        if vol is not None:
+            volume = int(vol)
+        
+    else:
+        if value == alertStr:
+            sound = ''
+        else:
+            return None, None
+            
+    log(f'alert parsed: {sound}/{volume}', 5)
+    
+    return sound, volume 

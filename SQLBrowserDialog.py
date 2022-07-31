@@ -9,7 +9,7 @@ import os, time
 
 from PyQt5.QtCore import Qt, QObject, QThread
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QRect, QItemSelectionModel
 
 from utils import resourcePath
 from utils import log, cfg
@@ -100,6 +100,9 @@ class SQLBrowser(QTreeView):
         
         self.expanded.connect(self.nodeExpanded)
         self.collapsed.connect(self.nodeCollapsed)
+        
+        self.selectedPath = None        # input item (str) set in filter change/reload
+        self.searchItem = None          # item detected during model build
 
         # one time thread init...
         self.descWorker.moveToThread(self.thread)
@@ -155,18 +158,17 @@ class SQLBrowser(QTreeView):
         nodez = []
     
         j = 0
-        
-        filterLen = len(filter)
-        
+                
         for (f, fpath, fdesc, fmode, offset) in files:
             if filter:
                 if (
-                    (f.lower().find(filter, filterLen) < 0) 
+                    (f.lower().find(filter) < 0) 
                     and 
                     (fdesc is None or (fdesc is not None and fdesc.lower().find(filter) < 0))):
 
                     continue
-            
+                    
+            #print('ok, something left:', f)
             
             hier = f.split(os.sep)
             
@@ -279,7 +281,7 @@ class SQLBrowser(QTreeView):
         return flatlist
 
     @profiler
-    def buildModel(self, folder='', filter = ''):
+    def buildModel(self, folder='', filterStr = ''):
         '''
             builds the content of self.tree (QTreeView)
         
@@ -288,7 +290,6 @@ class SQLBrowser(QTreeView):
         #nodes = {}
         
         needComments = False
-
         
         self.model.clear()
 
@@ -303,7 +304,9 @@ class SQLBrowser(QTreeView):
             needComments = True
             self.flatStructure = self.flattenFolder(folder)
             
-        nodez = self.parseFlat(folder, self.flatStructure, filter=filter)
+        filterLower = filterStr.lower()
+            
+        nodez = self.parseFlat(folder, self.flatStructure, filter=filterLower)
         
         parents = ['']              # stack of the parent nodes
         parentNodes = {}
@@ -311,9 +314,12 @@ class SQLBrowser(QTreeView):
         parentNodes[folder] = parentItem
         
         i = 0
+        rowsAdded = 0
+        
+        self.searchItem = None
         
         if len(nodez) == 0:
-            if  filter:
+            if  filterLower:
                 item1 = QStandardItem(f'no matches')
                 item1.setEditable(False)
                 
@@ -345,18 +351,25 @@ class SQLBrowser(QTreeView):
 
             # insert next leave
             
+            #print(f'    {i:04} {node}')
+            
             item = QStandardItem(node)
             item.setEditable(False)
 
-            if filter and node.lower().find(filter) >= 0:
+            if filterLower and node.lower().find(filterLower) >= 0:
                 item.setFont(self.boldFont)
                 
             if data is None:                                #folder
                 item.setIcon(self.folderIcon)
                 
                 item.setData(mine, role=Qt.UserRole + 1)    # required only to be able to reproduce expanded nodes
+                item.setData(' - folder - ', role=Qt.UserRole + 2)    # required only to be able to reproduce expanded nodes
+
+                if self.selectedPath == mine:
+                    self.searchItem = item
 
                 parentNodes[parent].appendRow(item)
+                rowsAdded += 1
                 parentNodes[mine] = item
                 parents.append(mine)
                 
@@ -366,18 +379,22 @@ class SQLBrowser(QTreeView):
             else:
                 item.setData(data, role=Qt.UserRole + 1)
                 
+                if self.selectedPath == data:
+                    self.searchItem = item
+                
                 if desc:
                     itemDesc = QStandardItem(desc)
                     itemDesc.setEditable(False)
                     item.setData(offset and offset+1, role=Qt.UserRole + 2)
 
-                    if filter and desc.lower().find(filter) >= 0:
+                    if filterLower and desc.lower().find(filterLower) >= 0:
                         itemDesc.setFont(self.boldFont)
                     
                     parentNodes[parent].appendRow([item, itemDesc])
+                    rowsAdded += 1
                 else:
-                
                     parentNodes[parent].appendRow(item)
+                    rowsAdded += 1
         
         self.setModel(self.model)
         
@@ -385,9 +402,23 @@ class SQLBrowser(QTreeView):
         self.setColumnWidth(1, 200)
         #self.setColumnWidth(2, 150)
         
+        
+        #self.setSelection(QRect(0, 1, 3, 3), QItemSelectionModel.Select)
+        #self.selectionModel().select()
+        
+        if self.searchItem is not None:
+            pass
+            #print(self.searchItem)
+            #idx = self.model.index(self.searchItem, 0)
+            #print(idx)
+            #self.selectionModel().select(idx, QItemSelectionModel.Select  | QItemSelectionModel.Rows)
+        
         if needComments:
             self.descWorker.flatStructure = self.flatStructure
             self.thread.start()
+
+    def collapseNodes(self):
+        self.expandedNodes.clear()
 
     def keyPressEvent(self, event):
         '''keypress on the QTreeView, actual model update to be handled by parent dialog'''
@@ -397,12 +428,28 @@ class SQLBrowser(QTreeView):
             self.filter += k
             self.filterUpdated.emit()
         elif event.key() == Qt.Key_Backspace:
-            self.filter = self.filter[:-1]
+            if len(self.filter) == 0:
+                self.collapseAll()
+                self.collapseNodes()
+            else:
+                self.filter = self.filter[:-1]
+                
             self.filterUpdated.emit()
         else:
             super().keyPressEvent(event)
         
 
+class QLineEditBS(QLineEdit):
+    bsPressed = pyqtSignal()
+    def __init__(self, parent = None):
+        super().__init__(parent)
+    
+    def keyPressEvent (self, event):
+        if event.key() == Qt.Key_Backspace:
+            self.bsPressed.emit()
+
+        super().keyPressEvent(event)
+            
 class SQLBrowserDialog(QDialog):
 
     inst = None
@@ -419,13 +466,34 @@ class SQLBrowserDialog(QDialog):
 
         #self.insertBtn.setFocus()
         
+    def restoreSelection(self):
+    
+        if self.tree.searchItem:
+            idx = self.tree.searchItem.index()
+            self.tree.scrollTo(idx)
+            self.tree.selectionModel().select(idx, QItemSelectionModel.Select  | QItemSelectionModel.Rows)
+        
     def filterChanged(self, s):
         '''bound to filter editbox textChanged signal'''
         self.tree.filter = s
         
-        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filter=self.tree.filter)
+        
+        #self.tree.selectedPath = None
+        
+        model = self.tree.selectionModel()
+        
+        if model is not None:
+            indexes = model.selectedIndexes()
+            
+            if len(indexes):
+                idx = indexes[0]
+                self.tree.selectedPath = idx.data(role=Qt.UserRole + 1)
+        
+        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filterStr=self.tree.filter)
         if len(self.tree.filter) >= 3:
             self.tree.expandAll()
+            
+        self.restoreSelection()
     
     def updateFilter(self):
         '''triggered manual from keypress callback'''
@@ -434,6 +502,11 @@ class SQLBrowserDialog(QDialog):
         # and it will trigger filterChanged itself
         return
 
+    def bsPressed(self):
+        if len(self.tree.filter) == 0:
+            self.tree.collapseAll()
+            self.tree.collapseNodes()
+        
     def keyPressEvent(self, event):
         '''keypress anywhere on the dialog (QTreeView has very similar handler'''
     
@@ -443,7 +516,11 @@ class SQLBrowserDialog(QDialog):
             self.tree.filter += k
             self.updateFilter()
         elif event.key() == Qt.Key_Backspace:
-            self.tree.filter = self.tree.filter[:-1]
+            if len(self.tree.filter) == 0:
+                self.tree.collapseNodes()
+            else:
+                self.tree.filter = self.tree.filter[:-1]
+                
             self.updateFilter()
         else:
             super().keyPressEvent(event)
@@ -498,15 +575,17 @@ class SQLBrowserDialog(QDialog):
     def insertText(self):
         self.mode = 'insert'
         self.accept()
-        
 
     def newCons(self):
         self.mode = 'open'
         self.accept()
-        
     
-    def itemSelected(self, item):
-        # and the itec actually ignored because it is extracted in getFile()
+    def itemSelected(self, idx):
+        # and the item actually ignored because it is extracted in getFile()
+        if idx.data(role=Qt.UserRole + 2) == ' - folder - ':
+            self.filterEdit.setText(idx.data())
+            return
+        
         self.mode = 'insert'
         self.accept()
         
@@ -523,7 +602,18 @@ class SQLBrowserDialog(QDialog):
         self.tree.resetStructure() #meaning the flat structure
         
         pos = self.tree.verticalScrollBar().value()
-        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filter=self.tree.filter)
+
+        # get the selected item:
+        model = self.tree.selectionModel()
+        
+        if model is not None:
+            indexes = model.selectedIndexes()
+            
+            if len(indexes):
+                idx = indexes[0]
+                self.tree.selectedPath = idx.data(role=Qt.UserRole + 1)
+                        
+        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filterStr=self.tree.filter)
 
         self.reloadBtn.setEnabled(False)
         self.sb.showMessage('Loading descriptions...')
@@ -533,16 +623,18 @@ class SQLBrowserDialog(QDialog):
         
         self.tree.updateModel()
         
+        self.restoreSelection()
 
     def modelReady(self):
         pos = self.tree.verticalScrollBar().value()
         
-        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filter=self.tree.filter)
+        self.tree.buildModel(folder=cfg('scriptsFolder', 'scripts'), filterStr=self.tree.filter)
         
         self.tree.repaint()
         self.tree.verticalScrollBar().setValue(pos)
         pos = self.tree.verticalScrollBar().value()
         
+        self.restoreSelection()
         self.reloadBtn.setEnabled(True)
         self.sb.showMessage('Ready')
         
@@ -604,8 +696,9 @@ class SQLBrowserDialog(QDialog):
         hbox.addWidget(cancelBtn)
         
         self.filterl = QLabel('filter')
-        self.filterEdit = QLineEdit()
+        self.filterEdit = QLineEditBS()
         self.filterEdit.textChanged.connect(self.filterChanged)
+        self.filterEdit.bsPressed.connect(self.bsPressed)
         
         hboxfilter.addWidget(self.filterl, 0)
         hboxfilter.addWidget(self.filterEdit)

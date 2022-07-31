@@ -1155,7 +1155,7 @@ class resultSet(QTableWidget):
         Table never refilled. 
     '''
     
-    alertSignal = pyqtSignal(['QString'])
+    alertSignal = pyqtSignal(['QString', int])
     insertText = pyqtSignal(['QString'])
     executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
@@ -1942,6 +1942,9 @@ class resultSet(QTableWidget):
             if alert_str[0:1] == '{' and alert_str[-1:] == '}':
                 alert_prefix = alert_str[:-1]
                 alert_len = len(alert_str)
+            else:
+                alert_prefix = alert_str
+                alert_len = len(alert_str)
         
         #fill the result table
                 
@@ -2004,23 +2007,46 @@ class resultSet(QTableWidget):
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
                         
-                        sound = None
+                        with profiler('alertChecker'):
                         
-                        if val[:alert_len - 1] == alert_prefix:
-                            # okay this looks like alert
-                            if val == alert_str: 
-                                # simple one
-                                sound = ''
-                            else:
-                                # might be a customized one?
-                                if val[-1:] == '}' and val[alert_len-1:alert_len] == ':':
-                                    sound = val[alert_len:-1]
-                                    
-                        if sound is not None and not self.alerted:
-                            self.alerted = True
+                            #надо двинуть всё это барахло в отдельную функцию которая вернёт звук и громкость
+                            #короче #696
+                        
+                            sound = None
                             
-                            item.setBackground(QBrush(QColor('#FAC')))
-                            self.alertSignal.emit(sound)
+                            if val[:alert_len - 1] == alert_prefix:
+                                # okay this looks like alert
+                                
+                                sound, volume = utils.parseAlertString(val)
+                                
+                                '''
+                                
+                                old style messy approach...
+                                
+                                if val == alert_str: 
+                                    # simple one
+                                    sound = ''
+                                    volume = None
+                                else:
+                                    # might be a customized one?
+                                    if val[-1:] == '}' and val[alert_len-1:alert_len] == ':':
+                                        sound = val[alert_len:-1]
+                                        
+                                        volPos = sound.find('!')
+                                        
+                                        if volPos > 0:
+                                            sound = sound[:volPos]
+                                            volume = sound[volPos+1:]
+                                        else:
+                                            volume = None
+                                        print(sound, volume)
+                                '''
+                                        
+                            if sound is not None and not self.alerted:
+                                self.alerted = True
+                                
+                                item.setBackground(QBrush(QColor('#FAC')))
+                                self.alertSignal.emit(sound, volume)
 
                 
                 elif self.dbi.ifTSType(cols[c][1]):
@@ -2977,7 +3003,7 @@ class sqlConsole(QWidget):
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
-    def alertProcessing(self, fileName, manual = False):
+    def alertProcessing(self, fileName, volume=None, manual = False):
     
         #print('alertProcessing')
     
@@ -3002,7 +3028,7 @@ class sqlConsole(QWidget):
             fileNamePath = os.path.join('snd', fileName)
             
             if os.path.isfile(fileNamePath):
-                log('seems there is a file in the rybafish snd folder: %s' % (fileNamePath), 4)
+                log(f'seems there is a file in the rybafish snd folder: {fileNamePath}', 4)
             else:
                 #okay, take it from the build then...
                 fileNamePath = resourcePath('snd', fileName)
@@ -3023,14 +3049,15 @@ class sqlConsole(QWidget):
             self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
             
             
-        vol = cfg('alertVolume', 50)
+        if volume is None:
+            volume = cfg('alertVolume', 80)
         
         try:
-            vol = int(vol)
+            volume = int(volume)
         except ValueError:
-            vol = 80
+            volume = 80
             
-        vol /= 100
+        volume /= 100
         
         if not manual:
             self.indicator.status = 'alert'
@@ -3038,7 +3065,7 @@ class sqlConsole(QWidget):
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
-        self.sound.setVolume(vol)
+        self.sound.setVolume(volume)
             
         self.sound.play()
         
@@ -3257,7 +3284,7 @@ class sqlConsole(QWidget):
                     self.setupAutorefresh(0, suppressLog=True)
                 
                     if cfg('alertDisconnected'):
-                        self.alertProcessing(cfg('alertDisconnected'), True)
+                        self.alertProcessing(cfg('alertDisconnected'), manual=True)
                 
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
@@ -3851,7 +3878,7 @@ class sqlConsole(QWidget):
 
         if disconnectAlert:
             log('play the disconnect sound...', 4)
-            self.alertProcessing(cfg('alertDisconnected'), True)
+            self.alertProcessing(cfg('alertDisconnected'), manual=True)
             
         reply = None
         
