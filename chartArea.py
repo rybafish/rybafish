@@ -2784,7 +2784,7 @@ class chartArea(QFrame):
             log('[!] variables processing exception: %s' % (str(e)), 1)
             utils.msgDialog('Initialization Error', 'Variables processing error. Check the variables definition, if the message persists, consider deleting layout.yaml\n\n%s' % (str(e)))
         except Exception as e:
-            log('[!] initHosts exception: %s, %s' % (str(type(e)), str(e)), 2)
+            log('[!] initHosts generic exception: %s, %s' % (str(type(e)), str(e)), 2)
             utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n%s: %s' % (str(type(e)), str(e)))
 
         if len(self.widget.hosts) == 0 and cfg('noAccessWarning', False) == False:

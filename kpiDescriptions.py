@@ -858,6 +858,7 @@ def clarifyGroups():
                     kpiStylesNN[h][kpi]['dUnit'] = dUnit
         
     for h in kpiStylesNN:
+        log(f'updating "{h}"')
     
         if 'cpu' in kpiStylesNN[h]:
             update(kpiStylesNN[h]['cpu']['group'], 'cpu')

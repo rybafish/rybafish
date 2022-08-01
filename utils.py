@@ -21,7 +21,9 @@ import re
 
 logmode = 'file'
 config = {}
-alertReg = None
+
+global utils_alertReg
+utils_alertReg = None
 
 timers = []
 
@@ -477,7 +479,7 @@ def fakeRaduga():
 def loadConfig(silent=False):
 
     global config
-    global alertReg
+    global utils_alertReg
     
     script = sys.argv[0]
     path, file = os.path.split(script)
@@ -506,9 +508,9 @@ def loadConfig(silent=False):
     alertStr = cfg('alertTriggerOn')
 
     if alertStr and alertStr[0] == '{' and alertStr[-1:] == '}':
-        alertReg = re.compile('^{' + alertStr[1:-1] + '(:[^!]*)?(!\d{1,3})?}$')
+        utils_alertReg = re.compile('^{' + alertStr[1:-1] + '(:[^!]*)?(!\d{1,3})?}$')
     else:
-        alertReg = None
+        utils_alertReg = None
         
     return True
     
@@ -671,10 +673,9 @@ def parseAlertString(value):
         alert - cfg('alertTriggerOn')
         if the string is not wrapped in {} - no any parsing will be executed, only sound file will be extracted
     '''
-    
-    print('alertReg: ', alertReg, cfg('alertTriggerOn'))
-    
-    if alertReg is None:
+        
+    if utils_alertReg is None:
+        print('utils_alertReg is None, so just return')
         return None, None
     
     alertStr = cfg('alertTriggerOn')
@@ -684,7 +685,7 @@ def parseAlertString(value):
     
     if value[0] == '{' and value[-1:] == '}':
         #ml = re.search('^{alert(:[^!]*)?(!\d{1,3})?}$', value)
-        ml = alertReg.search(value)
+        ml = utils_alertReg.search(value)
         
         if ml is None:
             return None, None

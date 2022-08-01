@@ -1937,12 +1937,15 @@ class resultSet(QTableWidget):
         #return -- it leaks even before this point
         
         alert_str = cfg('alertTriggerOn')
+        alert_simple = None
         
         if alert_str:
             if alert_str[0:1] == '{' and alert_str[-1:] == '}':
                 alert_prefix = alert_str[:-1]
                 alert_len = len(alert_str)
+                alert_simple = False
             else:
+                alert_simple = True
                 alert_prefix = alert_str
                 alert_len = len(alert_str)
         
@@ -2014,7 +2017,10 @@ class resultSet(QTableWidget):
                         
                             sound = None
                             
-                            if val[:alert_len - 1] == alert_prefix:
+                            if alert_simple and val == alert_str:
+                                sound = ''
+                                volume = -1
+                            elif val[:alert_len - 1] == alert_prefix:
                                 # okay this looks like alert
                                 
                                 sound, volume = utils.parseAlertString(val)
@@ -2046,6 +2052,7 @@ class resultSet(QTableWidget):
                                 self.alerted = True
                                 
                                 item.setBackground(QBrush(QColor('#FAC')))
+                                
                                 self.alertSignal.emit(sound, volume)
 
                 
@@ -3003,9 +3010,7 @@ class sqlConsole(QWidget):
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
-    def alertProcessing(self, fileName, volume=None, manual = False):
-    
-        #print('alertProcessing')
+    def alertProcessing(self, fileName, volume=-1, manual=False):
     
         if fileName == '' or fileName is None:
             fileName = cfg('alertSound', 'default')
@@ -3040,8 +3045,11 @@ class sqlConsole(QWidget):
         #log('Sound file name: %s' % fileName, 4)
         
         if not os.path.isfile(fileName):
-            log('warning: sound file does not exist: %s' % fileName, 2)
-            return
+            log(f'warning: sound file does not exist: {fileName} will use default.wav', 2)
+            fileName = os.path.join('snd', 'default.wav')
+            
+            if not os.path.isfile(fileName):
+                fileName = resourcePath('snd', 'default.wav')
     
         if self.timerAutorefresh and not manual:
             log('console [%s], alert...' % self.tabname.rstrip(' *'), 3)
@@ -3049,9 +3057,9 @@ class sqlConsole(QWidget):
             self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
             
             
-        if volume is None:
+        if volume < 0:
             volume = cfg('alertVolume', 80)
-        
+            
         try:
             volume = int(volume)
         except ValueError:
@@ -3062,6 +3070,8 @@ class sqlConsole(QWidget):
         if not manual:
             self.indicator.status = 'alert'
 
+        log(f'sound file: {fileName}', 5)
+        
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
