@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 
 from array import array
 import math
@@ -37,12 +37,25 @@ class dataProvider:
 
     options = []
     
-    def __init__(self, files):
+    def __init__(self, files, timezone_offset=None):
         self.files = []
         
         self.data = {}
         self.ports = []
         self.lastIndx = []
+        
+        self.TZShift = 0
+        
+        if timezone_offset is not None:
+        
+            # same logic as in dbi_extention, but probably the opposite side
+            dbUTCDelta = timezone_offset
+
+            hostNow = datetime.now().timestamp()
+            hostUTCDelta = (datetime.fromtimestamp(hostNow) - datetime.utcfromtimestamp(hostNow)).total_seconds()
+            
+            self.TZShift = int(dbUTCDelta) - int(hostUTCDelta)
+        
         
         self.supportedKPIs = ['indexserverCpu', 'indexserverMemUsed', 'indexserverMemLimit']
 
@@ -257,7 +270,7 @@ class dataProvider:
                                     
                             #log('next time: %f' % ctime)
                         
-                        data[port][0][indx] = ctime
+                        data[port][0][indx] = ctime + self.TZShift
                             
                     else: 
                         if value[:1] == '>':
@@ -316,8 +329,8 @@ class dataProvider:
             log(f'from: {data[port][0][0]}')
             log(f'to: {data[port][0][lastIndx]}')
             
-            stime = datetime.datetime.fromtimestamp(data[port][0][0])
-            etime = datetime.datetime.fromtimestamp(data[port][0][lastIndx])
+            stime = datetime.fromtimestamp(data[port][0][0])
+            etime = datetime.fromtimestamp(data[port][0][lastIndx])
             
             log(f'start/stop assigned')
 

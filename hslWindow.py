@@ -1068,7 +1068,13 @@ class hslWindow(QMainWindow):
         
         
         if len(fname[0]) > 0:
-            self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
+        
+            fileUTCshift = cfg('import_timezone_offset')
+            self.chartArea.dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
+            
+            #wrong approach, #697
+            #self.chartArea.dp.dbProperties = {}
+            #self.chartArea.dp.dbProperties['timeZoneDelta'] = -3*3600
             
             self.chartArea.initDP(message = 'Parsing the trace file, will take a minute or so...')
 

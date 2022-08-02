@@ -2817,8 +2817,13 @@ class chartArea(QFrame):
 
             log('reload from init dp', 4)
             
+        #log('timeZoneDelta check here')
+            
         if hasattr(self.dp, 'dbProperties') and 'timeZoneDelta' in self.dp.dbProperties:
+        
             self.widget.timeZoneDelta = self.dp.dbProperties['timeZoneDelta']
+            
+            #log(f'timeZoneDelta yeeees: {self.widget.timeZoneDelta}')
 
             starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
             starttime -= datetime.timedelta(seconds= (starttime.timestamp() % 3600 - self.widget.timeZoneDelta))
@@ -2827,6 +2832,7 @@ class chartArea(QFrame):
             self.toEdit.setText('')
         
         else:
+            #log('timeZoneDelta nope')
             self.widget.timeZoneDelta = 0
             
         self.hostsUpdated.emit()
