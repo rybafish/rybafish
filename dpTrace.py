@@ -8,6 +8,7 @@ import kpiDescriptions
 import time
 
 import kpis
+import re
 
 from utils import log
 
@@ -46,6 +47,23 @@ class dataProvider:
         
         self.TZShift = 0
         
+        if len(files) == 1:
+            m = re.search('_utc(-?)(\d+)\.trc$', files[0], flags=re.IGNORECASE)
+            
+            if m is not None:
+                sign = m.groups()[0]
+                utc_offset = m.groups()[1]
+                
+                utc_offset = int(utc_offset)
+                
+                if sign == '-':
+                    timezone_offset = -1 * utc_offset
+                    
+                if sign == '':
+                    timezone_offset = utc_offset
+                    
+                log('trace timezone_offset owerriden due to filename containing utc shift, change the filename to avoid that', 2)
+        
         if timezone_offset is not None:
         
             # same logic as in dbi_extention, but probably the opposite side
@@ -55,6 +73,8 @@ class dataProvider:
             hostUTCDelta = (datetime.fromtimestamp(hostNow) - datetime.utcfromtimestamp(hostNow)).total_seconds()
             
             self.TZShift = int(dbUTCDelta) - int(hostUTCDelta)
+            
+            log(f'trace import using UTC offset: {dbUTCDelta}, calculated shift: {self.TZShift}', 2)
         
         
         self.supportedKPIs = ['indexserverCpu', 'indexserverMemUsed', 'indexserverMemLimit']

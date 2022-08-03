@@ -325,7 +325,7 @@ class hslWindow(QMainWindow):
                         tabs.append([w.fileName, bkp, pos, block])
                         
                     if closeTabs:
-                        log('close tab call...', 5)
+                        #log('close tab call...', 5)
                         w.close(None, abandoneExecution = abandone)
 
                         self.tabs.removeTab(i)

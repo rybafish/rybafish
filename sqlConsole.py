@@ -2622,8 +2622,8 @@ class sqlConsole(QWidget):
     
     def close(self, cancelPossible = True, abandoneExecution = False):
     
-        log('closing sql console...')
-        log('indicator:' + self.indicator.status, 4)
+        #log('closing sql console...')
+        #log('indicator:' + self.indicator.status, 4)
         
         if self.unsavedChanges and cancelPossible is not None:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible, parent=self)
@@ -2645,7 +2645,7 @@ class sqlConsole(QWidget):
             if answer == True:
                 self.saveFile()
                 
-        log('closing results...', 5)
+        #log('closing results...', 5)
         
         self.closeResults(abandoneExecution)
 
@@ -2674,11 +2674,11 @@ class sqlConsole(QWidget):
             self.dbi = None
             return True
         
-        log('super().close()...', 5)
+        #log('super().close()...', 5)
 
         super().close()
         
-        log('super().close() done', 5)
+        #log('super().close() done', 5)
         
         return True
             
