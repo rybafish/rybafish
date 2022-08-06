@@ -3132,6 +3132,8 @@ class sqlConsole(QWidget):
                 result.log('--> Stopping the autorefresh...', True)
                 self.timerAutorefresh.stop()
                 self.timerAutorefresh = None
+                
+                self.tbRefresh.setChecked(False)
 
             if result.LOBs and not result.detached:
                 if result.detachTimer is not None:
@@ -3866,7 +3868,7 @@ class sqlConsole(QWidget):
         
         tname = self.tabname.rstrip(' *')
         
-        log(f'Connection Lost (tname)...')
+        log(f'Connection Lost ({tname})...')
 
         if self.timerAutorefresh is not None and cfg('alertDisconnected'):      # Need to do this before stopResults as it resets timerAutorefresh
             log('disconnectAlert = True', 5)
