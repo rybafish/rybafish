@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, 
-    QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QItemDelegate)
+    QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QItemDelegate, QColorDialog)
     
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter
@@ -120,6 +120,7 @@ class kpiTable(QTableWidget):
     setScale = pyqtSignal([int, 'QString', int, int])
     
     vrsUpdate = pyqtSignal()
+    refreshRequest = pyqtSignal()
 
     def __init__(self):
 
@@ -145,28 +146,86 @@ class kpiTable(QTableWidget):
        
         cmenu = QMenu(self)
 
-        if cfg('experimental-disabled'):
-            increaseScale = cmenu.addAction('Increase')
-            decreaseScale = cmenu.addAction('Decrease')
-            resetScale = cmenu.addAction('Reset')
+        #if cfg('dev'):
+        changeColor = cmenu.addAction('Change KPI Color')
+        resetColor = cmenu.addAction('Reset KPI Color to default')
+        cmenu.addSeparator()
+        resetAll = cmenu.addAction('Reset all colors to defaults')
         
-            action = cmenu.exec_(self.mapToGlobal(event.pos()))
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
-            kpi = self.kpiNames[self.currentRow()]
+        if action == resetAll:
+            kpiDescriptions.customColors.clear()
 
-            if action == increaseScale:
-                self.adjustScale.emit('increase', kpi)
+            i = self.currentRow()
+            
+            cellCheckBox = self.cellWidget(i, 0)
+            
+            if isinstance(cellCheckBox, myCheckBox):
+                self.refill(cellCheckBox.host)
                 
-            if action == decreaseScale:
-                self.adjustScale.emit('decrease', kpi)
-           
-    '''
-    def event(self, event):
-        if event.type() == 207:
-            print('e', event.type(), time.time())
+            self.refreshRequest.emit()
         
-        return super().event(event)
-    '''
+        if action == resetColor:
+            i = self.currentRow()
+            
+            cellCheckBox = self.cellWidget(i, 0)
+
+            if isinstance(cellCheckBox, myCheckBox):
+                kpi = cellCheckBox.name
+                ht = kpiDescriptions.hType(cellCheckBox.host, self.hosts)
+                
+                kpiKey = self.hosts[cellCheckBox.host]['host'] + ':' + self.hosts[cellCheckBox.host]['port'] + '/' + kpi
+                
+                if kpiKey in kpiDescriptions.customColors:
+                    del kpiDescriptions.customColors[kpiKey]
+                    
+                    self.refill(cellCheckBox.host)
+                    
+            self.refreshRequest.emit()
+        
+        if action == changeColor:
+            i = self.currentRow()
+            
+            cellCheckBox = self.cellWidget(i, 0)
+            
+            if isinstance(cellCheckBox, myCheckBox):
+                kpi = cellCheckBox.name
+                ht = kpiDescriptions.hType(cellCheckBox.host, self.hosts)
+                
+                kpiKey = self.hosts[cellCheckBox.host]['host'] + ':' + self.hosts[cellCheckBox.host]['port'] + '/' + kpi
+                
+                
+                if 'brush' in kpiStylesNN[ht][kpi]:
+                    # gantt chart have brush color, and pen is derivative
+                    initColor = kpiStylesNN[ht][kpi]['brush']
+                else:
+                    pen = kpiDescriptions.customPen(kpiKey, kpiStylesNN[ht][kpi]['pen'])
+                    initColor = pen.color()
+                    
+                if initColor is None:
+                    log('Cannot identify KPI pen color', 2)
+                    return
+                
+                targetColor = QColorDialog().getColor(initial=initColor, parent=self)
+                
+                if targetColor.isValid():
+                    #print(targetColor)
+                    if targetColor == initColor:
+                        #print('same')
+                        pass
+                    else:
+                        styleKey = self.hosts[cellCheckBox.host]['host'] + ':' + self.hosts[cellCheckBox.host]['port'] + '/' + kpi
+                        #print(f'{styleKey} --> {targetColor}')
+                        kpiDescriptions.addCustomColor(styleKey, targetColor)
+                        
+                        self.refill(cellCheckBox.host)
+                else:
+                    #print('cancel')
+                    pass
+                
+            else:
+                log('Cannot identify KPI host/name', 2)
         
     def edit(self, index, trigger, event):
         #print('edit', time.time())
@@ -366,6 +425,8 @@ class kpiTable(QTableWidget):
             kpiStyles = kpiStylesNN['service']
             kpiList = self.srvcKPIs
             
+        hostKey = self.hosts[host]['host'] + ':' + self.hosts[host]['port']
+            
         # go fill the table
         self.setRowCount(len(kpiList))
         
@@ -397,6 +458,8 @@ class kpiTable(QTableWidget):
             
             self.kpiNames.append(kpiName) # index for right mouse click events
             
+            kpiKey = f'{hostKey}/{kpiName}'
+            
             if kpiName[:1] != '.':
                 #normal kpis
                 
@@ -424,14 +487,35 @@ class kpiTable(QTableWidget):
                 self.setCellWidget(i, 0, cb)
                 
                 if 'style' in style:
-                    cell = kpiCell(style['pen'], style['brush'], style['style']) # customized styles
+
+                    if kpiKey in kpiDescriptions.customColors:
+                        c = kpiDescriptions.customColors[kpiKey]
+                        pen = QPen(QColor(c[0]*0.75, c[1]*0.75, c[2]*0.75))
+                        brshColor = QColor(c[0], c[1], c[2])
+
+                    else:
+                        pen = style['pen']
+                        brshColor = style['brush']
+                
+                    #cell = kpiCell(style['pen'], style['brush'], style['style']) # customized styles
+                    cell = kpiCell(pen, brshColor, style['style']) # customized styles
 
                     if 'multicolor' in style :
                         cell.multicolor = style['multicolor']
 
                     self.setCellWidget(i, 2, cell) 
                 else:
-                    self.setCellWidget(i, 2, kpiCell(style['pen'], )) # kpi pen style
+                    pen = kpiDescriptions.customPen(kpiKey, style['pen'])
+                    '''
+                    if kpiKey in kpiDescriptions.customColors:
+                        c = kpiDescriptions.customColors[kpiKey]
+                        pen = QPen(QColor(c[0], c[1], c[2]))
+                        print(f'kpiKey --> {c}')
+                    else:
+                        pen = style['pen']
+                    '''
+
+                    self.setCellWidget(i, 2, kpiCell(pen, )) # kpi pen style
 
                 # variables/placeholders mapping
                 

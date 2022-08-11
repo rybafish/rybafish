@@ -1,10 +1,10 @@
 # requrements file
-# preferred PyHDB fork is from rybafish repository: https://github.com/rybafish/PyHDB
+# required PyHDB fork is from rybafish repository: https://github.com/rybafish/PyHDB
 
-# tested/proven qt:  5.11.2
-# new candidate - 5.15.2 - fixes clipboard issue
+# tested/proven qt:  5.15.2
 
 PyQt5
 PyYAML
 PyHDB
+cryptography
 sqlparse

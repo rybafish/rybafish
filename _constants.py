@@ -1,5 +1,5 @@
 # getarated automaticaly based on myryba.spec
 
-build_date = "2022-06-30 13:39:43"
-version = "0.91 beta IV"
-isbeta = True
+build_date = "2022-08-12 00:31:00"
+version = "0.91 Sig"
+isbeta = False

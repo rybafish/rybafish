@@ -1155,10 +1155,11 @@ class resultSet(QTableWidget):
         Table never refilled. 
     '''
     
-    alertSignal = pyqtSignal(['QString'])
+    alertSignal = pyqtSignal(['QString', int])
     insertText = pyqtSignal(['QString'])
     executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
+    detachSignal = pyqtSignal()
     
     def __init__(self, conn):
     
@@ -1344,7 +1345,7 @@ class resultSet(QTableWidget):
             
         cmenu.addSeparator()
         
-        abapCopy = cmenu.addAction('ABAP-style copy')
+        abapCopy = cmenu.addAction('ABAP-style (markdown) copy')
 
         cmenu.addSeparator()
         
@@ -1504,6 +1505,8 @@ class resultSet(QTableWidget):
                 self.detached = True
             except Exception as e:
                 log('[!] Exception: ' + str(e))
+                
+            self.detachSignal.emit()
         else:
             log('[?] already detached?: %s' % result_str)
 
@@ -1566,6 +1569,8 @@ class resultSet(QTableWidget):
         '''
         
         def abapCopy():
+        
+            mdMode = cfg('copy-markdown', True)
 
             maxWidth = cfg('abap-length', 32)
             widths = []
@@ -1586,16 +1591,35 @@ class resultSet(QTableWidget):
                         else:
                             widths[c] = len(copypaste[r][c])
                             
-                            
+
+            '''
             tableWidth = 0
             
             for c in widths:
                 tableWidth += c + 1
                 
             tableWidth -= 1
-                
+            '''
+            
+            tableWidth = sum(widths) + len(widths) - 1
+
             topLine = '-' + '-'.rjust(tableWidth, '-') + '-'
-            mdlLine = '|' + '-'.rjust(tableWidth, '-') + '|'
+            
+            if mdMode:
+                mdlLine = '|'
+
+                for j in range(len(widths)):
+                    if widths[j] > 1:
+                        if self.dbi.ifNumericType(types[j]):
+                            mdlLine += '-'*(widths[j]-1) + ':|'
+                        else:
+                            mdlLine += ':' + '-'*(widths[j]-1) + '|'
+                    else:
+                        log(f'column width <= 1? {widths[j]}, {j}', 2)
+                        mdlLine += '-'*widths[j] + '|'
+
+            else:
+                mdlLine = '|' + '-'.rjust(tableWidth, '-') + '|'
                             
             csv = topLine + '\n'
             
@@ -1703,7 +1727,6 @@ class resultSet(QTableWidget):
                     
             if hdrrow:
                 copypaste.append(hdrrow)
-    
     
             for r in rowIndex:
                 values = []
@@ -1914,10 +1937,16 @@ class resultSet(QTableWidget):
         #return -- it leaks even before this point
         
         alert_str = cfg('alertTriggerOn')
+        alert_simple = None
         
         if alert_str:
             if alert_str[0:1] == '{' and alert_str[-1:] == '}':
                 alert_prefix = alert_str[:-1]
+                alert_len = len(alert_str)
+                alert_simple = False
+            else:
+                alert_simple = True
+                alert_prefix = alert_str
                 alert_len = len(alert_str)
         
         #fill the result table
@@ -1981,23 +2010,50 @@ class resultSet(QTableWidget):
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
                         
-                        sound = None
+                        with profiler('alertChecker'):
                         
-                        if val[:alert_len - 1] == alert_prefix:
-                            # okay this looks like alert
-                            if val == alert_str: 
-                                # simple one
-                                sound = ''
-                            else:
-                                # might be a customized one?
-                                if val[-1:] == '}' and val[alert_len-1:alert_len] == ':':
-                                    sound = val[alert_len:-1]
-                                    
-                        if sound is not None and not self.alerted:
-                            self.alerted = True
+                            #надо двинуть всё это барахло в отдельную функцию которая вернёт звук и громкость
+                            #короче #696
+                        
+                            sound = None
                             
-                            item.setBackground(QBrush(QColor('#FAC')))
-                            self.alertSignal.emit(sound)
+                            if alert_simple and val == alert_str:
+                                sound = ''
+                                volume = -1
+                            elif val[:alert_len - 1] == alert_prefix:
+                                # okay this looks like alert
+                                
+                                sound, volume = utils.parseAlertString(val)
+                                
+                                '''
+                                
+                                old style messy approach...
+                                
+                                if val == alert_str: 
+                                    # simple one
+                                    sound = ''
+                                    volume = None
+                                else:
+                                    # might be a customized one?
+                                    if val[-1:] == '}' and val[alert_len-1:alert_len] == ':':
+                                        sound = val[alert_len:-1]
+                                        
+                                        volPos = sound.find('!')
+                                        
+                                        if volPos > 0:
+                                            sound = sound[:volPos]
+                                            volume = sound[volPos+1:]
+                                        else:
+                                            volume = None
+                                        print(sound, volume)
+                                '''
+                                        
+                            if sound is not None and not self.alerted:
+                                self.alerted = True
+                                
+                                item.setBackground(QBrush(QColor('#FAC')))
+                                
+                                self.alertSignal.emit(sound, volume)
 
                 
                 elif self.dbi.ifTSType(cols[c][1]):
@@ -2198,6 +2254,8 @@ class sqlConsole(QWidget):
         self.lockRefreshTB = False      # lock the toolbar button due to change from resultset context menu
         
         self.abapCopyFlag = [False]     # to be shared with child results instances
+        
+        self.resultsLeft = False        # when True - warning will be displayed before closing results
         
         super().__init__()
         self.initUI()
@@ -2564,8 +2622,8 @@ class sqlConsole(QWidget):
     
     def close(self, cancelPossible = True, abandoneExecution = False):
     
-        log('closing sql console...')
-        log('indicator:' + self.indicator.status, 4)
+        #log('closing sql console...')
+        #log('indicator:' + self.indicator.status, 4)
         
         if self.unsavedChanges and cancelPossible is not None:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible, parent=self)
@@ -2587,7 +2645,7 @@ class sqlConsole(QWidget):
             if answer == True:
                 self.saveFile()
                 
-        log('closing results...', 5)
+        #log('closing results...', 5)
         
         self.closeResults(abandoneExecution)
 
@@ -2616,11 +2674,11 @@ class sqlConsole(QWidget):
             self.dbi = None
             return True
         
-        log('super().close()...', 5)
+        #log('super().close()...', 5)
 
         super().close()
         
-        log('super().close() done', 5)
+        #log('super().close() done', 5)
         
         return True
             
@@ -2948,9 +3006,11 @@ class sqlConsole(QWidget):
             
         self.timerSet[0] = True
             
-    def alertProcessing(self, fileName, manual = False):
-    
-        #print('alertProcessing')
+    def resultDetached(self):
+        self.indicator.status = 'idle'
+        self.indicator.repaint()
+        
+    def alertProcessing(self, fileName, volume=-1, manual=False):
     
         if fileName == '' or fileName is None:
             fileName = cfg('alertSound', 'default')
@@ -2969,20 +3029,27 @@ class sqlConsole(QWidget):
             pass
         else:
             #try open normal file first
-            fileName = 'snd\\' + fileName
-            if os.path.isfile(fileName):
-                log('seems there is a file in the rybafish snd folder: %s' % (fileName), 4)
+            #fileName = 'snd\\' + fileName
+            fileNamePath = os.path.join('snd', fileName)
+            
+            if os.path.isfile(fileNamePath):
+                log(f'seems there is a file in the rybafish snd folder: {fileNamePath}', 4)
             else:
                 #okay, take it from the build then...
-                fileName = resourcePath(fileName)
+                fileNamePath = resourcePath('snd', fileName)
+                
+            fileName = fileNamePath
                 
         #print('filename:', fileName)
 
         #log('Sound file name: %s' % fileName, 4)
         
         if not os.path.isfile(fileName):
-            log('warning: sound file does not exist: %s' % fileName, 2)
-            return
+            log(f'warning: sound file does not exist: {fileName} will use default.wav', 2)
+            fileName = os.path.join('snd', 'default.wav')
+            
+            if not os.path.isfile(fileName):
+                fileName = resourcePath('snd', 'default.wav')
     
         if self.timerAutorefresh and not manual:
             log('console [%s], alert...' % self.tabname.rstrip(' *'), 3)
@@ -2990,22 +3057,25 @@ class sqlConsole(QWidget):
             self.logArea.appendHtml(ts + '<font color = "#c6c">Alert triggered</font>.');
             
             
-        vol = cfg('alertVolume', 80)
-        
-        try:
-            vol = int(vol)
-        except ValueError:
-            vol = 80
+        if volume < 0:
+            volume = cfg('alertVolume', 80)
             
-        vol /= 100
+        try:
+            volume = int(volume)
+        except ValueError:
+            volume = 80
+            
+        volume /= 100
         
         if not manual:
             self.indicator.status = 'alert'
 
+        log(f'sound file: {fileName}', 5)
+        
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
-        self.sound.setVolume(vol)
+        self.sound.setVolume(volume)
             
         self.sound.play()
         
@@ -3034,6 +3104,7 @@ class sqlConsole(QWidget):
         result.insertText.connect(self.cons.insertTextS)
         result.executeSQL.connect(self.surprizeSQL)
         result.alertSignal.connect(self.alertProcessing)
+        result.detachSignal.connect(self.resultDetached)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         
         if len(self.results) > 0:
@@ -3061,6 +3132,8 @@ class sqlConsole(QWidget):
                 result.log('--> Stopping the autorefresh...', True)
                 self.timerAutorefresh.stop()
                 self.timerAutorefresh = None
+                
+                self.tbRefresh.setChecked(False)
 
             if result.LOBs and not result.detached:
                 if result.detachTimer is not None:
@@ -3223,7 +3296,7 @@ class sqlConsole(QWidget):
                     self.setupAutorefresh(0, suppressLog=True)
                 
                     if cfg('alertDisconnected'):
-                        self.alertProcessing(cfg('alertDisconnected'), True)
+                        self.alertProcessing(cfg('alertDisconnected'), manual=True)
                 
         except Exception as e:
             log('[!] unexpected exception, disable the connection')
@@ -3343,6 +3416,21 @@ class sqlConsole(QWidget):
             self.log('No connection, connect RybaFish to the DB first.')
             return
             
+        if self.resultsLeft and mode != 'leave results' and len(self.results) >= 1:
+            answer = utils.yesNoDialog('Warning',
+                'You were saving some results, are you sure you want to abandon those now?', 
+                parent=self
+            )
+            
+            if answer == False:
+                self.log('Execution cancelled')
+                return
+                
+            self.resultsLeft = False
+            
+        if mode == 'leave results':
+            self.resultsLeft = True
+            
         if self.conn is None:
             self.log('The console is disconnected...')
             
@@ -3357,6 +3445,10 @@ class sqlConsole(QWidget):
         if self.timerAutorefresh:
             self.setupAutorefresh(0)
             
+        
+        # reset block numbering, #672
+        self.cons.lineNumbers.fromLine = None
+        
         if mode == 'normal':
             self.executeSelectionParse()
         elif mode == 'no parsing':
@@ -3774,7 +3866,9 @@ class sqlConsole(QWidget):
         '''
         disconnectAlert = None
         
-        log('Connection Lost...')
+        tname = self.tabname.rstrip(' *')
+        
+        log(f'Connection Lost ({tname})...')
 
         if self.timerAutorefresh is not None and cfg('alertDisconnected'):      # Need to do this before stopResults as it resets timerAutorefresh
             log('disconnectAlert = True', 5)
@@ -3784,18 +3878,19 @@ class sqlConsole(QWidget):
         
         self.stopResults()
         
+        
         msgBox = QMessageBox(self)
-        msgBox.setWindowTitle('Connection lost')
+        msgBox.setWindowTitle(f'Console connection lost ({tname})')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
         if disconnectAlert:
             log('play the disconnect sound...', 4)
-            self.alertProcessing(cfg('alertDisconnected'), True)
+            self.alertProcessing(cfg('alertDisconnected'), manual=True)
             
         reply = None
         
@@ -3876,10 +3971,10 @@ class sqlConsole(QWidget):
                     
                         #print('selection lines:', fromLine, toLine)
                         
-                        self.cons.lineNumbers.fromLine = fromLine
-                        self.cons.lineNumbers.toLine = toLine
+                        #self.cons.lineNumbers.fromLine = fromLine   #674
+                        #self.cons.lineNumbers.toLine = toLine
                         
-                        self.cons.lineNumbers.repaint()
+                        #self.cons.lineNumbers.repaint()
                         
                         # exception text example: sql syntax error: incorrect syntax near "...": line 2 col 4 (at pos 13)
                         # at pos NNN - absolute number
@@ -3887,8 +3982,15 @@ class sqlConsole(QWidget):
                         linePos = self.wrkException.find(': line ')
                         posPos = self.wrkException.find(' pos ')
                         
-                        if linePos > 0 or posPos > 0:
+                        print(linePos, posPos)
                         
+                        if linePos > 0 or posPos > 0:
+
+                            self.cons.lineNumbers.fromLine = fromLine   #674 moved inside if
+                            self.cons.lineNumbers.toLine = toLine
+                            
+                            self.cons.lineNumbers.repaint()
+                            
                             linePos += 7
                             posPos += 5
                             
@@ -4121,6 +4223,8 @@ class sqlConsole(QWidget):
             '''
             if self.timerAutorefresh:
                 self.indicator.status = 'autorefresh'
+            elif result.LOBs:
+                self.indicator.status = 'detach'
             else:
                 self.indicator.status = 'idle'
             
@@ -4352,39 +4456,39 @@ class sqlConsole(QWidget):
             self.toolbar = QToolBar('SQL', self)
             
             #tbExecuteNormal = QAction('[F8]', self)
-            tbExecuteNormal = QAction(QIcon(resourcePath('ico\\F8_icon.png')), 'Execute statement [F8]', self)
+            tbExecuteNormal = QAction(QIcon(resourcePath('ico', 'F8_icon.png')), 'Execute statement [F8]', self)
             tbExecuteNormal.triggered.connect(self.toolbarExecuteNormal)
             self.toolbar.addAction(tbExecuteNormal)
 
-            tbExecuteSelection = QAction(QIcon(resourcePath('ico\\F8alt_icon.png')), 'Execute selection without parsing [Alt+F8]', self)
+            tbExecuteSelection = QAction(QIcon(resourcePath('ico', 'F8alt_icon.png')), 'Execute selection without parsing [Alt+F8]', self)
             tbExecuteSelection.triggered.connect(self.toolbarExecuteSelection)
             self.toolbar.addAction(tbExecuteSelection)
 
-            tbExecuteLeaveResult = QAction(QIcon(resourcePath('ico\\F8ctrl_icon.png')), 'Execute opening a new result set tab [Ctrl+F8]', self)
+            tbExecuteLeaveResult = QAction(QIcon(resourcePath('ico', 'F8ctrl_icon.png')), 'Execute opening a new result set tab [Ctrl+F8]', self)
             tbExecuteLeaveResult.triggered.connect(self.toolbarExecuteLeaveResults)
             self.toolbar.addAction(tbExecuteLeaveResult)
             
-            tbFormat = QAction(QIcon(resourcePath('ico\\format.png')), 'Beautify code [Ctrl+Shift+O]', self)
+            tbFormat = QAction(QIcon(resourcePath('ico', 'format.png')), 'Beautify code [Ctrl+Shift+O]', self)
             tbFormat.triggered.connect(self.toolbarFormat)
             self.toolbar.addAction(tbFormat)
 
-            tbBrowser = QAction(QIcon(resourcePath(r'ico\sqlbrowser.png')), 'SQL Browser [F11]', self)
+            tbBrowser = QAction(QIcon(resourcePath('ico', 'sqlbrowser.png')), 'SQL Browser [F11]', self)
             tbBrowser.triggered.connect(self.toolbarBrowser)
             self.toolbar.addAction(tbBrowser)
 
             # connect/discinnect
             self.toolbar.addSeparator()
             
-            tbConnect = QAction(QIcon(resourcePath(r'ico\connect.png')), '(re)Connect', self)
+            tbConnect = QAction(QIcon(resourcePath('ico', 'connect.png')), '(re)Connect', self)
             tbConnect.triggered.connect(self.toolbarConnect)
             # tbConnect.setEnabled(False)
             self.toolbar.addAction(tbConnect)
 
-            tbDisconnect = QAction(QIcon(resourcePath(r'ico\disconnect.png')), 'Disconnect', self)
+            tbDisconnect = QAction(QIcon(resourcePath('ico', 'disconnect.png')), 'Disconnect', self)
             tbDisconnect.triggered.connect(self.toolbarDisconnect)
             self.toolbar.addAction(tbDisconnect)
 
-            tbAbort = QAction(QIcon(resourcePath(r'ico\abort.png')), 'Generate cancel session SQL', self)
+            tbAbort = QAction(QIcon(resourcePath('ico', 'abort.png')), 'Generate cancel session SQL', self)
             tbAbort.triggered.connect(self.toolbarAbort)
             self.toolbar.addAction(tbAbort)
             
@@ -4392,7 +4496,7 @@ class sqlConsole(QWidget):
             
             
             self.tbRefresh = QToolButton()
-            self.tbRefresh.setIcon(QIcon(resourcePath(r'ico\refresh.png')))
+            self.tbRefresh.setIcon(QIcon(resourcePath('ico', 'refresh.png')))
             self.tbRefresh.setToolTip('Schedule automatic refresh for the result set')
             self.tbRefresh.setCheckable(True)
             self.tbRefresh.toggled.connect(self.toolbarRefresh)
@@ -4401,13 +4505,13 @@ class sqlConsole(QWidget):
             self.toolbar.addSeparator()
             
             self.ABAPCopy = QToolButton()
-            self.ABAPCopy.setIcon(QIcon(resourcePath(r'ico\abapcopy.png')))
-            self.ABAPCopy.setToolTip('Use ABAP-style result copy by default.')
+            self.ABAPCopy.setIcon(QIcon(resourcePath('ico', 'abapcopy.png')))
+            self.ABAPCopy.setToolTip('Use ABAP-style (markdown) result copy by default.')
             self.ABAPCopy.setCheckable(True)
             self.ABAPCopy.toggled.connect(self.toolbarABAP)
             self.toolbar.addWidget(self.ABAPCopy)
             
-            tbHelp = QAction(QIcon(resourcePath(r'ico\help.png')), 'SQL Usage Help', self)
+            tbHelp = QAction(QIcon(resourcePath('ico', 'help.png')), 'SQL Usage Help', self)
             tbHelp.triggered.connect(self.toolbarHelp)
             self.toolbar.addAction(tbHelp)
 

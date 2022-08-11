@@ -2,6 +2,8 @@ import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QIcon
 
+from PyQt5.QtCore import QMutex
+
 from datetime import datetime
 
 import os
@@ -15,8 +17,13 @@ from yaml import safe_load, dump, YAMLError #pip install pyyaml
 from binascii import hexlify
 from profiler import profiler
 
+import re
+
 logmode = 'file'
 config = {}
+
+global utils_alertReg
+__alertReg__ = None
 
 timers = []
 
@@ -372,7 +379,7 @@ def yesNoDialog(title, message, cancel = False, ignore = False, parent = None):
         
     msgBox.setStandardButtons(buttons)
     msgBox.setDefaultButton(QMessageBox.Yes)
-    iconPath = resourcePath('ico\\favicon.png')
+    iconPath = resourcePath('ico', 'favicon.png')
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)
     
@@ -397,7 +404,7 @@ def msgDialog(title, message):
     buttons = QMessageBox.Ok
         
     msgBox.setStandardButtons(buttons)
-    iconPath = resourcePath('ico\\favicon.png')
+    iconPath = resourcePath('ico', 'favicon.png')
     
     msgBox.setWindowIcon(QIcon(iconPath))
     msgBox.setIcon(QMessageBox.Warning)
@@ -451,7 +458,7 @@ def strftime(time):
     return '%s.%i' % (str, ms)
     
     
-def resourcePath(file):
+def resourcePath(folder, file):
     '''
         resource path calculator
         for pyinstall
@@ -462,15 +469,17 @@ def resourcePath(file):
     except:
         base = '.'
 
-    return base + '\\' + file
+    #return base + '\\' + file
+    return os.path.join(base, folder, file)
     
 def fakeRaduga():
     global config
     config['raduga'] = ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00fa9a', '#8a2be2']
     
-def loadConfig():
+def loadConfig(silent=False):
 
     global config
+    global __alertReg__
     
     script = sys.argv[0]
     path, file = os.path.split(script)
@@ -489,10 +498,19 @@ def loadConfig():
             fakeRaduga()
             
     except:
-        log('no config file? <-')
+        if not silent:
+            log('no config file? <-')
+            
         config = {}
         
         return False
+
+    alertStr = cfg('alertTriggerOn')
+
+    if alertStr and alertStr[0] == '{' and alertStr[-1:] == '}':
+        __alertReg__ = re.compile('^{' + alertStr[1:-1] + '(:[^!]*)?(!\d{1,3})?}$')
+    else:
+        __alertReg__ = None
         
     return True
     
@@ -532,6 +550,23 @@ def getlog(prefix):
         log(s, *args, **kwargs)
     
     return logf
+    
+class fakeMutex():
+    def tryLock(self, timeout=0):
+        pass
+        
+    def lock(self):
+        pass
+        
+    def unlock(self):
+        pass
+
+loadConfig(silent=True) # try to silently init config...
+
+if cfg('threadSafeLogging', False):
+    mtx = QMutex()
+else:
+    mtx = fakeMutex()
 
 @profiler
 def log(s, loglevel = 3, nots = False, nonl = False):
@@ -556,15 +591,29 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         nl = '\n'
     
     if cfg('logmode') != 'screen':
+    
+        with profiler('log mutex lock'):
+            mtx.tryLock(200)
+            
         f = open('.log', 'a')
-        f.seek(os.SEEK_END, 0)
+        #f.seek(os.SEEK_END, 0)
+    
         try:
             f.write(ts + str(s) + nl)
 
         except Exception as e:
             f.write(ts + str(e) + nl)
-        
+    
         f.close()
+        
+        mtx.unlock()
+
+if cfg('threadSafeLogging', False):
+    log('threadSafeLogging should be enabled')
+    mtx = QMutex()
+else:
+    log('threadSafeLogging should be disabled')
+    mtx = fakeMutex()
         
 @profiler
 def normalize_header(header):
@@ -611,6 +660,51 @@ def safeInt(s, default = 0):
         
     return i
     
+
+@profiler
+def parseAlertString(value):
+    '''parses alert string to extract filename and volume
     
+        format: '{alert:soundFile!volume}'
+        
+        soundFile is uptional, could be just a filname or path
+        volume - 2-digits, will be converted to integer
+        
+        alert - cfg('alertTriggerOn')
+        if the string is not wrapped in {} - no any parsing will be executed, only sound file will be extracted
+    '''
+        
+    if __alertReg__ is None:
+        return None, None
     
+    alertStr = cfg('alertTriggerOn')
+    volume = cfg('alertVolume', 80)
+    vol = None
+    sound = ''
     
+    if value[0] == '{' and value[-1:] == '}':
+        #ml = re.search('^{alert(:[^!]*)?(!\d{1,3})?}$', value)
+        ml = __alertReg__.search(value)
+        
+        if ml is None:
+            return None, None
+            
+        for g in ml.groups():
+            if g and g[0] == ':':
+                sound = g[1:]
+
+            if g and g[0] == '!':
+                vol = g[1:]
+            
+        if vol is not None:
+            volume = int(vol)
+        
+    else:
+        if value == alertStr:
+            sound = ''
+        else:
+            return None, None
+            
+    log(f'alert parsed: {sound}/{volume}', 5)
+    
+    return sound, volume 

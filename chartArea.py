@@ -127,6 +127,9 @@ class myWidget(QWidget):
     def __init__(self):
         super().__init__()
         
+        self.t_to = None
+        self.t_from = None
+        
         if cfg('fontSize') is not None:
             self.conf_fontSize = cfg('fontSize')
             
@@ -750,7 +753,8 @@ class myWidget(QWidget):
             
                 hlType = hType(self.highlightedKpiHost, self.hosts)
             
-                self.kpiPen[hlType][self.highlightedKpi].setWidth(1)
+                if self.highlightedKpi in self.kpiPen[hlType]:
+                    self.kpiPen[hlType][self.highlightedKpi].setWidth(1)
                 
                 self.highlightedKpiHost = None
                 self.highlightedKpi = None
@@ -877,11 +881,13 @@ class myWidget(QWidget):
                     if reportRange is not None:
                         t = gc[entity][reportRange]
                         
+                        self.highlightedPoint = None #690
+                        
                         self.highlightedKpi = kpi
                         self.highlightedKpiHost = host
                         self.highlightedEntity = entity
                         self.highlightedRange = reportRange
-
+                        
             
                         # self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
     
@@ -1111,6 +1117,9 @@ class myWidget(QWidget):
         self.checkForHint(pos)
             
     def resizeWidget(self):
+        if self.t_to is None:
+            return
+            
         seconds = (self.t_to - self.t_from).total_seconds()
         number_of_cells = int(seconds / self.t_scale) + 1
         self.resize(number_of_cells * self.step_size + self.side_margin*2 + self.left_margin, self.size().height()) #dummy size
@@ -1168,6 +1177,8 @@ class myWidget(QWidget):
                 if self.legend == 'hosts': ## it is either hosts or None now so 'hosts' basically mean it is enabled
                 
                     subtype = kpiDescriptions.getSubtype(type, kpi)
+                    
+                    kpiKey = f"{self.hosts[h]['host']}:{self.hosts[h]['port']}/{kpi}"
 
                     if  subtype == 'gantt':
                         gantt = True
@@ -1190,6 +1201,7 @@ class myWidget(QWidget):
                         unit = ' ' + self.nscales[h][kpi]['unit']
                         
                         if kpi in self.nscales[h]: #if those are scanned already
+                        
                             if multiline:
                                 #sqlIdx = kpiStylesNN[type][kpi].get('sql')
                                 
@@ -1250,8 +1262,7 @@ class myWidget(QWidget):
                                 if utils.cfg('colorize'):
                                     pen = kpiDescriptions.getRadugaPen()
                                 else:
-                                    pen = self.kpiPen[type][kpi]
-                                    
+                                    pen = kpiDescriptions.customPen(kpiKey, self.kpiPen[type][kpi])
                                     
                                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
                                     pen = QPen(pen)
@@ -1267,7 +1278,16 @@ class myWidget(QWidget):
 
                         lkpis.append(kpi)
                         lkpisl.append(label)
-                        lmeta.append(['gantt', [QBrush(kpiStylesNN[type][kpi]['brush']), self.kpiPen[type][kpi]], 0, 44])
+                        
+                        if kpiKey in kpiDescriptions.customColors:
+                            c = kpiDescriptions.customColors[kpiKey]
+                            pen = QPen(QColor(c[0]*0.75, c[1]*0.75 ,c[2]*0.75))
+                            brshColor = QColor(c[0], c[1], c[2])
+                        else:
+                            pen = self.kpiPen[type][kpi]
+                            brshColor = kpiStylesNN[type][kpi]['brush']
+                        
+                        lmeta.append(['gantt', [QBrush(brshColor), pen], 0, 44])
                     
                 # print(self.highlightedKpi, self.highlightedKpiHost)
 
@@ -1572,6 +1592,8 @@ class myWidget(QWidget):
                 continue
                 
             type = hType(h, self.hosts)
+            hostKey = self.hosts[h]['host'] + ':' + self.hosts[h]['port']
+            
             for kpi in self.nkpis[h]:
                 #print('draw kpi', kpi)
                 #print('draw kpi, h', h)
@@ -1589,7 +1611,8 @@ class myWidget(QWidget):
                     return
             
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
-
+                
+                kpiKey = hostKey + '/' + kpi
 
                 if kpi not in kpiStylesNN[type]:
                     log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
@@ -1649,11 +1672,15 @@ class myWidget(QWidget):
 
                     x_scale = self.step_size / self.t_scale
 
-                    qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
-                    
-                    ganttBaseColor = kpiStylesNN[type][kpi]['brush']
-                    ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']
-                    
+                    if kpiKey in kpiDescriptions.customColors:
+                        c = kpiDescriptions.customColors[kpiKey]
+                        qp.setBrush(QColor(c[0], c[1], c[2])) # bar fill color
+                        ganttBaseColor = QColor(c[0], c[1], c[2])
+                    else:
+                        qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
+                        ganttBaseColor = kpiStylesNN[type][kpi]['brush']
+                        
+                    ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']  # does not depend of custom colors
                                         
                     if len(gc) > 0:
                         yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
@@ -1707,7 +1734,13 @@ class myWidget(QWidget):
                             else:
                                 highlight = False
                             
-                            ganttPen = kpiStylesNN[type][kpi]['pen']
+                            #ganttPen = kpiStylesNN[type][kpi]['pen']
+                            
+                            if kpiKey in kpiDescriptions.customColors:
+                                c = kpiDescriptions.customColors[kpiKey]
+                                ganttPen = QPen(QColor(c[0]*0.75, c[1]*0.75, c[2]*0.75))
+                            else:
+                                ganttPen = kpiStylesNN[type][kpi]['pen']
                             
                             clr = ganttPen.color()
                             
@@ -1819,7 +1852,12 @@ class myWidget(QWidget):
                         i += 1
 
                         if hlDesc is not None:
-                            ganttPen = kpiStylesNN[type][kpi]['pen']
+                            #ganttPen = kpiStylesNN[type][kpi]['pen']
+                            if kpiKey in kpiDescriptions.customColors:
+                                c = kpiDescriptions.customColors[kpiKey]
+                                ganttPen = QPen(QColor(c[0]*0.75, c[1]*0.75, c[2]*0.75))
+                            else:
+                                ganttPen = kpiStylesNN[type][kpi]['pen']
                             
                             clr = ganttPen.color()
                             clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
@@ -1838,7 +1876,13 @@ class myWidget(QWidget):
                     kpiPen = kpiDescriptions.radugaPens[raduga_i % radugaSize]
                     raduga_i += 1
                 else:
+                    '''
                     kpiPen = self.kpiPen[type][kpi]
+                    if kpiDescriptions.customColors.get(kpiKey):
+                        c = kpiDescriptions.customColors[kpiKey]
+                        kpiPen = QPen((QColor(c[0],c[1],c[2])))
+                    '''
+                    kpiPen = kpiDescriptions.customPen(kpiKey, self.kpiPen[type][kpi])
                 
                 highlight = False
                 
@@ -2680,11 +2724,18 @@ class chartArea(QFrame):
         self.widget.nscales.clear()
         self.widget.ndata.clear()
         
+        
         # 2021-11-12
         
         # need to clear the kpis list as it will be reloaded anyhow
         kpiStylesNN['host'].clear()
         kpiStylesNN['service'].clear()
+
+        # 2022-07-14, #676
+        self.widget.highlightedKpi = None
+        self.widget.highlightedKpiHost = None
+        self.widget.highlightedPoint = None
+        self.widget.highlightedGBI = None
         
         log('cleanup complete')
         
@@ -2733,7 +2784,7 @@ class chartArea(QFrame):
             log('[!] variables processing exception: %s' % (str(e)), 1)
             utils.msgDialog('Initialization Error', 'Variables processing error. Check the variables definition, if the message persists, consider deleting layout.yaml\n\n%s' % (str(e)))
         except Exception as e:
-            log('[!] initHosts exception: %s, %s' % (str(type(e)), str(e)), 2)
+            log('[!] initHosts generic exception: %s, %s' % (str(type(e)), str(e)), 2)
             utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n%s: %s' % (str(type(e)), str(e)))
 
         if len(self.widget.hosts) == 0 and cfg('noAccessWarning', False) == False:
@@ -2741,7 +2792,7 @@ class chartArea(QFrame):
             msgBox.setWindowTitle('Connection init error')
             msgBox.setText('Initial connection did not return any data from m_load_history* views.\n\nCheck if your user has proper access:\nMONITORING role?\n\nYou can disable this message by setting "noAccessWarning: True" in config.yaml\n\nYou still can open SQL console (Alt+S) and check manually:\nselect * from m_load_history_host;')
             msgBox.setStandardButtons(QMessageBox.Ok)
-            iconPath = resourcePath('ico\\favicon.png')
+            iconPath = resourcePath('ico', 'favicon.png')
             msgBox.setWindowIcon(QIcon(iconPath))
             msgBox.setIcon(QMessageBox.Warning)
 
@@ -2765,7 +2816,25 @@ class chartArea(QFrame):
                     self.widget.nkpis[i] = kpis_n
 
             log('reload from init dp', 4)
+            
+        #log('timeZoneDelta check here')
+            
+        if hasattr(self.dp, 'dbProperties') and 'timeZoneDelta' in self.dp.dbProperties:
+        
+            self.widget.timeZoneDelta = self.dp.dbProperties['timeZoneDelta']
+            
+            #log(f'timeZoneDelta yeeees: {self.widget.timeZoneDelta}')
 
+            starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
+            starttime -= datetime.timedelta(seconds= (starttime.timestamp() % 3600 - self.widget.timeZoneDelta))
+                    
+            self.fromEdit.setText(starttime.strftime('%Y-%m-%d %H:%M:%S'))
+            self.toEdit.setText('')
+        
+        else:
+            #log('timeZoneDelta nope')
+            self.widget.timeZoneDelta = 0
+            
         self.hostsUpdated.emit()
         
         self.statusMessage('ready')
@@ -2878,11 +2947,11 @@ class chartArea(QFrame):
         self.statusMessage('Connection error (%s)' % err_str, True)
         
         msgBox = QMessageBox(self)
-        msgBox.setWindowTitle('Connection lost')
+        msgBox.setWindowTitle('Charts connection lost')
         msgBox.setText('Connection failed, reconnect?')
         msgBox.setStandardButtons(QMessageBox.Yes| QMessageBox.No)
         msgBox.setDefaultButton(QMessageBox.Yes)
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
@@ -2925,6 +2994,10 @@ class chartArea(QFrame):
             
             # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
             # self.widget.paintLock = True
+            
+            if self.dp is None:
+                self.statusMessage('Not connected to the DB', True)
+                return False
             
             self.setStatus('sync')
             
@@ -3426,26 +3499,7 @@ class chartArea(QFrame):
         log('self.scalesUpdated.emit() #2', 5)
         self.scalesUpdated.emit()
 
-    def reloadChart(self):
-
-        if self.lastReloadTime is not None and self.lastReloadTime > 1:
-            sm = 'Reload... (last reload request took: %s)' % str(round(self.lastReloadTime, 3))
-        else:
-            sm = 'Reload...'
-            
-        self.statusMessage(sm, True)
-        self.repaint()
-        
-        timerF = None
-        
-        if self.timer is not None:
-            timerF = True
-            self.timer.stop()
-        
-        t0 = time.time()
-        log('  reloadChart()', 5)
-        log('  hosts: %s' % str(self.widget.hosts), 5)
-        
+    def understandTimes(self):
         #time.sleep(2)
         fromTime = self.fromEdit.text().strip()
         toTime = self.toEdit.text().strip()
@@ -3457,7 +3511,6 @@ class chartArea(QFrame):
         if fromTime[:1] == '-' and toTime == '':
             try:
                 hours = int(fromTime[1:])
-                #self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
                 
                 log('timeZoneDelta: %i' % self.widget.timeZoneDelta, 4)
                 starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600 - self.widget.timeZoneDelta)
@@ -3467,7 +3520,7 @@ class chartArea(QFrame):
             except:
                 self.fromEdit.setStyleSheet("color: red;")
                 self.statusMessage('datetime syntax error')
-                return
+                return False
         else:
             try:
                 
@@ -3492,7 +3545,7 @@ class chartArea(QFrame):
             except:
                 self.fromEdit.setStyleSheet("color: red;")
                 self.statusMessage('datetime syntax error')
-                return
+                return False
             
         if toTime == '':
             self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
@@ -3514,8 +3567,37 @@ class chartArea(QFrame):
                 self.toEdit.setStyleSheet("color: black;")
             except:
                 self.statusMessage('datetime syntax error')
-                return
+                return False
                 
+        return True
+                
+    def reloadChart(self):
+    
+        if self.understandTimes() == False:
+            return
+
+        if self.dp is None:
+            self.statusMessage('Not connected to the DB', True)
+            return
+
+        if self.lastReloadTime is not None and self.lastReloadTime > 1:
+            sm = 'Reload... (last reload request took: %s)' % str(round(self.lastReloadTime, 3))
+        else:
+            sm = 'Reload...'
+            
+        self.statusMessage(sm, True)
+        self.repaint()
+        
+        timerF = None
+        
+        if self.timer is not None:
+            timerF = True
+            self.timer.stop()
+        
+        t0 = time.time()
+        log('  reloadChart()', 5)
+        log('  hosts: %s' % str(self.widget.hosts), 5)
+                        
         fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
         
         allOk = None
@@ -3564,6 +3646,7 @@ class chartArea(QFrame):
         
         self.widget.update()
 
+        toTime = self.toEdit.text().strip()
         #autoscroll to the right
         if toTime == '': # probably we want to see the most recent data...
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...

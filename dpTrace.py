@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 
 from array import array
 import math
@@ -8,6 +8,7 @@ import kpiDescriptions
 import time
 
 import kpis
+import re
 
 from utils import log
 
@@ -37,12 +38,44 @@ class dataProvider:
 
     options = []
     
-    def __init__(self, files):
+    def __init__(self, files, timezone_offset=None):
         self.files = []
         
         self.data = {}
         self.ports = []
         self.lastIndx = []
+        
+        self.TZShift = 0
+        
+        if len(files) == 1:
+            m = re.search('_utc(-?)(\d+)\.trc$', files[0], flags=re.IGNORECASE)
+            
+            if m is not None:
+                sign = m.groups()[0]
+                utc_offset = m.groups()[1]
+                
+                utc_offset = int(utc_offset)
+                
+                if sign == '-':
+                    timezone_offset = -1 * utc_offset
+                    
+                if sign == '':
+                    timezone_offset = utc_offset
+                    
+                log('trace timezone_offset owerriden due to filename containing utc shift, change the filename to avoid that', 2)
+        
+        if timezone_offset is not None:
+        
+            # same logic as in dbi_extention, but probably the opposite side
+            dbUTCDelta = timezone_offset
+
+            hostNow = datetime.now().timestamp()
+            hostUTCDelta = (datetime.fromtimestamp(hostNow) - datetime.utcfromtimestamp(hostNow)).total_seconds()
+            
+            self.TZShift = int(dbUTCDelta) - int(hostUTCDelta)
+            
+            log(f'trace import using UTC offset: {dbUTCDelta}, calculated shift: {self.TZShift}', 2)
+        
         
         self.supportedKPIs = ['indexserverCpu', 'indexserverMemUsed', 'indexserverMemLimit']
 
@@ -182,8 +215,12 @@ class dataProvider:
                 else:
                     for i in range(0, len(srvcKPIs)+1):
                         data[port][i] = [-1]* (trace_lines + 1)
+                        
+            log(f'allocations done, {trace_lines+1} per port', 5)
 
             f.seek(0) # and destroy
+            
+            log('seek to trace beggining: done', 5)
             
             i = -1
             prow = [0]*row_len
@@ -198,13 +235,13 @@ class dataProvider:
                     i += 1
                     continue
                 
-                
                 if portIdx is not None:
                     port = row[portIdx]
                 else:
                     port = 0
                 
                 #iterrate values
+                    
                 for j in range(0, len(row)):
                     col = titles[j]
                     value = row[j]
@@ -245,11 +282,15 @@ class dataProvider:
                         else:
                             if value == '':
                                 ctime = ctime
-                            else: 
-                                ctime = ctime + float(value[1:])  #init time + delta
+                            else:
+                                if value[0] == '>':
+                                    ctime = ctime + float(value[1:])  #init time + delta (old style)
+                                else:
+                                    ctime = float(value) #cloud + new traces have explicit timing
+                                    
                             #log('next time: %f' % ctime)
                         
-                        data[port][0][indx] = ctime
+                        data[port][0][indx] = ctime + self.TZShift
                             
                     else: 
                         if value[:1] == '>':
@@ -279,21 +320,39 @@ class dataProvider:
         t2 = time.time()
         log('parsing time %s' % str(round(t2-t1, 3)))
         
+        for ik in ii.keys():
+            log(f'{ik} --> {ii[ik]} rows parsed')
+        
         port = ''
         s = ''
         
         # here in ns notation
+        log('copy kpis...', 5)
         self.hostKPIs = hostKPIs.copy()
         self.srvcKPIs = srvcKPIs.copy()
         
+        log('clarifyGroups', 5)
         kpiDescriptions.clarifyGroups()
+        
+        log('clarifyGroups done ok', 5)
 
         self.lastIndx = ii.copy()
+        
+        log('for port in self.ports...', 5)
+
         for port in self.ports:
+            log(f'port number: {port}')
+            
             lastIndx = ii[port] - 1
             
-            stime = datetime.datetime.fromtimestamp(data[port][0][0])
-            etime = datetime.datetime.fromtimestamp(data[port][0][lastIndx])
+            log(f'lastIndx: {lastIndx}')
+            log(f'from: {data[port][0][0]}')
+            log(f'to: {data[port][0][lastIndx]}')
+            
+            stime = datetime.fromtimestamp(data[port][0][0])
+            etime = datetime.fromtimestamp(data[port][0][lastIndx])
+            
+            log(f'start/stop assigned')
 
             hosts.append({
                         'host':host,
@@ -301,6 +360,8 @@ class dataProvider:
                         'from':stime,
                         'to':etime
                         })
+                        
+        log('dbTrace initHosts done fine', 5)
                         
     def getData(self, host, fromto, kpis, data, wnd=None):
         #log('get data request: %i.%s' % (host, str(kpis)))

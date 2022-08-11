@@ -325,7 +325,7 @@ class hslWindow(QMainWindow):
                         tabs.append([w.fileName, bkp, pos, block])
                         
                     if closeTabs:
-                        log('close tab call...', 5)
+                        #log('close tab call...', 5)
                         w.close(None, abandoneExecution = abandone)
 
                         self.tabs.removeTab(i)
@@ -348,6 +348,13 @@ class hslWindow(QMainWindow):
         
         if 'running' in self.layout.lo:
             self.layout.lo.pop('running')
+            
+        if kpiDescriptions.customColors:
+            colorsHTML = kpiDescriptions.colorsHTML(kpiDescriptions.customColors)
+            self.layout['customColors'] = colorsHTML
+        else:
+            if 'customColors' in self.layout.lo:
+                del self.layout.lo['customColors']
            
         self.layout.dump()
         
@@ -710,10 +717,15 @@ class hslWindow(QMainWindow):
                         self.statusMessage('Loading saved kpis...', True)
 
                 if hasattr(self.chartArea.dp, 'dbProperties'):
+                    '''
+                    
+                    moved inside inidDP()
+                    
                     if 'timeZoneDelta' in self.chartArea.dp.dbProperties:
                         self.chartArea.widget.timeZoneDelta = self.chartArea.dp.dbProperties['timeZoneDelta']
                     else:
                         self.chartArea.widget.timeZoneDelta = 0
+                    '''
                         
                     if not conf['noreload']:
                         log('reload from menuConfig #1', 4)
@@ -767,7 +779,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.png')
+                iconPath = resourcePath('ico', 'favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -782,7 +794,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Error')
                 msgBox.setText('Init failed: %s \n\nSee more deteails in the log file.' % (str(e)))
-                iconPath = resourcePath('ico\\favicon.png')
+                iconPath = resourcePath('ico', 'favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -797,7 +809,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection string')
                 msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
-                iconPath = resourcePath('ico\\favicon.png')
+                iconPath = resourcePath('ico', 'favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
@@ -875,6 +887,8 @@ class hslWindow(QMainWindow):
         if self.layout == None:
             # switch backups off to avoid conflicts...
             console.noBackup = True
+            
+        console.cons.setFocus()
         
         return console
         
@@ -998,6 +1012,8 @@ class hslWindow(QMainWindow):
         if self.layout == None:
             # no backups to avoid conflicts...
             console.noBackup = True
+            
+        console.cons.setFocus()
         
         self.statusMessage('', False)
         console.indicator.status = 'idle'
@@ -1052,7 +1068,13 @@ class hslWindow(QMainWindow):
         
         
         if len(fname[0]) > 0:
-            self.chartArea.dp = dpTrace.dataProvider(fname[0]) # db data provider
+        
+            fileUTCshift = cfg('import_timezone_offset')
+            self.chartArea.dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
+            
+            #wrong approach, #697
+            #self.chartArea.dp.dbProperties = {}
+            #self.chartArea.dp.dbProperties['timeZoneDelta'] = -3*3600
             
             self.chartArea.initDP(message = 'Parsing the trace file, will take a minute or so...')
 
@@ -1133,6 +1155,9 @@ class hslWindow(QMainWindow):
             if 'settings' in self.layout.lo:
                 for setting in self.layout.lo['settings']:
                     utils.cfgSet(setting, self.layout.lo['settings'][setting])
+                    
+            if 'customColors' in self.layout.lo:
+                kpiDescriptions.colorsHTMLinit(self.layout.lo['customColors'])
             
             if self.layout['variablesLO']:
                 kpiDescriptions.Variables.width = self.layout['variablesLO']['width']
@@ -1265,7 +1290,7 @@ class hslWindow(QMainWindow):
         self.statusbar.addPermanentWidget(ind)
 
         #menu
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
 
         exitAct = QAction('&Exit', self)        
         exitAct.setShortcut('Alt+Q')
@@ -1517,6 +1542,7 @@ class hslWindow(QMainWindow):
                         cursor = console.cons.textCursor()
                         cursor.setPosition(pos, cursor.MoveAnchor)
                         console.cons.setTextCursor(cursor)
+                        console.cons.setFocus()
                         
             indx = self.layout['currentTab']
                         
@@ -1525,8 +1551,8 @@ class hslWindow(QMainWindow):
 
                 w = self.tabs.widget(indx)
                 
-                if isinstance(w, sqlConsole.sqlConsole):
-                    w.cons.setFocus()
+                #if isinstance(w, sqlConsole.sqlConsole):
+                #    w.cons.setFocus()
                 
             else:
                 self.tabs.setCurrentIndex(0)
@@ -1557,6 +1583,7 @@ class hslWindow(QMainWindow):
         #kpisTable.adjustScale.connect(self.chartArea.adjustScale)
         kpisTable.setScale.connect(self.chartArea.setScale)
         kpisTable.vrsUpdate.connect(self.chartArea.repaintRequest)
+        kpisTable.refreshRequest.connect(self.chartArea.repaintRequest)
 
         # host table row change signal
         self.hostTable.hostChanged.connect(kpisTable.refill)

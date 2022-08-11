@@ -261,7 +261,7 @@ class Config(QDialog):
         self.driverCB.addItem('HANA DB')
         self.driverCB.addItem('ABAP Proxy')
         
-        iconPath = resourcePath('ico\\favicon.png')
+        iconPath = resourcePath('ico', 'favicon.png')
         
         self.hostportEdit = QLineEdit()
         self.hostportEdit.textEdited.connect(self.configurationChanged)
