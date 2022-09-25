@@ -96,6 +96,6 @@ class indicator(QWidget):
             qp.setPen(QColor('#888'))
         '''
             
-        qp.drawRect((h - 10 )/2, (w - 10 )/2, 10, 10)
+        qp.drawRect(int((h - 10 )/2), int((w - 10 )/2), 10, 10)
         
         qp.end()

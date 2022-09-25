@@ -69,9 +69,9 @@ class kpiCell(QWidget):
         
         if self.style == 'bar':
             qp.setBrush(self.brushStyle) # bar fill color
-            h = 8 / 2
-            qp.drawRect(4, self.size().height() / 2 - h/2, self.width() - 8, h )
-        elif self.style == 'candle':
+            h = int(8/2)
+            qp.drawRect(4, int(self.size().height()/2 - h/2), self.width() - 8, h )
+        elif self.style == 'candle depricated': # depricated 2022-09-23
             qp.drawLine(4, self.size().height() / 2 + 2 , self.width() - 4, self.size().height()  / 2 - 2)
             qp.drawLine(4, self.size().height() / 2 + 3 , 4 , self.size().height()  / 2)
             qp.drawLine(self.width() - 4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2 - 3)
@@ -88,13 +88,13 @@ class kpiCell(QWidget):
                 pen = kpiDescriptions.getRadugaPen()
                 qp.setPen(pen)
                 
-            qp.drawLine(4, self.size().height() / 2 + 3, self.width() - 4, self.size().height()  / 2 + 3)
+            qp.drawLine(4, int(self.size().height()/2 + 3), self.width() - 4, int(self.size().height()/2) + 3)
 
             if self.multicolor:
                 pen = kpiDescriptions.getRadugaPen()
                 qp.setPen(pen)
             
-            qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
+            qp.drawLine(4, int(self.size().height()/2), self.width() - 4, int(self.size().height()/2))
 
             if self.multicolor:
                 pen = kpiDescriptions.getRadugaPen()
@@ -102,10 +102,10 @@ class kpiCell(QWidget):
                 
                 kpiDescriptions.resetRaduga()
             
-            qp.drawLine(4, self.size().height() / 2 - 3, self.width() - 4, self.size().height()  / 2 - 3)
+            qp.drawLine(4, int(self.size().height()/2) - 3, self.width() - 4, int(self.size().height()/2) - 3)
             
         else:
-            qp.drawLine(4, self.size().height() / 2, self.width() - 4, self.size().height()  / 2)
+            qp.drawLine(4, int(self.size().height()/2), self.width() - 4, int(self.size().height()/2))
             
         qp.end()
 
@@ -490,7 +490,7 @@ class kpiTable(QTableWidget):
 
                     if kpiKey in kpiDescriptions.customColors:
                         c = kpiDescriptions.customColors[kpiKey]
-                        pen = QPen(QColor(c[0]*0.75, c[1]*0.75, c[2]*0.75))
+                        pen = QPen(QColor(int(c[0]*0.75), int(c[1]*0.75), int(c[2]*0.75)))
                         brshColor = QColor(c[0], c[1], c[2])
 
                     else:

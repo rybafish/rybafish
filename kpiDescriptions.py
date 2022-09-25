@@ -713,7 +713,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             clr = QColor(color)
             style['brush'] = clr
 
-            penColor = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+            penColor = QColor(int(clr.red()*0.75), int(clr.green()*0.75), int(clr.blue()*0.75))
             style['pen'] = QPen(penColor, 1, Qt.SolidLine)
 
             brightnessTo = kpi.get('gradientTo', '#F00')
