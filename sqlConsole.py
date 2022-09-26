@@ -1207,11 +1207,8 @@ class resultSet(QTableWidget):
         
         itemFont = QTableWidgetItem('').font()
         
-        #rowHeight = scale * QFontMetricsF(itemFont).height() + 7 
-        rowHeight = scale * QFontMetricsF(itemFont).height() + 8
-        
-        #rowHeight = 19
-        
+        rowHeight = int(scale * QFontMetricsF(itemFont).height()) + 8
+                
         verticalHeader.setDefaultSectionSize(rowHeight)
         
         self.setWordWrap(False)

@@ -99,8 +99,6 @@ class ExceptionHandler(QtCore.QObject):
 
 if __name__ == '__main__':
 
-    log('veeeeeeeeeeery start')
-
     global ryba
     global rybaSplash
     
@@ -155,8 +153,8 @@ if __name__ == '__main__':
         app = QApplication(sys.argv)
 
     log('Starting RybaFish %s build %s' % (version, build_date))
-    log(f'Python version: {sys.version}')
-    log('Qt version: %s' %(QtCore.QT_VERSION_STR))
+    log(f'Python version: {sys.version}', 5)
+    log('Qt version: %s' %(QtCore.QT_VERSION_STR), 5)
     
     from profiler import calibrate
     calibrate()

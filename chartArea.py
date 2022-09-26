@@ -1402,18 +1402,18 @@ class myWidget(QWidget):
                 black = kpi[:splt]
                 blue = kpi[splt+5:]
                 
-                qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, black)
+                qp.drawText(leftX + ident, 10 + int(self.top_margin + fontHeight * (i+1) + self.y_delta), black)
                 
                 ident2 = fm.width(black)
                 qp.setPen(QColor('#44E'))
-                qp.drawText(leftX + ident + ident2, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, blue)
+                qp.drawText(leftX + ident + ident2, 10 + int(self.top_margin + fontHeight * (i+1) + self.y_delta), blue)
                 
             else:
                 #normal regular kpi
-                qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
+                qp.drawText(leftX + ident, 10 + int(self.top_margin + fontHeight * (i+1) + self.y_delta), str(kpi))
                         
         if drawTimeScale:
-            qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+2) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
+            qp.drawText(leftX + 4, 10 + int(self.top_margin + fontHeight * (i+2) + self.y_delta) + 6, 'Time scale: ' + self.timeScale)
               
     @profiler
     def drawChart(self, qp, startX, stopX):
@@ -2486,6 +2486,8 @@ class chartArea(QFrame):
         log(f'<-- collisions current: {self.collisionsCurrent}, detected: {collisions}', 5)
 
         if yVal[5] is not None:
+            log(f'checkHost={checkHost}, yVal[1]={yVal[1]}, yVal[5]={yVal[5]}')
+            checkHost = yVal[0]     # so not sure here... need proper system to test, #706
             gb = self.widget.ndata[checkHost][yVal[1]][yVal[5]][0]
             mls = f'[{gb}] ({yVal[5]})'
         else:

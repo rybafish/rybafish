@@ -23,6 +23,9 @@ class Config(QDialog):
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
                 self.pwdEdit.setText(conf['password'])
+                
+                if conf.get('ssl'):
+                    self.sslCB.setChecked(True)
                                 
                 dbi = conf.get('dbi')
                 
@@ -112,6 +115,7 @@ class Config(QDialog):
         cf.config['password'] = cf.pwdEdit.text().strip()
         
         cf.config['noreload'] = cf.noReload.isChecked()
+        cf.config['ssl'] = cf.sslCB.isChecked()
         
         return (cf.config, result == QDialog.Accepted)
         
@@ -122,10 +126,12 @@ class Config(QDialog):
         if drv == 'ABAP Proxy':
             self.userEdit.setDisabled(True)
             self.pwdEdit.setDisabled(True)
+            self.sslCB.setDisabled(True)
             self.update()
         elif drv == 'HANA DB':
             self.userEdit.setEnabled(True)
             self.pwdEdit.setEnabled(True)
+            self.sslCB.setEnabled(True)
             
         self.configurationChanged(self.confCB.currentText())
 
@@ -157,6 +163,7 @@ class Config(QDialog):
             conf['dbi'] = c['dbi']
             conf['host'] = host
             conf['port'] = port
+            conf['ssl'] = c['ssl']
 
             if 'user' in c:
                 conf['user'] = c['user']
@@ -187,6 +194,7 @@ class Config(QDialog):
         cfg['user'] = self.userEdit.text()
         cfg['pwd'] = self.pwdEdit.text()
         cfg['hostport'] = self.hostportEdit.text()
+        cfg['ssl'] = self.sslCB.isChecked()
         
         items = []
         for i in range(self.confCB.count()):
@@ -250,11 +258,6 @@ class Config(QDialog):
         
     def initUI(self):
     
-    
-        #почему-то по ESC он не rejected вызывает, а что-то другое и обновляет configuraton
-        #в крайнем случае можно прям кнопку обработать, но вообще наверное и получше есть способ
-
-        #form = QFormLayout()
         form = QGridLayout()
         
         self.driverCB = QComboBox()
@@ -265,6 +268,8 @@ class Config(QDialog):
         
         self.hostportEdit = QLineEdit()
         self.hostportEdit.textEdited.connect(self.configurationChanged)
+        
+        self.sslCB = QCheckBox('SSL');
         
         #self.hostportEdit.setFixedWidth(192)
         
@@ -283,6 +288,7 @@ class Config(QDialog):
         form.addWidget(QLabel('pwd'), 3, 1)
 
         form.addWidget(self.hostportEdit, 1, 2)
+        form.addWidget(self.sslCB, 1, 3)
         form.addWidget(self.userEdit, 2, 2)
         
         pwdHBox = QHBoxLayout()

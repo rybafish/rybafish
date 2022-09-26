@@ -68,7 +68,13 @@ class hdbi ():
         try: 
             # normal connection
             
-            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+            if server.get('ssl'):
+                log('Opening connection with SSL support', 4)
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], sslsupport=True)
+            else:
+                log('Opening regular connection (no ssl)', 5)
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                
             connection.large_sql = False
             
             if cfg('internal', True):
