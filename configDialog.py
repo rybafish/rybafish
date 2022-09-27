@@ -163,7 +163,7 @@ class Config(QDialog):
             conf['dbi'] = c['dbi']
             conf['host'] = host
             conf['port'] = port
-            conf['ssl'] = c['ssl']
+            conf['ssl'] = c.get('ssl')
 
             if 'user' in c:
                 conf['user'] = c['user']
@@ -287,8 +287,15 @@ class Config(QDialog):
         form.addWidget(QLabel('user'), 2, 1)
         form.addWidget(QLabel('pwd'), 3, 1)
 
-        form.addWidget(self.hostportEdit, 1, 2)
-        form.addWidget(self.sslCB, 1, 3)
+        #hostport 
+        #form.addWidget(self.hostportEdit, 1, 2)
+        #form.addWidget(self.sslCB, 1, 3)
+        hpLayout = QHBoxLayout()
+        
+        hpLayout.addWidget(self.hostportEdit)
+        hpLayout.addWidget(self.sslCB)
+        form.addLayout(hpLayout, 1, 2)
+        
         form.addWidget(self.userEdit, 2, 2)
         
         pwdHBox = QHBoxLayout()
