@@ -152,12 +152,12 @@ if __name__ == '__main__':
     if app is None:
         app = QApplication(sys.argv)
 
-    log('Starting %s build %s' % (version, build_date))
-    log('qt version: %s' %(QtCore.QT_VERSION_STR))
+    log('Starting RybaFish %s build %s' % (version, build_date))
+    log(f'Python version: {sys.version}', 5)
+    log('Qt version: %s' %(QtCore.QT_VERSION_STR), 5)
     
     from profiler import calibrate
     calibrate()
-    log('-----------------------')
 
     ryba = hslWindow.hslWindow()
 

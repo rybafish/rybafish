@@ -815,6 +815,7 @@ class hslWindow(QMainWindow):
                 msgBox.exec_()
                 
                 self.statusMessage('', False)
+                
         
     def changeActiveTabName(self, name):
     

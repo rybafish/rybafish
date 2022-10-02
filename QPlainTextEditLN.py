@@ -365,9 +365,9 @@ class QPlainTextEditLN(QWidget):
                     ln = ''
                 
                 offset = self.baseWidth - self.fm.width(ln)
-                y = self.edit.blockBoundingGeometry(block).translated(self.edit.contentOffset()).top()
+                y = int(self.edit.blockBoundingGeometry(block).translated(self.edit.contentOffset()).top())
                 
-                y += + self.fontHeight - 1
+                y += self.fontHeight - 1
                 
                 # check if on the screen yet
                 if y >= QPaintEvent.rect().top():

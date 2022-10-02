@@ -1281,7 +1281,7 @@ class myWidget(QWidget):
                         
                         if kpiKey in kpiDescriptions.customColors:
                             c = kpiDescriptions.customColors[kpiKey]
-                            pen = QPen(QColor(c[0]*0.75, c[1]*0.75 ,c[2]*0.75))
+                            pen = QPen(QColor(int(c[0]*0.75), int(c[1]*0.75), int(c[2]*0.75)))
                             brshColor = QColor(c[0], c[1], c[2])
                         else:
                             pen = self.kpiPen[type][kpi]
@@ -1368,7 +1368,7 @@ class myWidget(QWidget):
             if meta[0] == 'gantt':
                 qp.setBrush(kpiPen[0])
                 qp.setPen(kpiPen[1])
-                qp.drawRect(leftX + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2, 36, 4)
+                qp.drawRect(leftX + 4, int(10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2), 36, 4)
                 
                 ident = 4  + meta[3]
                 
@@ -1387,8 +1387,8 @@ class myWidget(QWidget):
                     
                     pen_ident = meta[2]
                     
-                    qp.drawLine(leftX + pen_ident + 4, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta, \
-                                    leftX + 40, 10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta)
+                    qp.drawLine(leftX + pen_ident + 4, int(10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta), \
+                                    leftX + 40, int(10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta))
                 
                 ident = 4 + meta[3]
             else:
@@ -1402,18 +1402,18 @@ class myWidget(QWidget):
                 black = kpi[:splt]
                 blue = kpi[splt+5:]
                 
-                qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, black)
+                qp.drawText(leftX + ident, 10 + int(self.top_margin + fontHeight * (i+1) + self.y_delta), black)
                 
                 ident2 = fm.width(black)
                 qp.setPen(QColor('#44E'))
-                qp.drawText(leftX + ident + ident2, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, blue)
+                qp.drawText(leftX + ident + ident2, 10 + int(self.top_margin + fontHeight * (i+1) + self.y_delta), blue)
                 
             else:
                 #normal regular kpi
-                qp.drawText(leftX + ident, 10 + self.top_margin + fontHeight * (i+1) + self.y_delta, str(kpi))
+                qp.drawText(leftX + ident, 10 + int(self.top_margin + fontHeight * (i+1) + self.y_delta), str(kpi))
                         
         if drawTimeScale:
-            qp.drawText(leftX + 4, 10 + self.top_margin + fontHeight * (i+2) + self.y_delta + 6, 'Time scale: ' + self.timeScale)
+            qp.drawText(leftX + 4, 10 + int(self.top_margin + fontHeight * (i+2) + self.y_delta) + 6, 'Time scale: ' + self.timeScale)
               
     @profiler
     def drawChart(self, qp, startX, stopX):
@@ -1433,9 +1433,9 @@ class myWidget(QWidget):
             #print(v)
             #print(clr.red(), clr.green(), clr.blue())
             
-            r = frR + (toR - frR) * v
-            g = frG + (toG - frG) * v
-            b = frB + (toB - frB) * v
+            r = int(frR + (toR - frR) * v)
+            g = int(frG + (toG - frG) * v)
+            b = int(frB + (toB - frB) * v)
             
             clr = QColor(r, g, b)
             
@@ -1535,15 +1535,15 @@ class myWidget(QWidget):
                 if self.highlightedPoint == i and kpi == self.highlightedKpi and h == self.highlightedKpiHost:
                 
                     if highlight and (subtype != 'multiline' or self.highlightedGBI == rn):
-                        qp.drawLine(x-5, y-5, x+5, y+5)
-                        qp.drawLine(x-5, y+5, x+5, y-5)
+                        qp.drawLine(int(x-5), int(y-5), int(x+5), int(y+5))
+                        qp.drawLine(int(x-5), int(y+5), int(x+5), int(y-5))
 
                 x0 = int(x)
                 y0 = int(y)
                     
                     
                 #print(x, y)
-                points[points_to_draw] = QPoint(x, y)
+                points[points_to_draw] = QPoint(int(x), int(y))
                 points_to_draw += 1
                 '''
                 try: 
@@ -1716,18 +1716,20 @@ class myWidget(QWidget):
                     
                         y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
                                                                            # not true, this is the top edge (when corrected with top_margin) 
+                                                                           
+                        y = int(y)
                     
                         range_i = 0
                         for t in gc[entity]:
 
                             x = (t[0].timestamp() - from_ts) # number of seconds
-                            x = self.side_margin + self.left_margin +  x * x_scale
+                            x = int(self.side_margin + self.left_margin +  x * x_scale)
                             
                             if t[1] is None or t[0] is None:
                                 log('[w] null instead of timestamp, skip', str(t))
                                 continue
 
-                            width = (t[1].timestamp() - t[0].timestamp()) * x_scale
+                            width = int((t[1].timestamp() - t[0].timestamp()) * x_scale)
                             
                             if self.highlightedKpi == kpi and self.highlightedKpiHost == h and self.highlightedEntity == entity and self.highlightedRange == range_i:
                                 highlight = True
@@ -1738,13 +1740,13 @@ class myWidget(QWidget):
                             
                             if kpiKey in kpiDescriptions.customColors:
                                 c = kpiDescriptions.customColors[kpiKey]
-                                ganttPen = QPen(QColor(c[0]*0.75, c[1]*0.75, c[2]*0.75))
+                                ganttPen = QPen(QColor(int(c[0]*0.75), int(c[1]*0.75), int(c[2]*0.75)))
                             else:
                                 ganttPen = kpiStylesNN[type][kpi]['pen']
                             
                             clr = ganttPen.color()
                             
-                            rgb = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
+                            rgb = QColor(int(clr.red()*0.75), int(clr.green()*0.75), int(clr.blue()*0.75))
                             titlePen = QPen(rgb)
                             
                             if highlight == True:
@@ -1766,6 +1768,7 @@ class myWidget(QWidget):
                                     #rgb = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
                                     #qp.setPen(QPen(rgb))
 
+                                #qp.drawRect(int(x), int(y + top_margin - t[3]*ganttShift), int(width), height)
                                 qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
                                     
                                 if title:
@@ -1785,7 +1788,7 @@ class myWidget(QWidget):
                                         #qp.drawLine(x - 10, y + top_margin - halfFont, x - 1, y + top_margin - halfFont)
                                         #qp.drawText(x, y + top_margin, 'X123X')
                                         
-                                        qp.drawText(x + width/2 - tWidth/2, y + top_margin + fontOffset - t[3]*ganttShift, tv)
+                                        qp.drawText(int(x + width/2 - tWidth/2), int(y + top_margin + fontOffset - t[3]*ganttShift), tv)
                                         
                             else:
                                 qp.drawLine(x, y + top_margin + 8, x + width, y + top_margin)
@@ -1818,7 +1821,7 @@ class myWidget(QWidget):
                                 
                                 yShift = t[3]*ganttShift
                                 
-                                hlRect = QRect (x + xOff, y + top_margin - fontHeight*nl - 2 - yShift, cfg('ganttLabelWidth', 500), fontHeight * nl)
+                                hlRect = QRect(int(x + xOff), int(y + top_margin - fontHeight*nl - 2 - yShift), cfg('ganttLabelWidth', 500), int(fontHeight*nl))
                             
                             range_i += 1
 
@@ -1835,7 +1838,7 @@ class myWidget(QWidget):
                             #qp.setPen(QColor('#448')) # entity label color
                             
                             clr = ganttPen.color()
-                            clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
+                            clr = QColor(int(clr.red()*0.6), int(clr.green()*0.6), int(clr.blue()*0.6))
                             
                             if self.highlightedEntity == entity:
                                 gFont.setWeight(QFont.Bold)
@@ -1843,7 +1846,7 @@ class myWidget(QWidget):
 
                             
                             qp.setPen(clr) # entity label color
-                            qp.drawText(startX + self.side_margin + fontHeight, y + top_margin + fontHeight / 2, entity);
+                            qp.drawText(int(startX + self.side_margin + fontHeight), int(y + top_margin + fontHeight/2), entity);
 
                             if self.highlightedEntity == entity:
                                 gFont.setWeight(QFont.Normal)
@@ -1855,12 +1858,12 @@ class myWidget(QWidget):
                             #ganttPen = kpiStylesNN[type][kpi]['pen']
                             if kpiKey in kpiDescriptions.customColors:
                                 c = kpiDescriptions.customColors[kpiKey]
-                                ganttPen = QPen(QColor(c[0]*0.75, c[1]*0.75, c[2]*0.75))
+                                ganttPen = QPen(QColor(int(c[0]*0.75), int(c[1]*0.75), int(c[2]*0.75)))
                             else:
                                 ganttPen = kpiStylesNN[type][kpi]['pen']
                             
                             clr = ganttPen.color()
-                            clr = QColor(clr.red()*0.6, clr.green()*0.6, clr.blue()*0.6)
+                            clr = QColor(int(clr.red()*0.6), int(clr.green()*0.6), int(clr.blue()*0.6))
                             qp.setPen(clr)
                             
                             qp.drawText(hlRect, Qt.AlignLeft, hlDesc)
@@ -2124,7 +2127,7 @@ class myWidget(QWidget):
                 
                 if date_mark:
                     label = c_time.strftime('%Y-%m-%d')
-                    qp.drawText(x-self.font_width3, wsize.height() - bottom_margin + self.font_height*2, label)
+                    qp.drawText(int(x-self.font_width3), int(wsize.height() - bottom_margin + self.font_height*2), label)
                     
                 qp.setPen(self.gridColor)
         
@@ -2483,6 +2486,8 @@ class chartArea(QFrame):
         log(f'<-- collisions current: {self.collisionsCurrent}, detected: {collisions}', 5)
 
         if yVal[5] is not None:
+            log(f'checkHost={checkHost}, yVal[1]={yVal[1]}, yVal[5]={yVal[5]}')
+            checkHost = yVal[0]     # so not sure here... need proper system to test, #706
             gb = self.widget.ndata[checkHost][yVal[1]][yVal[5]][0]
             mls = f'[{gb}] ({yVal[5]})'
         else:
@@ -2841,7 +2846,7 @@ class chartArea(QFrame):
 
     def scrollSignal(self, mode, size):
         x = 0 - self.widget.pos().x() 
-        self.scrollarea.horizontalScrollBar().setValue(x + mode*self.widget.step_size*size)
+        self.scrollarea.horizontalScrollBar().setValue(int(x + mode*self.widget.step_size*size))
 
         pass
 
@@ -2869,7 +2874,7 @@ class chartArea(QFrame):
             xfix = self.widget.mapToParent(QPoint(pos, 0)).x() - self.geometry().x()
             
         if xfix is not None:
-            newPos = self.widget.timeToPos(time)
+            newPos = int(self.widget.timeToPos(time))
             #newPos -= self.size().width()/2 #--> to the window center
             
             newPos -= xfix # --> move to the mouse pos

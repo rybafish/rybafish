@@ -609,10 +609,10 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         mtx.unlock()
 
 if cfg('threadSafeLogging', False):
-    log('threadSafeLogging should be enabled')
+    log('threadSafeLogging enabled')
     mtx = QMutex()
 else:
-    log('threadSafeLogging should be disabled')
+    log('threadSafeLogging disabled')
     mtx = fakeMutex()
         
 @profiler

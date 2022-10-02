@@ -1,10 +1,5 @@
 from yaml import safe_load, YAMLError, parser
 
-#move to descr ------->
-# from PyQt5.QtGui import QPen, QColor 
-# from PyQt5.QtCore import Qt
-# <------- move to descr
-
 import os
 
 from utils import log

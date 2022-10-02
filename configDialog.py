@@ -24,6 +24,9 @@ class Config(QDialog):
                 self.userEdit.setText(conf['user'])
                 self.pwdEdit.setText(conf['password'])
                                 
+                if 'ssl' in conf:
+                    self.sslCB.setChecked(conf['ssl'])
+                                
                 dbi = conf.get('dbi')
                 
                 if dbi:
@@ -53,21 +56,12 @@ class Config(QDialog):
         if not name:
             name = conf.get('name')
         
-        #print('name:', name)
-        #print('conf:', conf)
-        #print('---------')
-
         if name:
-            #print('resetting to', name)
             self.setConfName(name)
             conf['name'] = name
             # change the config based on cfgManager
 
-        #print('conf:', conf)
-        #print('conf.name:', conf.get('name'))
-        #print('name:', name)
         if (conf and (conf.get('name') == name)) and not conf.get('setToName'):
-            #print('manual changes...')
             # old style configuration PLUS manually changed (saved for runtime only) config
             self.setConf(conf)
                 
@@ -112,6 +106,7 @@ class Config(QDialog):
         cf.config['password'] = cf.pwdEdit.text().strip()
         
         cf.config['noreload'] = cf.noReload.isChecked()
+        cf.config['ssl'] = cf.sslCB.isChecked()
         
         return (cf.config, result == QDialog.Accepted)
         
@@ -122,10 +117,12 @@ class Config(QDialog):
         if drv == 'ABAP Proxy':
             self.userEdit.setDisabled(True)
             self.pwdEdit.setDisabled(True)
+            self.sslCB.setDisabled(True)
             self.update()
         elif drv == 'HANA DB':
             self.userEdit.setEnabled(True)
             self.pwdEdit.setEnabled(True)
+            self.sslCB.setEnabled(True)
             
         self.configurationChanged(self.confCB.currentText())
 
@@ -157,6 +154,7 @@ class Config(QDialog):
             conf['dbi'] = c['dbi']
             conf['host'] = host
             conf['port'] = port
+            conf['ssl'] = c.get('ssl')
 
             if 'user' in c:
                 conf['user'] = c['user']
@@ -167,6 +165,15 @@ class Config(QDialog):
                 conf['password'] = c['pwd']
             else:
                 conf['password'] = ''
+                
+            '''
+            if 'ssl' in c:
+                conf['ssl'] = c['ssl']
+            else:
+                pass
+                #conf['ssl'] = 
+            '''
+            
         else:
             conf = self.conf
         
@@ -187,6 +194,7 @@ class Config(QDialog):
         cfg['user'] = self.userEdit.text()
         cfg['pwd'] = self.pwdEdit.text()
         cfg['hostport'] = self.hostportEdit.text()
+        cfg['ssl'] = self.sslCB.isChecked()
         
         items = []
         for i in range(self.confCB.count()):
@@ -225,7 +233,8 @@ class Config(QDialog):
             if (conf['hostport'] == self.hostportEdit.text()
                 and conf.get('user') == self.userEdit.text()
                 and conf.get('pwd') == self.pwdEdit.text()
-                and conf.get('dbi') == drv):
+                and conf.get('dbi') == drv
+                and conf.get('ssl') == self.sslCB.isChecked()):
                 return False
             else:
                 #print('True')
@@ -250,11 +259,6 @@ class Config(QDialog):
         
     def initUI(self):
     
-    
-        #почему-то по ESC он не rejected вызывает, а что-то другое и обновляет configuraton
-        #в крайнем случае можно прям кнопку обработать, но вообще наверное и получше есть способ
-
-        #form = QFormLayout()
         form = QGridLayout()
         
         self.driverCB = QComboBox()
@@ -265,6 +269,9 @@ class Config(QDialog):
         
         self.hostportEdit = QLineEdit()
         self.hostportEdit.textEdited.connect(self.configurationChanged)
+        
+        self.sslCB = QCheckBox('SSL');
+        self.sslCB.stateChanged.connect(self.configurationChanged)
         
         #self.hostportEdit.setFixedWidth(192)
         
@@ -282,7 +289,15 @@ class Config(QDialog):
         form.addWidget(QLabel('user'), 2, 1)
         form.addWidget(QLabel('pwd'), 3, 1)
 
-        form.addWidget(self.hostportEdit, 1, 2)
+        #hostport 
+        #form.addWidget(self.hostportEdit, 1, 2)
+        #form.addWidget(self.sslCB, 1, 3)
+        hpLayout = QHBoxLayout()
+        
+        hpLayout.addWidget(self.hostportEdit)
+        hpLayout.addWidget(self.sslCB)
+        form.addLayout(hpLayout, 1, 2)
+        
         form.addWidget(self.userEdit, 2, 2)
         
         pwdHBox = QHBoxLayout()

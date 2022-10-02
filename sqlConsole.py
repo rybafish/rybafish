@@ -1207,11 +1207,8 @@ class resultSet(QTableWidget):
         
         itemFont = QTableWidgetItem('').font()
         
-        #rowHeight = scale * QFontMetricsF(itemFont).height() + 7 
-        rowHeight = scale * QFontMetricsF(itemFont).height() + 8
-        
-        #rowHeight = 19
-        
+        rowHeight = int(scale * QFontMetricsF(itemFont).height()) + 8
+                
         verticalHeader.setDefaultSectionSize(rowHeight)
         
         self.setWordWrap(False)
@@ -1255,7 +1252,7 @@ class resultSet(QTableWidget):
         clr = QColor(cfg('highlightColor', '#def'))
         hlBrush = QBrush(clr)
 
-        clr = QColor(clr.red()*0.9, clr.green()*0.9, clr.blue()*0.95)
+        clr = QColor(int(clr.red()*0.9), int(clr.green()*0.9), int(clr.blue()*0.95))
         hlBrushLOB = QBrush(clr)
         
         wBrush = QBrush(QColor('#ffffff'))

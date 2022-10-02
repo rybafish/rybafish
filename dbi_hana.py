@@ -68,7 +68,13 @@ class hdbi ():
         try: 
             # normal connection
             
-            connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+            if server.get('ssl'):
+                log('Opening connection with SSL support', 4)
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], sslsupport=True)
+            else:
+                log('Opening regular connection (no ssl)', 5)
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                
             connection.large_sql = False
             
             if cfg('internal', True):
@@ -100,6 +106,8 @@ class hdbi ():
 
         t0 = time.time()
         
+        sslsupport = server.get('ssl')
+        
         try: 
             if self.largeSql:
                 old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
@@ -107,12 +115,8 @@ class hdbi ():
                 pyhdb.protocol.constants.MAX_MESSAGE_SIZE = 2**19
                 pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
                 
-                if longdate:
-                    log('largesql console with longdates')
-                    connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
-                else:
-                    log('largesql console without longdates')
-                    connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                log(f'Largesql console, longdates: {longdate}, ssl: {sslsupport}')
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
                     
                 connection.large_sql = True
                 self.largeSql = False
@@ -122,12 +126,8 @@ class hdbi ():
             else:
                 # normal connection
 
-                if longdate:
-                    log('console connection with longdates')
-                    connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2 = longdate)
-                else:
-                    log('console connection without longdates')
-                    connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                log(f'Regular consolse, longdate={longdate}, ssl={sslsupport}')
+                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
 
                 connection.large_sql = False
                 self.largeSql = False
@@ -171,7 +171,11 @@ class hdbi ():
             c.close() # fails with OperationalError always...
         except pyhdb.exceptions.OperationalError:
             log('close exception...', 5)
-            pass
+
+        except Exception as e:
+            log(f'Close connection exception: {str(e)} (ignored)', 2)
+            
+        c = None
         
         log('closed...', 5)
             
