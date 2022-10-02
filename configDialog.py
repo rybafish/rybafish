@@ -23,9 +23,9 @@ class Config(QDialog):
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
                 self.pwdEdit.setText(conf['password'])
-                
-                if conf.get('ssl'):
-                    self.sslCB.setChecked(True)
+                                
+                if 'ssl' in conf:
+                    self.sslCB.setChecked(conf['ssl'])
                                 
                 dbi = conf.get('dbi')
                 
@@ -56,21 +56,12 @@ class Config(QDialog):
         if not name:
             name = conf.get('name')
         
-        #print('name:', name)
-        #print('conf:', conf)
-        #print('---------')
-
         if name:
-            #print('resetting to', name)
             self.setConfName(name)
             conf['name'] = name
             # change the config based on cfgManager
 
-        #print('conf:', conf)
-        #print('conf.name:', conf.get('name'))
-        #print('name:', name)
         if (conf and (conf.get('name') == name)) and not conf.get('setToName'):
-            #print('manual changes...')
             # old style configuration PLUS manually changed (saved for runtime only) config
             self.setConf(conf)
                 
@@ -174,6 +165,15 @@ class Config(QDialog):
                 conf['password'] = c['pwd']
             else:
                 conf['password'] = ''
+                
+            '''
+            if 'ssl' in c:
+                conf['ssl'] = c['ssl']
+            else:
+                pass
+                #conf['ssl'] = 
+            '''
+            
         else:
             conf = self.conf
         
@@ -233,7 +233,8 @@ class Config(QDialog):
             if (conf['hostport'] == self.hostportEdit.text()
                 and conf.get('user') == self.userEdit.text()
                 and conf.get('pwd') == self.pwdEdit.text()
-                and conf.get('dbi') == drv):
+                and conf.get('dbi') == drv
+                and conf.get('ssl') == self.sslCB.isChecked()):
                 return False
             else:
                 #print('True')
@@ -270,6 +271,7 @@ class Config(QDialog):
         self.hostportEdit.textEdited.connect(self.configurationChanged)
         
         self.sslCB = QCheckBox('SSL');
+        self.sslCB.stateChanged.connect(self.configurationChanged)
         
         #self.hostportEdit.setFixedWidth(192)
         
