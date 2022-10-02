@@ -314,6 +314,7 @@ class console(QPlainTextEditLN):
         cursor = self.textCursor()
         block = self.document().findBlockByLineNumber(cursor.blockNumber())
         
+        log('rehighlight...', 5)
         self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
 
 
@@ -955,22 +956,35 @@ class console(QPlainTextEditLN):
 
     @profiler
     def clearManualSelection(self):
-        #print('clear manualSelectionPos', self.manualSelectionPos)
+        #print('clear manualSelectionPos...', self.manualSelectionPos)
         
         start = self.manualSelectionPos[0]
         stop = self.manualSelectionPos[1]
         
         cursor = QTextCursor(self.document())
         
-        for (lo, af) in self.manualStylesRB:
-            lo.setAdditionalFormats(af)
+        #print('clear manualSelectionPos... 1')
+        for (block, lo, af) in self.manualStylesRB:
+            #print(' '*10, block, block.blockNumber(), lo, af)
+            if block.isValid():
+                lo.setAdditionalFormats(af)
+            else:
+                log('[W] block highlighting anti-crash skip...', 4)
+            #print(' '*10,'(clear)')
+            
+        #print('clear manualSelectionPos... 2')
             
         self.manualStylesRB.clear()
+        
+        #print('clear manualSelectionPos... 3')
 
         self.manualSelection = False
         self.manualSelectionPos = []
         
+        #print('clear manualSelectionPos... 4')
+        
         self.viewport().repaint()
+        #print('clear manualSelectionPos... done')
         
 
     @profiler
@@ -3578,7 +3592,7 @@ class sqlConsole(QWidget):
             af = lo.additionalFormats()
             
             if not updateMode:
-                self.cons.manualStylesRB.append((lo, af))
+                self.cons.manualStylesRB.append((block, lo, af))
 
             lo.setAdditionalFormats(af + [r])
             
