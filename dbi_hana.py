@@ -171,7 +171,11 @@ class hdbi ():
             c.close() # fails with OperationalError always...
         except pyhdb.exceptions.OperationalError:
             log('close exception...', 5)
-            pass
+
+        except Exception as e:
+            log(f'Close connection exception: {str(e)} (ignored)', 2)
+            
+        c = None
         
         log('closed...', 5)
             
