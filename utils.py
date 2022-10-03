@@ -28,6 +28,8 @@ __alertReg__ = None
 timers = []
 
 localeCfg = None
+thousands_separator = ''
+decimal_point = '.'
 
 def pwdunhash(pwdhsh):
     pwd = pwdhsh[5:]
@@ -251,19 +253,31 @@ def timestampToStr(ts, trimZeroes = True):
 
 @profiler
 def numberToStr(num, d = 0, fix = True):
+    '''
+        used for integer type only
+        for decimals numberToStrCSV used (for some reason)
+    '''
 
     global localeCfg
+    global thousands_separator
+    global decimal_point
 
     if localeCfg is None:
         localeCfg = cfg('locale', '')
         if localeCfg != '':
+            log(f'Locale setting to: {localeCfg}')
             try:
                 locale.setlocale(locale.LC_ALL, localeCfg)
             except Exception as e:
                 localeCfg = ''
-                log('[!] '+ str(e))
+                log(f'[!] Locale error: {str(e)}, {localeCfg}', 2)
+                log(f'[!] List of supported locales: {str(list(locale.locale_alias.keys()))}', 2)
                 
-    locale.setlocale(locale.LC_ALL, localeCfg)
+        # just once now, 2022-10-03
+        locale.setlocale(locale.LC_ALL, localeCfg)
+        thousands_separator = locale.localeconv()['thousands_sep']
+        decimal_point = locale.localeconv()['decimal_point']
+        log(f'Locale thousands separator is: [{thousands_separator}], decimal point: [{decimal_point}]')
     
     if num is None:
         return '?'
@@ -285,13 +299,13 @@ def numberToStrCSV(num, grp = True):
                 
         if localeCfg != '':
             try:
-                print (4, localeCfg)
                 locale.setlocale(locale.LC_ALL, localeCfg)
             except Exception as e:
                 localeCfg = ''
                 log('[!] '+ str(e))
                 
-    locale.setlocale(locale.LC_ALL, localeCfg)
+        # just once now, 2022-10-03
+        locale.setlocale(locale.LC_ALL, localeCfg)
         
     dp = locale.localeconv()['decimal_point']
     
@@ -508,7 +522,7 @@ def loadConfig(silent=False):
     alertStr = cfg('alertTriggerOn')
 
     if alertStr and alertStr[0] == '{' and alertStr[-1:] == '}':
-        __alertReg__ = re.compile('^{' + alertStr[1:-1] + '(:[^!]*)?(!\d{1,3})?}$')
+        __alertReg__ = re.compile(r'^{' + alertStr[1:-1] + r'(:[^!]*)?(!\d{1,3})?}$')
     else:
         __alertReg__ = None
         

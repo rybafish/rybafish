@@ -1,5 +1,8 @@
 server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 
+#Enforce locale different from the system one
+#locale: 'en_gb'
+
 ##
 ## Chart related stuff here
 ##
