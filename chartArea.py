@@ -400,12 +400,7 @@ class myWidget(QWidget):
                                 kpiStylesNN[type][kpi]['decimal'] = 1
 
                             yScale = self.ceiling(int(max_value_n))
-                     
-                    # later:
-                    #scaleKpi['yScale'] = yScale
-                    #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(yScale / 10), utils.numberToStr(yScale)))
-                            
-                    
+                                         
                     '''
                         max_value_n, yScale must be defined by this line
                         even when no any difference with max_value
@@ -450,7 +445,6 @@ class myWidget(QWidget):
                         max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
                         dUnit = kpiStylesNN[type][kpi]['dUnit'] # converted
                     
-                    #scaleKpi['label'] = ('%s / %s' % (utils.numberToStr(max_value_n / 10), utils.numberToStr(max_value_n)))
                     scaleKpi['yScale'] = yScale
                     
                     if yScaleLow == 0:

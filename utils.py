@@ -251,17 +251,59 @@ def timestampToStr(ts, trimZeroes = True):
         
     return s
 
+
 @profiler
-def numberToStr(num, d = 0, fix = True):
+def initLocale():
     '''
-        used for integer type only
+        sets the locale based configuration
+        
+        sets thousands_separator and decimal_point globals
+    '''
+    
+    global localeCfg
+    global thousands_separator
+    global decimal_point
+
+    localeCfg = cfg('locale', '')
+    if localeCfg != '':
+        log(f'Locale setting to: {localeCfg}')
+        try:
+            locale.setlocale(locale.LC_ALL, localeCfg)
+        except Exception as e:
+            localeCfg = ''
+            log(f'[!] Locale error: {str(e)}, {localeCfg}', 2)
+            log(f'[!] List of supported locales: {str(list(locale.locale_alias.keys()))}', 2)
+                
+    # just once now, 2022-10-03
+        
+    if localeCfg == '':
+        locale.setlocale(locale.LC_ALL, localeCfg)
+        
+    thousands_separator = locale.localeconv()['thousands_sep']
+    decimal_point = locale.localeconv()['decimal_point']
+    
+    log(f'Locale thousands separator is: [{thousands_separator}], decimal point: [{decimal_point}]')
+
+@profiler
+def numberToStr(num, d = 0):
+    '''
+        in consoles it is used for integer type only
         for decimals numberToStrCSV used (for some reason)
+        
+        this one never used for copy
+        
+        
+        this one is very straight-forward:
+        id d defined - it will result in fixed number of digits after decimal point
+        
+        mainly used for charts, not results render
     '''
 
     global localeCfg
     global thousands_separator
     global decimal_point
 
+    '''
     if localeCfg is None:
         localeCfg = cfg('locale', '')
         if localeCfg != '':
@@ -278,13 +320,16 @@ def numberToStr(num, d = 0, fix = True):
         thousands_separator = locale.localeconv()['thousands_sep']
         decimal_point = locale.localeconv()['decimal_point']
         log(f'Locale thousands separator is: [{thousands_separator}], decimal point: [{decimal_point}]')
+    '''
+    if localeCfg is None:
+        initLocale()
     
     if num is None:
         return '?'
         
     fmt = '%.{0}f'.format(d)
         
-    s = locale.format(fmt, num, grouping=True)
+    s = locale.format_string(fmt, num, grouping=True)
     
     return s
 
@@ -292,7 +337,10 @@ def numberToStr(num, d = 0, fix = True):
 def numberToStrCSV(num, grp = True):
 
     global localeCfg
+    global thousands_separator
+    global decimal_point
     
+    '''
     if localeCfg is None:
         
         localeCfg = cfg('locale', '')
@@ -306,20 +354,24 @@ def numberToStrCSV(num, grp = True):
                 
         # just once now, 2022-10-03
         locale.setlocale(locale.LC_ALL, localeCfg)
+    '''
+    
+    if localeCfg is None:
+        initLocale()
         
-    dp = locale.localeconv()['decimal_point']
     
     if num is None:
         return '?'
 
     #fmt = '%g'
-    
-    fmt = '%f'
-    s = locale.format(fmt, num, grouping = grp)
 
-    # trim ziroes for f:
+    fmt = '%f'
+    s = locale.format_string(fmt, num, grouping = grp)
     
-    s = s.rstrip('0').rstrip(dp)
+    # trim zeroes for f, even integers have .000000 after %f formatting
+    
+    s = s.rstrip('0').rstrip(decimal_point)
+
     
     return s
 

@@ -1543,6 +1543,8 @@ class resultSet(QTableWidget):
     def csvVal(self, v, t):
         '''escapes single value based on type'''
         
+        print('csv', v, t)
+        
         if v is None:
             return utils.cfg('nullStringCSV', '')
         elif self.dbi.ifBLOBType(t):
@@ -1578,6 +1580,8 @@ class resultSet(QTableWidget):
         '''
             copy cells or rows or columns implementation
         '''
+        
+        print('copy cell(s)')
         
         def abapCopy():
         
@@ -1975,7 +1979,6 @@ class resultSet(QTableWidget):
                 elif self.dbi.ifNumericType(cols[c][1]):
                 
                     if self.dbi.ifDecimalType(cols[c][1]):
-                        #val = utils.numberToStr(val, 3)
                         val = utils.numberToStrCSV(val)
                     else:
                         val = utils.numberToStr(val)
