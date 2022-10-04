@@ -1965,6 +1965,8 @@ class resultSet(QTableWidget):
                 alert_len = len(alert_str)
         
         #fill the result table
+        
+        experimental = cfg('experimental') 
                 
         for r in range(len(rows)):
             #log('populate result: %i' % r, 5)
@@ -2020,7 +2022,7 @@ class resultSet(QTableWidget):
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
-                    if cfg('experimental') and alert_str:
+                    if experimental and alert_str:
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
                         

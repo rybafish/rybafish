@@ -99,3 +99,13 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 ## automatic check for updates parameters
 #updatesCheckInterval: 7
 #updatesCheckBeta: True
+
+## Uncomment to switch to the legacy number formtatting  routines
+#newNumbersFormatting: False
+
+## Use custom thousands separator
+#thousandsSeparator: "\u00a0"
+
+## Use custom decimal point
+#decimalPoint: '.'
+
