@@ -177,6 +177,9 @@ class hslWindow(QMainWindow):
 
         if hasattr(profiler, 'report'):
             profiler.report()
+            
+        if cfg('dev'):
+            utils.configReportStats()
 
         log('Exiting...')
 

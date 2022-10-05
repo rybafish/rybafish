@@ -28,8 +28,11 @@ __alertReg__ = None
 timers = []
 
 localeCfg = None
+newNumbersFormatting = True
 thousands_separator = ''
 decimal_point = '.'
+
+configStats = {}
 
 def pwdunhash(pwdhsh):
     pwd = pwdhsh[5:]
@@ -410,11 +413,47 @@ def cfgPersist(param, value, layout):
 def cfg(param, default = None):
 
     global config
+    global configStats
 
+    '''
+    if param in configStats:
+        configStats[param] += 1
+    else:
+        configStats[param] = 1
+    '''
+    
     if param in config:
         return config[param]
     else:
         return default
+        
+def configReportStats():
+
+    global configStats
+    
+    if not configStats:
+        return
+    
+    params = sorted(configStats.keys(), key=lambda x: configStats[x], reverse=True)
+    
+    maxLen = len(max(configStats.keys(), key=lambda x: len(x)))
+    numLen = len(str(configStats[params[0]]))
+        
+    log('Config stats:')
+    log('-'*(maxLen+4+numLen+1))
+    
+    c = 0
+    for p in params:
+        log(f'{p:{maxLen+4}} {configStats[p]}')
+        c += configStats[p]
+        
+        if configStats[p] < 10:
+            break
+        
+    log('-')
+    log(f'Total config calls: {c}')
+    log('-'*(maxLen+4+numLen+1))
+    
      
 def getlog(prefix):
     '''
