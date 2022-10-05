@@ -19,7 +19,6 @@ from profiler import profiler
 
 import re
 
-logmode = 'file'
 config = {}
 
 global utils_alertReg
@@ -27,10 +26,14 @@ __alertReg__ = None
 
 timers = []
 
+#globals:
 localeCfg = None
 newNumbersFormatting = True
 thousands_separator = ''
 decimal_point = '.'
+
+cfg_logmode = 'file'
+cfg_loglevel = 3
 
 configStats = {}
 
@@ -386,7 +389,7 @@ def loadConfig(silent=False):
         config = {}
         
         return False
-
+        
     alertStr = cfg('alertTriggerOn')
 
     if alertStr and alertStr[0] == '{' and alertStr[-1:] == '}':
@@ -416,10 +419,11 @@ def cfg(param, default = None):
     global configStats
 
     '''
-    if param in configStats:
-        configStats[param] += 1
-    else:
-        configStats[param] = 1
+    if configStats:
+        if param in configStats:
+            configStats[param] += 1
+        else:
+            configStats[param] = 1
     '''
     
     if param in config:
@@ -492,7 +496,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         log the stuff one way or another...
     '''
     
-    if cfg('loglevel', 3) < loglevel:
+    if cfg_loglevel < loglevel:
         return
 
     if not nots:
@@ -500,7 +504,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
     else:
         ts = ''
     
-    if cfg('logmode') == 'screen' or cfg('logmode') == 'duplicate':
+    if cfg_logmode == 'screen' or cfg_logmode == 'duplicate':
         print('[l]', s)
         
     if nonl:
@@ -508,7 +512,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
     else:
         nl = '\n'
     
-    if cfg('logmode') != 'screen':
+    if cfg_logmode != 'screen':
     
         with profiler('log mutex lock'):
             mtx.tryLock(200)
@@ -662,7 +666,20 @@ def initLocale():
     
     log(f'Locale thousands separator is: [{thousands_separator}], decimal point: [{decimal_point}]')
     
-initLocale()
+def initGlobalSettings():
+    global configStats
+    global cfg_logmode
+    global cfg_loglevel
+    
+    if cfg('dev'):
+        configStats['dummy'] = 0
+        
+    cfg_logmode = cfg('logmode')
+    cfg_loglevel = cfg('loglevel', 3)
+    
+    initLocale()
+    
+initGlobalSettings()
     
 def intToStr(x, grp = True):
     #only integers, only >= 0

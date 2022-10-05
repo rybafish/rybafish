@@ -462,6 +462,7 @@ class hslWindow(QMainWindow):
     
     def menuReloadConfig(self):
         loadConfig()
+        utils.initGlobalSettings()
         self.statusMessage('Configuration file reloaded.', False)
     
     def menuLayoutRestore(self):
