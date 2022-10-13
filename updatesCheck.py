@@ -215,7 +215,10 @@ def checkUpdates(prnt, afterCheckCB, nextCheck, versionCheckIn):
     
     updateURL = cfg('updatesURL', 'https://files.rybafish.net/version')
     manager.finished[QNetworkReply].connect(gotResponse)
-    manager.get(QNetworkRequest(QUrl(updateURL)))
+    
+    request = QNetworkRequest(QUrl(updateURL))
+    request.setRawHeader(b'User-Agent', f'RybaFish {version}'.encode('utf-8'));
+    manager.get(request)
     
     log('Update check request sent (%s)...' % updateURL, 4)
     
