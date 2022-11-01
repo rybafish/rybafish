@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
     QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel)
 
 
-from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply, QSslCertificate
 
 from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
 
@@ -12,9 +12,11 @@ from PyQt5.QtCore import Qt, QUrl
 from utils import resourcePath
 from yaml import safe_load, YAMLError
 
+from urllib.parse import urlparse
+
 from utils import log, cfg
 
-from _constants import build_date, version
+from _constants import build_date, version, platform
 
 class About(QDialog):
 
@@ -29,6 +31,59 @@ class About(QDialog):
         
         
     def gotResponse(self, QNetworkReply):
+    
+        def logChain(certs, loglevel):
+            for i in range(len(certs)-1, -1, -1):
+                l = certs[i]
+                log('-', loglevel)
+                log(f"    Issuer O: {l.issuerInfo(0)}, OU: {l.issuerInfo(3)}, DisplayName: {l.issuerDisplayName()}", loglevel)
+                log(f"    Subject {l.subjectInfo(b'CN')} ({l.subjectInfo(b'O')}), SN: {l.serialNumber()}", loglevel)
+                log(f"    Validity {l.effectiveDate().toString('yyyy-MM-dd HH:mm:ss')} - {l.expiryDate().toString('yyyy-MM-dd HH:mm:ss')}", loglevel)
+    
+        stopFlag = None
+    
+        er = QNetworkReply.error()
+        
+        if er != QNetworkReply.NoError:
+            log('[E] Network error code: ' + str(er), 2)
+            log('[E] Network error string: ' + QNetworkReply.errorString(), 2)
+            self.updatesLabel.setText('Network error: ' + QNetworkReply.errorString())
+            
+            stopFlag = True
+            #return stop flag instead
+
+        if not cfg('ignoreSSLValidation', False)        :
+            sslConf = QNetworkReply.sslConfiguration()
+            
+            sslConf.setCaCertificates([])
+            certs = sslConf.peerCertificateChain()
+            
+            domain = urlparse(self.url).netloc
+            sslErrorsList = QSslCertificate.verify(certs, domain)
+            
+            if cfg('loglevel', 3) >=4 or sslErrorsList:
+                if sslErrorsList:
+                    logChain(certs, 1)  # report chain in case of errors despite the configured loglevel
+                else:
+                    logChain(certs, 4)  
+                
+            if sslErrorsList:
+                sslErrorsStr = ''                
+                for e in sslErrorsList:
+                    log(f'[E]: {e.error()}: {e.errorString()}', 1)
+                    sslErrorsStr += '\n' + e.errorString()
+                    
+                log('[W] Aborting due to SSL issues', 2)
+                
+                if stopFlag is None or er == 6:
+                    self.updatesLabel.setText('SSL error, check the .log file for the details.' + '\n' + sslErrorsStr)
+                    
+                stopFlag = True
+            else:
+                log('No SSL errors detected.', 4)
+
+        if stopFlag:
+            return
 
         try:
             status = QNetworkReply.attribute(QNetworkRequest.HttpStatusCodeAttribute);
@@ -75,7 +130,13 @@ class About(QDialog):
         
         manager.finished[QNetworkReply].connect(self.gotResponse)
         updateURL = cfg('updatesURL', 'https://files.rybafish.net/version')
-        manager.get(QNetworkRequest(QUrl(updateURL)))
+        
+        self.url = updateURL
+
+        request = QNetworkRequest(QUrl(updateURL))
+        request.setRawHeader(b'User-Agent', f'RybaFish {version}/{platform} @'.encode('utf-8'));
+        manager.get(request)
+        log(f'Requesting {updateURL}', 4)
         
         self.updatesLabel.setText('requesting...')
         self.updatesLabelBeta.setText('')

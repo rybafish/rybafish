@@ -31,6 +31,7 @@ localeCfg = None
 newNumbersFormatting = True
 thousands_separator = ''
 decimal_point = '.'
+decimal_digits = 6
 
 cfg_logmode = 'file'
 cfg_loglevel = 3
@@ -418,13 +419,11 @@ def cfg(param, default = None):
     global config
     global configStats
 
-    '''
     if configStats:
         if param in configStats:
             configStats[param] += 1
         else:
             configStats[param] = 1
-    '''
     
     if param in config:
         return config[param]
@@ -451,7 +450,7 @@ def configReportStats():
         log(f'{p:{maxLen+4}} {configStats[p]}')
         c += configStats[p]
         
-        if configStats[p] < 10:
+        if configStats[p] <= 5:
             break
         
     log('-')
@@ -642,6 +641,7 @@ def initLocale():
     global localeCfg
     global thousands_separator
     global decimal_point
+    global decimal_digits
     global newNumbersFormatting
 
     localeCfg = cfg('locale', '')
@@ -663,6 +663,7 @@ def initLocale():
         
     thousands_separator = cfg('thousandsSeparator') or locale.localeconv()['thousands_sep']
     decimal_point = cfg('decimalPoint') or locale.localeconv()['decimal_point']
+    decimal_digits = cfg('decimalDigits', 6)
     
     log(f'Locale thousands separator is: [{thousands_separator}], decimal point: [{decimal_point}]')
     
@@ -709,7 +710,7 @@ def intToStr(x, grp = True):
 def saneNumberToStr(x, grp=True, digits=None):
 
     global decimal_point
-    
+            
     #bkp = x
     
     if x < 0:
@@ -729,7 +730,7 @@ def saneNumberToStr(x, grp=True, digits=None):
         elif digits == 0:
             frs = ''
         else:
-            frs = decimal_point + f'{fr:.6f}'.rstrip('0').rstrip(decimal_point)[2:]
+            frs = decimal_point + f'{fr:.{decimal_digits}f}'.rstrip('0').rstrip(decimal_point)[2:]
     else:
         if digits:
             frs = decimal_point + f'{fr:.{digits}f}'[2:]        # duplicated formula, but a bit different case
@@ -794,7 +795,7 @@ def numberToStrCSV(num, grp = True):
     return s
 
 @profiler
-def numberToStr(num, d = 0):
+def numberToStr(num, d=0):
     '''
         in consoles it is used for integer type only
         for decimals numberToStrCSV used (for some reason)

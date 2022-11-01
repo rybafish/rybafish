@@ -1,4 +1,4 @@
-from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply, QSslCertificate
 
 from PyQt5.QtWidgets import (QPushButton, QDialog, QDialogButtonBox,
     QHBoxLayout, QVBoxLayout, QLabel)
@@ -8,13 +8,14 @@ from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
 from yaml import safe_load, YAMLError
 from utils import log as ulog
 from utils import resourcePath
-from _constants import build_date, version, isbeta
+from _constants import build_date, version, isbeta, platform
 
 from PyQt5.QtCore import Qt, QUrl
 
 from datetime import datetime
 
 from PyQt5.QtCore import QTimer
+from urllib.parse import urlparse
 
 from utils import cfg
 
@@ -22,6 +23,7 @@ updTimer = None
 wnd = None
 versionCheck = None
 afterCheck = None # callback function
+global_domain = None
 
 def log(s, p = 3):
     ulog('[UPD] ' + s, p)
@@ -32,23 +34,60 @@ def gotResponse(QNetworkReply):
         
         Parses the yaml response, triggers UI dialog when required.
     '''
-
-    global afterCheck
     
-    status = None
+    global afterCheck
+    stopFlag = None
     
     er = QNetworkReply.error()
     
     if er != QNetworkReply.NoError:
         log('[E] Network error code: ' + str(er), 2)
         log('[E] Network error string: ' + QNetworkReply.errorString(), 2)
-        afterCheck('') # update the updateNextCheck date
+        afterCheck('')
         
+        stopFlag = True # in order to elaborate the SSL status
+        #return
+
+    if not cfg('ignoreSSLValidation', False):
+        sslConf = QNetworkReply.sslConfiguration()
+        
+        sslConf.setCaCertificates([])
+        certs = sslConf.peerCertificateChain()
+        
+        domain = urlparse(global_domain).netloc
+        sslErrorsList = QSslCertificate.verify(certs, domain)
+        
+        if sslErrorsList:
+            ll = 1
+        else:
+            ll = 4
+
+        if cfg('loglevel', 3) >=4 or sslErrorsList:
+            for i in range(len(certs)-1, -1, -1):
+                l = certs[i]
+                log('-', ll)
+                log(f"    Issuer O: {l.issuerInfo(0)}, OU: {l.issuerInfo(3)}, DisplayName: {l.issuerDisplayName()}", ll)
+                log(f"    Subject {l.subjectInfo(b'CN')} ({l.subjectInfo(b'O')}), SN: {l.serialNumber()}", ll)
+                log(f"    Validity {l.effectiveDate().toString('yyyy-MM-dd HH:mm:ss')} - {l.expiryDate().toString('yyyy-MM-dd HH:mm:ss')}", ll)
+            
+        if sslErrorsList:
+            for e in sslErrorsList:
+                log(f'[E]: {e.error()}: {e.errorString()}', 1)
+                
+            log('[E] Aborting due to SSL issues', 2)
+            stopFlag = True
+            
+        else:
+            log('No SSL errors detected.', 4)
+
+    if stopFlag:
         return
 
+    status = None
+    
     try:
         status = QNetworkReply.attribute(QNetworkRequest.HttpStatusCodeAttribute);
-        log('Got update response, status: %s' % str(status), 4)
+        log('Got update response, status: %s' % str(status), 2)
     except Exception as e:
         log('[E] http/yaml error: %s' % str(e), 2)
         
@@ -109,13 +148,14 @@ def gotResponse(QNetworkReply):
         lastVersion = ver.get('versionBeta')
         lastBuild = ver.get('dateBeta')
         message = ver.get('messageBeta')
-        linkMessage = ver.get('linkMessageBeta')
+        linkMessage = 'To download this version and review last changes please visit <a href="https://www.rybafish.net/">rybafish.net</a>.'
+        
     else:
         lastVersion = ver.get('version')
         lastBuild = ver.get('date')
         message = ver.get('message')
-        linkMessage = ver.get('linkMessage')
-    
+        linkMessage = 'To download last BETA version and review last changes visit <a href="https://www.rybafish.net/changelog">rybafish.net</a>.'
+            
     try:
         buildDateDT = lastBuild
         buildDate = buildDateDT.strftime('%Y-%m-%d')
@@ -174,6 +214,7 @@ def checkUpdates(prnt, afterCheckCB, nextCheck, versionCheckIn):
     global afterCheck
     global wnd
     global updTimer
+    global global_domain
     
     global versionCheck
     
@@ -216,8 +257,11 @@ def checkUpdates(prnt, afterCheckCB, nextCheck, versionCheckIn):
     updateURL = cfg('updatesURL', 'https://files.rybafish.net/version')
     manager.finished[QNetworkReply].connect(gotResponse)
     
+    global_domain = updateURL
+    
     request = QNetworkRequest(QUrl(updateURL))
-    request.setRawHeader(b'User-Agent', f'RybaFish {version}'.encode('utf-8'));
+    request.setRawHeader(b'User-Agent', f'RybaFish {version}/{platform}'.encode('utf-8'));
+        
     manager.get(request)
     
     log('Update check request sent (%s)...' % updateURL, 4)
@@ -288,8 +332,8 @@ class updateInfo(QDialog):
         if self.linkMsg:
             updateStr = self.linkMsg
         else:
-            updateStr = 'To download last version and review last changes please visit <a href="https://www.rybafish.net/changelog">rybafish.net</a>.'
-            
+            updateStr = 'To download last version and review last changes please visit rybafish.net.'
+
         log(updateStr)
         
         msgBox.addWidget(QLabel(verStr))
