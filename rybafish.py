@@ -14,7 +14,7 @@ from utils import log
 
 import utils
 from utils import resourcePath
-from _constants import build_date, version
+from _constants import build_date, version, platform
 
 import traceback
 import sqlConsole
@@ -152,7 +152,7 @@ if __name__ == '__main__':
     if app is None:
         app = QApplication(sys.argv)
 
-    log('Starting RybaFish %s build %s' % (version, build_date))
+    log('Starting RybaFish %s/%s build %s' % (version, platform, build_date))
     log(f'Python version: {sys.version}', 5)
     log('Qt version: %s' %(QtCore.QT_VERSION_STR), 5)
     

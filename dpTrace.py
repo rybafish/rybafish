@@ -10,7 +10,7 @@ import time
 import kpis
 import re
 
-from utils import log
+from utils import log, profiler
 
 def getKPI(kName):
 
@@ -116,6 +116,11 @@ class dataProvider:
             i = -1 
             host = ''
             for line in f:
+
+                # skip empty lines, #718
+                if line.strip() == '':
+                    continue
+
                 row = line.rstrip().split(';')
                 
                 if i == -1: # header row
@@ -229,12 +234,16 @@ class dataProvider:
             
             # main data parsing here
             for line in f:
+
+                # skip empty lines just in case, #718
+                if line.strip() == '':
+                    continue
+
                 row = line.rstrip().split(';')
                 
                 if i == -1:
                     i += 1
                     continue
-                
                 if portIdx is not None:
                     port = row[portIdx]
                 else:

@@ -177,6 +177,9 @@ class hslWindow(QMainWindow):
 
         if hasattr(profiler, 'report'):
             profiler.report()
+            
+        if cfg('dev'):
+            utils.configReportStats()
 
         log('Exiting...')
 
@@ -459,6 +462,7 @@ class hslWindow(QMainWindow):
     
     def menuReloadConfig(self):
         loadConfig()
+        utils.initGlobalSettings()
         self.statusMessage('Configuration file reloaded.', False)
     
     def menuLayoutRestore(self):

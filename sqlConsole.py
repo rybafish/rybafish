@@ -314,6 +314,7 @@ class console(QPlainTextEditLN):
         cursor = self.textCursor()
         block = self.document().findBlockByLineNumber(cursor.blockNumber())
         
+        log('rehighlight...', 5)
         self.SQLSyntax.rehighlightBlock(block)  # enforce highlighting 
 
 
@@ -955,22 +956,35 @@ class console(QPlainTextEditLN):
 
     @profiler
     def clearManualSelection(self):
-        #print('clear manualSelectionPos', self.manualSelectionPos)
+        #print('clear manualSelectionPos...', self.manualSelectionPos)
         
         start = self.manualSelectionPos[0]
         stop = self.manualSelectionPos[1]
         
         cursor = QTextCursor(self.document())
         
-        for (lo, af) in self.manualStylesRB:
-            lo.setAdditionalFormats(af)
+        #print('clear manualSelectionPos... 1')
+        for (block, lo, af) in self.manualStylesRB:
+            #print(' '*10, block, block.blockNumber(), lo, af)
+            if block.isValid():
+                lo.setAdditionalFormats(af)
+            else:
+                log('[W] block highlighting anti-crash skip...', 4)
+            #print(' '*10,'(clear)')
+            
+        #print('clear manualSelectionPos... 2')
             
         self.manualStylesRB.clear()
+        
+        #print('clear manualSelectionPos... 3')
 
         self.manualSelection = False
         self.manualSelectionPos = []
         
+        #print('clear manualSelectionPos... 4')
+        
         self.viewport().repaint()
+        #print('clear manualSelectionPos... done')
         
 
     @profiler
@@ -1529,6 +1543,8 @@ class resultSet(QTableWidget):
     def csvVal(self, v, t):
         '''escapes single value based on type'''
         
+        print('csv', v, t)
+        
         if v is None:
             return utils.cfg('nullStringCSV', '')
         elif self.dbi.ifBLOBType(t):
@@ -1564,6 +1580,8 @@ class resultSet(QTableWidget):
         '''
             copy cells or rows or columns implementation
         '''
+        
+        print('copy cell(s)')
         
         def abapCopy():
         
@@ -1947,6 +1965,8 @@ class resultSet(QTableWidget):
                 alert_len = len(alert_str)
         
         #fill the result table
+        
+        experimental = cfg('experimental') 
                 
         for r in range(len(rows)):
             #log('populate result: %i' % r, 5)
@@ -1961,7 +1981,6 @@ class resultSet(QTableWidget):
                 elif self.dbi.ifNumericType(cols[c][1]):
                 
                     if self.dbi.ifDecimalType(cols[c][1]):
-                        #val = utils.numberToStr(val, 3)
                         val = utils.numberToStrCSV(val)
                     else:
                         val = utils.numberToStr(val)
@@ -2003,7 +2022,7 @@ class resultSet(QTableWidget):
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
-                    if cfg('experimental') and alert_str:
+                    if experimental and alert_str:
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
                         
@@ -3578,7 +3597,7 @@ class sqlConsole(QWidget):
             af = lo.additionalFormats()
             
             if not updateMode:
-                self.cons.manualStylesRB.append((lo, af))
+                self.cons.manualStylesRB.append((block, lo, af))
 
             lo.setAdditionalFormats(af + [r])
             
