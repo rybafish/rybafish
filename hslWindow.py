@@ -176,6 +176,7 @@ class hslWindow(QMainWindow):
     def closeEvent(self, event):
 
         if hasattr(profiler, 'report'):
+            print('report??')
             profiler.report()
             
         if cfg('dev'):
@@ -812,7 +813,13 @@ class hslWindow(QMainWindow):
             if ok and conf['ok'] == False: #it's connection string dict in case of [Cancel]
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection string')
-                msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
+                
+                if conf['error']:
+                    msgText = conf['error']
+                else:
+                    msgText = 'Could not start the connection. Please check the connection string: host, port, etc.'
+                    
+                msgBox.setText(msgText)
                 iconPath = resourcePath('ico', 'favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)

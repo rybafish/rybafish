@@ -102,11 +102,15 @@ class sqlWorker(QObject):
                 try: 
                     cons.conn = self.dbi.console_connection(cons.config)
 
+                    '''
                     rows = self.dbi.execute_query(cons.conn, "select connection_id from m_connections where own = 'TRUE'", [])
                     
                     if len(rows):
                         self.cons.connection_id = rows[0][0]
                         log('connection open, id: %s' % self.cons.connection_id)
+                    '''
+                    
+                    self.cons.connection_id = self.dbi.get_connection_id(cons.conn)
                         
                 except dbException as e:
                     err = str(e)
@@ -2313,17 +2317,18 @@ class sqlConsole(QWidget):
             return
         
         try: 
-            dbimpl = dbi(config['dbi'])
-            self.dbi = dbimpl.dbinterface
+            # get (existing or create) db interface instance
+            dbimpl = dbi(config['dbi'])         # this is a class name
+            self.dbi = dbimpl.dbinterface       # and this is interface instance now
             
-            self.sqlWorker.dbi = self.dbi
+            self.sqlWorker.dbi = self.dbi       # again, instance
 
             log('starting console connection')
             self.conn = self.dbi.console_connection(config)
             self.config = config
             
             self.connection_id = self.dbi.get_connection_id(self.conn)
-            log('connection open, id: %s' % self.connection_id)
+            #log('connection open, id: %s' % self.connection_id)
             '''
             moved to DBI implementation
             
@@ -2903,12 +2908,15 @@ class sqlConsole(QWidget):
                 
             self.conn = self.dbi.console_connection(self.config)                
             
+            '''
             rows = self.dbi.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
             
             if len(rows):
                 self.connection_id = rows[0][0]
                 
                 log('connection open, id: %s' % self.connection_id)
+            '''
+            self.connection_id = self.dbi.get_connection_id(self.conn)
 
             if cfg('keepalive-cons') and self.timer is None:
                 keepalive = int(cfg('keepalive-cons'))
@@ -2939,12 +2947,15 @@ class sqlConsole(QWidget):
         
             conn = self.dbi.console_connection(self.config)
 
+            '''
             rows = self.dbi.execute_query(conn, "select connection_id  from m_connections where own = 'TRUE'", [])
             
             if len(rows):
                 self.connection_id = rows[0][0]
                 
                 log('connection open, id: %s' % self.connection_id)
+            '''
+            self.connection_id = self.dbi.get_connection_id(conn)
 
         except Exception as e:
             raise e
@@ -3283,12 +3294,15 @@ class sqlConsole(QWidget):
                     log('Connection restored automatically')
                     self.indicator.status = 'idle'
 
+                    '''
                     rows = self.dbi.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
                     
                     if len(rows):
                         self.connection_id = rows[0][0]
                         
                         log('connection open, id: %s' % self.connection_id)
+                    '''
+                    self.connection_id = self.dbi.get_connection_id(self.conn)
                         
                 else:
                     log('Some connection issue, give up')
@@ -4332,6 +4346,8 @@ class sqlConsole(QWidget):
         
         #print('--> self.thread.start()')
         self.thread.start()
+        #log(f'worker thread id: {int(self.thread.currentThreadId())}')
+        #log(f'parent thread id: {int(QThread.currentThreadId())}')
         #print('<-- self.thread.start()')
             
         return
