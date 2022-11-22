@@ -1,4 +1,5 @@
-# default kpi styles
+# default hana kpis with styles and sources
+
 kpis = [
     ('1' ,'' ,'' ,'0' ,'Host' ,'' ,'' ,'' ,'0' ,'0'),
     ('1.01' ,'M_LOAD_HISTORY_HOST' ,'CPU' ,'1' ,'CPU' ,'CPU Used by all processes' ,'%' ,'%' ,'16711680' ,'2'),

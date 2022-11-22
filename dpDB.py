@@ -1,3 +1,7 @@
+'''
+    dpDB is the main data provider based on the database interface (dbi)
+'''
+
 from PyQt5.QtCore import QObject
 
 from array import array
@@ -179,23 +183,33 @@ class dataProvider(QObject):
         '''
     
         tenant = self.dbProperties.get('tenant')
-        dbiName = self.dbProperties.get('dbi')
-            
+                    
         log('init hosts: %s' % str(hosts))
         
         if not self.connection:
             log('No db connection...')
             return
+            
+        if hasattr(self.dbi, 'initHosts'):
+            self.dbi.initHosts(self.connection, hosts, self.dbProperties)
+            return
+
+        '''
+            below is the default old-style hard-code implementation for HANA + S2J dbis
+            as you see above it will be only used if dbi does not have its own initHosts
+            implementation.
+            
+            it is not moved to dbi_hana and dbi_st04 beacause this will require the
+            code duplication or another import, so, just leave this legacy impl here.
+        '''
         
         # prepare data for populating hosts/services list
         # it is based on port/service name mapping available in m_services
-        if dbiName == 'SLT':
-            sql_string = "select 'sqlitedb' host, 12345 port, null database_name, 'null' service_name"
+
+        if tenant and tenant.lower() == 'systemdb':
+            sql_string = 'select host, port, database_name, service_name from sys_databases.m_services order by host, port'
         else:
-            if tenant and tenant.lower() == 'systemdb':
-                sql_string = 'select host, port, database_name, service_name from sys_databases.m_services order by host, port'
-            else:
-                sql_string = 'select host, port, null database_name, service_name from m_services order by host, port'
+            sql_string = 'select host, port, null database_name, service_name from m_services order by host, port'
             
         rows = self.dbi.execute_query(self.connection, sql_string, [])
         
@@ -210,18 +224,15 @@ class dataProvider(QObject):
             
             skey = '%s:%s' % (host, port)
             services[skey] = [ten, srv]
-                
-        if dbiName != 'SLT':
-            sql_string = sql.hosts_info
 
-            if cfg('ess'):
-                #dirty but this will work
-                sql_string = sql_string.replace('m_load_history', '_sys_statistics.host_load_history')
-            
-            rows = self.dbi.execute_query(self.connection, sql_string, [])
-        else:
-            #rows = [['dummyhost', str(self.dbProperties.get('tenant'))]]
-            rows = [[str(self.dbProperties.get('tenant')), '']]
+        #extract hosts and services based on m_load_ views...
+        sql_string = sql.hosts_info
+
+        if cfg('ess'):
+            #dirty but this will work
+            sql_string = sql_string.replace('m_load_history', '_sys_statistics.host_load_history')
+        
+        rows = self.dbi.execute_query(self.connection, sql_string, [])
         
         if len(rows) <= 1:
             log('[W] no/limited telemetry available', 1)
@@ -284,12 +295,22 @@ class dataProvider(QObject):
             log('No db connection...')
             return
         
-        # load 'standard" KPIs
-        if dbiName != 'SLT':
-            kpis_sql = sql.kpis_info
+        if hasattr(self.dbi, 'initKPIs'):
+            self.dbi.initKPIs(self.connection, hostKPIs, srvcKPIs)
+            return
             
-            rows = self.dbi.execute_query(self.connection, kpis_sql, [])
-            kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
+        '''
+            same approach as for initHosts
+            
+            old-style hard-coded hana-db implementation below
+            used by hdb and s2j dbi types
+        '''
+        
+        # load 'standard" KPIs
+        kpis_sql = sql.kpis_info
+        
+        rows = self.dbi.execute_query(self.connection, kpis_sql, [])
+        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
 
         # (re)load custom KPIs
         try:
@@ -812,6 +833,8 @@ class dataProvider(QObject):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
+            
+            sql - ready to be executed SQL
         '''
         
         def printDump(data):

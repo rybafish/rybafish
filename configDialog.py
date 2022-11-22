@@ -125,6 +125,7 @@ class Config(QDialog):
                 cf.config['ok'] = False
                 cf.config['port'] = ''
                 cf.config['host'] = hostport
+                cf.config['error'] = f'Connection exception: {type(e)}\n{e}'
 
         cf.config['name'] = cf.confCB.currentText()
         cf.config['dbi'] = dbidict[cf.driverCB.currentText()]

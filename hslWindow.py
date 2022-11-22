@@ -176,7 +176,6 @@ class hslWindow(QMainWindow):
     def closeEvent(self, event):
 
         if hasattr(profiler, 'report'):
-            print('report??')
             profiler.report()
             
         if cfg('dev'):
@@ -217,7 +216,7 @@ class hslWindow(QMainWindow):
         
         return kpis
         
-    def dumpLayout(self, closeTabs = True):
+    def dumpLayout(self, closeTabs=True, crashMode=False):
     
         if self.connectionConf:
             connection = self.connectionConf.get('name')
@@ -299,7 +298,7 @@ class hslWindow(QMainWindow):
                 
         abandone = False
         
-        if somethingRunning:
+        if somethingRunning and not crashMode:
             log('There is something running, need to show a warning', 4)
             
             answer = utils.yesNoDialog('Warning', 'It seems there is something still running.\n\nAre you sure you want to exit and abandone the execution?')
@@ -814,7 +813,7 @@ class hslWindow(QMainWindow):
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection string')
                 
-                if conf['error']:
+                if conf.get('error'):
                     msgText = conf['error']
                 else:
                     msgText = 'Could not start the connection. Please check the connection string: host, port, etc.'

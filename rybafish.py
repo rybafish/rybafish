@@ -79,12 +79,14 @@ class ExceptionHandler(QtCore.QObject):
 
         try:
             if utils.cfg('saveLayout', True) and ryba:
-                ryba.dumpLayout()
+                ryba.dumpLayout(crashMode=True)
+                log('crash layout dumped')
         except Exception as e:
             log('[!] Exception during exception handler: %s' % str(e))
             details += '\n[!] Exception during exception handler:\n'
             details += str(e)
 
+        log('Show the crash message...')
         msgBox = QMessageBox()
         msgBox.setWindowTitle('Fatal error')
         msgBox.setText('Unhandled exception occured. Check the log file for details.\n\nIf you want to report this issue, press "Show Details" and copy the call stack.')

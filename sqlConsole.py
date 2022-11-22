@@ -4181,7 +4181,6 @@ class sqlConsole(QWidget):
             if i > 0:
                 result = self.newResult(self.conn, result.statement)
                 
-                
             result.rows = rows_list[i]
             result.cols = cols_list[i]
 
@@ -4190,7 +4189,8 @@ class sqlConsole(QWidget):
             result.psid = self.sqlWorker.psid
             log('psid saved: %s' % utils.hextostr(result.psid), 4)
             
-            if result.cols[0][2] == 'SCALAR':
+            #hana hardcode...
+            if result.cols and result.cols[0][2] == 'SCALAR':
                 result._resultset_id = None
             else:
                 if resultset_id_list is not None:
