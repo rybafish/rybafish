@@ -117,7 +117,6 @@ class sqlite():
             try:
                 v = datetime.fromisoformat(v)
             except ValueError:
-                log(f'not a timestamp: {v}', 5)
                 return False
                 
             return True
@@ -195,7 +194,7 @@ class sqlite():
     
     
     def execute_query_desc(self, connection, sql_string, params, resultSize):
-    
+        '''
         def detectType(t):
             #log(f'detectType: {t}: {type(t)}')
             if type(t) == int:
@@ -247,15 +246,11 @@ class sqlite():
                             r[idx] = str(r[idx])
                     
             return columnType
+        '''
     
         rows = []
         cols = []
-                
-                
-        #connection = sqlite3.connect('accesslogs.db')
-        
-        log(f'connection: {connection}')
-                
+
         log(f'[SQL] {sql_string}', 4)
         
         if params:
@@ -272,11 +267,24 @@ class sqlite():
                 for r in rows_tuples:
                     rows.append(list(r))
             
+            '''
             if len(rows):
                 for i in range(len(cur.description)):
                     typeCode = scanType(rows, i)
                     #log(f'{cur.description[i][0]:32} {typeCode:3}', 5)
                     cols.append((cur.description[i][0], typeCode, None))
+            '''
+            
+            if rows:
+                colTypes = self.clarifyTypes(rows)
+                
+                #assert len(cur.description) == len(colTypes) +1, f'len(cur.description) == len(colTypes) --> {len(cur.description)} != {len(colTypes)}'
+                if len(cur.description) != len(colTypes):
+                    raise dbException(f'len(cur.description) == len(colTypes) --> {len(cur.description)} != {len(colTypes)}')
+                
+                for i in range(len(cur.description)):
+                    cols.append((cur.description[i][0], colTypes[i], None))
+            
             else:
                 if cur.description:
                     for c in cur.description:
@@ -313,8 +321,15 @@ class sqlite():
             return False
         
     def ifTSType(self, t):
+        log('ifTSType', 5)
+        if t == 4:
+            return True
+        else:
+            return False
+
+    def ifBLOBType(self, t):
+        log('ifBLOBType', 5)
         return False
-        
         
             
     '''
@@ -416,14 +431,14 @@ class sqlite():
         existingKpis = []
         
         if host_load_history:
-            rows, cols, cursor, psid = self.execute_query_desc(conn, 'select * from m_load_history_host limit 1', [], 1)
+            rows, cols, _, _ = self.execute_query_desc(conn, 'select * from m_load_history_host limit 1', [], 1)
             if cols:
                 for c in cols[0]:
                     if c[0].lower() not in ('time', 'host'):
                         existingKpis.append(('m_load_history_host', c[0]))
 
         if service_load_history:
-            rows, cols, cursor, psid = self.execute_query_desc(conn, 'select * from m_load_history_service limit 1', [], 1)
+            rows, cols, _, _ = self.execute_query_desc(conn, 'select * from m_load_history_service limit 1', [], 1)
             
             if cols:
                 for c in cols[0]:

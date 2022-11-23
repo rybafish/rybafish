@@ -59,8 +59,8 @@ class myWidget(QWidget):
     hosts = [] # list of 'hosts': host + tenants/services. based on this we fill the KPIs table(s) - in order, btw
                # and why exactly do we have hosts in widget?..
 
-    kpis = [] #list of kpis to be drawn << old one
-    nkpis = [] #list of kpis to be drawn per host < new one
+    kpis = [] #list of kpis to be drawn << old one, depricated
+    nkpis = [] #list of kpis to be drawn *per host* < new one
 
     kpiPen = {} #kpi pen objects dictionary
     
@@ -77,10 +77,10 @@ class myWidget(QWidget):
     #data = {} # dictionary of data sets + time line (all same length)
     #scales = {} # min and max values
     
-    ndata = [] # list of dicts of data sets + time line (all same length)
-    nscales = [] # min and max values, list of dicts (per host)
+    ndata = [] # list of dicts of data sets + time line (all same length), depricated
+    nscales = [] # min and max values, list of dicts *per host*
     
-    nscalesml = [] # min and max values for multiline groupbys, list of dicts (per host)
+    nscalesml = [] # min and max values for multiline groupbys, list of dicts *per host*
     
     manual_scales = {} # if/when scale manually adjusted, per group! like 'mem', 'threads'
                        # since #562 it is two values: from - to. From in 99% is 0
@@ -2697,13 +2697,27 @@ class chartArea(QFrame):
             super().keyPressEvent(event)
 
     def cleanup(self):
+        '''
+            cleans internal widget structures:
+            
+                self.widget.ndata[host][kpi]
+                self.widget.nkpis[host]
+                
+                self.widget.nscales[host]
+                self.widget.ndata[host]
+            
+        '''
         log('cleanup call...')
         
         for host in range(len(self.widget.hosts)):
 
             if len(self.widget.nkpis) > 0:
+                if cfg('dev'):
+                    log(f'[cleanup] self.widget.nkpis[{host}] --> {self.widget.nkpis[host]}')
+                    
                 for kpi in self.widget.nkpis[host]:
                     #print('the same code in checkbocks callback - make a function')
+                    #why not just self.widget.nkpis[host].clear() (iutside the loop?)
                     self.widget.nkpis[host].remove(kpi) # kpis is a list
                     
                     if kpi in self.widget.ndata[host]:
@@ -2767,6 +2781,8 @@ class chartArea(QFrame):
         self.hostKPIs.clear()
         self.srvcKPIs.clear()
         
+        log('Cleanup complete')
+        
         if message:
             self.statusMessage(message)
         else:
@@ -2787,8 +2803,6 @@ class chartArea(QFrame):
         #    log('[!] initHosts generic exception: %s, %s' % (str(type(e)), str(e)), 2)
         #    utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n%s: %s' % (str(type(e)), str(e)))
             
-        print('hosts', self.widget.hosts)
-
         if len(self.widget.hosts) == 0 and cfg('noAccessWarning', False) == False:
             msgBox = QMessageBox(self)
             msgBox.setWindowTitle('Connection init error')
