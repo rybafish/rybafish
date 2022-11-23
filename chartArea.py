@@ -2170,7 +2170,7 @@ class chartArea(QFrame):
     
     dbProperties = {} # db properties, like timeZone, kpis available, etc
     
-    dp = None # data provider object
+    dp = None # data provider object, belongs to chart area
     ndp = [] # new dp approach, list now.
     
     timer = None
@@ -2753,7 +2753,18 @@ class chartArea(QFrame):
         
         log('cleanup complete')
         
-    def initDP(self, kpis = None, message = None):
+    def appendDP(self, dp):
+        self.ndp.append(dp)
+        
+        log(f'list of DPs ({len(self.ndp)}):', 4)
+        for dp in self.ndp:
+            log(f'{dp}, {type(dp)}', 4)
+            
+        idx = len(self.ndp) - 1
+            
+        return idx
+        
+    def initDP(self, dpidx, kpis = None, message = None):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
@@ -2767,6 +2778,8 @@ class chartArea(QFrame):
                     l.append(v)
                     
             return l
+            
+        dp = self.ndp[dpidx]  #extract the data provider instance
             
         log('before cleanup:' + str(kpis))
         self.cleanup()
@@ -2792,8 +2805,8 @@ class chartArea(QFrame):
         self.repaint()
         
         try:
-            self.dp.initHosts(self.widget.hosts)
-            self.dp.initKPIs(self.hostKPIs, self.srvcKPIs)
+            dp.initHosts(dpidx, self.widget.hosts)
+            dp.initKPIs(self.hostKPIs, self.srvcKPIs)
         except utils.customKPIException as e:
             log('[!] initHosts customKPIException: %s' % str(e), 2)
             utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
@@ -2836,9 +2849,9 @@ class chartArea(QFrame):
             
         #log('timeZoneDelta check here')
             
-        if hasattr(self.dp, 'dbProperties') and 'timeZoneDelta' in self.dp.dbProperties:
+        if hasattr(dp, 'dbProperties') and 'timeZoneDelta' in dp.dbProperties:
         
-            self.widget.timeZoneDelta = self.dp.dbProperties['timeZoneDelta']
+            self.widget.timeZoneDelta = dp.dbProperties['timeZoneDelta']
             
             #log(f'timeZoneDelta yeeees: {self.widget.timeZoneDelta}')
 
@@ -2957,7 +2970,7 @@ class chartArea(QFrame):
         self.widget.update()
     '''
         
-    def connectionLost(self, err_str = ''):
+    def connectionLost(self, dp, err_str = ''):
         '''
             very synchronous call, it holds controll until connection status resolved
         '''
@@ -2974,12 +2987,15 @@ class chartArea(QFrame):
 
         reply = None
         
-        while reply != QMessageBox.No and self.dp.connection is None:
+        while reply != QMessageBox.No and dp.connection is None:
             reply = msgBox.exec_()
             if reply == QMessageBox.Yes:
                 try:
-                    self.statusMessage('Reconnecting to %s:%s...' % (self.dp.server['host'], str(self.dp.server['port'])), True)
-                    self.dp.reconnect()
+                    self.statusMessage('Reconnecting to %s:%s...' % (dp.server['host'], str(dp.server['port'])), True)
+                    
+                    assert dp is not None, 'Dataprovider cannot be None during reconnection. Failed.'
+                    dp.reconnect()
+                        
                     self.statusMessage('Connection restored', True)
                 except Exception as e:
                     log('Reconnect failed: %s' % e)
@@ -3012,7 +3028,10 @@ class chartArea(QFrame):
             # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
             # self.widget.paintLock = True
             
-            if self.dp is None:
+            dpidx = host_d['dpi']
+            dp = self.ndp[dpidx]
+            
+            if dp is None:
                 self.statusMessage('Not connected to the DB', True)
                 return False
             
@@ -3039,7 +3058,7 @@ class chartArea(QFrame):
                     log(str(host))
                     log(str(kpis))
                     
-                    self.dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], wnd=self)
+                    dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     
                     allOk = True
@@ -3048,7 +3067,7 @@ class chartArea(QFrame):
                     self.lastHostTime = t1-t0
                     self.statusMessage('%s added, %s s' % (kpi, str(round(t1-t0, 3))), True)
                 except utils.dbException as e:
-                    reconnected = self.connectionLost(str(e))
+                    reconnected = self.connectionLost(dp, str(e))
                     
                     if reconnected == False:
                         allOk = False
@@ -3071,7 +3090,7 @@ class chartArea(QFrame):
         allOk = None
         
         if kpi in self.widget.nkpis[host]:
-        
+            # remove kpi
             if modifiers & Qt.ControlModifier:
                 for hst in range(0, len(self.widget.hosts)):
                     
@@ -3108,9 +3127,12 @@ class chartArea(QFrame):
             
             self.widget.update()
         else:
+            # add kpi
             fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
             
+            print('here 1')
             if modifiers & Qt.ControlModifier:
+                print('here 2')
                 # okay this is a confusing one:
                 # on Control+click we by default only add the kpi for all the hosts, _same port_
                 # BUT if Shift also pressed - we ignore the port and add bloody everything
@@ -3134,6 +3156,7 @@ class chartArea(QFrame):
                             #self.widget.nkpis[hst].append(kpi)
                             kpis[hst] = self.widget.nkpis[hst] + [kpi]
             else:
+                print('here 3')
                 #self.widget.nkpis[host].append(kpi)
                 kpis = self.widget.nkpis[host] + [kpi]
                 
@@ -3155,8 +3178,11 @@ class chartArea(QFrame):
                                 if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):  # doesnt look right 27.01.2021
                                     
                                     if len(kpis[hst]) > 0:
+                                        dpidx = self.widget.hosts[hst]['dpi']
+                                        dp = self.ndp[dpidx]
+                                        
                                         t1 = time.time()
-                                        self.dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst], wnd=self)
+                                        dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst], wnd=self)
                                         self.widget.nkpis[hst] = kpis[hst]
                                         
                                         t2 = time.time()
@@ -3169,7 +3195,7 @@ class chartArea(QFrame):
                         except utils.dbException as e:
                             log('[!] getData: %s' % str(e))
                             self.setStatus('error')
-                            reconnected = self.connectionLost(str(e))
+                            reconnected = self.connectionLost(dp, str(e))
                             
                             if reconnected == False:
                                 allOk = False
@@ -3177,11 +3203,14 @@ class chartArea(QFrame):
                     self.setStatus('idle', True)
                         
                 else:
+                    print('here 4')
                     for hst in range(0, len(self.widget.hosts)):
                         if hst == host:
+                            print('here 5')
                             # normal click after alt-click (somewhere before)
                             allOk = request_kpis(self, host_d, host, kpi, kpis)
                         else: 
+                            print('here 6')
                             #check for kpis existing in host list but not existing in data:
                             diff = substract(self.widget.nkpis[hst], self.widget.ndata[hst].keys())
 
@@ -3590,10 +3619,12 @@ class chartArea(QFrame):
                 
     def reloadChart(self):
     
+        dp = None
+        
         if self.understandTimes() == False:
             return
 
-        if self.dp is None:
+        if not self.ndp:
             self.statusMessage('Not connected to the DB', True)
             return
 
@@ -3640,14 +3671,17 @@ class chartArea(QFrame):
                                 self.widget.nkpis[host].remove(k)
                             else:
                                 log('ok')
+                                
+                        dpidx = self.widget.hosts[host]['dpi']
+                        dp = self.ndp[dpidx]
                         
-                        self.dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host], wnd=self)
+                        dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host], wnd=self)
                         actualRequest = True
                 allOk = True
 
             except utils.dbException as e:
                 self.setStatus('error', True)
-                reconnected = self.connectionLost(str(e))
+                reconnected = self.connectionLost(dp, str(e))
                 
                 if reconnected == False:
                     log('reconnected == False')
@@ -3751,7 +3785,9 @@ class chartArea(QFrame):
         
         super().__init__()
 
-
+        '''
+        the block commented out 2022-11-23
+        
         mode = cfg('mode')
         
         if mode:
@@ -3766,6 +3802,7 @@ class chartArea(QFrame):
                 self.dp = dpTrace.dataProvider(files) # trace data provider
             else:
                 self.dp = dpDummy.dataProvider() # generated data
+        '''
         
         grp = QGroupBox()
         hbar = QHBoxLayout();
@@ -3891,6 +3928,7 @@ class chartArea(QFrame):
         #log(type(self.dp).__name__)
         
         if hasattr(self.dp, 'dbProperties'):
+            assert False, 'should not reach here: timeZoneDelta'
             self.widget.timeZoneDelta = self.dp.dbProperties['timeZoneDelta']
         
         # register widget --> chartArea signals

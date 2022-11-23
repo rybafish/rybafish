@@ -658,26 +658,45 @@ class hslWindow(QMainWindow):
                         
                 # close damn chart console
 
-                if self.chartArea.dp is not None:
-                    self.chartArea.dp.close()
-                    del self.chartArea.dp
-                    self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+                if True:
+                    doneSomething = False
+
+                    numDPs = len(self.chartArea.ndp)
+
+                    # close and destroy all the DPs...
+                    while self.chartArea.ndp:
+                        dp = self.chartArea.ndp.pop()
+                        if dp is not None:
+                            dp.close()
+
+                            # have no idea if this has any sense at all! 2022-11-23 (was here since s2j)
+                            if dp.dbi.dbinterface is not None:
+                                log('dbi.dbinterface.destroy() call')
+                                dp.dbi.dbinterface.destroy()
+                            
+                            del dp
+                            doneSomething = True
+                        
+                    if doneSomething:
+                        self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
 
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
                 self.chartArea.setStatus('sync', True)
                 
-                if dbi.dbinterface is not None:
-                    dbi.dbinterface.destroy()
-                    
-                self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+                # 2022-11-23
+                #self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+                dp = dpDB.dataProvider(conf) # db data provider
                 
-                if 'disconnectSignal' in self.chartArea.dp.options:
-                    self.chartArea.dp.disconnected.connect(self.chartArea.dpDisconnected)
+                dpidx = self.chartArea.appendDP(dp)
+                log(f'Dataprovider added, idx: {dpidx}', 5)
+                
+                if 'disconnectSignal' in dp.options:
+                    dp.disconnected.connect(self.chartArea.dpDisconnected)
                     
-                if 'busySignal' in self.chartArea.dp.options:
-                    self.chartArea.dp.busy.connect(self.chartArea.dpBusy)
+                if 'busySignal' in dp.options:
+                    dp.busy.connect(self.chartArea.dpBusy)
                     
                 self.chartArea.setStatus('idle')
 
@@ -691,7 +710,7 @@ class hslWindow(QMainWindow):
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
                         log('--> dumplayout, init kpis:' + str(self.layout['kpis']), 5)
-                        self.chartArea.initDP(self.layout['kpis'].copy())
+                        self.chartArea.initDP(dpidx, self.layout['kpis'].copy())
                         
                         if self.layout['legend']:
                             self.chartArea.widget.legend = 'hosts'
@@ -699,7 +718,7 @@ class hslWindow(QMainWindow):
                         self.kpisTable.host = None
                     else:
                         log('--> dumplayout, no kpis', 5)
-                        self.chartArea.initDP()
+                        self.chartArea.initDP(dpidx)
                         self.kpisTable.host = None
                        
 
@@ -714,13 +733,13 @@ class hslWindow(QMainWindow):
                         
                         
                 else:
-                    self.chartArea.initDP()
+                    self.chartArea.initDP(dpidx)
                 
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
                         self.statusMessage('Loading saved kpis...', True)
 
-                if hasattr(self.chartArea.dp, 'dbProperties'):
+                if hasattr(dp, 'dbProperties'):
                     '''
                     
                     moved inside inidDP()
@@ -739,21 +758,21 @@ class hslWindow(QMainWindow):
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
                     
-                if 'sid' in self.chartArea.dp.dbProperties:
-                    sid = self.chartArea.dp.dbProperties['sid']
+                if 'sid' in dp.dbProperties:
+                    sid = dp.dbProperties['sid']
                 else:
                     sid = ''
                 
                 propStr = conf['user'] + '@' + sid
                 
-                tenant = self.chartArea.dp.dbProperties.get('tenant')
+                tenant = dp.dbProperties.get('tenant')
                 
                 if tenant:
                     windowStr = ('%s %s@%s' % (conf['user'], tenant, sid))
                 else:
                     windowStr = propStr
                     
-                dbver = self.chartArea.dp.dbProperties.get('version')
+                dbver = dp.dbProperties.get('version')
                     
                 if dbver:
                     windowStr += ', ' + dbver
@@ -768,8 +787,8 @@ class hslWindow(QMainWindow):
                 if cfg('keepalive'):
                     try:
                         keepalive = int(cfg('keepalive'))
-                        self.chartArea.dp.enableKeepAlive(self, keepalive)
-                    except:
+                        dp.enableKeepAlive(self, keepalive)
+                    except ValueError:
                         log('wrong keepalive setting: %s' % (cfg('keepalive')))
                                 
             except dbException as e:
@@ -1087,7 +1106,7 @@ class hslWindow(QMainWindow):
             #self.chartArea.dp.dbProperties = {}
             #self.chartArea.dp.dbProperties['timeZoneDelta'] = -3*3600
             
-            self.chartArea.initDP(message = 'Parsing the trace file, will take a minute or so...')
+            self.chartArea.initDP(message='Parsing the trace file, will take a minute or so...')
 
             toTime = self.chartArea.widget.hosts[0]['to']
             fromTime = toTime - datetime.timedelta(hours = 10)
@@ -1661,27 +1680,12 @@ class hslWindow(QMainWindow):
             ind.iClicked.connect(console.reportRuntime)
 
             ind.iToggle.connect(console.updateRuntime)
-            
-            if cfg('developmentMode'): 
-                console.cons.setPlainText('''select 0 from dummy;
-create procedure ...
-(
-(as begin)
-select * from dummy);
-end;
-
-where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59' -- test comment
-
-where not "NAME1" = '' and "DOKST" in ('D0', 'D2') and (1 = 2)
-
-select 1 from dummy;
-select 2 from dummy;
-select 3 from dummy;''');
-                
+                            
             console.dummyResultTable()
         
         self.statusMessage('', False)
         
         if self.chartArea.dp:
+            assert False, 'Should not ever reach this self.chartArea.initDP()'
             self.chartArea.initDP()
         

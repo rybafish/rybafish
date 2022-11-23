@@ -122,6 +122,8 @@ class sqlite():
             return True
             
         def detectType(t):
+            #log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}')
+            
             if type(t) == int:
                 return 1
                 
@@ -348,7 +350,7 @@ class sqlite():
             
         return False
     
-    def initHosts(self, conn, hosts, dbProperties=[]):
+    def initHosts(self, conn, dpidx, hosts, dbProperties=[]):
         '''
             fills up the hosts list, returns nothing
         '''
@@ -393,7 +395,8 @@ class sqlite():
                         'db': ten,
                         'host': rows[i][0],
                         'service': srv,
-                        'port': str(rows[i][1])
+                        'port': str(rows[i][1]),
+                        'dpi': dpidx
                         })
 
         for r in hosts:

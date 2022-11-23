@@ -176,8 +176,10 @@ class dataProvider(QObject):
             self.disconnected.emit()
         
     @profiler
-    def initHosts(self, hosts):
+    def initHosts(self, dpidx, hosts):
         '''
+            dpidx - data provider index to link hosts to a dp
+            hosts - list of widget.hosts
             
             returns nothing, it fills provided hosts structure (linked from widget)
         '''
@@ -191,7 +193,7 @@ class dataProvider(QObject):
             return
             
         if hasattr(self.dbi, 'initHosts'):
-            self.dbi.initHosts(self.connection, hosts, self.dbProperties)
+            self.dbi.initHosts(self.connection, dpidx, hosts, self.dbProperties)
             return
 
         '''
@@ -263,6 +265,7 @@ class dataProvider(QObject):
                             'port':rows[i][1].replace(pm[0], pm[1]),
                             #'from':rows[i][2],
                             #'to':rows[i][3]
+                            'dbi': dpidx
                             })
         else:
             for i in range(0, len(rows)):
@@ -280,6 +283,7 @@ class dataProvider(QObject):
                             'port':rows[i][1],
                             #'from':rows[i][2],
                             #'to':rows[i][3]
+                            'dbi': dpidx
                             })
         
     @profiler
@@ -356,6 +360,9 @@ class dataProvider(QObject):
         '''
         
         host = h.copy()
+        
+        print('getdata')
+        print(host)
                 
         if cfg('hostmapping'):
             hm = cfg('hostmapping')
