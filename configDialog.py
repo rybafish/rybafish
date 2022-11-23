@@ -1,4 +1,4 @@
-import sys
+import sys, os
 from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
     QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox, QComboBox, QFrame, QGroupBox, QSplitter)
     
@@ -18,8 +18,15 @@ class Config(QDialog):
     
     def setConf(self, conf):
         try:
+            dbi = conf.get('dbi')
+
             if conf:
-                hostport = conf['host'] + ':' + str(conf['port'])
+
+                if dbi == 'SLT':
+                    hostport = conf['host']
+                else:
+                    hostport = conf['host'] + ':' + str(conf['port'])
+                
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
                 self.pwdEdit.setText(conf['password'])
@@ -27,8 +34,6 @@ class Config(QDialog):
                 if 'ssl' in conf:
                     self.sslCB.setChecked(conf['ssl'])
                                 
-                dbi = conf.get('dbi')
-                
                 if dbi:
                     for i in range(self.driverCB.count()):
                         if dbidict[self.driverCB.itemText(i)] == dbi:
@@ -84,21 +89,44 @@ class Config(QDialog):
         result = cf.exec_()
         
         hostport = cf.hostportEdit.text()
-
-        try:
-            host, port = hostport.split(':')
         
-            port = int(port)
+        dbi = dbidict[cf.driverCB.currentText()]
 
-            cf.config['ok'] = True
-            cf.config['host'] = host
-            cf.config['port'] = port
-        except:
-            cf.hostportEdit.setStyleSheet("color: red;")
-            cf.config['ok'] = False
-            cf.config['port'] = ''
-            cf.config['host'] = hostport
-        
+        if dbi == 'SLT':
+            filename = hostport
+            if os.path.exists(filename):
+                cf.config['ok'] = True
+                cf.config['port'] = ''
+                cf.config['host'] = hostport
+            else:
+                log(f'File does not exist: {filename}', 2)
+                cf.config['error'] = f'Cannot start the connection.\nFile does not exist: {filename}'
+                cf.config['ok'] = False
+        else:
+            try:
+            
+                if dbi == 'SLT':
+                    host = hostport
+                    port = ''
+                else:
+                    host, port = hostport.split(':')
+            
+                port = int(port)
+
+                cf.config['ok'] = True
+                cf.config['host'] = host
+                cf.config['port'] = port
+                
+            #ValueError
+            except Exception as e:
+                log(f'getConfig exception {type(e)}')
+                log(f'getConfig exception {e}')
+                cf.hostportEdit.setStyleSheet("color: red;")
+                cf.config['ok'] = False
+                cf.config['port'] = ''
+                cf.config['host'] = hostport
+                cf.config['error'] = f'Connection exception: {type(e)}\n{e}'
+
         cf.config['name'] = cf.confCB.currentText()
         cf.config['dbi'] = dbidict[cf.driverCB.currentText()]
         
@@ -114,7 +142,7 @@ class Config(QDialog):
     
         drv = self.driverCB.currentText()
         
-        if drv == 'ABAP Proxy':
+        if drv == 'ABAP Proxy' or drv == 'SQLite DB':
             self.userEdit.setDisabled(True)
             self.pwdEdit.setDisabled(True)
             self.sslCB.setDisabled(True)
@@ -129,10 +157,15 @@ class Config(QDialog):
     def confChange(self, i):
     
         def parseHost(hostport):
+            dbi = c.get('dbi')
         
             try:
-                host, port = hostport.split(':')
-                port = int(port)
+                if dbi == 'SLT':
+                    host = hostport
+                    port = ''
+                else:
+                    host, port = hostport.split(':')
+                    port = int(port)
                 
                 self.hostportEdit.setStyleSheet("color: black;")
 
@@ -262,8 +295,12 @@ class Config(QDialog):
         form = QGridLayout()
         
         self.driverCB = QComboBox()
-        self.driverCB.addItem('HANA DB')
-        self.driverCB.addItem('ABAP Proxy')
+
+        #self.driverCB.addItem('HANA DB')
+        #self.driverCB.addItem('ABAP Proxy')
+        
+        for drv in dbidict.keys():
+            self.driverCB.addItem(drv)
         
         iconPath = resourcePath('ico', 'favicon.png')
         
@@ -388,7 +425,7 @@ class Config(QDialog):
             vbox.addWidget(confGroup)
         
         if cfg('experimental', False) and cfg('S2J', False):
-            vbox.addLayout(dbiHBox) # driver type
+            vbox.addLayout(dbiHBox) # driver type selection combo box
         
         vbox.addLayout(form) # main form
         

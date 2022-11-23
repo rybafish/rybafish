@@ -100,7 +100,7 @@ class hdbi ():
         
         return connection
 
-    def console_connection (self, server, dbProperties = None, data_format_version2 = False):
+    def console_connection(self, server, dbProperties = None, data_format_version2 = False):
 
         longdate = cfg('longdate', True)
 
@@ -152,12 +152,23 @@ class hdbi ():
         return connection
 
     def get_connection_id(self, conn):
-        rows = self.execute_query(conn, "select connection_id from m_connections where own = 'TRUE'", [])
+    
+        if not conn:
+            log('[w] get_connection_id call with non existing connection', 2)
+            return None
+    
+        try:
+            rows = self.execute_query(conn, "select connection_id from m_connections where own = 'TRUE'", [])
+        except dbException as e:
+            log(f'[E] exception in get_connection_id: {e}', 2)
+            return None
 
         if len(rows):
             connection_id = rows[0][0]
+            log('connection id: {connection_id}', 4)
             return connection_id
         else:
+            log('[W] connection id not detected', 2)
             return None
         
 
@@ -276,6 +287,27 @@ class hdbi ():
             additionaly it is use in Gantt customKPIs because of the dynamic number of return columns 
             
             It also used a modified version of the pyhdb cursor implementation because of the https://github.com/rybafish/rybafish/issues/97
+            
+        Return structure
+            The call returns:
+            rows_list - list of 2-dimentional arrays of results sets, see below
+            cols_list - list (of lists) of descriptions, see below
+            cursor - cursor might be used for some additional interaction with the db layer, extract list of result set ids...
+            psid - statement id to be used in...
+            
+            the interface supports multiple result sets this is why rows_list and columns_list are double-layered
+            in case of single resultset, i.e. select 1 a, 2 b, 3 c from dumy)
+            
+            row_list = [                # first resultset
+                    [1, 2 , 3]          # row itself
+            ]
+            col_list = [                # first resultset
+                ['A', <int>],           # first column named A, type - integer
+                ['B', <int>],           # ...
+                ['C', <int>]
+            ]
+            
+            top level of both lists has the same number of elements (resultsets)
         '''
 
         if not connection:
@@ -552,3 +584,4 @@ class hdbi ():
             return True
         else:
             return False        
+            

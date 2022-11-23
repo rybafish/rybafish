@@ -817,7 +817,7 @@ def hType (i, hosts):
         
 def clarifyGroups():
     '''
-        gives pre-defined names to most useful groups
+        gives pre-defined names to most useful groups like memory and threads
     '''
 
     thread_kpis = ['active_thread_count',
@@ -986,8 +986,8 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
                     'description':  kpi[5],
                     'sUnit':        kpi[6],
                     'dUnit':        kpi[7],
-                    'color':        kpi[8],
-                    'style':        nsStyle(kpi[9])
+                    'color':        utils.safeInt(kpi[8]),
+                    'style':        nsStyle(utils.safeInt(kpi[9]))
                 }
             
             kpiStylesNN[type][kpiName] = createStyle(kpiDummy)

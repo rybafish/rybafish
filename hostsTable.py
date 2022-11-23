@@ -39,6 +39,8 @@ class hostsTable(QTableWidget):
         
         for host in self.hosts:
         
+            log(f'hostsUpdated: {host}', 5)
+        
             self.setRowHeight(i, 10)
             
             self.setItem(i, 2, QTableWidgetItem(host['host']))

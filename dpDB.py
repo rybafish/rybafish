@@ -1,3 +1,7 @@
+'''
+    dpDB is the main data provider based on the database interface (dbi)
+'''
+
 from PyQt5.QtCore import QObject
 
 from array import array
@@ -45,7 +49,8 @@ class dataProvider(QObject):
     
         super().__init__()
         
-        log('connecting to %s:\\\\%s:%i...' % (server['dbi'], server['host'], server['port']))
+        #log('connecting to %s:\\\\%s:%i...' % (server['dbi'], server['host'], server['port']))
+        log(f"Connecting to {server['dbi']}:\\\\{server['host']}:{server['port']}...")
 
         dbimpl = dbi(server['dbi'])
         self.dbi = dbimpl.dbinterface
@@ -170,20 +175,36 @@ class dataProvider(QObject):
             self.connection = None
             self.disconnected.emit()
         
-        
-    def initHosts(self, hosts, hostKPIs, srvcKPIs):
+    @profiler
+    def initHosts(self, hosts):
+        '''
+            
+            returns nothing, it fills provided hosts structure (linked from widget)
+        '''
     
         tenant = self.dbProperties.get('tenant')
-    
-        kpis_sql = sql.kpis_info
-
+                    
+        log('init hosts: %s' % str(hosts))
+        
         if not self.connection:
-            log('no db connection...')
+            log('No db connection...')
+            return
+            
+        if hasattr(self.dbi, 'initHosts'):
+            self.dbi.initHosts(self.connection, hosts, self.dbProperties)
             return
 
-        log('init hosts: %s' % str(hosts))
-        log('init hosts, hostKPIs: %s' % str(hostKPIs))
-        log('init hosts, srvcKPIs: %s' % str(srvcKPIs))
+        '''
+            below is the default old-style hard-code implementation for HANA + S2J dbis
+            as you see above it will be only used if dbi does not have its own initHosts
+            implementation.
+            
+            it is not moved to dbi_hana and dbi_st04 beacause this will require the
+            code duplication or another import, so, just leave this legacy impl here.
+        '''
+        
+        # prepare data for populating hosts/services list
+        # it is based on port/service name mapping available in m_services
 
         if tenant and tenant.lower() == 'systemdb':
             sql_string = 'select host, port, database_name, service_name from sys_databases.m_services order by host, port'
@@ -192,6 +213,7 @@ class dataProvider(QObject):
             
         rows = self.dbi.execute_query(self.connection, sql_string, [])
         
+        # this is a dict to enrich hosts table with service names based on SQL above
         services = {}
         
         for r in rows:
@@ -202,14 +224,13 @@ class dataProvider(QObject):
             
             skey = '%s:%s' % (host, port)
             services[skey] = [ten, srv]
-            
+
+        #extract hosts and services based on m_load_ views...
         sql_string = sql.hosts_info
 
         if cfg('ess'):
             #dirty but this will work
             sql_string = sql_string.replace('m_load_history', '_sys_statistics.host_load_history')
-
-        t0 = time.time()
         
         rows = self.dbi.execute_query(self.connection, sql_string, [])
         
@@ -218,6 +239,8 @@ class dataProvider(QObject):
             log('[W] try checking m_load_history views if there any data', 1)
             log('[W] potential reason: missing MONITORING role', 1)
         
+        # populate hosts list
+        # each item is a dict containing tenant, hostname, service_name and port
         if cfg('hostmapping'):
             for i in range(0, len(rows)):
             
@@ -258,13 +281,38 @@ class dataProvider(QObject):
                             #'from':rows[i][2],
                             #'to':rows[i][3]
                             })
-
-        rows = self.dbi.execute_query(self.connection, kpis_sql, [])
         
+    @profiler
+    def initKPIs(self, hostKPIs, srvcKPIs):
+        # okay, populate KPIs now: hostKPIs and srvcKPIs
+        
+        dbiName = self.dbProperties.get('dbi')
+
+        log('init KPIs, hostKPIs: %s' % str(hostKPIs))
+        log('init KPIs, srvcKPIs: %s' % str(srvcKPIs))
+
+        if not self.connection:
+            log('No db connection...')
+            return
+        
+        if hasattr(self.dbi, 'initKPIs'):
+            self.dbi.initKPIs(self.connection, hostKPIs, srvcKPIs)
+            return
+            
+        '''
+            same approach as for initHosts
+            
+            old-style hard-coded hana-db implementation below
+            used by hdb and s2j dbi types
+        '''
+        
+        # load 'standard" KPIs
+        kpis_sql = sql.kpis_info
+        
+        rows = self.dbi.execute_query(self.connection, kpis_sql, [])
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
 
-        t1 = time.time()
-
+        # (re)load custom KPIs
         try:
             dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
         except customKPIException as e:
@@ -272,11 +320,8 @@ class dataProvider(QObject):
             log('[e] fix or delete the problemmatic yaml for proper connect')
             raise e
 
-        t2 = time.time()
-        
         kpiDescriptions.clarifyGroups()
-        
-        log('hostsInit time: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
+
         
     def splitKpis(self, type, kpis):
         '''
@@ -788,6 +833,8 @@ class dataProvider(QObject):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
+            
+            sql - ready to be executed SQL
         '''
         
         def printDump(data):

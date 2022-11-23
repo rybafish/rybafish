@@ -216,7 +216,7 @@ class hslWindow(QMainWindow):
         
         return kpis
         
-    def dumpLayout(self, closeTabs = True):
+    def dumpLayout(self, closeTabs=True, crashMode=False):
     
         if self.connectionConf:
             connection = self.connectionConf.get('name')
@@ -298,7 +298,7 @@ class hslWindow(QMainWindow):
                 
         abandone = False
         
-        if somethingRunning:
+        if somethingRunning and not crashMode:
             log('There is something running, need to show a warning', 4)
             
             answer = utils.yesNoDialog('Warning', 'It seems there is something still running.\n\nAre you sure you want to exit and abandone the execution?')
@@ -812,7 +812,13 @@ class hslWindow(QMainWindow):
             if ok and conf['ok'] == False: #it's connection string dict in case of [Cancel]
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection string')
-                msgBox.setText('Could not start the connection. Please check the connection string: host, port, etc.')
+                
+                if conf.get('error'):
+                    msgText = conf['error']
+                else:
+                    msgText = 'Could not start the connection. Please check the connection string: host, port, etc.'
+                    
+                msgBox.setText(msgText)
                 iconPath = resourcePath('ico', 'favicon.png')
                 msgBox.setWindowIcon(QIcon(iconPath))
                 msgBox.setIcon(QMessageBox.Warning)
