@@ -2171,6 +2171,7 @@ class chartArea(QFrame):
     dbProperties = {} # db properties, like timeZone, kpis available, etc
     
     dp = None # data provider object
+    ndp = [] # new dp approach, list now.
     
     timer = None
     refreshCB = None
