@@ -1,3 +1,5 @@
+import sys #temp
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPen, QColor
 
@@ -618,13 +620,13 @@ def resetRaduga():
     currentIndex = 0
     
 kpiStylesN = {}
-kpiStylesNN = {'host':{}, 'service':{}}
+kpiStylesNN = {'host':{}, 'service':{}}     # supposed to keep all the kpi styles definitions
 
 customSql = {}
 
 def createStyle(kpi, custom = False, sqlIdx = None):
 
-    log(str(kpi))
+    #log(str(kpi))
 
     #style = {}
     style = Style(sqlIdx)
@@ -956,6 +958,21 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
     '''
         Same interface to be reused for DB trace
         
+        input rows list:
+            ('2.10', '', '', 0, 'SQL', '', '', '', 0, 0) -- header/group
+            ('2.10.01', 'M_LOAD_HISTORY_SERVICE', 'CONNECTION_COUNT', 0, 'Open Connections', 'Number of open SQL connections', '', '', 4251856, 1)
+            
+            r[0] - hierarchy (not used)
+            r[1] - data source
+            r[2] - sql column name for the kpi --> 'name'
+            r[3] - scaling croup
+            r[4] - human readable name         --> 'label' 
+            r[5] - description
+            r[6] - sUnit
+            r[7] - dUnit
+            r[8] - color
+            r[9] - style (solid, dashed, etc)
+        
         Output:
             hostKPIs, srvcKPIs are filled with the respective KPIs lists
             
@@ -963,6 +980,8 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
     '''
     
     for kpi in rows:
+    
+        #log(f'[init kpi] {kpi}')
         
         if kpi[1].lower() == 'm_load_history_host':
             type = 'host'
@@ -996,3 +1015,7 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
             hostKPIs.append(kpiName)
         else:
             srvcKPIs.append(kpiName)
+            
+    #log(str(kpiStylesNN))
+    #sys.exit()
+    

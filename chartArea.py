@@ -2168,6 +2168,10 @@ class chartArea(QFrame):
     hostKPIs = [] # list of available host KPIS, sql names
     srvcKPIs = [] # list of available srvc KPIS, sql names
     
+    # those two gonna be per host:
+    hostKPIsList = []          # list of KPIs 
+    hostKPIsStyles =   []      # KPI styles to replace kpiStylesNN
+    
     dbProperties = {} # db properties, like timeZone, kpis available, etc
     
     dp = None # data provider object, belongs to chart area
@@ -2225,8 +2229,8 @@ class chartArea(QFrame):
                 if type == 'service' and kpi in self.srvcKPIs:
                     self.srvcKPIs.remove(kpi)
                 else:
-                    if kpi in self.hostKPIs:
-                        self.hostKPIs.remove(kpi)
+                    if kpi in self._hostKPIs:
+                        self._hostKPIs.remove(kpi)
                     
             delKpis = []
             
@@ -2708,7 +2712,6 @@ class chartArea(QFrame):
                 self.widget.ndata[host]
             
         '''
-        log('cleanup call...')
         
         for host in range(len(self.widget.hosts)):
 
@@ -2724,6 +2727,12 @@ class chartArea(QFrame):
                     if kpi in self.widget.ndata[host]:
                         #might be empty for alt-added
                         del(self.widget.ndata[host][kpi]) # ndata is a dict
+                        
+
+                log(f'clear styles {host}')
+                self.hostKPIsList[host].clear()
+                self.hostKPIsStyles[host].clear()
+                        
             else:
                 log('[w] kpis list is empty')
 
@@ -2738,6 +2747,9 @@ class chartArea(QFrame):
         self.widget.nscales.clear()
         self.widget.ndata.clear()
         
+        log('clear styles top lists...')
+        self.hostKPIsList.clear()
+        self.hostKPIsStyles.clear()
         
         # 2021-11-12
         
@@ -2758,7 +2770,7 @@ class chartArea(QFrame):
         
         log(f'list of DPs ({len(self.ndp)}):', 4)
         for dp in self.ndp:
-            log(f'{dp}, {type(dp)}', 4)
+            log(f'    {dp}, {type(dp)}', 4)
             
         idx = len(self.ndp) - 1
             
@@ -2768,6 +2780,8 @@ class chartArea(QFrame):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
+            
+            dpidx > 0 implies secondary connection, this is why cleanup will be skipped
         '''
 
         def myIntersect(l1, l2):
@@ -2781,21 +2795,25 @@ class chartArea(QFrame):
             
         dp = self.ndp[dpidx]  #extract the data provider instance
             
-        log('before cleanup:' + str(kpis))
-        self.cleanup()
-        log('after cleanup:' + str(kpis))
             
-        self.widget.ndata.clear()
+        if dpidx == 0:
+            log('before cleanup:' + str(kpis))
+            self.cleanup()
+            log('after cleanup:' + str(kpis))
+                
+            self.widget.ndata.clear()
 
-        self.widget.hosts.clear()
-        self.widget.nkpis.clear()
+            self.widget.hosts.clear()
+            self.widget.nkpis.clear()
 
-        self.widget.update()
-        
-        self.hostKPIs.clear()
-        self.srvcKPIs.clear()
-        
-        log('Cleanup complete')
+            self.widget.update()
+            
+            #self._hostKPIs.clear()
+            self.srvcKPIs.clear()
+            
+            log('Cleanup complete')
+        else:
+            log('Secondary DP, no cleanup performed')
         
         if message:
             self.statusMessage(message)
@@ -2805,8 +2823,30 @@ class chartArea(QFrame):
         self.repaint()
         
         try:
-            dp.initHosts(dpidx, self.widget.hosts)
+            newHosts = dp.initHosts(dpidx)
+
+            # append hosts, not replace if that would be requred, hosts would be cleared above
+            for h in newHosts:
+                self.widget.hosts.append(h)
+                self.hostKPIsList.append([])        # create a corresponding list of KPIs 
+                self.hostKPIsStyles.append({})      # create a corresponding list of KPIs
+            
+            # next call - detect kpis, populate lists of service/host KPIs 
+            # and populate kpiStylesNN with style definitions
             dp.initKPIs(self.hostKPIs, self.srvcKPIs)
+
+            #build new styles structures
+            for i in range(len(self.widget.hosts)):
+                if self.widget.hosts[i]['port'] == '':
+                    self.hostKPIsList[i] = self.hostKPIs.copy()
+                    self.hostKPIsStyles[i] = kpiStylesNN['host'].copy()
+                else:
+                    self.hostKPIsList[i] = self.srvcKPIs.copy()
+                    self.hostKPIsStyles[i] = kpiStylesNN['service'].copy()
+            
+            #log(self.srvcKPIs)
+            #log(self.srvcKPIs)
+            
         except utils.customKPIException as e:
             log('[!] initHosts customKPIException: %s' % str(e), 2)
             utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
@@ -2839,7 +2879,7 @@ class chartArea(QFrame):
                 
                 if hst in kpis:
                     if hst[-1] == ':':
-                        kpis_n = kpis_n = myIntersect(kpis[hst], self.hostKPIs)
+                        kpis_n = kpis_n = myIntersect(kpis[hst], self._hostKPIs)
                     else:
                         kpis_n = kpis_n = myIntersect(kpis[hst], self.srvcKPIs)
                         
@@ -3027,6 +3067,8 @@ class chartArea(QFrame):
             
             # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
             # self.widget.paintLock = True
+            
+            log(f'request_kpis, {host_d}')
             
             dpidx = host_d['dpi']
             dp = self.ndp[dpidx]
@@ -3401,6 +3443,10 @@ class chartArea(QFrame):
 
                 subtype = kpiDescriptions.getSubtype(type, kpi)
 
+                if kpi not in self.hostKPIsList[h]:
+                    log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
+                    continue
+                '''
                 if type == 'service':
                     if kpi not in self.srvcKPIs:
                         log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
@@ -3409,6 +3455,7 @@ class chartArea(QFrame):
                     if kpi not in self.hostKPIs:
                         log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
                         continue
+                '''
                     
                 if subtype == 'gantt':
                 
@@ -3672,6 +3719,9 @@ class chartArea(QFrame):
                             else:
                                 log('ok')
                                 
+                                
+                        log(f'{host=}')
+                        log(f'{self.widget.hosts[host]}')
                         dpidx = self.widget.hosts[host]['dpi']
                         dp = self.ndp[dpidx]
                         

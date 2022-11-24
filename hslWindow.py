@@ -610,7 +610,14 @@ class hslWindow(QMainWindow):
             self.chartArea.initDP()
 
     def menuConfig(self):
+        self.processConnection()
+
+    def menuConfigSecondary(self):
+        self.processConnection(secondary=True)
         
+    def processConnection(self, secondary=False):
+        
+        log(f'processConnection, {secondary=}')
         if self.connectionConf is None:
             connConf = cfg('server')
         else:
@@ -626,7 +633,7 @@ class hslWindow(QMainWindow):
         
         log('config dialog, ok? %s' % str(ok), 5)
         
-        if ok:
+        if ok and not secondary:
             self.connectionConf = conf
         
         if ok and conf['ok']:
@@ -657,25 +664,31 @@ class hslWindow(QMainWindow):
                         log('disconnected...')
                         
                 # close damn chart console
-
-                if True:
+                
+                if not secondary:
+                    log('Clean up DPs and destroy DBIs...')
                     doneSomething = False
 
                     numDPs = len(self.chartArea.ndp)
 
                     # close and destroy all the DPs...
+                    
+                    log(f'DPs list: {self.chartArea.ndp}', 5)
+                    
                     while self.chartArea.ndp:
                         dp = self.chartArea.ndp.pop()
                         if dp is not None:
                             dp.close()
 
                             # have no idea if this has any sense at all! 2022-11-23 (was here since s2j)
-                            if dp.dbi.dbinterface is not None:
-                                log('dbi.dbinterface.destroy() call')
-                                dp.dbi.dbinterface.destroy()
+                            if dp.dbi is not None:
+                                log('dbi.dbinterface.destroy() call', 5)
+                                dp.dbi.destroy()
                             
                             del dp
                             doneSomething = True
+                            
+                    log(f'DPs list: {self.chartArea.ndp}', 5)
                         
                     if doneSomething:
                         self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
@@ -1245,6 +1258,10 @@ class hslWindow(QMainWindow):
         kpisTable.hostKPIs = self.chartArea.hostKPIs
         kpisTable.srvcKPIs = self.chartArea.srvcKPIs
         kpisTable.nkpis = self.chartArea.widget.nkpis
+
+        #link kpisTable structures to the chartArea
+        kpisTable.hostKPIsList = self.chartArea.hostKPIsList
+        kpisTable.hostKPIsStyles = self.chartArea.hostKPIsStyles
         
         # bottm part left+right
         self.kpiSplitter = QSplitter(Qt.Horizontal)
@@ -1337,6 +1354,10 @@ class hslWindow(QMainWindow):
         configAct.setStatusTip('Configure connection')
         configAct.triggered.connect(self.menuConfig)
 
+        configSecAct = QAction('Secondary connection', self)
+        configSecAct.setStatusTip('Open a secondary connection')
+        configSecAct.triggered.connect(self.menuConfig)
+
         importAct = QAction('&Import nameserver history trace', self)
         importAct.setShortcut('Ctrl+I')
         importAct.setStatusTip('Import nameserver.trc')
@@ -1360,6 +1381,9 @@ class hslWindow(QMainWindow):
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(configAct)
+        
+        if cfg('dev'):
+            fileMenu.addAction(configSecAct)
 
         fileMenu.addAction(importAct)
         

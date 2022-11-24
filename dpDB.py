@@ -176,13 +176,17 @@ class dataProvider(QObject):
             self.disconnected.emit()
         
     @profiler
-    def initHosts(self, dpidx, hosts):
+    def initHosts(self, dpidx):
         '''
             dpidx - data provider index to link hosts to a dp
             hosts - list of widget.hosts
             
-            returns nothing, it fills provided hosts structure (linked from widget)
+            returns list of hosts 
+            old-style approach: returns nothing, it fills provided hosts structure (linked from widget) << depricated with #739
+            
         '''
+        
+        hosts = []
     
         tenant = self.dbProperties.get('tenant')
                     
@@ -265,7 +269,7 @@ class dataProvider(QObject):
                             'port':rows[i][1].replace(pm[0], pm[1]),
                             #'from':rows[i][2],
                             #'to':rows[i][3]
-                            'dbi': dpidx
+                            'dpi': dpidx
                             })
         else:
             for i in range(0, len(rows)):
@@ -283,8 +287,10 @@ class dataProvider(QObject):
                             'port':rows[i][1],
                             #'from':rows[i][2],
                             #'to':rows[i][3]
-                            'dbi': dpidx
+                            'dpi': dpidx
                             })
+                            
+        return hosts
         
     @profiler
     def initKPIs(self, hostKPIs, srvcKPIs):
@@ -355,15 +361,17 @@ class dataProvider(QObject):
     @profiler
     def getData(self, h, fromto, kpiIn, data, wnd = None):
         '''
+        
+            h - host structure
+            fromto dict with 'from' abd 'to' keys
+            kpiIn - list of kpis to request, including custom ones (called cs-something)
+        
             returns boolean
             False = some kpis were disabled due to sql errors
         '''
         
         host = h.copy()
-        
-        print('getdata')
-        print(host)
-                
+                        
         if cfg('hostmapping'):
             hm = cfg('hostmapping')
             pm = cfg('portmapping')
