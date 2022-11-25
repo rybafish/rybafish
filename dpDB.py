@@ -190,15 +190,14 @@ class dataProvider(QObject):
     
         tenant = self.dbProperties.get('tenant')
                     
-        log('init hosts: %s' % str(hosts))
+        log('Init hosts dpDB wrapper: %s' % str(hosts))
         
         if not self.connection:
             log('No db connection...')
             return
             
         if hasattr(self.dbi, 'initHosts'):
-            self.dbi.initHosts(self.connection, dpidx, hosts, self.dbProperties)
-            return
+            return self.dbi.initHosts(self.connection, dpidx, self.dbProperties)
 
         '''
             below is the default old-style hard-code implementation for HANA + S2J dbis
@@ -290,50 +289,51 @@ class dataProvider(QObject):
                             'dpi': dpidx
                             })
                             
-        return hosts
+        #return hosts
         
-    @profiler
-    def initKPIs(self, hostKPIs, srvcKPIs):
-        # okay, populate KPIs now: hostKPIs and srvcKPIs
-        
-        dbiName = self.dbProperties.get('dbi')
-
-        log('init KPIs, hostKPIs: %s' % str(hostKPIs))
-        log('init KPIs, srvcKPIs: %s' % str(srvcKPIs))
-
-        if not self.connection:
-            log('No db connection...')
-            return
-        
-        if hasattr(self.dbi, 'initKPIs'):
-            self.dbi.initKPIs(self.connection, hostKPIs, srvcKPIs)
-            return
-            
-        '''
-            same approach as for initHosts
-            
-            old-style hard-coded hana-db implementation below
-            used by hdb and s2j dbi types
-        '''
+        '''                 ' '
+        '                     '
+        '       K P I s       '
+        '                     '
+        ' '                 '''
         
         # load 'standard" KPIs
         kpis_sql = sql.kpis_info
         
+        hostKPIs = []
+        srvcKPIs = []
+        kpiStylesNNN = {'host':{}, 'service':{}}
+        
         rows = self.dbi.execute_query(self.connection, kpis_sql, [])
-        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
+        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN)
 
         # (re)load custom KPIs
         try:
-            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiStylesNNN)
         except customKPIException as e:
             log('[e] error loading custom kpis')
             log('[e] fix or delete the problemmatic yaml for proper connect')
             raise e
 
-        kpiDescriptions.clarifyGroups()
-
+        kpiDescriptions.clarifyGroups(kpiStylesNNN['host'])
+        kpiDescriptions.clarifyGroups(kpiStylesNNN['service'])
         
-    def splitKpis(self, type, kpis):
+        #build new styles structures
+        
+        hostKPIsList = []
+        hostKPIsStyles = []
+        
+        for host in hosts:
+            if host['port'] == '':
+                hostKPIsList.append(hostKPIs)
+                hostKPIsStyles.append(kpiStylesNNN['host'])
+            else:
+                hostKPIsList.append(srvcKPIs)
+                hostKPIsStyles.append(kpiStylesNNN['service'])
+
+        return hosts, hostKPIsList, hostKPIsStyles
+        
+    def splitKpis(self, kpiStylesNNN, kpis):
         '''
             devides KPIs per source
             '-' entry will contain default ones (m_load_history_...)
@@ -341,14 +341,15 @@ class dataProvider(QObject):
         kpisList = {}
         kpisList['-'] = []
         
+        
         for kpi in kpis:
-            if kpi not in kpiStylesNN[type]:
+            if kpi not in kpiStylesNNN:
                 #kpi disappeared on the fly, who cares
                 log('[!] kpi description does not exist, skipping (%s)' % kpi)
                 continue
                 
             if customKpi(kpi):
-                src = kpiDescriptions.kpiStylesNN[type][kpi]['sql']
+                src = kpiStylesNNN[kpi]['sql']
                 if src in kpisList:
                     kpisList[src].append(kpi)
                 else:
@@ -359,7 +360,7 @@ class dataProvider(QObject):
         return kpisList
         
     @profiler
-    def getData(self, h, fromto, kpiIn, data, wnd = None):
+    def getData(self, h, fromto, kpiIn, data, kpiStylesNNN, wnd = None):
         '''
         
             h - host structure
@@ -399,7 +400,7 @@ class dataProvider(QObject):
         
         params = []
     
-        kpiList = self.splitKpis(type, kpiIn)
+        kpiList = self.splitKpis(kpiStylesNNN, kpiIn)
 
         if host['port'] == '':
             t = 'h'
@@ -454,7 +455,7 @@ class dataProvider(QObject):
             if len(kpis) == 0:
                 continue
                 
-            subtype = kpiDescriptions.getSubtype(type, kpis[0])
+            subtype = kpiStylesNNN[kpis[0]].get('subtype')
             
             if host['port'] == '':
                 if kpiSrc == '-':
@@ -480,20 +481,16 @@ class dataProvider(QObject):
                 if kpiSrc == '-':
                     kpisSql.append(kpi)
                 else:
-                    kpisSql.append(kpiDescriptions.kpiStylesNN[type][kpi]['sqlname'])
+                    kpisSql.append(kpiStylesNNN[kpi]['sqlname'])
                     
-            '''
-            if 'nofilter' in kpiDescriptions.kpiStylesNN[type][kpi] and kpiDescriptions.kpiStylesNN[type][kpi]['nofilter']:
-                nofilter = True
-            '''
-            if kpiDescriptions.kpiStylesNN[type][kpi].get('nofilter'):
+            if kpiStylesNNN[kpi].get('nofilter'):
                 nofilter = True
             
             cols = ', '.join(kpisSql)
             
             if subtype == 'multiline':
                 firstKpi = kpis[0]
-                style = kpiDescriptions.kpiStylesNN[type][firstKpi]
+                style = kpiStylesNNN[firstKpi]
                 groupby = style['groupby']
                 cols += ', ' + groupby
             
@@ -537,10 +534,10 @@ class dataProvider(QObject):
                         
                     title = ''
                     
-                    if kpiDescriptions.kpiStylesNN[type][kpi].get('title') == True:
+                    if kpiStylesNNN[kpi].get('title') == True:
                         title += ', title'
                         
-                    if kpiDescriptions.kpiStylesNN[type][kpi].get('gradient') == True:
+                    if kpiStylesNNN[kpi].get('gradient') == True:
                         title += ', gradient'
                       
                     sql = 'select entity, "START", "STOP", details%s %s %s%s order by entity desc, "START"' % (title, fromTable, hfilter_now, gtfilter_now)
@@ -548,9 +545,9 @@ class dataProvider(QObject):
 
             try:
                 if not gantt:
-                        self.getHostKpis(type, kpis, data, sql, params_now, kpiSrc)
+                        self.getHostKpis(kpiStylesNNN, kpis, data, sql, params_now, kpiSrc)
                 else:
-                    self.getGanttData(type, kpis[0], data, sql, params_now, kpiSrc)
+                    self.getGanttData(kpiStylesNNN, kpis[0], data, sql, params_now, kpiSrc)
                     
             except dbException as e:
             
@@ -580,12 +577,11 @@ class dataProvider(QObject):
                 if reply == True:
                     # need to mark failed kpis as disabled
                     
-                    #badSrc = kpiDescriptions.kpiStylesNN[type][kpis[0]]['sql']
                     badSrc = kpiSrc                    
                     
-                    for kpi in kpiDescriptions.kpiStylesNN[type]:
-                        if kpiDescriptions.kpiStylesNN[type][kpi]['sql'] == badSrc:
-                            kpiDescriptions.kpiStylesNN[type][kpi]['disabled'] = True
+                    for kpi in kpiStylesNNN:
+                        if kpiStylesNNN[kpi]['sql'] == badSrc:
+                            kpiStylesNNN[kpi]['disabled'] = True
                             
                             log('disable custom kpi due to exception: %s%s' % (badSrc, kpi))
 
@@ -618,7 +614,7 @@ class dataProvider(QObject):
         for kpi in kpiIn.copy():
             #print('kpi: ', kpi)
             
-            if kpi not in kpiDescriptions.kpiStylesNN[type] or 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
+            if kpi not in kpiStylesNNN or 'disabled' in kpiStylesNNN[kpi]:
                 # this will affect the actual list of enabled kpis, which is good!
                 kpiIn.remove(kpi)
                 
@@ -626,7 +622,7 @@ class dataProvider(QObject):
         
         return 
 
-    def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
+    def getGanttData(self, kpiStylesNNN, kpi, data, sql, params, kpiSrc):
         
         @profiler
         def normalizeGradient(brMin, brMax, fromTo = (0, 100)):
@@ -687,7 +683,7 @@ class dataProvider(QObject):
         for i in range(len(cols_list[0])):
             col = cols_list[0][i]
             
-            br = kpiDescriptions.kpiStylesNN[type][kpi].get('gradient')
+            br = kpiStylesNNN[kpi].get('gradient')
             
             if br and col[0] == 'GRADIENT': #'GRADIENT'
                 brIndex = i
@@ -702,7 +698,6 @@ class dataProvider(QObject):
         
         t0 = time.time()
         
-        #title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
         titleValue = None
         brValue = None
         
@@ -844,7 +839,7 @@ class dataProvider(QObject):
         '''
     
     @profiler
-    def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
+    def getHostKpis(self, kpiStylesNNN, kpis, data, sql, params, kpiSrc):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
@@ -939,7 +934,7 @@ class dataProvider(QObject):
             
         if len(kpis) > 0:
             #print(kpis, kpiSrc)
-            subtype = kpiDescriptions.getSubtype(type, kpis[0])
+            subtype = kpiStylesNNN[kpis[0]].get('subtype')
         
         trace_lines = len(rows)
         
@@ -962,21 +957,21 @@ class dataProvider(QObject):
             
             gb = []
             
-            stacked = kpiStylesNN[type][kpis[0]]['stacked']
+            stacked = kpiStylesNNN[kpis[0]]['stacked']
             stacked = processVars(kpiSrc, stacked)
             stacked = safeBool(stacked)
             
-            orderby = kpiStylesNN[type][kpis[0]]['orderby']
-            orderdesc = kpiStylesNN[type][kpis[0]]['descending']
+            orderby = kpiStylesNNN[kpis[0]]['orderby']
+            orderdesc = kpiStylesNNN[kpis[0]]['descending']
             
-            others = kpiStylesNN[type][kpis[0]].get('others')
+            others = kpiStylesNNN[kpis[0]].get('others')
             
             if others:
                 others = processVars(kpiSrc, others)
                 others = safeBool(others)
                 
                 if others:
-                    lc = kpiStylesNN[type][kpis[0]]['legendCount']
+                    lc = kpiStylesNNN[kpis[0]]['legendCount']
                     lc = processVars(kpiSrc, lc)
                     lc = safeInt(lc, 5)
                     others = lc
@@ -987,12 +982,6 @@ class dataProvider(QObject):
         t = None
         
         try:
-            '''
-            for j in range(len(kpis)):
-                if 'perSample' in kpiStylesNN[type][kpis[j]]:
-                    p rint('%s --> adjust!!!' % (kpis[j]))
-                    p rint('%s --> %s' % (kpiStylesNN[type][kpis[j]]['sUnit'], kpiStylesNN[type][kpis[j]]['dUnit']))
-            '''
             
             if len(rows) == 0:
                 for key in data:
@@ -1105,7 +1094,7 @@ class dataProvider(QObject):
                             if rawValue is None:
                                 data[kpis_[j]][i] = -1
                             else:
-                                if 'perSample' in kpiStylesNN[type][kpis_[j]]:
+                                if 'perSample' in kpiStylesNNN[kpis_[j]]:
                                 
                                     # /sample --> /sec
                                     # do NOT normalize here, only devide by delta seconds

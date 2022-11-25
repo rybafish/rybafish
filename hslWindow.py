@@ -616,22 +616,25 @@ class hslWindow(QMainWindow):
         self.processConnection(secondary=True)
         
     def processConnection(self, secondary=False):
-        
         log(f'processConnection, {secondary=}')
-        if self.connectionConf is None:
-            connConf = cfg('server')
+        
+        if secondary:
+            connConf = None
         else:
-            connConf = self.connectionConf
+            if self.connectionConf is None:
+                connConf = cfg('server')
+            else:
+                connConf = self.connectionConf
             
         if not connConf:
             connConf = {}
             
-        if not connConf.get('name') and self.layout:
+        if not connConf.get('name') and self.layout and not secondary:
             connConf['setToName'] = self.layout['connectionName']
             
         conf, ok = configDialog.Config.getConfig(connConf, self)
         
-        log('config dialog, ok? %s' % str(ok), 5)
+        log(f'config dialog, ok? {ok}', 5)
         
         if ok and not secondary:
             self.connectionConf = conf
@@ -1356,7 +1359,7 @@ class hslWindow(QMainWindow):
 
         configSecAct = QAction('Secondary connection', self)
         configSecAct.setStatusTip('Open a secondary connection')
-        configSecAct.triggered.connect(self.menuConfig)
+        configSecAct.triggered.connect(self.menuConfigSecondary)
 
         importAct = QAction('&Import nameserver history trace', self)
         importAct.setShortcut('Ctrl+I')

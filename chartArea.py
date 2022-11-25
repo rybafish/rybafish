@@ -1,3 +1,5 @@
+import sys
+
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip, QAction
 
@@ -208,10 +210,11 @@ class myWidget(QWidget):
         if utils.cfg('colorize'):
             kpiDescriptions.generateRaduga()
     
-        for t in kpiStylesNN:
-            self.kpiPen[t] = {}
-            for kpi in kpiStylesNN[t]:
-                self.kpiPen[t][kpi] = kpiStylesNN[t][kpi]['pen']
+        for i in range(len(self.hosts)):
+            self.kpiPen[i] = {}
+            kpiStylesNNN = self.hostKPIsStyles[i]
+            for kpi in kpiStylesNNN:
+                self.kpiPen[i][kpi] = kpiStylesNNN[kpi]['pen']
 
     def ceiling(self, num):
     
@@ -249,30 +252,28 @@ class myWidget(QWidget):
         '''
         
         max_value = 0
-    
-        for h in range(0, len(self.hosts)):
-            type = hType(h, self.hosts)
-            
+        
+        for h in range(len(self.hosts)):
             # for the issue https://github.com/rybafish/rybafish/issues/30
             # log('self.nscales[h].keys(): ' + str(self.nscales[h].keys()))
             
             #for kpi in self.nscales[h].keys():
+            
+            kpiStylesNNN = self.hostKPIsStyles[h]
             for kpi in list(self.nscales[h].keys()):
 
                 if kpi[:4] == 'time':
                     continue
                     
-                if kpi not in kpiStylesNN[type]:
+                if kpi not in kpiStylesNNN:
                     log('[!] the kpi is disabled... %s, so deleting it from nscales' % kpi)
                     del self.nscales[h][kpi]
                     continue
 
-                if kpiStylesNN[type][kpi]['group'] == grp:
+                if kpiStylesNNN[kpi]['group'] == grp:
                     if max_value < self.nscales[h][kpi]['max']:
                         max_value = self.nscales[h][kpi]['max']
         
-        #return self.ceiling(max_value)
-        #return self.ceiling(kpiDescriptions(kpiStylesNN[type][kpi], max_value))
         return max_value
     
     def alignScales(self):
@@ -290,17 +291,21 @@ class myWidget(QWidget):
         #mem_max = self.scanMetrics('mem')
         #thr_max = self.scanMetrics('thr')
         
-        groups = kpiDescriptions.groups()
+        groups = kpiDescriptions.groups(self.hostKPIsStyles)
         
         for g in groups:
             if g != '0':
                 groupMax[g] = self.getGroupMax(g)
+                
+        log(f'------ {groupMax=}')
 
-        for h in range(0, len(self.hosts)):
+        for h in range(len(self.hosts)):
         
-            # for kpi in self.nkpis[h]:
-            for kpi in self.nscales[h].keys():
+            log(f'update scales {h}: {self.hosts[h]}')
+        
+            kpiStylesNNN = self.hostKPIsStyles[h]
             
+            for kpi in self.nscales[h].keys():
             
                 manualScale = False
             
@@ -308,16 +313,14 @@ class myWidget(QWidget):
                     continue
                     
                 #self.nscales[h][kpi] = {}
-                
-                type = hType(h, self.hosts)
-                
+                                
                 scaleKpi = self.nscales[h][kpi] # short cut
 
-                if kpi not in kpiStylesNN[type]:
+                if kpi not in kpiStylesNNN:
                     log('[!] the kpi is disaaableeed, %s' % kpi)
                     continue
                     
-                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
+                if kpiStylesNNN[kpi].get('subtype') == 'gantt':
                 
                     #scaleKpi['y_max'] = ''
                     scaleKpi['y_max'] = ''
@@ -341,7 +344,7 @@ class myWidget(QWidget):
                 #memory group
                 #if kpiDescriptions.kpiGroup[kpi] == 'mem':
                 
-                groupName = kpiStylesNN[type][kpi]['group']
+                groupName = kpiStylesNNN[kpi]['group']
                 
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
@@ -364,40 +367,38 @@ class myWidget(QWidget):
                     
                     yScaleLow = 0
                     
-                    kpiStylesNN[type][kpi]['decimal'] = 0
+                    kpiStylesNNN[kpi]['decimal'] = 0
                     
                     if groupName == 0:
-                        if 'manual_scale' in kpiStylesNN[type][kpi]:
+                        if 'manual_scale' in kpiStylesNNN[kpi]:
                             manualScale = True
-                            min_value = kpiStylesNN[type][kpi]['manual_scale'][0]
-                            max_value = kpiStylesNN[type][kpi]['manual_scale'][1]
+                            min_value = kpiStylesNNN[kpi]['manual_scale'][0]
+                            max_value = kpiStylesNNN[kpi]['manual_scale'][1]
                             yScaleLow = min_value
                             yScale = max_value_n = max_value
                         else:
                             max_value = self.nscales[h][kpi]['max']
                             #max_value = self.ceiling(max_value)
-                            max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
+                            max_value_n = kpiDescriptions.normalize(kpiStylesNNN[kpi], max_value)
                             yScale = self.ceiling(int(round(max_value_n)))
                     else: 
                         if groupName in self.manual_scales:
-                            #print('manual scale')
-                            #print(kpiStylesNN[type][kpi]['sUnit'], '-->', kpiStylesNN[type][kpi]['dUnit'])
                             min_value = self.manual_scales[groupName][0]
                             max_value = self.manual_scales[groupName][1]
                             #yScale = max_value_n = max_value # 2021-07-15, #429
                             yScaleLow = min_value             # 2022-01-19  #562
                             yScale = max_value                # 2021-07-15, #429 
-                            max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value) #429
+                            max_value_n = kpiDescriptions.normalize(kpiStylesNNN[kpi], max_value) #429
                             
                             manualScale = True
                         else:
                             max_value = groupMax[groupName]
-                            max_value_n = kpiDescriptions.normalize(kpiStylesNN[type][kpi], max_value)
+                            max_value_n = kpiDescriptions.normalize(kpiStylesNNN[kpi], max_value)
                             
                             if max_value_n <= 10 and max_value != max_value_n:
-                                kpiStylesNN[type][kpi]['decimal'] = 2
+                                kpiStylesNNN[kpi]['decimal'] = 2
                             elif max_value_n <= 100 and max_value != max_value_n:
-                                kpiStylesNN[type][kpi]['decimal'] = 1
+                                kpiStylesNNN[kpi]['decimal'] = 1
 
                             yScale = self.ceiling(int(max_value_n))
                                          
@@ -406,44 +407,44 @@ class myWidget(QWidget):
                         even when no any difference with max_value
                     '''
                     
-                    d = kpiStylesNN[type][kpi].get('decimal', 0) # defined couple lines above
+                    d = kpiStylesNNN[kpi].get('decimal', 0) # defined couple lines above
                     
-                    scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['max'], d), d)
+                    scaleKpi['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], scaleKpi['max'], d), d)
                     
                     if scaleKpi['avg'] is not None:
-                        scaleKpi['avg_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['avg'], d), d)
+                        scaleKpi['avg_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], scaleKpi['avg'], d), d)
                     else:
                         scaleKpi['avg_label'] = ''
                         
                     if 'last_value' in scaleKpi and scaleKpi['last_value'] is not None:
-                        scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], scaleKpi['last_value'], d), d)
+                        scaleKpi['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], scaleKpi['last_value'], d), d)
                     else:
                         scaleKpi['last_label'] = '-1'
                         
                         
-                    subtype = kpiDescriptions.getSubtype(type, kpi)
+                    subtype = kpiStylesNNN[kpi].get('subtype')
                     
                     if subtype == 'multiline' and kpi in self.nscalesml[h]:
                         for gb in self.nscalesml[h][kpi]:
                             mx = self.nscalesml[h][kpi][gb]['max']
                             lst = self.nscalesml[h][kpi][gb]['last']
-                            self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], mx, d), d)
-                            self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNN[type][kpi], lst, d), d)
+                            self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], mx, d), d)
+                            self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], lst, d), d)
                             self.nscalesml[h][kpi][gb]['avg_label'] = ''
                         
                     # scaleKpi['y_max'] = max_value
-                    scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScale)
+                    scaleKpi['y_max'] = kpiDescriptions.denormalize(kpiStylesNNN[kpi], yScale)
                     
                     if yScaleLow != 0:
-                        scaleKpi['y_min'] = kpiDescriptions.denormalize(kpiStylesNN[type][kpi], yScaleLow)
+                        scaleKpi['y_min'] = kpiDescriptions.denormalize(kpiStylesNNN[kpi], yScaleLow)
                     
-                    dUnit = kpiStylesNN[type][kpi]['sUnit'] # not converted
+                    dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
 
                     if max_value_n == max_value:
-                        dUnit = kpiStylesNN[type][kpi]['sUnit'] # not converted
+                        dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
                     else:
                         max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
-                        dUnit = kpiStylesNN[type][kpi]['dUnit'] # converted
+                        dUnit = kpiStylesNNN[kpi]['dUnit'] # converted
                     
                     scaleKpi['yScale'] = yScale
                     
@@ -458,7 +459,7 @@ class myWidget(QWidget):
                     else:
                         scaleKpi['manual'] = False
                         
-                    if 'perSample' in kpiStylesNN[type][kpi]:
+                    if 'perSample' in kpiStylesNNN[kpi]:
                         scaleKpi['unit'] = dUnit + '/sec'
                     else:
                         scaleKpi['unit'] = dUnit
@@ -745,10 +746,10 @@ class myWidget(QWidget):
         if not found:
             if (self.highlightedKpi):
             
-                hlType = hType(self.highlightedKpiHost, self.hosts)
-            
-                if self.highlightedKpi in self.kpiPen[hlType]:
-                    self.kpiPen[hlType][self.highlightedKpi].setWidth(1)
+                host = self.highlightedKpiHost
+                
+                if self.highlightedKpi in self.kpiPen[host]:
+                    self.kpiPen[host][self.highlightedKpi].setWidth(1)
                 
                 self.highlightedKpiHost = None
                 self.highlightedKpi = None
@@ -783,7 +784,7 @@ class myWidget(QWidget):
         
         x_scale = self.step_size / self.t_scale
         
-        type = hType(host, self.hosts)
+        kpiStylesNNN = self.hostKPIsStyles[host]
         
         top_margin = self.top_margin + self.y_delta
         
@@ -802,15 +803,15 @@ class myWidget(QWidget):
                 continue
                 
 
-            if kpi not in kpiStylesNN[type]:
+            if kpi not in kpiStylesNNN:
                 continue
                 
-            subtype = kpiDescriptions.getSubtype(type, kpi)
+            subtype = kpiStylesNNN[kpi].get('subtype')
             
             if subtype == 'gantt':
             
-                height = kpiStylesNN[type][kpi]['width']
-                ganttShift = kpiStylesNN[type][kpi]['shift']
+                height = kpiStylesNNN[kpi]['width']
+                ganttShift = kpiStylesNNN[kpi]['shift']
             
                 if kpi not in data: # alt+clicked, but not refreshed yet
                     continue
@@ -822,12 +823,8 @@ class myWidget(QWidget):
                     
                 i = 0
                 
-                yr = kpiStylesNN[type][kpi]['y_range']
-
-                yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
+                yr0, yr1 = kpiStylesNNN[kpi]['y_range']
                 
-                #sqlIdx = kpiStylesNN[type][kpi]['sql']
-
                 try:
                     #yr0p = processVars(sqlIdx, yr0)
                     #yr1p = processVars(sqlIdx, yr1)
@@ -883,24 +880,12 @@ class myWidget(QWidget):
                         self.highlightedRange = reportRange
                         
             
-                        # self.statusMessage('%s, %s.%s, %s: %s' % (hst, type, kpi, entity, desc))
-    
                         t0 = t[0].time().isoformat(timespec='milliseconds')
                         t1 = t[1].time().isoformat(timespec='milliseconds')
 
-                        '''
-                        t0 = t[0].isoformat(sep=' ', timespec='milliseconds')
-                        t1 = t[1].isoformat(sep=' ', timespec='milliseconds')
-                        '''
-
-                        '''
-                        t0 = t[0].strftime('%H:%M:%S.%f')[:-3]
-                        t1 = t[1].strftime('%H:%M:%S.%f')[:-3]                        
-                        '''
-
                         interval = '[%s - %s]' % (t0, t1)
                         
-                        det = '%s, %s.%s, %s: %s/%i %s' % (hst, type, kpi, entity, interval, t[3], t[2])
+                        det = '%s, %s, %s: %s/%i %s' % (hst, kpi, entity, interval, t[3], t[2])
                         
                         self.statusMessage(det)
                         log('gantt clicked %s' % (det))
@@ -916,7 +901,7 @@ class myWidget(QWidget):
                 regular kpis scan
             '''
         
-            timeKey = kpiDescriptions.getTimeKey(type, kpi)
+            timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
             
             if timeKey not in data or kpi not in data:
                 # this kpi timeset is empty
@@ -926,17 +911,13 @@ class myWidget(QWidget):
                 
             timeline = data[timeKey]
             array_size = len(timeline)
-            
-            #log('scanForHint array_size: %i' %(array_size), 5)
-            
+                        
             i = 0
-        
             time_delta = tolerance*(self.t_scale/self.step_size)
         
             while i < array_size and timeline[i] < trgt_time - time_delta:
                 i+=1
 
-            #log('scanForHint array_size/i: %i/%i' %(array_size, i), 5)
             if i == array_size:
                 #log('scanForHint continue...', 5)
                 #kpi not found but we still need to check others! 2021-07-15, #386
@@ -1040,8 +1021,8 @@ class myWidget(QWidget):
                             
                         self.highlightedKpi = None
 
-                    d = kpiStylesNN[type][kpi].get('decimal', 0)
-                    normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], scan[j], d)
+                    d = kpiStylesNNN[kpi].get('decimal', 0)
+                    normVal = kpiDescriptions.normalize(kpiStylesNNN[kpi], scan[j], d)
 
                     scaled_value = utils.numberToStr(normVal, d)
                     
@@ -1053,7 +1034,7 @@ class myWidget(QWidget):
                         ml = ''
 
                     log('click on %s(%i).%s%s = %i, %s' % (self.hosts[host]['host'], host, kpi, ml, scan[j], scaled_value))
-                    self.kpiPen[type][kpi].setWidth(2)
+                    self.kpiPen[host][kpi].setWidth(2)
                         
                     self.highlightedKpi = kpi
                     self.highlightedKpiHost = host
@@ -1074,9 +1055,9 @@ class myWidget(QWidget):
                         
                     tm = datetime.datetime.fromtimestamp(data[timeKey][j]).strftime('%Y-%m-%d %H:%M:%S')
                     
-                    self.statusMessage('%s, %s.%s%s = %s %s at %s%s' % (hst, type, kpi, ml, scaled_value, scales[kpi]['unit'], tm, deltaVal))
+                    self.statusMessage('%s, %s%s = %s %s at %s%s' % (hst, kpi, ml, scaled_value, scales[kpi]['unit'], tm, deltaVal))
                     
-                    self.setToolTip('%s, %s.%s%s = %s %s at %s' % (hst, type, kpi, ml, scaled_value, scales[kpi]['unit'], tm))
+                    self.setToolTip('%s, %s%s = %s %s at %s' % (hst, kpi, ml, scaled_value, scales[kpi]['unit'], tm))
                     
                     found_some = True
                     #okay, stop
@@ -1120,7 +1101,7 @@ class myWidget(QWidget):
         
     def drawLegend(self, qp, startX, stopX):
     
-        lkpis = []      # kpi names to be able to skip doubles (what doubles...)
+        lkpis = []      # kpi names to be able to skip doubles (what doubles?..)
         lkpisl = []     # kpi labels
         # lpens = []      # pens. None = host line (no pen)  ### depricated with multilines support, 2021-08-31
         lmeta = []      # legend metadata, list of four values: [type, pen/brush, ident for marker, ident for text]
@@ -1137,13 +1118,14 @@ class myWidget(QWidget):
         if utils.cfg('colorize'):
             kpiDescriptions.resetRaduga()
         
-        for h in range(0, len(self.hosts)):
+        for h in range(len(self.hosts)):
         
-            type = hType(h, self.hosts)
+            hostType = hType(h, self.hosts)
+            kpiStylesNNN = self.hostKPIsStyles[h]
             
             dbinfo = ''
             
-            if 'db' in self.hosts[h] and 'service' in self.hosts[h] and type == 'service':
+            if 'db' in self.hosts[h] and 'service' in self.hosts[h] and hostType == 'service':
 
                 if cfg('legendTenantName'):
                     dbinfo += self.hosts[h]['db'] + ' '
@@ -1170,35 +1152,25 @@ class myWidget(QWidget):
 
                 if self.legend == 'hosts': ## it is either hosts or None now so 'hosts' basically mean it is enabled
                 
-                    subtype = kpiDescriptions.getSubtype(type, kpi)
+                    subtype = kpiStylesNNN[kpi].get('subtype')
                     
                     kpiKey = f"{self.hosts[h]['host']}:{self.hosts[h]['port']}/{kpi}"
 
-                    if  subtype == 'gantt':
+                    if subtype == 'gantt':
                         gantt = True
                     elif subtype == 'multiline':
-                        #sqlIdx = kpiStylesNN[type][kpi].get('sql')
-                        stacked = kpiStylesNN[type][kpi]['stacked']
-                        #stacked = processVars(sqlIdx, stacked)
+                        stacked = kpiStylesNNN[kpi]['stacked']
                         stacked = safeBool(stacked)
                         multiline = True
                         
-                    label = kpiStylesNN[type][kpi]['label']
+                    label = kpiStylesNNN[kpi]['label']
                     
-                    '''
-                    if kpiStylesNN[type][kpi].get('sql'):
-                        sqlIdx = kpiStylesNN[type][kpi].get('sql')
-                        label = processVars(sqlIdx, label)
-                    '''
-                        
                     if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
                         unit = ' ' + self.nscales[h][kpi]['unit']
                         
                         if kpi in self.nscales[h]: #if those are scanned already
                         
                             if multiline:
-                                #sqlIdx = kpiStylesNN[type][kpi].get('sql')
-                                
                                 kpiDescriptions.resetRaduga()
                                 label += ': ' + self.nscales[h][kpi]['label'] + unit + ': <$b$>multiline'
                                 
@@ -1209,13 +1181,12 @@ class myWidget(QWidget):
                                 lkpisl.append(label)
                                 lmeta.append(['multiline', None, 0, 16])
                                 
-                                legendCount = kpiStylesNN[type][kpi]['legendCount']
-                                #legendCount = processVars(sqlIdx, legendCount)
+                                legendCount = kpiStylesNNN[kpi]['legendCount']
                                 legendCount = safeInt(legendCount, 5)
                                 
-                                others = kpiStylesNN[type][kpi].get('others')
+                                others = kpiStylesNNN[kpi].get('others')
+                                
                                 if others:
-                                    #others = processVars(sqlIdx, others)
                                     others = safeBool(others)
                                     
                                     if others:
@@ -1234,10 +1205,10 @@ class myWidget(QWidget):
                                     lkpis.append(kpi)
                                     lkpisl.append(label)
 
-                                    if kpiStylesNN[type][kpi]['multicolor']:
+                                    if kpiStylesNNN[kpi]['multicolor']:
                                         pen = kpiDescriptions.getRadugaPen()
                                     else:
-                                        pen = self.kpiPen[type][kpi]
+                                        pen = self.kpiPen[h][kpi]
                                         
                                     if kpi == self.highlightedKpi and h == self.highlightedKpiHost and i == self.highlightedGBI:
                                         pen = QPen(pen)
@@ -1256,7 +1227,7 @@ class myWidget(QWidget):
                                 if utils.cfg('colorize'):
                                     pen = kpiDescriptions.getRadugaPen()
                                 else:
-                                    pen = kpiDescriptions.customPen(kpiKey, self.kpiPen[type][kpi])
+                                    pen = kpiDescriptions.customPen(kpiKey, self.kpiPen[h][kpi])
                                     
                                 if kpi == self.highlightedKpi and h == self.highlightedKpiHost:
                                     pen = QPen(pen)
@@ -1278,13 +1249,11 @@ class myWidget(QWidget):
                             pen = QPen(QColor(int(c[0]*0.75), int(c[1]*0.75), int(c[2]*0.75)))
                             brshColor = QColor(c[0], c[1], c[2])
                         else:
-                            pen = self.kpiPen[type][kpi]
-                            brshColor = kpiStylesNN[type][kpi]['brush']
+                            pen = self.kpiPen[h][kpi]
+                            brshColor = kpiStylesNNN[kpi]['brush']
                         
                         lmeta.append(['gantt', [QBrush(brshColor), pen], 0, 44])
                     
-                # print(self.highlightedKpi, self.highlightedKpiHost)
-
         # calculates longest label width
         
         if len(lkpisl) != len(lmeta):
@@ -1334,7 +1303,6 @@ class myWidget(QWidget):
         else:
             self.legendHeight = fontHeight * (len(lkpisl))+8
             
-        #self.legendWidth = lLen + 58
         self.legendWidth = lLen
 
         qp.drawRect(leftX, 10 + self.top_margin + self.y_delta, self.legendWidth, self.legendHeight)
@@ -1351,11 +1319,7 @@ class myWidget(QWidget):
         for i in range(len(lmeta)):
         
             meta = lmeta[i]
-        
-            #print(i, meta)
-        
             kpi = lkpisl[i]
-            
             kpiPen = meta[1]
         
             #if lpens[i] is not None:
@@ -1578,15 +1542,16 @@ class myWidget(QWidget):
 
         self.gotGantt = False
         
-        for h in range(0, len(self.hosts)):
+        for h in range(len(self.hosts)):
         
             #print('draw host:', self.hosts[h]['host'], self.hosts[h]['port'])
 
             if len(self.ndata[h]) == 0:
                 continue
                 
-            type = hType(h, self.hosts)
             hostKey = self.hosts[h]['host'] + ':' + self.hosts[h]['port']
+            
+            kpiStylesNNN = self.hostKPIsStyles[h]
             
             for kpi in self.nkpis[h]:
                 #print('draw kpi', kpi)
@@ -1608,49 +1573,44 @@ class myWidget(QWidget):
                 
                 kpiKey = hostKey + '/' + kpi
 
-                if kpi not in kpiStylesNN[type]:
+                if kpi not in kpiStylesNNN:
                     log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
                     self.nkpis[h].remove(kpi)
                     continue
                     
-                if kpiStylesNN[type][kpi]['subtype'] == 'gantt':
+                if kpiStylesNNN[kpi]['subtype'] == 'gantt':
                     gantt = True
                     self.gotGantt = True
                     
-                    if kpiStylesNN[type][kpi].get('title'):
+                    if kpiStylesNNN[kpi].get('title'):
                         title = True
                     else:
                         title = False
 
-                    if kpiStylesNN[type][kpi].get('gradient'):
+                    if kpiStylesNNN[kpi].get('gradient'):
                         gradient = True
                     else:
                         gradient = False
                 else:
                     gantt = False
                 
-                timeKey = kpiDescriptions.getTimeKey(type, kpi)
+                timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
                 
-                if timeKey not in self.ndata[h] and kpiDescriptions.getSubtype(type, kpi) != 'gantt':
+                if timeKey not in self.ndata[h] and kpiStylesNNN[kpi].get('subtype') != 'gantt':
                     # this is possible for example when custom KPI definition changed
                     # not relevant for gantt as it does not have time key at all
                     log('[!] here --> kpi removed: %s - %s, skipping!' % (timeKey, kpi), 2)
                     continue
                     
                 if gantt:
-                
-                    #gFont = QFont ('SansSerif', 8)
-                    
-                    gFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['font'])
-                    gtFont = QFont ('SansSerif', kpiStylesNN[type][kpi]['tfont'])
+                    gFont = QFont ('SansSerif', kpiStylesNNN[kpi]['font'])
+                    gtFont = QFont ('SansSerif', kpiStylesNNN[kpi]['tfont'])
                     
                     fm = QFontMetrics(gFont)
                     tfm = QFontMetrics(gtFont)
                     
                     fontHeight = fm.height()
                     tFontHeight = tfm.height()
-                    
-                    #print('font', kpiStylesNN[type][kpi]['tfont'], 'height', tFontHeight)
                     
                     fontWidth = 0
                     
@@ -1671,15 +1631,15 @@ class myWidget(QWidget):
                         qp.setBrush(QColor(c[0], c[1], c[2])) # bar fill color
                         ganttBaseColor = QColor(c[0], c[1], c[2])
                     else:
-                        qp.setBrush(kpiStylesNN[type][kpi]['brush']) # bar fill color
-                        ganttBaseColor = kpiStylesNN[type][kpi]['brush']
+                        qp.setBrush(kpiStylesNNN[kpi]['brush']) # bar fill color
+                        ganttBaseColor = kpiStylesNNN[kpi]['brush']
                         
-                    ganttFadeColor = kpiStylesNN[type][kpi]['gradientTo']  # does not depend of custom colors
+                    ganttFadeColor = kpiStylesNNN[kpi]['gradientTo']  # does not depend of custom colors
                                         
                     if len(gc) > 0:
-                        yr0, yr1 = kpiStylesNN[type][kpi]['y_range']
+                        yr0, yr1 = kpiStylesNNN[kpi]['y_range']
                         
-                        sqlIdx = kpiStylesNN[type][kpi]['sql']
+                        sqlIdx = kpiStylesNNN[kpi]['sql']
                         
                         try:
                             #yr0p = processVars(sqlIdx, yr0)
@@ -1701,8 +1661,8 @@ class myWidget(QWidget):
                     
                     hlDesc = None
 
-                    height = kpiStylesNN[type][kpi]['width']
-                    ganttShift = kpiStylesNN[type][kpi]['shift']
+                    height = kpiStylesNNN[kpi]['width']
+                    ganttShift = kpiStylesNNN[kpi]['shift']
                     
                     for entity in gc:
                     
@@ -1730,13 +1690,11 @@ class myWidget(QWidget):
                             else:
                                 highlight = False
                             
-                            #ganttPen = kpiStylesNN[type][kpi]['pen']
-                            
                             if kpiKey in kpiDescriptions.customColors:
                                 c = kpiDescriptions.customColors[kpiKey]
                                 ganttPen = QPen(QColor(int(c[0]*0.75), int(c[1]*0.75), int(c[2]*0.75)))
                             else:
-                                ganttPen = kpiStylesNN[type][kpi]['pen']
+                                ganttPen = kpiStylesNNN[kpi]['pen']
                             
                             clr = ganttPen.color()
                             
@@ -1750,7 +1708,7 @@ class myWidget(QWidget):
                             
                             qp.setPen(ganttPen)
                             
-                            if kpiStylesNN[type][kpi]['style'] == 'bar':
+                            if kpiStylesNNN[kpi]['style'] == 'bar':
 
                                 if gradient:
                                     bv = t[5]
@@ -1849,12 +1807,11 @@ class myWidget(QWidget):
                         i += 1
 
                         if hlDesc is not None:
-                            #ganttPen = kpiStylesNN[type][kpi]['pen']
                             if kpiKey in kpiDescriptions.customColors:
                                 c = kpiDescriptions.customColors[kpiKey]
                                 ganttPen = QPen(QColor(int(c[0]*0.75), int(c[1]*0.75), int(c[2]*0.75)))
                             else:
-                                ganttPen = kpiStylesNN[type][kpi]['pen']
+                                ganttPen = kpiStylesNNN[kpi]['pen']
                             
                             clr = ganttPen.color()
                             clr = QColor(int(clr.red()*0.6), int(clr.green()*0.6), int(clr.blue()*0.6))
@@ -1873,13 +1830,7 @@ class myWidget(QWidget):
                     kpiPen = kpiDescriptions.radugaPens[raduga_i % radugaSize]
                     raduga_i += 1
                 else:
-                    '''
-                    kpiPen = self.kpiPen[type][kpi]
-                    if kpiDescriptions.customColors.get(kpiKey):
-                        c = kpiDescriptions.customColors[kpiKey]
-                        kpiPen = QPen((QColor(c[0],c[1],c[2])))
-                    '''
-                    kpiPen = kpiDescriptions.customPen(kpiKey, self.kpiPen[type][kpi])
+                    kpiPen = kpiDescriptions.customPen(kpiKey, self.kpiPen[h][kpi])
                 
                 highlight = False
                 
@@ -1903,14 +1854,14 @@ class myWidget(QWidget):
                 # due to multiline support
                 #
                 
-                subtype = kpiDescriptions.getSubtype(type, kpi)
+                subtype = kpiStylesNNN[kpi].get('subtype')
                 
                 if subtype == 'multiline':
                     rounds = len(self.ndata[h][kpi])
                 else:
                     rounds = 1
                     
-                if subtype == 'multiline' and kpiStylesNN[type][kpi]['multicolor']:
+                if subtype == 'multiline' and kpiStylesNNN[kpi]['multicolor']:
                     kpiDescriptions.resetRaduga()
                 
                 for rn in range(rounds):
@@ -1920,7 +1871,7 @@ class myWidget(QWidget):
                         dataArray = self.ndata[h][kpi]
 
                     if subtype == 'multiline':
-                        if kpiStylesNN[type][kpi]['multicolor']:
+                        if kpiStylesNNN[kpi]['multicolor']:
                             kpiPen = kpiDescriptions.getRadugaPen()
 
                     if highlight and (subtype != 'multiline' or self.highlightedGBI == rn):
@@ -1941,11 +1892,6 @@ class myWidget(QWidget):
                 
                 #log('%s: skip/calc/draw: %s/%s/%s, (skip: %i)' % (kpi, str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), points_to_skip))
         
-        # this supposed to restore the border for negative values (downtime)...
-        
-        #qp.setPen(QColor('#F00'))
-        #qp.drawLine(12786, 110, 12787, 110)
-        
         qp.setPen(QColor('#888'))
         qp.drawLine(self.side_margin + self.left_margin, wsize.height() - self.bottom_margin - 1, wsize.width() - self.side_margin, wsize.height() - self.bottom_margin - 1)
         
@@ -1958,27 +1904,6 @@ class myWidget(QWidget):
         '''
             draws grid and labels
             based on scale and timespan        
-        '''
-        
-        #prnt('grid %i:%i' % (startX, stopX))
-        #print('grid: ', self.gridColor.getRgb())
-        
-        '''
-        
-        what is that???
-        
-        for h in range(0, len(self.hosts)):
-
-            if len(self.nkpis) == 0: # sometimes hosts filled before nkpis
-                break
-
-            type = hType(h, self.hosts)
-
-            for kpi in self.nkpis[h]:
-            
-                if kpiDescriptions.getSubtype(type, kpi) == 'gantt':
-                    # self.left_margin = 100
-                    break
         '''
         
         wsize = self.size()
@@ -2213,12 +2138,12 @@ class chartArea(QFrame):
             log('[w] disableDeadKPIs: no kpis at all, exit')
             return
             
-        for host in range(0, len(chart.hosts)):
-            type = hType(host, chart.hosts)
+        for host in range(len(chart.hosts)):
+            kpiStylesNNN = self.hostKPIsStyles[host]
 
             delKpis = []
             for kpi in chart.nkpis[host]:
-                if kpi not in kpiStylesNN[type]:
+                if kpi not in kpiStylesNNN:
                     delKpis.append(kpi)
                     
             for kpi in delKpis:
@@ -2226,16 +2151,13 @@ class chartArea(QFrame):
                 
                 chart.nkpis[host].remove(kpi)
                 
-                if type == 'service' and kpi in self.srvcKPIs:
+                if kpi in self.hostKPIsList[host]:
                     self.srvcKPIs.remove(kpi)
-                else:
-                    if kpi in self._hostKPIs:
-                        self._hostKPIs.remove(kpi)
                     
             delKpis = []
             
             for kpi in self.widget.nscales[host]:
-                if kpi != 'time' and kpi not in kpiStylesNN[type]:
+                if kpi != 'time' and kpi not in kpiStylesNNN:
                     delKpis.append(kpi)
                    
             for kpi in delKpis:
@@ -2512,16 +2434,16 @@ class chartArea(QFrame):
         kpi = self.widget.highlightedKpi
         
         #this is black magic copy paste from scanforhint
-        type = hType(host, self.widget.hosts)
-        timeKey = kpiDescriptions.getTimeKey(type, kpi)
+        kpiStylesNNN = self.hostKPIsStyles
+        timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
 
         hst = self.widget.hosts[host]['host']
         if self.widget.hosts[host]['port'] != '':
             hst += ':'+str(self.widget.hosts[host]['port'])
         
-        d = kpiStylesNN[type][kpi].get('decimal', 0)
+        d = kpiStylesNNN[kpi].get('decimal', 0)
         
-        subtype = kpiDescriptions.getSubtype(type, kpi)
+        subtype = kpiStylesNNN[kpi].get('subtype')
         
         if subtype == 'gantt':
             entity = self.widget.highlightedEntity
@@ -2534,7 +2456,7 @@ class chartArea(QFrame):
 
             interval = '[%s - %s]' % (t0, t1)
             
-            det = '%s, %s.%s, %s: %s/%i %s' % (hst, type, kpi, entity, interval, t[3], t[2])
+            det = '%s, %s, %s: %s/%i %s' % (hst, kpi, entity, interval, t[3], t[2])
             
             self.statusMessage(det)
             return
@@ -2544,11 +2466,11 @@ class chartArea(QFrame):
             gbi = self.widget.highlightedGBI
             gb = self.widget.ndata[host][kpi][gbi][0]
             value = self.widget.ndata[host][kpi][gbi][1][point]
-            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], value, d)
+            normVal = kpiDescriptions.normalize(kpiStylesNNN[kpi], value, d)
             
             kpiLabel = f'{kpi}/{gb}'
         else:
-            normVal = kpiDescriptions.normalize(kpiStylesNN[type][kpi], self.widget.ndata[host][kpi][point], d)
+            normVal = kpiDescriptions.normalize(kpiStylesNNN[kpi], self.widget.ndata[host][kpi][point], d)
             kpiLabel = kpi
 
         self.widget.highlightedNormVal = normVal
@@ -2558,8 +2480,8 @@ class chartArea(QFrame):
         
         unit = self.widget.nscales[host][kpi]['unit']
 
-        self.widget.setToolTip('%s, %s.%s = %s %s at %s' % (hst, type, kpiLabel, scaled_value, unit, tm))
-        self.statusMessage('%s, %s.%s = %s %s at %s' % (hst, type, kpiLabel, scaled_value, unit, tm))
+        self.widget.setToolTip('%s, %s = %s %s at %s' % (hst, kpiLabel, scaled_value, unit, tm))
+        self.statusMessage('%s, %s = %s %s at %s' % (hst, kpiLabel, scaled_value, unit, tm))
         
     @profiler
     def moveHighlightGantt(self, direction):
@@ -2673,8 +2595,9 @@ class chartArea(QFrame):
                 host = self.widget.highlightedKpiHost
                 kpi = self.widget.highlightedKpi
                 
-                type = hType(host, self.widget.hosts)
-                subtype = kpiDescriptions.getSubtype(type, kpi)
+                kpiStylesNNN = self.hostKPIsStyles[host]
+                
+                subtype = kpiStylesNNN[kpi].get('subtype')
                 
                 if subtype == 'multiline':
                     dSize = len(self.widget.ndata[host][kpi][0][1]) # this is time kpi but for multiline it equals to kpi data itelf...
@@ -2743,6 +2666,9 @@ class chartArea(QFrame):
                                                   # kinda on purpose, it leaves min/max/etc in kpis table (to be checked)
             if len(self.widget.ndata)> 0:
                 self.widget.ndata[host].clear()
+                
+            self.hostKPIsList[host].clear()
+            self.hostKPIsStyles[host].clear()
             
         self.widget.nscales.clear()
         self.widget.ndata.clear()
@@ -2754,8 +2680,8 @@ class chartArea(QFrame):
         # 2021-11-12
         
         # need to clear the kpis list as it will be reloaded anyhow
-        kpiStylesNN['host'].clear()
-        kpiStylesNN['service'].clear()
+        self.hostKPIsList.clear()
+        self.hostKPIsStyles.clear()
 
         # 2022-07-14, #676
         self.widget.highlightedKpi = None
@@ -2823,29 +2749,21 @@ class chartArea(QFrame):
         self.repaint()
         
         try:
-            newHosts = dp.initHosts(dpidx)
+            newHosts, newKPIs, newStyles = dp.initHosts(dpidx)
 
             # append hosts, not replace if that would be requred, hosts would be cleared above
             for h in newHosts:
                 self.widget.hosts.append(h)
-                self.hostKPIsList.append([])        # create a corresponding list of KPIs 
-                self.hostKPIsStyles.append({})      # create a corresponding list of KPIs
-            
-            # next call - detect kpis, populate lists of service/host KPIs 
-            # and populate kpiStylesNN with style definitions
-            dp.initKPIs(self.hostKPIs, self.srvcKPIs)
-
-            #build new styles structures
-            for i in range(len(self.widget.hosts)):
-                if self.widget.hosts[i]['port'] == '':
-                    self.hostKPIsList[i] = self.hostKPIs.copy()
-                    self.hostKPIsStyles[i] = kpiStylesNN['host'].copy()
-                else:
-                    self.hostKPIsList[i] = self.srvcKPIs.copy()
-                    self.hostKPIsStyles[i] = kpiStylesNN['service'].copy()
-            
-            #log(self.srvcKPIs)
-            #log(self.srvcKPIs)
+                
+            for kpis in newKPIs:
+                self.hostKPIsList.append(kpis.copy())        # create a corresponding list of KPIs 
+                
+            for styles in newStyles:
+                self.hostKPIsStyles.append(styles.copy())      # create a corresponding list of KPIs
+                
+            #log(self.widget.hosts)
+            #log(self.hostKPIsList)
+            #log(self.hostKPIsStyles)
             
         except utils.customKPIException as e:
             log('[!] initHosts customKPIException: %s' % str(e), 2)
@@ -2966,16 +2884,16 @@ class chartArea(QFrame):
         '''
         log('setScale signal: %s -> %i-%i' % (kpi, yMin, yMax))
         
-        type = hType(host, self.widget.hosts)
+        kpiStylesNNN = self.hostKPIsStyles[host]
         
-        group = kpiStylesNN[type][kpi]['group']
+        group = kpiStylesNNN[kpi]['group']
         
         if  group == 0:
             if yMax == -1:
-                if 'manual_scale' in kpiStylesNN[type][kpi]:
-                    kpiStylesNN[type][kpi].pop('manual_scale')
+                if 'manual_scale' in kpiStylesNNN[kpi]:
+                    kpiStylesNNN[kpi].pop('manual_scale')
             else:
-                kpiStylesNN[type][kpi]['manual_scale'] = (yMin, yMax)
+                kpiStylesNNN[kpi]['manual_scale'] = (yMin, yMax)
         else:
             if yMax == -1:
                 if group in self.widget.manual_scales:
@@ -2988,27 +2906,6 @@ class chartArea(QFrame):
         self.scalesUpdated.emit()
         self.widget.update()
         
-    '''
-    def adjustScale(self, mode, kpi):
-        log('increaseScale signal: %s' % (kpi))
-        
-        if 'mem' in self.widget.manual_scales.keys():
-            mem_max = self.widget.manual_scales['mem']
-        else:
-            mem_max = self.widget.scanMetrics('mem')
-        
-        if mode == 'increase':
-            mem_max = self.widget.ceiling(mem_max + 1)
-        else:
-            mem_max =  self.widget.floor(mem_max - 1)
-        
-        self.widget.manual_scales['mem'] = mem_max
-            
-        self.widget.alignScales()
-        log('self.scalesUpdated.emit() #6', 5)
-        self.scalesUpdated.emit()
-        self.widget.update()
-    '''
         
     def connectionLost(self, dp, err_str = ''):
         '''
@@ -3100,7 +2997,7 @@ class chartArea(QFrame):
                     log(str(host))
                     log(str(kpis))
                     
-                    dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], wnd=self)
+                    dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], self.hostKPIsStyles[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     
                     allOk = True
@@ -3224,7 +3121,7 @@ class chartArea(QFrame):
                                         dp = self.ndp[dpidx]
                                         
                                         t1 = time.time()
-                                        dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst], wnd=self)
+                                        dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst], self.hostKPIsStyles[hst], wnd=self)
                                         self.widget.nkpis[hst] = kpis[hst]
                                         
                                         t2 = time.time()
@@ -3273,13 +3170,6 @@ class chartArea(QFrame):
                     
                     log('self.scalesUpdated.emit() #1', 5)
                     self.scalesUpdated.emit()
-                '''
-                t1 = time.time()
-                self.statusMessage('%s added, %s s' % (kpi, str(round(t1-t0, 3))))
-                self.renewMaxValues()
-                self.widget.alignScales()
-                self.scalesUpdated.emit()
-                '''
          
                 self.widget.update()
                 
@@ -3417,7 +3307,7 @@ class chartArea(QFrame):
             
             scalesml = self.widget.nscalesml[h]
             
-            type = hType(h, self.widget.hosts)
+            kpiStylesNNN = self.hostKPIsStyles[h]
 
             # init zero dicts for scales
             # especially important for the first run
@@ -3441,21 +3331,11 @@ class chartArea(QFrame):
                 if kpi[:4] == 'time':
                     continue
 
-                subtype = kpiDescriptions.getSubtype(type, kpi)
+                subtype = kpiStylesNNN[kpi].get('subtype')
 
                 if kpi not in self.hostKPIsList[h]:
                     log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
                     continue
-                '''
-                if type == 'service':
-                    if kpi not in self.srvcKPIs:
-                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
-                        continue
-                else:
-                    if kpi not in self.hostKPIs:
-                        log('kpi was removed so no renewMaxValues (%s)' % (kpi), 4)
-                        continue
-                '''
                     
                 if subtype == 'gantt':
                 
@@ -3472,12 +3352,10 @@ class chartArea(QFrame):
                         
                     continue
                     
-                timeKey = kpiDescriptions.getTimeKey(type, kpi)
+                timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
                     
                 # array_size = len(self.widget.ndata[h][timeKey]) # 2020-03-11
                 array_size = len(data[timeKey])
-                
-                #print(data[timeKey][0], data[timeKey][array_size-1])
                 
                 if array_size == 0:
                     continue
@@ -3709,23 +3587,23 @@ class chartArea(QFrame):
                     if len(self.widget.nkpis[host]) > 0:
 
                         log('--->> need to check here if all the kpis actually exist...')
-                        type = hType(host, self.widget.hosts)
+                        
+                        kpiStylesNNN = self.hostKPIsStyles[host]
                         
                         for k in self.widget.nkpis[host]:
                             log(k)
-                            if k not in kpiStylesNN[type]:
+                            if k not in kpiStylesNNN:
                                 log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
                                 self.widget.nkpis[host].remove(k)
                             else:
                                 log('ok')
-                                
                                 
                         log(f'{host=}')
                         log(f'{self.widget.hosts[host]}')
                         dpidx = self.widget.hosts[host]['dpi']
                         dp = self.ndp[dpidx]
                         
-                        dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host], wnd=self)
+                        dp.getData(self.widget.hosts[host], fromto, self.widget.nkpis[host], self.widget.ndata[host], self.hostKPIsStyles[host], wnd=self)
                         actualRequest = True
                 allOk = True
 
@@ -3957,6 +3835,7 @@ class chartArea(QFrame):
         self.widget = myWidget()
         
         self.widget._parent = self
+        self.widget.hostKPIsStyles = self.hostKPIsStyles        # need to link as used widely in drawChart called from paint event
 
         try:
             if cfg('color-bg'):

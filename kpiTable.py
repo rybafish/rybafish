@@ -1,3 +1,5 @@
+import sys
+
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, 
     QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QItemDelegate, QColorDialog)
     
@@ -388,7 +390,7 @@ class kpiTable(QTableWidget):
         self.silentMode = True
         
         self.host = host
-                
+                        
         kpiList = self.hostKPIsList[host]
         kpiStyles = self.hostKPIsStyles[host]
             
