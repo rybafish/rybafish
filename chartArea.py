@@ -2434,7 +2434,7 @@ class chartArea(QFrame):
         kpi = self.widget.highlightedKpi
         
         #this is black magic copy paste from scanforhint
-        kpiStylesNNN = self.hostKPIsStyles
+        kpiStylesNNN = self.hostKPIsStyles[host]
         timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
 
         hst = self.widget.hosts[host]['host']
