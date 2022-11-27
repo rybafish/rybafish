@@ -2255,17 +2255,19 @@ class chartArea(QFrame):
 
         data = self.widget.ndata[h]
         
+        kpiStylesNNN = self.hostKPIsStyles[h]
+        
         kpis = data.keys()
         
-        ht = hType(h, self.widget.hosts)
-        timeKey = kpiDescriptions.getTimeKey(ht, kpiName)
+        
+        timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpiName)
                 
         if timeKey is None:
             log(f'Cannot identify time key for {kpiName} in {kpis}', 2)
             self.statusMessage('Cannot identify time key, check logs, please report this issue.')
             return
             
-        subtype = kpiDescriptions.getSubtype(ht, kpiName)
+        subtype = kpiStylesNNN[kpiName].get('subtype')
         
         if subtype == 'gantt':
             self.statusMessage(f'Not implemented for {subtype} yet.')
@@ -2291,12 +2293,12 @@ class chartArea(QFrame):
             if len(self.widget.nkpis[checkHost]) == 0:
                 continue
 
-            ht = hType(checkHost, self.widget.hosts)
+            kpiStylesNNN = self.hostKPIsStyles[checkHost]
             
             for checkKPI in self.widget.nkpis[checkHost]:
             
-                timeKey = kpiDescriptions.getTimeKey(ht, checkKPI)
-                subtype = kpiDescriptions.getSubtype(ht, checkKPI)
+                timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, checkKPI)
+                subtype = kpiStylesNNN[checkKPI].get('subtype')
                 
                 if subtype == 'gantt':
                     continue
@@ -2702,12 +2704,15 @@ class chartArea(QFrame):
             
         return idx
         
-    def initDP(self, dpidx, kpis = None, message = None):
+    def initDP(self, dpidx, kpis=None, message=None):
         '''
             this one to be called after creating a data provider
             to be called right after self.chartArea.dp = new dp
             
             dpidx > 0 implies secondary connection, this is why cleanup will be skipped
+
+            kpis - dict of kpis (per host) to enable on start (and trigger load)
+            
         '''
 
         def myIntersect(l1, l2):
@@ -2723,12 +2728,9 @@ class chartArea(QFrame):
             
             
         if dpidx == 0:
-            log('before cleanup:' + str(kpis))
             self.cleanup()
-            log('after cleanup:' + str(kpis))
                 
             self.widget.ndata.clear()
-
             self.widget.hosts.clear()
             self.widget.nkpis.clear()
 
@@ -2755,8 +2757,8 @@ class chartArea(QFrame):
             for h in newHosts:
                 self.widget.hosts.append(h)
                 
-            for kpis in newKPIs:
-                self.hostKPIsList.append(kpis.copy())        # create a corresponding list of KPIs 
+            for kpisPerHost in newKPIs:
+                self.hostKPIsList.append(kpisPerHost.copy())        # create a corresponding list of KPIs 
                 
             for styles in newStyles:
                 self.hostKPIsStyles.append(styles.copy())      # create a corresponding list of KPIs
@@ -2791,17 +2793,13 @@ class chartArea(QFrame):
         
         if kpis:
             log('initDP processing', 5)
-            for i in range(len(self.widget.hosts)):
-                host = self.widget.hosts[i]
-                hst = '%s:%s' % (host['host'], host['port'])
+            for h in range(len(self.widget.hosts)):
+                host = self.widget.hosts[h]
+                hstKey = '%s:%s' % (host['host'], host['port'])
                 
-                if hst in kpis:
-                    if hst[-1] == ':':
-                        kpis_n = kpis_n = myIntersect(kpis[hst], self._hostKPIs)
-                    else:
-                        kpis_n = kpis_n = myIntersect(kpis[hst], self.srvcKPIs)
-                        
-                    self.widget.nkpis[i] = kpis_n
+                if hstKey in kpis:
+                    kpis_n = kpis_n = myIntersect(kpis[hstKey], self.hostKPIsList[h])
+                    self.widget.nkpis[h] = kpis_n
 
             log('reload from init dp', 4)
             

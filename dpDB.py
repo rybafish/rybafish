@@ -190,7 +190,7 @@ class dataProvider(QObject):
     
         tenant = self.dbProperties.get('tenant')
                     
-        log('Init hosts dpDB wrapper: %s' % str(hosts))
+        log(f'Init hosts dpDB wrapper. hosts: {hosts}')
         
         if not self.connection:
             log('No db connection...')

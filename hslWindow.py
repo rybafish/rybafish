@@ -57,7 +57,7 @@ from profiler import profiler
 class hslWindow(QMainWindow):
 
     statusbar = None
-    connectionConf = None
+    primaryConf = None # primary connection dictionary, keys: host, port, name, dbi, user, pwd, etc
     
     kpisTable = None
 
@@ -218,8 +218,8 @@ class hslWindow(QMainWindow):
         
     def dumpLayout(self, closeTabs=True, crashMode=False):
     
-        if self.connectionConf:
-            connection = self.connectionConf.get('name')
+        if self.primaryConf:
+            connection = self.primaryConf.get('name')
         else:
             connection = None
 
@@ -253,7 +253,7 @@ class hslWindow(QMainWindow):
         if connection:
             self.layout['connectionName'] = connection
         else:
-            if self.connectionConf:
+            if self.primaryConf:
                 self.layout['connectionName'] = None
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
@@ -602,12 +602,14 @@ class hslWindow(QMainWindow):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/tips'))
         
     def menuDummy(self):
-        self.chartArea.dp = dpDummy.dataProvider() # generated data
+        dp = dpDummy.dataProvider() # generated data
+
+        dpidx = self.chartArea.appendDP(dp)
 
         if cfg('saveKPIs', True):
-            self.chartArea.initDP(self.layout['kpis'])
+            self.chartArea.initDP(dpidx, self.layout['kpis'])
         else:
-            self.chartArea.initDP()
+            self.chartArea.initDP(dpidx)
 
     def menuConfig(self):
         self.processConnection()
@@ -618,13 +620,15 @@ class hslWindow(QMainWindow):
     def processConnection(self, secondary=False):
         log(f'processConnection, {secondary=}')
         
+        conf = None
+        
         if secondary:
             connConf = None
         else:
-            if self.connectionConf is None:
+            if self.primaryConf is None:
                 connConf = cfg('server')
             else:
-                connConf = self.connectionConf
+                connConf = self.primaryConf
             
         if not connConf:
             connConf = {}
@@ -632,12 +636,51 @@ class hslWindow(QMainWindow):
         if not connConf.get('name') and self.layout and not secondary:
             connConf['setToName'] = self.layout['connectionName']
             
+        log(f'right before {connConf=}')
+        log(f'right before {self.primaryConf=}')
+        log(f'right before {conf=}')
+
+        if conf is connConf:
+            log('right before conf is connConf')
+        else:
+            log('right before conf is not connConf')
+            
+        if conf is self.primaryConf:
+            log('right before conf is self.primaryConf') 
+        else:
+            log('right before conf is not self.primaryConf')
+
+        if connConf is self.primaryConf:
+            log('right before connConf is self.primaryConf') 
+        else:
+            log('right before connConf is not self.primaryConf')
+
         conf, ok = configDialog.Config.getConfig(connConf, self)
+                
+        log(f'right after {connConf=}')
+        log(f'right after {self.primaryConf=}')
+        log(f'right after {conf=}')
         
-        log(f'config dialog, ok? {ok}', 5)
+        if conf is connConf:
+            log('right after conf is connConf')
+        else:
+            log('right after conf is not connConf')
+            
+        if conf is self.primaryConf:
+            log('right after conf is self.primaryConf')  # <<--- yep
+        else:
+            log('right after conf is not self.primaryConf')
         
+        if connConf is self.primaryConf:
+            log('right after connConf is self.primaryConf') 
+        else:
+            log('right after connConf is not self.primaryConf')
+
         if ok and not secondary:
-            self.connectionConf = conf
+            log(f'secondary?? {secondary=}')
+            self.primaryConf = conf.copy()
+        
+        log(f'after connection dialog {connConf=}, {self.primaryConf}')
         
         if ok and conf['ok']:
         
@@ -725,7 +768,7 @@ class hslWindow(QMainWindow):
                         
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
-                        log('--> dumplayout, init kpis:' + str(self.layout['kpis']), 5)
+                        log('dumplayout, init kpis:' + str(self.layout['kpis']), 5)
                         self.chartArea.initDP(dpidx, self.layout['kpis'].copy())
                         
                         if self.layout['legend']:
@@ -886,7 +929,7 @@ class hslWindow(QMainWindow):
     
     
     def newConsole(self, filename=None, generateName=False):
-        conf = self.connectionConf
+        conf = self.primaryConf
         
         self.statusMessage('Connecting console...', True)
         
@@ -998,7 +1041,7 @@ class hslWindow(QMainWindow):
 
     def menuSQLConsole(self):
     
-        conf = self.connectionConf
+        conf = self.primaryConf
         
         if conf is None:
             self.statusMessage('No configuration...', False)
