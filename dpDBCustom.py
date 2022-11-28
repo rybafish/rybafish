@@ -134,7 +134,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
 
 
         if errorSuffix != '':
-            log('[W] custom KPI with this already exists: %s, disabeling' % (csName))
+            log('[W] custom KPI with this name already exists: %s, disabeling' % (csName))
 
             kpi['label'] = '[E] the KPI name must be unique! (label: %s, name: %s)' % (kpi['label'], kpi['name'])
             kpi['description'] = 'change the KPI name in YAML definition: ' + file

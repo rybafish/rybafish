@@ -305,6 +305,8 @@ class dataProvider(QObject):
         kpiStylesNNN = {'host':{}, 'service':{}}
         
         rows = self.dbi.execute_query(self.connection, kpis_sql, [])
+        
+        #very similar logic called in dbi_sqlite.initHosts... somehow combine in one call?
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN)
 
         # (re)load custom KPIs
@@ -325,8 +327,8 @@ class dataProvider(QObject):
         
         for host in hosts:
             if host['port'] == '':
-                hostKPIsList.append(hostKPIs)
-                hostKPIsStyles.append(kpiStylesNNN['host'])
+                hostKPIsList.append(hostKPIs)               # append here because we add a new item for every host
+                hostKPIsStyles.append(kpiStylesNNN['host']) # same here
             else:
                 hostKPIsList.append(srvcKPIs)
                 hostKPIsStyles.append(kpiStylesNNN['service'])

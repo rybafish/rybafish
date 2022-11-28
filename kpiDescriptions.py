@@ -819,6 +819,8 @@ def hType (i, hosts):
 def clarifyGroups(kpiStylesNNN):
     '''
         gives pre-defined names to most useful groups like memory and threads
+        for the new style kpiStylesNNN needs to be called for every type: host/service
+        (before multiplication) or just every host
     '''
 
     thread_kpis = ['active_thread_count',
@@ -948,11 +950,15 @@ def denormalize (kpi, value):
     else:
         return value
         
-def initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN):
+def initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNN):
     '''
-        Same interface to be reused for DB trace
+        this method unpacks standard HANA m_load_history_info rows and fills:
+            - two lists of kps (hostKPIs, srvcKPIs)
+            - dictionay of corresponding styles: kpiStylesNN
         
-        input rows list:
+        Same interface reused in DB trace, dbi_sqlite
+        
+        Input rows list structure:
             ('2.10', '', '', 0, 'SQL', '', '', '', 0, 0) -- header/group
             ('2.10.01', 'M_LOAD_HISTORY_SERVICE', 'CONNECTION_COUNT', 0, 'Open Connections', 'Number of open SQL connections', '', '', 4251856, 1)
             
@@ -970,7 +976,8 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN):
         Output:
             hostKPIs, srvcKPIs are filled with the respective KPIs lists
             
-            kpiStylesNN - LOCAL <--- list of KPIs...
+            kpiStylesNN pre-created (outside) dict containing 'host' and 'service' keys,
+            will contain styles for KPIs
     '''
     
     for kpi in rows:
@@ -1003,7 +1010,7 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN):
                     'style':        nsStyle(utils.safeInt(kpi[9]))
                 }
             
-            kpiStylesNNN[hType][kpiName] = createStyle(kpiDummy)
+            kpiStylesNN[hType][kpiName] = createStyle(kpiDummy)
                     
         if kpi[1].lower() == 'm_load_history_host':
             hostKPIs.append(kpiName)

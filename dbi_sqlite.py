@@ -392,7 +392,7 @@ class sqlite():
             if exists(r[1].lower(), r[2].lower()):
                 rows.append(r)
 
-
+        #very similar logic called in default dpDB processing... somehow combine in one call?
         hostKPIs = []
         srvcKPIs = []
         kpiStylesNNN = {'host':{}, 'service':{}}

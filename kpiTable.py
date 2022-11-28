@@ -404,7 +404,8 @@ class kpiTable(QTableWidget):
         #put enabled ones first:
         for kpin in self.nkpis[host]:
             kpis.append(kpin)
-
+            
+        #log(f'{kpiList=}')
         #populate rest of KPIs (including groups):
         for kpi in kpiList:
                 if kpi not in kpis:
@@ -446,6 +447,7 @@ class kpiTable(QTableWidget):
                     continue 
                 '''
                 
+                #log(f'{kpiName=}, {type(kpiStyles)}')
                 if kpiName not in kpiStyles:
                     log('[!] kpiTable refill: kpi is missing, %s' % kpiName, 2)
                     continue

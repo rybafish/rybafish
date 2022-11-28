@@ -2090,6 +2090,7 @@ class chartArea(QFrame):
     
     connection = None # db connection
     
+    #those two depricated since #739
     hostKPIs = [] # list of available host KPIS, sql names
     srvcKPIs = [] # list of available srvc KPIS, sql names
     
@@ -2152,7 +2153,7 @@ class chartArea(QFrame):
                 chart.nkpis[host].remove(kpi)
                 
                 if kpi in self.hostKPIsList[host]:
-                    self.srvcKPIs.remove(kpi)
+                    self.hostKPIsList[host].remove(kpi)
                     
             delKpis = []
             
@@ -2675,13 +2676,8 @@ class chartArea(QFrame):
         self.widget.nscales.clear()
         self.widget.ndata.clear()
         
-        log('clear styles top lists...')
-        self.hostKPIsList.clear()
-        self.hostKPIsStyles.clear()
-        
-        # 2021-11-12
-        
         # need to clear the kpis list as it will be reloaded anyhow
+        log('clear styles top lists...')
         self.hostKPIsList.clear()
         self.hostKPIsStyles.clear()
 
@@ -2690,6 +2686,11 @@ class chartArea(QFrame):
         self.widget.highlightedKpiHost = None
         self.widget.highlightedPoint = None
         self.widget.highlightedGBI = None
+
+        # moved from outside for multidp
+        self.widget.ndata.clear()
+        self.widget.hosts.clear()
+        self.widget.nkpis.clear()
         
         log('cleanup complete')
         
@@ -2729,16 +2730,7 @@ class chartArea(QFrame):
             
         if dpidx == 0:
             self.cleanup()
-                
-            self.widget.ndata.clear()
-            self.widget.hosts.clear()
-            self.widget.nkpis.clear()
-
             self.widget.update()
-            
-            #self._hostKPIs.clear()
-            self.srvcKPIs.clear()
-            
             log('Cleanup complete')
         else:
             log('Secondary DP, no cleanup performed')

@@ -77,13 +77,9 @@ class dataProvider:
         KPIsList[2].append('cpu')
         KPIsList[2].append('indexserverMemUsed')
         
-        #srvcKPIs.append('memory_allocation_limit')
-        
         stime = datetime.datetime.now() - datetime.timedelta(seconds= 18 * 3600)
         stime -= datetime.timedelta(seconds = stime.timestamp() % 3600)
-        
-        #etime = stime + datetime.timedelta(seconds = 5*3600)
-        
+                
         etime = datetime.datetime.now()
         
         hosts.append({

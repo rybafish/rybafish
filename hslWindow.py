@@ -401,58 +401,78 @@ class hslWindow(QMainWindow):
         customSQLs.loadSQLs()
     
     def menuReloadCustomKPIs(self):
-    
-        kpiStylesNN = kpiDescriptions.kpiStylesNN
-        
-        for type in ('host', 'service'):
-            for kpiName in list(kpiStylesNN[type]):
+        '''
+            delete and rebuild custom kpis
+            
+            1st step - delete existing custom kpis from KPIs lists and KPIsStyles
+            2nd step - scann/add back new definitions
+            
+            by the way - delete stuff from data arrays?
+        '''
 
-                kpi = kpiStylesNN[type][kpiName]
-                
-                if kpi['sql'] is not None:
-                    del(kpiStylesNN[type][kpiName])
-                    
-                    if type == 'host':
-                        if kpiName in self.chartArea.hostKPIs:
-                            self.chartArea.hostKPIs.remove(kpiName)
-                    else:
-                        if kpiName in self.chartArea.srvcKPIs:
-                            self.chartArea.srvcKPIs.remove(kpiName)
+        hosts = self.chartArea.widget.hosts
         
-        # del host custom groups
-        kpis_len = len(self.chartArea.hostKPIs)
-        i = 0
+        ## step one: remove from the existing lists
         
-        while i < kpis_len:
-            if self.chartArea.hostKPIs[i][:1] == '.' and (i == len(self.chartArea.hostKPIs) - 1 or self.chartArea.hostKPIs[i+1][:1] == '.'):
-                del(self.chartArea.hostKPIs[i])
-                kpis_len -= 1
-            else:
-                i += 1
+        for h in range(len(hosts)):
 
-        # del service custom groups
-        kpis_len = len(self.chartArea.srvcKPIs)
-        i = 0
-        
-        while i < kpis_len:
-            if self.chartArea.srvcKPIs[i][:1] == '.' and (i == len(self.chartArea.srvcKPIs) - 1 or self.chartArea.srvcKPIs[i+1][:1] == '.'):
-                del(self.chartArea.srvcKPIs[i])
-                kpis_len -= 1
-            else:
-                i += 1
+            hostKPIsStyles = self.chartArea.hostKPIsStyles[h]
+            hostKPIsList = self.chartArea.hostKPIsList[h]
+
+            log(f'{h}: {hostKPIsList=}')
+            
+            for kpiName in list(hostKPIsStyles):
+                kpi = hostKPIsStyles[kpiName]
+                if kpi.get('sql'):
+                    del(hostKPIsStyles[kpiName]) # delete style dict entry
+                    hostKPIsList.remove(kpiName) # delete list entry
                 
+            # del host custom groups
+            kpis_len = len(hostKPIsList)
+            i = 0
+            
+            while i < kpis_len:
+                if hostKPIsList[i][:1] == '.' and (i == len(hostKPIsList)-1 or hostKPIsList[i+1][:1] == '.'):
+                    del(hostKPIsList[i])
+                    kpis_len -= 1
+                else:
+                    i += 1
+
+
+        ## load custom KPI definitions into temp structures...
+        # this is executed just once, data loaded into old host/port structures
+        # and then distributed/copied to new structures
+        hostKPIs = []
+        srvcKPIs = []
+        kpiStylesNN = {'host':{}, 'service':{}}
 
         try:
-            dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiStylesNN)
         except Exception as e:
             self.chartArea.disableDeadKPIs()
             msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
-        
+
+        # now append detected custom KPIs back into lists
+        for h in range(len(hosts)):
+            hostKPIsStyles = self.chartArea.hostKPIsStyles[h]
+            hostKPIsList = self.chartArea.hostKPIsList[h]
+
+            if hosts[h]['port'] == '':
+                hostKPIsList += hostKPIs
+                for kpiName in kpiStylesNN['host'].keys():
+                    hostKPIsStyles[kpiName] = kpiStylesNN['host'][kpiName]
+            else:
+                hostKPIsList += srvcKPIs
+                for kpiName in kpiStylesNN['service'].keys():
+                    hostKPIsStyles[kpiName] = kpiStylesNN['service'][kpiName]
+
+
+            #not really sure if this one can be called twice...
+            kpiDescriptions.clarifyGroups(hostKPIsStyles)
+            log(f'{h}: {hostKPIsList=}')
+            
         self.chartArea.widget.initPens()
         self.chartArea.widget.update()
-        
-        #really unsure if this one can be called twice...
-        kpiDescriptions.clarifyGroups()
         
         #trigger refill
         log('menuReloadCustomKPIs refill', 5)
@@ -1159,13 +1179,13 @@ class hslWindow(QMainWindow):
         if len(fname[0]) > 0:
         
             fileUTCshift = cfg('import_timezone_offset')
-            self.chartArea.dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
-            
-            #wrong approach, #697
-            #self.chartArea.dp.dbProperties = {}
-            #self.chartArea.dp.dbProperties['timeZoneDelta'] = -3*3600
-            
-            self.chartArea.initDP(message='Parsing the trace file, will take a minute or so...')
+            #self.chartArea.dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
+            #self.chartArea.initDP(message='Parsing the trace file, will take a minute or so...')
+
+            # new style, #739
+            dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
+            dpidx = self.chartArea.appendDP(dp)
+            self.chartArea.initDP(dpidx, message='Parsing the trace file, will take a minute or so...')
 
             toTime = self.chartArea.widget.hosts[0]['to']
             fromTime = toTime - datetime.timedelta(hours = 10)
