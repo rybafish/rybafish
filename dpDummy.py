@@ -1,3 +1,8 @@
+'''
+    simple dataprovider implementation for offline tests
+    
+    contains limited implementation of main dataprovider calls
+'''
 import datetime
 
 from array import array

@@ -1,5 +1,15 @@
 '''
     dpDB is the main data provider based on the database interface (dbi)
+    
+    It kinda impliments kinda "interface" to be usable in charts.
+    
+    Main calls are: 
+        initHosts
+        getData
+            those two use database interface inside with minor adjustments
+            depending on dbi itself.
+        
+    those two calls must be implemented in any dataprovider.
 '''
 
 from PyQt5.QtCore import QObject

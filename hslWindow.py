@@ -655,7 +655,8 @@ class hslWindow(QMainWindow):
             
         if not connConf.get('name') and self.layout and not secondary:
             connConf['setToName'] = self.layout['connectionName']
-            
+
+        '''
         log(f'right before {connConf=}')
         log(f'right before {self.primaryConf=}')
         log(f'right before {conf=}')
@@ -674,9 +675,11 @@ class hslWindow(QMainWindow):
             log('right before connConf is self.primaryConf') 
         else:
             log('right before connConf is not self.primaryConf')
+        '''
 
         conf, ok = configDialog.Config.getConfig(connConf, self)
                 
+        '''
         log(f'right after {connConf=}')
         log(f'right after {self.primaryConf=}')
         log(f'right after {conf=}')
@@ -695,6 +698,7 @@ class hslWindow(QMainWindow):
             log('right after connConf is self.primaryConf') 
         else:
             log('right after connConf is not self.primaryConf')
+        '''
 
         if ok and not secondary:
             log(f'secondary?? {secondary=}')
@@ -732,32 +736,7 @@ class hslWindow(QMainWindow):
                 # close damn chart console
                 
                 if not secondary:
-                    log('Clean up DPs and destroy DBIs...')
-                    doneSomething = False
-
-                    numDPs = len(self.chartArea.ndp)
-
-                    # close and destroy all the DPs...
-                    
-                    log(f'DPs list: {self.chartArea.ndp}', 5)
-                    
-                    while self.chartArea.ndp:
-                        dp = self.chartArea.ndp.pop()
-                        if dp is not None:
-                            dp.close()
-
-                            # have no idea if this has any sense at all! 2022-11-23 (was here since s2j)
-                            if dp.dbi is not None:
-                                log('dbi.dbinterface.destroy() call', 5)
-                                dp.dbi.destroy()
-                            
-                            del dp
-                            doneSomething = True
-                            
-                    log(f'DPs list: {self.chartArea.ndp}', 5)
-                        
-                    if doneSomething:
-                        self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+                    self.chartArea.cleanDPs()
 
                 self.statusMessage('Connecting...', False)
                 self.repaint()
@@ -813,6 +792,10 @@ class hslWindow(QMainWindow):
                         
                 else:
                     self.chartArea.initDP(dpidx)
+                    
+                    
+                if not secondary:
+                    self.kpisTable.refill(self.hostTable.currentRow())
                 
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
@@ -1139,17 +1122,26 @@ class hslWindow(QMainWindow):
         self.chartArea.widget.update()
     
     def menuEss(self):
+        def reinitDPs():
+            '''
+                local method to re-init relevant DPs (HDB)
+            '''
+            for dpidx in range(len(self.chartArea.ndp)):
+                dp = self.chartArea.ndp[dpidx]
+                if type(dp) == dpDB.dataProvider and dp.dbi.name == 'HDB':
+                    log(f're-init dp[{dpidx}], ({dp.dbi.name})')
+                    self.chartArea.initDP(dpidx, kpis.copy(), message = 'Re-initializing hosts information...')
+                else:
+                    log(f'dp[{dpidx}] skipped, {type(dp)}')
     
         if cfg('ess', False) == False:
             utils.cfgSet('ess', True)
             self.essAct.setText('Switch back to m_load_history...')
-            #self.statusMessage('You need to reconnect in order to have full ESS data available', False)
-        
-
             kpis = self.formatKPIs()
+            reinitDPs()
         
             self.chartArea.setStatus('sync', True)
-            self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+                        
             self.kpisTable.host = None
             
             self.statusMessage('Now reload...', True)
@@ -1164,7 +1156,8 @@ class hslWindow(QMainWindow):
             kpis = self.formatKPIs()
         
             self.chartArea.setStatus('sync', True)
-            self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+            #self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+            reinitDPs()
             self.kpisTable.host = None
             
             self.statusMessage('Now reload...', True)

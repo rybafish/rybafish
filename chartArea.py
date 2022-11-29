@@ -2708,11 +2708,26 @@ class chartArea(QFrame):
     def initDP(self, dpidx, kpis=None, message=None):
         '''
             this one to be called after creating a data provider
-            to be called right after self.chartArea.dp = new dp
+            to be called right after dp = new dp
+            
+            It fills charts structures with actual data aboiut the data source:
+            hosts, KPIs, KPI styles
             
             dpidx > 0 implies secondary connection, this is why cleanup will be skipped
 
             kpis - dict of kpis (per host) to enable on start (and trigger load)
+            
+            Input parameters
+                dpidx - data provider index, integer
+                    it, actually, will be only used to set host['dpi'] value
+                    
+                kpis - list of KPIs to enable, propageted from layout.yaml
+                
+                message - message to set during initHosts (potentially long execution)
+                    it actually used only by dpTrace
+                    
+            Return value
+                None, the results stored into chartarea+widget structures.
             
         '''
 
@@ -2733,7 +2748,7 @@ class chartArea(QFrame):
             self.widget.update()
             log('Cleanup complete')
         else:
-            log('Secondary DP, no cleanup performed')
+            log('Secondary DP, no cleanup performed.')
         
         if message:
             self.statusMessage(message)
@@ -2755,10 +2770,6 @@ class chartArea(QFrame):
             for styles in newStyles:
                 self.hostKPIsStyles.append(styles.copy())      # create a corresponding list of KPIs
                 
-            #log(self.widget.hosts)
-            #log(self.hostKPIsList)
-            #log(self.hostKPIsStyles)
-            
         except utils.customKPIException as e:
             log('[!] initHosts customKPIException: %s' % str(e), 2)
             utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
@@ -2768,7 +2779,7 @@ class chartArea(QFrame):
         #except Exception as e:
         #    log('[!] initHosts generic exception: %s, %s' % (str(type(e)), str(e)), 2)
         #    utils.msgDialog('Initialization Error', 'Generic initial error. Probably the app will go unstable, check the logs and consider reconnecting\n\n%s: %s' % (str(type(e)), str(e)))
-            
+
         if len(self.widget.hosts) == 0 and cfg('noAccessWarning', False) == False:
             msgBox = QMessageBox(self)
             msgBox.setWindowTitle('Connection init error')
@@ -3914,3 +3925,39 @@ class chartArea(QFrame):
         qp.drawLine(size.width(), 0, 0,  size.height())
         
         qp.end()
+        
+    def cleanDPs(self):
+        log('Clean up DPs and destroy DBIs...')
+        doneSomething = False
+
+        numDPs = len(self.ndp)
+
+        # close and destroy all the DPs...
+        
+        log(f'DPs list before cleanup: {self.ndp}', 5)
+        for dp in self.ndp:
+            log(f'    {type(dp)} {dp}', 5)
+        
+        while self.ndp:
+            dp = self.ndp.pop()
+            if dp is not None:
+                dp.close()
+
+                # have no idea if this has any sense at all! 2022-11-23 (was here since s2j)
+                if hasattr(dp, 'dbi') and dp.dbi is not None:
+                    log('dbi.dbinterface.destroy() call', 5)
+                    dp.dbi.destroy()
+                
+                del dp
+                doneSomething = True
+                
+        if self.ndp:
+            log(f'[W] DPs list before cleanup: {self.ndp}', 2)
+            for dp in self.ndp:
+                log(f'[W]    {type(dp)} {dp}', 2)
+        else:
+            log('DPs cleanup done', 5)
+            
+        if doneSomething:
+            self.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+    
