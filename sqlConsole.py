@@ -1547,8 +1547,6 @@ class resultSet(QTableWidget):
     def csvVal(self, v, t):
         '''escapes single value based on type'''
         
-        print('csv', v, t)
-        
         if v is None:
             return utils.cfg('nullStringCSV', '')
         elif self.dbi.ifBLOBType(t):

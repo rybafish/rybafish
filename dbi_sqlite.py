@@ -4,8 +4,6 @@
     EVN, 2022-11-15
 '''
 
-import sys
-
 import sqlite3
 from datetime import datetime
 
@@ -122,6 +120,8 @@ class sqlite():
             return True
             
         def detectType(t):
+            #log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}')
+            
             if type(t) == int:
                 return 1
                 
@@ -155,7 +155,11 @@ class sqlite():
                 if columnType is None:
                     columnType = t
                     continue
-                    
+                 
+                # log specific column
+                #if idx == 0:
+                #    log(f'column 0, {v=}, {t=}, {needsConversion=}')
+
                 #if columnType == 1 and (t == 2):
                     # requires conversion from int to float, who cares.
                 
@@ -169,7 +173,7 @@ class sqlite():
                     needsConversion = True
                     break
 
-                if columnType == 4 and (t == 3):
+                if columnType == 4 and (t == 3 or t == -1):
                     needsConversion = True
                     break
 
@@ -177,14 +181,19 @@ class sqlite():
                     break
                     
             if needsConversion == True:
+                log(f'Need to convert column {idx} to str', 5)
                 with profiler('SQLite column convertion'):
                     for r in rows:
                         if type(r[idx]) != str:
+                            log(f'Convert: {r[idx]} ({type(r[idx])})', 5)
                             r[idx] = str(r[idx])
+                        else:
+                            log(f'Already str: {r[idx]}', 5)
+                            
+                columnType = 3
             
             if columnType == 4 and t == 4:
-                # meaninf the whole column was timestamp...
-                print('wow, timestamp')
+                # meaning the whole column was timestamp...
                 for r in rows:
                     r[idx] = datetime.fromisoformat(r[idx])
                     
@@ -194,60 +203,7 @@ class sqlite():
     
     
     def execute_query_desc(self, connection, sql_string, params, resultSize):
-        '''
-        def detectType(t):
-            #log(f'detectType: {t}: {type(t)}')
-            if type(t) == int:
-                return 1
-                
-            if type(t) == float:
-                return 2
-
-            if type(t) == str:
-                return 3
-                
-            return -1
-
-        @profiler
-        def scanType(rows, idx):
-        
-            columnType = None
-            needsConversion = False
-            
-            for r in rows:
-                v = r[idx]
-                
-                t = detectType(v)
-                
-                if columnType is None:
-                    columnType = t
-                    continue
-                    
-                #if columnType == 1 and (t == 2):
-                    # requires conversion from int to float, who cares.
-                
-                if columnType == 1 and (t == 3):
-                    #downgrade to str
-                    needsConversion = True
-                    columnType = t
-                    break
-                
-                if columnType == 3 and (t == 2 or t == 1):
-                    needsConversion = True
-                    break
-
-                if columnType == -1:
-                    break
-                    
-            if needsConversion == True:
-                with profiler('SQLite column convertion'):
-                    for r in rows:
-                        if type(r[idx]) != str:
-                            r[idx] = str(r[idx])
-                    
-            return columnType
-        '''
-    
+ 
         rows = []
         cols = []
 
@@ -258,7 +214,6 @@ class sqlite():
                 
         try:
             cur = connection.cursor()
-            #cur.execute(sql_string, params)
             cur.execute(sql_string, params)
             
             rows_tuples = cur.fetchmany(resultSize)
@@ -277,6 +232,8 @@ class sqlite():
             
             if rows:
                 colTypes = self.clarifyTypes(rows)
+                
+                log(f'{colTypes=}', 5)
                 
                 #assert len(cur.description) == len(colTypes) +1, f'len(cur.description) == len(colTypes) --> {len(cur.description)} != {len(colTypes)}'
                 if len(cur.description) != len(colTypes):
@@ -321,7 +278,6 @@ class sqlite():
             return False
         
     def ifTSType(self, t):
-        log('ifTSType', 5)
         if t == 4:
             return True
         else:
@@ -348,10 +304,12 @@ class sqlite():
             
         return False
     
-    def initHosts(self, conn, hosts, dbProperties=[]):
+    def initHosts(self, conn, dpidx, dbProperties=[]):
         '''
             fills up the hosts list, returns nothing
         '''
+        
+        hosts = []
         
         # select count(*) from sqlite_master where type in ('table', 'view') and lower(name) = 'm_load_history_host'
         
@@ -393,17 +351,14 @@ class sqlite():
                         'db': ten,
                         'host': rows[i][0],
                         'service': srv,
-                        'port': str(rows[i][1])
+                        'port': str(rows[i][1]),
+                        'dpi': dpidx
                         })
 
-        for r in hosts:
-            log(f'hosts final: {r}', 5)
-                        
-
-    def initKPIs(self, conn, hostKPIs, srvcKPIs):
         '''
-            generates kpis based on columns existing in m_load_history tables
-            default kpis definitions taken from kpis.kpis
+        '
+        '   and the KPIs stuff below
+        '
         '''
         
         def exists(source, name):
@@ -424,9 +379,6 @@ class sqlite():
             return True
             
         log('initKPIs customization impl...', 4)
-        
-        host_load_history = self.checkTable(conn, 'm_load_history_host')
-        service_load_history = self.checkTable(conn, 'm_load_history_service')
         
         existingKpis = []
         
@@ -451,21 +403,35 @@ class sqlite():
         for r in kpis:            
             if exists(r[1].lower(), r[2].lower()):
                 rows.append(r)
-                
+
+        #very similar logic called in default dpDB processing... somehow combine in one call?
+        hostKPIs = []
+        srvcKPIs = []
+        kpiStylesNNN = {'host':{}, 'service':{}}
+
+        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN)
 
         # just load all custom KPIs, deal with sources verification later
         log('load custom KPIs...')
         try:
-            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiStylesNNN)
         except customKPIException as e:
             log('[e] error loading custom kpis')
             log('[e] fix or delete the problemmatic yaml for proper connect')
             raise e
             
-        log('load custom KPIs... done here')
+        kpiDescriptions.clarifyGroups(kpiStylesNNN['host'])
+        kpiDescriptions.clarifyGroups(kpiStylesNNN['service'])
+        
+        hostKPIsList = []
+        hostKPIsStyles = []
+        
+        for host in hosts:
+            if host['port'] == '':
+                hostKPIsList.append(hostKPIs)
+                hostKPIsStyles.append(kpiStylesNNN['host'])
+            else:
+                hostKPIsList.append(srvcKPIs)
+                hostKPIsStyles.append(kpiStylesNNN['service'])
 
-        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
-        
-        kpiDescriptions.clarifyGroups()
-        
-        return
+        return hosts, hostKPIsList, hostKPIsStyles

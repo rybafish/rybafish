@@ -1,3 +1,5 @@
+import sys
+
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, 
     QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QItemDelegate, QColorDialog)
     
@@ -7,7 +9,6 @@ from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter
 from PyQt5.QtCore import pyqtSignal
 
 import kpiDescriptions
-from kpiDescriptions import kpiStylesNN 
 
 from utils import log
 from utils import cfg
@@ -129,10 +130,14 @@ class kpiTable(QTableWidget):
         
         self.host = None # current host 
         
-        self.kpiScales = {} # pointer (?) to chartArea.widget.scales, updated solely by chartArea.widget.alignScales
+        self.kpiScales = {} # link to chartArea.widget.scales, updated solely by chartArea.widget.alignScales
 
-        self.hostKPIs = [] # link to chartArea list of available host KPIs
-        self.srvcKPIs = [] # link to chartArea list of available service KPIs
+        self._hostKPIs = [] # link to chartArea list of available host KPIs
+        self._srvcKPIs = [] # link to chartArea list of available service KPIs
+        
+        # those two gonna be per host, new style #739
+        self.hostKPIsList = []          # link to the list of KPIs  (chartArea)
+        self.hostKPIsStyles =  []       # link to KPI styles (chartArea)
         
         self.rowKpi = [] #list of current kpis
         
@@ -173,8 +178,6 @@ class kpiTable(QTableWidget):
 
             if isinstance(cellCheckBox, myCheckBox):
                 kpi = cellCheckBox.name
-                ht = kpiDescriptions.hType(cellCheckBox.host, self.hosts)
-                
                 kpiKey = self.hosts[cellCheckBox.host]['host'] + ':' + self.hosts[cellCheckBox.host]['port'] + '/' + kpi
                 
                 if kpiKey in kpiDescriptions.customColors:
@@ -191,16 +194,15 @@ class kpiTable(QTableWidget):
             
             if isinstance(cellCheckBox, myCheckBox):
                 kpi = cellCheckBox.name
-                ht = kpiDescriptions.hType(cellCheckBox.host, self.hosts)
+                kpiStyles = self.hostKPIsStyles[cellCheckBox.host]
                 
                 kpiKey = self.hosts[cellCheckBox.host]['host'] + ':' + self.hosts[cellCheckBox.host]['port'] + '/' + kpi
                 
-                
-                if 'brush' in kpiStylesNN[ht][kpi]:
+                if 'brush' in kpiStyles[kpi]:
                     # gantt chart have brush color, and pen is derivative
-                    initColor = kpiStylesNN[ht][kpi]['brush']
+                    initColor = kpiStyles[kpi]['brush']
                 else:
-                    pen = kpiDescriptions.customPen(kpiKey, kpiStylesNN[ht][kpi]['pen'])
+                    pen = kpiDescriptions.customPen(kpiKey, kpiStyles[kpi]['pen'])
                     initColor = pen.color()
                     
                 if initColor is None:
@@ -216,7 +218,6 @@ class kpiTable(QTableWidget):
                         pass
                     else:
                         styleKey = self.hosts[cellCheckBox.host]['host'] + ':' + self.hosts[cellCheckBox.host]['port'] + '/' + kpi
-                        #print(f'{styleKey} --> {targetColor}')
                         kpiDescriptions.addCustomColor(styleKey, targetColor)
                         
                         self.refill(cellCheckBox.host)
@@ -243,13 +244,10 @@ class kpiTable(QTableWidget):
             self.silentMode = True
 
             kpiName = self.kpiNames[index.row()]
-        
-            if self.hosts[self.host]['port'] == '':
-                kpiType = 'host'
-            else:
-                kpiType = 'service'
+                    
+            kpiStyles = self.hostKPIsStyles[self.host]
                 
-            style = kpiDescriptions.kpiStylesNN[kpiType][kpiName]
+            style = kpiStyles[kpiName]
             
             idx = style['sql']
 
@@ -292,8 +290,6 @@ class kpiTable(QTableWidget):
             
             need to check if correct column changed, btw
         '''
-
-        #print('change', time.time())
         
         if self.silentMode:
             return
@@ -320,13 +316,7 @@ class kpiTable(QTableWidget):
             log('okay, variables updated: %s' % (item.text()), 4)
             
             kpiName = self.kpiNames[item.row()]
-        
-            if self.hosts[self.host]['port'] == '':
-                kpiType = 'host'
-            else:
-                kpiType = 'service'
-                
-            style = kpiDescriptions.kpiStylesNN[kpiType][kpiName]
+            style = self.hostKPIsStyles[self.host][kpiName]
             
             if 'sql' in style:
                 idx = style['sql']
@@ -352,22 +342,10 @@ class kpiTable(QTableWidget):
                 try:
                     kpiDescriptions.addVars(idx, item_text, True)
                 except vrsException as ex:
-                    
                     self.vrsLock = True
-
-                    #row = item.row()
-                    #item = QTableWidgetItem(str(ex))
-                    #item.setForeground(QBrush(QColor(255, 0, 0)))
-                    #self.setItem(row, 11, item) # text name
                     item.setText(str(ex))
-
                     self.vrsLock = False
-                    
                 
-                
-                #item.setForeground(QBrush(QColor(255, 0, 0)))
-                
-            
                 log('<-----addVars kpiTable -----', 4)
                 
             log('item change refill', 5)
@@ -394,6 +372,8 @@ class kpiTable(QTableWidget):
         
     def refill(self, host):
         '''
+            host - host structure 
+            
             popupates KPIs table
             to be connected to hostChanged signal (hostsTable)
         '''
@@ -410,20 +390,9 @@ class kpiTable(QTableWidget):
         self.silentMode = True
         
         self.host = host
-        
-        if self.hosts[host]['port'] == '':
-            t = 'h'
-            usedKPIs = self.hostKPIs
-        else:
-            t = 's'
-            usedKPIs = self.srvcKPIs
-            
-        if t == 'h':
-            kpiStyles = kpiStylesNN['host']
-            kpiList = self.hostKPIs
-        else:
-            kpiStyles = kpiStylesNN['service']
-            kpiList = self.srvcKPIs
+                        
+        kpiList = self.hostKPIsList[host]
+        kpiStyles = self.hostKPIsStyles[host]
             
         hostKey = self.hosts[host]['host'] + ':' + self.hosts[host]['port']
             
@@ -435,7 +404,8 @@ class kpiTable(QTableWidget):
         #put enabled ones first:
         for kpin in self.nkpis[host]:
             kpis.append(kpin)
-
+            
+        #log(f'{kpiList=}')
         #populate rest of KPIs (including groups):
         for kpi in kpiList:
                 if kpi not in kpis:
@@ -477,6 +447,7 @@ class kpiTable(QTableWidget):
                     continue 
                 '''
                 
+                #log(f'{kpiName=}, {type(kpiStyles)}')
                 if kpiName not in kpiStyles:
                     log('[!] kpiTable refill: kpi is missing, %s' % kpiName, 2)
                     continue
@@ -639,20 +610,18 @@ class kpiTable(QTableWidget):
         kpis = len(self.kpiScales[self.host])
         
         #check if stuff to be disabled here...
-        
-        type = kpiDescriptions.hType(self.host, self.hosts)
-        
+                
         for i in range(0, len(self.kpiNames)):
             
             if self.kpiNames[i] in self.kpiScales[self.host].keys():
                 
                 kpiScale = self.kpiScales[self.host][self.kpiNames[i]]
                 
-                if self.kpiNames[i] not in kpiStylesNN[type]:
+                if self.kpiNames[i] not in self.hostKPIsStyles[self.host]: 
                     log('[!] kpiTable, kpi does not exist: %s' % self.kpiNames[i])
                     continue
-                style = kpiStylesNN[type][self.kpiNames[i]]
-                
+
+                style = self.hostKPIsStyles[self.host][self.kpiNames[i]]
                 
                 if style.get('sql'):
                     # sql exists and not None

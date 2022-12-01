@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, 
     QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView)
     
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QBrush, QColor
     
 from PyQt5.QtCore import Qt
 
@@ -37,9 +37,14 @@ class hostsTable(QTableWidget):
         
         i = 0
         
+        #hlBrush = QBrush(QColor('#b6dff3'))
+        hlBrush = QBrush(QColor('#e0eff3'))
+        
         for host in self.hosts:
         
             log(f'hostsUpdated: {host}', 5)
+            
+            shadeHost = host.get('dpi', 0) % 2 
         
             self.setRowHeight(i, 10)
             
@@ -68,13 +73,18 @@ class hostsTable(QTableWidget):
             if 'from' not in host:
                 if self.columnCount() == 7:
                     self.setColumnCount(5)
+                    
+            for j in range(self.columnCount()):
+                if self.item(i, j) is not None and shadeHost:
+                    self.item(i, j).setBackground(hlBrush)
 
             i+=1
             
         self.resizeColumnsToContents();
 
         # change of the host to first one with following implicit call of refill(0)
-        self.setCurrentCell(0, 0)
+        log('Skip imlicit refill here')
+        # self.setCurrentCell(0, 0)
         
             
     def initTable(self):

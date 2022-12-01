@@ -57,7 +57,7 @@ from profiler import profiler
 class hslWindow(QMainWindow):
 
     statusbar = None
-    connectionConf = None
+    primaryConf = None # primary connection dictionary, keys: host, port, name, dbi, user, pwd, etc
     
     kpisTable = None
 
@@ -218,8 +218,8 @@ class hslWindow(QMainWindow):
         
     def dumpLayout(self, closeTabs=True, crashMode=False):
     
-        if self.connectionConf:
-            connection = self.connectionConf.get('name')
+        if self.primaryConf:
+            connection = self.primaryConf.get('name')
         else:
             connection = None
 
@@ -253,7 +253,7 @@ class hslWindow(QMainWindow):
         if connection:
             self.layout['connectionName'] = connection
         else:
-            if self.connectionConf:
+            if self.primaryConf:
                 self.layout['connectionName'] = None
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
@@ -401,58 +401,78 @@ class hslWindow(QMainWindow):
         customSQLs.loadSQLs()
     
     def menuReloadCustomKPIs(self):
-    
-        kpiStylesNN = kpiDescriptions.kpiStylesNN
-        
-        for type in ('host', 'service'):
-            for kpiName in list(kpiStylesNN[type]):
+        '''
+            delete and rebuild custom kpis
+            
+            1st step - delete existing custom kpis from KPIs lists and KPIsStyles
+            2nd step - scann/add back new definitions
+            
+            by the way - delete stuff from data arrays?
+        '''
 
-                kpi = kpiStylesNN[type][kpiName]
-                
-                if kpi['sql'] is not None:
-                    del(kpiStylesNN[type][kpiName])
-                    
-                    if type == 'host':
-                        if kpiName in self.chartArea.hostKPIs:
-                            self.chartArea.hostKPIs.remove(kpiName)
-                    else:
-                        if kpiName in self.chartArea.srvcKPIs:
-                            self.chartArea.srvcKPIs.remove(kpiName)
+        hosts = self.chartArea.widget.hosts
         
-        # del host custom groups
-        kpis_len = len(self.chartArea.hostKPIs)
-        i = 0
+        ## step one: remove from the existing lists
         
-        while i < kpis_len:
-            if self.chartArea.hostKPIs[i][:1] == '.' and (i == len(self.chartArea.hostKPIs) - 1 or self.chartArea.hostKPIs[i+1][:1] == '.'):
-                del(self.chartArea.hostKPIs[i])
-                kpis_len -= 1
-            else:
-                i += 1
+        for h in range(len(hosts)):
 
-        # del service custom groups
-        kpis_len = len(self.chartArea.srvcKPIs)
-        i = 0
-        
-        while i < kpis_len:
-            if self.chartArea.srvcKPIs[i][:1] == '.' and (i == len(self.chartArea.srvcKPIs) - 1 or self.chartArea.srvcKPIs[i+1][:1] == '.'):
-                del(self.chartArea.srvcKPIs[i])
-                kpis_len -= 1
-            else:
-                i += 1
+            hostKPIsStyles = self.chartArea.hostKPIsStyles[h]
+            hostKPIsList = self.chartArea.hostKPIsList[h]
+
+            log(f'{h}: {hostKPIsList=}')
+            
+            for kpiName in list(hostKPIsStyles):
+                kpi = hostKPIsStyles[kpiName]
+                if kpi.get('sql'):
+                    del(hostKPIsStyles[kpiName]) # delete style dict entry
+                    hostKPIsList.remove(kpiName) # delete list entry
                 
+            # del host custom groups
+            kpis_len = len(hostKPIsList)
+            i = 0
+            
+            while i < kpis_len:
+                if hostKPIsList[i][:1] == '.' and (i == len(hostKPIsList)-1 or hostKPIsList[i+1][:1] == '.'):
+                    del(hostKPIsList[i])
+                    kpis_len -= 1
+                else:
+                    i += 1
+
+
+        ## load custom KPI definitions into temp structures...
+        # this is executed just once, data loaded into old host/port structures
+        # and then distributed/copied to new structures
+        hostKPIs = []
+        srvcKPIs = []
+        kpiStylesNN = {'host':{}, 'service':{}}
 
         try:
-            dpDBCustom.scanKPIsN(self.chartArea.hostKPIs, self.chartArea.srvcKPIs, kpiStylesNN)
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiStylesNN)
         except Exception as e:
             self.chartArea.disableDeadKPIs()
             msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
-        
+
+        # now append detected custom KPIs back into lists
+        for h in range(len(hosts)):
+            hostKPIsStyles = self.chartArea.hostKPIsStyles[h]
+            hostKPIsList = self.chartArea.hostKPIsList[h]
+
+            if hosts[h]['port'] == '':
+                hostKPIsList += hostKPIs
+                for kpiName in kpiStylesNN['host'].keys():
+                    hostKPIsStyles[kpiName] = kpiStylesNN['host'][kpiName]
+            else:
+                hostKPIsList += srvcKPIs
+                for kpiName in kpiStylesNN['service'].keys():
+                    hostKPIsStyles[kpiName] = kpiStylesNN['service'][kpiName]
+
+
+            #not really sure if this one can be called twice...
+            kpiDescriptions.clarifyGroups(hostKPIsStyles)
+            log(f'{h}: {hostKPIsList=}')
+            
         self.chartArea.widget.initPens()
         self.chartArea.widget.update()
-        
-        #really unsure if this one can be called twice...
-        kpiDescriptions.clarifyGroups()
         
         #trigger refill
         log('menuReloadCustomKPIs refill', 5)
@@ -602,32 +622,89 @@ class hslWindow(QMainWindow):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/tips'))
         
     def menuDummy(self):
-        self.chartArea.dp = dpDummy.dataProvider() # generated data
+        dp = dpDummy.dataProvider() # generated data
+
+        dpidx = self.chartArea.appendDP(dp)
 
         if cfg('saveKPIs', True):
-            self.chartArea.initDP(self.layout['kpis'])
+            self.chartArea.initDP(dpidx, self.layout['kpis'])
         else:
-            self.chartArea.initDP()
+            self.chartArea.initDP(dpidx)
 
     def menuConfig(self):
+        self.processConnection()
+
+    def menuConfigSecondary(self):
+        self.processConnection(secondary=True)
         
-        if self.connectionConf is None:
-            connConf = cfg('server')
+    def processConnection(self, secondary=False):
+        log(f'processConnection, {secondary=}')
+        
+        conf = None
+        
+        if secondary:
+            connConf = None
         else:
-            connConf = self.connectionConf
+            if self.primaryConf is None:
+                connConf = cfg('server')
+            else:
+                connConf = self.primaryConf
             
         if not connConf:
             connConf = {}
             
-        if not connConf.get('name') and self.layout:
+        if not connConf.get('name') and self.layout and not secondary:
             connConf['setToName'] = self.layout['connectionName']
+
+        '''
+        log(f'right before {connConf=}')
+        log(f'right before {self.primaryConf=}')
+        log(f'right before {conf=}')
+
+        if conf is connConf:
+            log('right before conf is connConf')
+        else:
+            log('right before conf is not connConf')
             
+        if conf is self.primaryConf:
+            log('right before conf is self.primaryConf') 
+        else:
+            log('right before conf is not self.primaryConf')
+
+        if connConf is self.primaryConf:
+            log('right before connConf is self.primaryConf') 
+        else:
+            log('right before connConf is not self.primaryConf')
+        '''
+
         conf, ok = configDialog.Config.getConfig(connConf, self)
+                
+        '''
+        log(f'right after {connConf=}')
+        log(f'right after {self.primaryConf=}')
+        log(f'right after {conf=}')
         
-        log('config dialog, ok? %s' % str(ok), 5)
+        if conf is connConf:
+            log('right after conf is connConf')
+        else:
+            log('right after conf is not connConf')
+            
+        if conf is self.primaryConf:
+            log('right after conf is self.primaryConf')  # <<--- yep
+        else:
+            log('right after conf is not self.primaryConf')
         
-        if ok:
-            self.connectionConf = conf
+        if connConf is self.primaryConf:
+            log('right after connConf is self.primaryConf') 
+        else:
+            log('right after connConf is not self.primaryConf')
+        '''
+
+        if ok and not secondary:
+            log(f'secondary?? {secondary=}')
+            self.primaryConf = conf.copy()
+        
+        log(f'after connection dialog {connConf=}, {self.primaryConf}')
         
         if ok and conf['ok']:
         
@@ -657,27 +734,27 @@ class hslWindow(QMainWindow):
                         log('disconnected...')
                         
                 # close damn chart console
-
-                if self.chartArea.dp is not None:
-                    self.chartArea.dp.close()
-                    del self.chartArea.dp
-                    self.chartArea.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+                
+                if not secondary:
+                    self.chartArea.cleanDPs()
 
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
                 self.chartArea.setStatus('sync', True)
                 
-                if dbi.dbinterface is not None:
-                    dbi.dbinterface.destroy()
-                    
-                self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+                # 2022-11-23
+                #self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
+                dp = dpDB.dataProvider(conf) # db data provider
                 
-                if 'disconnectSignal' in self.chartArea.dp.options:
-                    self.chartArea.dp.disconnected.connect(self.chartArea.dpDisconnected)
+                dpidx = self.chartArea.appendDP(dp)
+                log(f'Dataprovider added, idx: {dpidx}', 5)
+                
+                if 'disconnectSignal' in dp.options:
+                    dp.disconnected.connect(self.chartArea.dpDisconnected)
                     
-                if 'busySignal' in self.chartArea.dp.options:
-                    self.chartArea.dp.busy.connect(self.chartArea.dpBusy)
+                if 'busySignal' in dp.options:
+                    dp.busy.connect(self.chartArea.dpBusy)
                     
                 self.chartArea.setStatus('idle')
 
@@ -690,8 +767,8 @@ class hslWindow(QMainWindow):
                         
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
-                        log('--> dumplayout, init kpis:' + str(self.layout['kpis']), 5)
-                        self.chartArea.initDP(self.layout['kpis'].copy())
+                        log('dumplayout, init kpis:' + str(self.layout['kpis']), 5)
+                        self.chartArea.initDP(dpidx, self.layout['kpis'].copy())
                         
                         if self.layout['legend']:
                             self.chartArea.widget.legend = 'hosts'
@@ -699,7 +776,7 @@ class hslWindow(QMainWindow):
                         self.kpisTable.host = None
                     else:
                         log('--> dumplayout, no kpis', 5)
-                        self.chartArea.initDP()
+                        self.chartArea.initDP(dpidx)
                         self.kpisTable.host = None
                        
 
@@ -714,13 +791,17 @@ class hslWindow(QMainWindow):
                         
                         
                 else:
-                    self.chartArea.initDP()
+                    self.chartArea.initDP(dpidx)
+                    
+                    
+                if not secondary:
+                    self.kpisTable.refill(self.hostTable.currentRow())
                 
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
                         self.statusMessage('Loading saved kpis...', True)
 
-                if hasattr(self.chartArea.dp, 'dbProperties'):
+                if hasattr(dp, 'dbProperties'):
                     '''
                     
                     moved inside inidDP()
@@ -739,21 +820,21 @@ class hslWindow(QMainWindow):
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
                     
-                if 'sid' in self.chartArea.dp.dbProperties:
-                    sid = self.chartArea.dp.dbProperties['sid']
+                if 'sid' in dp.dbProperties:
+                    sid = dp.dbProperties['sid']
                 else:
                     sid = ''
                 
                 propStr = conf['user'] + '@' + sid
                 
-                tenant = self.chartArea.dp.dbProperties.get('tenant')
+                tenant = dp.dbProperties.get('tenant')
                 
                 if tenant:
                     windowStr = ('%s %s@%s' % (conf['user'], tenant, sid))
                 else:
                     windowStr = propStr
                     
-                dbver = self.chartArea.dp.dbProperties.get('version')
+                dbver = dp.dbProperties.get('version')
                     
                 if dbver:
                     windowStr += ', ' + dbver
@@ -768,8 +849,8 @@ class hslWindow(QMainWindow):
                 if cfg('keepalive'):
                     try:
                         keepalive = int(cfg('keepalive'))
-                        self.chartArea.dp.enableKeepAlive(self, keepalive)
-                    except:
+                        dp.enableKeepAlive(self, keepalive)
+                    except ValueError:
                         log('wrong keepalive setting: %s' % (cfg('keepalive')))
                                 
             except dbException as e:
@@ -851,7 +932,7 @@ class hslWindow(QMainWindow):
     
     
     def newConsole(self, filename=None, generateName=False):
-        conf = self.connectionConf
+        conf = self.primaryConf
         
         self.statusMessage('Connecting console...', True)
         
@@ -963,7 +1044,7 @@ class hslWindow(QMainWindow):
 
     def menuSQLConsole(self):
     
-        conf = self.connectionConf
+        conf = self.primaryConf
         
         if conf is None:
             self.statusMessage('No configuration...', False)
@@ -1041,17 +1122,26 @@ class hslWindow(QMainWindow):
         self.chartArea.widget.update()
     
     def menuEss(self):
+        def reinitDPs():
+            '''
+                local method to re-init relevant DPs (HDB)
+            '''
+            for dpidx in range(len(self.chartArea.ndp)):
+                dp = self.chartArea.ndp[dpidx]
+                if type(dp) == dpDB.dataProvider and dp.dbi.name == 'HDB':
+                    log(f're-init dp[{dpidx}], ({dp.dbi.name})')
+                    self.chartArea.initDP(dpidx, kpis.copy(), message = 'Re-initializing hosts information...')
+                else:
+                    log(f'dp[{dpidx}] skipped, {type(dp)}')
     
         if cfg('ess', False) == False:
             utils.cfgSet('ess', True)
             self.essAct.setText('Switch back to m_load_history...')
-            #self.statusMessage('You need to reconnect in order to have full ESS data available', False)
-        
-
             kpis = self.formatKPIs()
+            reinitDPs()
         
             self.chartArea.setStatus('sync', True)
-            self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+                        
             self.kpisTable.host = None
             
             self.statusMessage('Now reload...', True)
@@ -1066,7 +1156,8 @@ class hslWindow(QMainWindow):
             kpis = self.formatKPIs()
         
             self.chartArea.setStatus('sync', True)
-            self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+            #self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
+            reinitDPs()
             self.kpisTable.host = None
             
             self.statusMessage('Now reload...', True)
@@ -1081,13 +1172,13 @@ class hslWindow(QMainWindow):
         if len(fname[0]) > 0:
         
             fileUTCshift = cfg('import_timezone_offset')
-            self.chartArea.dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
-            
-            #wrong approach, #697
-            #self.chartArea.dp.dbProperties = {}
-            #self.chartArea.dp.dbProperties['timeZoneDelta'] = -3*3600
-            
-            self.chartArea.initDP(message = 'Parsing the trace file, will take a minute or so...')
+            #self.chartArea.dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
+            #self.chartArea.initDP(message='Parsing the trace file, will take a minute or so...')
+
+            # new style, #739
+            dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
+            dpidx = self.chartArea.appendDP(dp)
+            self.chartArea.initDP(dpidx, message='Parsing the trace file, will take a minute or so...')
 
             toTime = self.chartArea.widget.hosts[0]['to']
             fromTime = toTime - datetime.timedelta(hours = 10)
@@ -1226,6 +1317,10 @@ class hslWindow(QMainWindow):
         kpisTable.hostKPIs = self.chartArea.hostKPIs
         kpisTable.srvcKPIs = self.chartArea.srvcKPIs
         kpisTable.nkpis = self.chartArea.widget.nkpis
+
+        #link kpisTable structures to the chartArea
+        kpisTable.hostKPIsList = self.chartArea.hostKPIsList
+        kpisTable.hostKPIsStyles = self.chartArea.hostKPIsStyles
         
         # bottm part left+right
         self.kpiSplitter = QSplitter(Qt.Horizontal)
@@ -1318,6 +1413,10 @@ class hslWindow(QMainWindow):
         configAct.setStatusTip('Configure connection')
         configAct.triggered.connect(self.menuConfig)
 
+        configSecAct = QAction('Secondary connection', self)
+        configSecAct.setStatusTip('Open a secondary connection')
+        configSecAct.triggered.connect(self.menuConfigSecondary)
+
         importAct = QAction('&Import nameserver history trace', self)
         importAct.setShortcut('Ctrl+I')
         importAct.setStatusTip('Import nameserver.trc')
@@ -1341,6 +1440,9 @@ class hslWindow(QMainWindow):
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(configAct)
+        
+        if cfg('dev'):
+            fileMenu.addAction(configSecAct)
 
         fileMenu.addAction(importAct)
         
@@ -1661,27 +1763,12 @@ class hslWindow(QMainWindow):
             ind.iClicked.connect(console.reportRuntime)
 
             ind.iToggle.connect(console.updateRuntime)
-            
-            if cfg('developmentMode'): 
-                console.cons.setPlainText('''select 0 from dummy;
-create procedure ...
-(
-(as begin)
-select * from dummy);
-end;
-
-where timestamp between '2020-02-10 00:00:00' and '2020-02-16 23:59:59' -- test comment
-
-where not "NAME1" = '' and "DOKST" in ('D0', 'D2') and (1 = 2)
-
-select 1 from dummy;
-select 2 from dummy;
-select 3 from dummy;''');
-                
+                            
             console.dummyResultTable()
         
         self.statusMessage('', False)
         
         if self.chartArea.dp:
+            assert False, 'Should not ever reach this self.chartArea.initDP()'
             self.chartArea.initDP()
         

@@ -138,3 +138,20 @@ mapKPIs = [
     ('admissionControlWaitingRequests'                  , 'service', 'ADMISSION_CONTROL_QUEUE_SIZE'),
     ('admissionControlWaitTime'                  , 'service', 'ADMISSION_CONTROL_WAIT_TIME')    
 ]
+
+def findKPI(hierarchy):
+    for r in kpis:
+        if r[0] == hierarchy:
+            return {
+                'hierarchy':    r[0],
+                'type':         r[1],
+                'name':         r[2],
+                'group':        r[3],
+                'sUnit':        r[4],
+                'dUnit':        r[5],
+                'label':        r[6],
+                'description':  r[7],
+                'color':        r[8],
+                'style':        r[9],
+            }
+    return None

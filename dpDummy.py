@@ -1,3 +1,8 @@
+'''
+    simple dataprovider implementation for offline tests
+    
+    contains limited implementation of main dataprovider calls
+'''
 import datetime
 
 from array import array
@@ -14,7 +19,25 @@ class dataProvider:
     def __init__(self):
         log('dummy data provider init()')
         
-    def initHosts(self, hosts, hostKPIs, srvcKPIs):
+    def initHosts(self, dpidx):
+    
+        hosts = []
+        KPIsList = []
+        kpiStylesNNN = []
+        
+        # host and two services for kpis
+        KPIsList.append([])
+        KPIsList.append([])
+        KPIsList.append([])
+
+        # host and two services for styles
+        kpiStylesNNN.append({})
+        kpiStylesNNN.append({})
+        kpiStylesNNN.append({})
+        
+        
+        # this better to be replaced with interface using initKPIDescriptions and kpis.findKPI finction
+        # but a bit later, works as is...
     
         kpiDummy = {
             'hierarchy':    '1',
@@ -42,60 +65,81 @@ class dataProvider:
             'style':        'solid'
         }
 
-    
-        kpiDescriptions.kpiStylesNN['service']['cpu'] = kpiDescriptions.createStyle(kpiDummy)
-        kpiDescriptions.kpiStylesNN['service']['indexserverMemUsed'] = kpiDescriptions.createStyle(kpiDummyMem)
+        kpiStylesNNN[1]['cpu'] = kpiDescriptions.createStyle(kpiDummy)
+        kpiStylesNNN[1]['indexserverMemUsed'] = kpiDescriptions.createStyle(kpiDummyMem)
+
+        kpiStylesNNN[2]['cpu'] = kpiDescriptions.createStyle(kpiDummy)
+        kpiStylesNNN[2]['indexserverMemUsed'] = kpiDescriptions.createStyle(kpiDummyMem)
         
         kpiDummy['type'] = 'host'
         kpiDummy['style'] = 'dashed'
         kpiDummy['description'] = 'Host CPU'
-        kpiDescriptions.kpiStylesNN['host']['cpu'] = kpiDescriptions.createStyle(kpiDummy)
+        kpiStylesNNN[0]['cpu'] = kpiDescriptions.createStyle(kpiDummy)
     
-        hostKPIs.append('cpu')
-        srvcKPIs.append('cpu')
-        srvcKPIs.append('indexserverMemUsed')
-        #srvcKPIs.append('memory_allocation_limit')
+        KPIsList[0].append('cpu')
+        KPIsList[1].append('cpu')
+        KPIsList[1].append('indexserverMemUsed')
+        KPIsList[2].append('cpu')
+        KPIsList[2].append('indexserverMemUsed')
         
         stime = datetime.datetime.now() - datetime.timedelta(seconds= 18 * 3600)
         stime -= datetime.timedelta(seconds = stime.timestamp() % 3600)
-        
-        #etime = stime + datetime.timedelta(seconds = 5*3600)
-        
+                
         etime = datetime.datetime.now()
         
         hosts.append({
                     'host':'dummy1',
                     'port':'',
                     'from':stime,
-                    'to':etime
+                    'to':etime,
+                    'dpi': dpidx
                     })
 
         hosts.append({
                     'host':'dummy1',
                     'port':'30040',
                     'from':stime,
-                    'to':etime
+                    'to':etime,
+                    'dpi': dpidx
                     })
                     
         hosts.append({
                     'host':'dummy1',
                     'port':'30041',
                     'from':stime,
-                    'to':etime
+                    'to':etime,
+                    'dpi': dpidx
                     })
                     
+                    
+        # fake old KPIs structures...
+        hostKPIs = []
+        srvcKPIs = []
+        kpiStylesNNold = {'host':{}, 'service':{}}
+                    
         try:
-            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiStylesNNold)
         except Exception as e:
             kpiDescriptions.removeDeadKPIs(srvcKPIs, 'service')
             kpiDescriptions.removeDeadKPIs(hostKPIs, 'host')
 
             msgDialog('Custom KPIs Error', 'There were errors during custom KPIs load.\n\n' + str(e))
+            
+        #unpack to shiny new ones
+        for h in range(len(hosts)):
+            if hosts[h]['port'] == '':
+                KPIsList[h] += hostKPIs
+                kpiStylesNNN[h].update(kpiStylesNNold['host'])
+            else:
+                KPIsList[h] += srvcKPIs
+                kpiStylesNNN[h].update(kpiStylesNNold['service'])
+            
+        return hosts, KPIsList, kpiStylesNNN
                     
     def close(self):
         pass
-        
-    def getData(self, host, fromto, kpis, data, wnd=None):
+
+    def getData(self, host, fromto, kpis, data, kpiStylesNN, wnd=None):
         
         #time.sleep(0.1)
         

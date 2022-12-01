@@ -1,3 +1,5 @@
+import sys #temp
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPen, QColor
 
@@ -618,13 +620,13 @@ def resetRaduga():
     currentIndex = 0
     
 kpiStylesN = {}
-kpiStylesNN = {'host':{}, 'service':{}}
+kpiStylesNN = {'host':{}, 'service':{}}     # supposed to keep all the kpi styles definitions
 
 customSql = {}
 
 def createStyle(kpi, custom = False, sqlIdx = None):
 
-    log(str(kpi))
+    #log(str(kpi))
 
     #style = {}
     style = Style(sqlIdx)
@@ -682,11 +684,16 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         
     if 'style' in kpi:
         st = kpi.get('style', 'unknown')
-        penStyle = penStyles[st]
         
+        if st in penStyles:
+            penStyle = penStyles[st]
+        else:
+            log(f'Unknown pen stile "{st}" for kpi "{kpi["name"]}", using weird one to get attention', 2)
+            penStyle = penStyles['unknown']
+            
         if st == 'unknown': log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])), 2)
     else:
-        log('[W] pen style not defined for %s, using default' % (kpi['name']), 2)
+        log(f"Pen style not defined for {kpi['name']}, using default", 4)
         if style['type'] == 'h':
             penStyle = Qt.DashLine
         else:
@@ -777,19 +784,18 @@ def customKpi (kpi):
     else:
         return False
 
-def getTimeKey(type, kpi):
+def getTimeKey(kpiStylesNNN, kpi):
 
     if customKpi(kpi):
-        timeKey = 'time:' + kpiStylesNN[type][kpi]['sql']
+        timeKey = 'time:' + kpiStylesNNN[kpi]['sql']
     else:
         timeKey = 'time'
         
     return timeKey
 
-def getSubtype(type, kpi):
-
-    if kpi in kpiStylesNN[type]:
-        subtype = kpiStylesNN[type][kpi]['subtype']
+def getSubtype(kpiStylesNNN, kpi):
+    if kpi in kpiStylesNNN:
+        subtype = kpiStylesNNN[kpi]['subtype']
     else:
         subtype = None
         
@@ -815,9 +821,11 @@ def hType (i, hosts):
     else:
         return 'service'
         
-def clarifyGroups():
+def clarifyGroups(kpiStylesNNN):
     '''
         gives pre-defined names to most useful groups like memory and threads
+        for the new style kpiStylesNNN needs to be called for every type: host/service
+        (before multiplication) or just every host
     '''
 
     thread_kpis = ['active_thread_count',
@@ -846,61 +854,56 @@ def clarifyGroups():
         if grpIdx == grpName:
             return
     
-        for h in kpiStylesNN:
-            for kpi in kpiStylesNN[h]:
-                if kpiStylesNN[h][kpi]['group'] == grpIdx:
-                    kpiStylesNN[h][kpi]['group'] = grpName
+        for kpi in kpiStylesNNN:
+            if kpiStylesNNN[kpi]['group'] == grpIdx:
+                kpiStylesNNN[kpi]['group'] = grpName
                     
     def updateDunit(grpIdx, dUnit):
-        for h in kpiStylesNN:
-            for kpi in kpiStylesNN[h]:
-                if kpiStylesNN[h][kpi]['group'] == grpIdx:
-                    kpiStylesNN[h][kpi]['dUnit'] = dUnit
+        for kpi in kpiStylesNNN:
+            if kpiStylesNNN[kpi]['group'] == grpIdx:
+                kpiStylesNNN[kpi]['dUnit'] = dUnit
         
-    for h in kpiStylesNN:
-        log(f'updating "{h}"')
-    
-        if 'cpu' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['cpu']['group'], 'cpu')
+    if 'cpu' in kpiStylesNNN:
+        update(kpiStylesNNN['cpu']['group'], 'cpu')
 
-        if 'memory_used' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['memory_used']['group'], 'mem')
-            
-
-        # those two for dpTrace as it is based on ns KPI names
-        if 'cpuused' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['cpuused']['group'], 'cpu')
-
-        if 'memoryused' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['memoryused']['group'], 'mem')
-
-        if cfg('memoryGB'):
-            updateDunit('mem', 'GB')
-            
-        # enforce threads scaling
-        if thread_kpis[0] in kpiStylesNN[h]:
-            update_hardcoded(kpiStylesNN[h], thread_kpis, 33)
-
-        if 'active_thread_count' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['active_thread_count']['group'], 'thr')
-            
-        # now the same for ns... 
-        if thread_kpis_ns[0] in kpiStylesNN[h]:
-            update_hardcoded(kpiStylesNN[h], thread_kpis_ns, 33)
-
-        if 'indexserverthreads' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['indexserverthreads']['group'], 'thr')
+    if 'memory_used' in kpiStylesNNN:
+        update(kpiStylesNNN['memory_used']['group'], 'mem')
         
 
-def groups():
+    # those two for dpTrace as it is based on ns KPI names
+    if 'cpuused' in kpiStylesNNN:
+        update(kpiStylesNNN['cpuused']['group'], 'cpu')
+
+    if 'memoryused' in kpiStylesNNN:
+        update(kpiStylesNNN['memoryused']['group'], 'mem')
+
+    if cfg('memoryGB'):
+        updateDunit('mem', 'GB')
+        
+    # enforce threads scaling
+    if thread_kpis[0] in kpiStylesNNN:
+        update_hardcoded(kpiStylesNNN, thread_kpis, 33)
+
+    if 'active_thread_count' in kpiStylesNNN:
+        update(kpiStylesNNN['active_thread_count']['group'], 'thr')
+        
+    # now the same for ns... 
+    if thread_kpis_ns[0] in kpiStylesNNN:
+        update_hardcoded(kpiStylesNNN, thread_kpis_ns, 33)
+
+    if 'indexserverthreads' in kpiStylesNNN:
+        update(kpiStylesNNN['indexserverthreads']['group'], 'thr')
+        
+
+def groups(hostKPIsStyles):
     # generates list of actual kpi groups
 
     groups = []
 
-    for h in kpiStylesNN:
-        for kpi in kpiStylesNN[h]:
-            if kpiStylesNN[h][kpi]['group'] not in groups:
-                groups.append(kpiStylesNN[h][kpi]['group'])
+    for kpiStylesNNN in hostKPIsStyles:
+        for kpi in kpiStylesNNN:
+            if kpiStylesNNN[kpi]['group'] not in groups:
+                groups.append(kpiStylesNNN[kpi]['group'])
                 
     return groups
 
@@ -952,22 +955,44 @@ def denormalize (kpi, value):
     else:
         return value
         
-def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
+def initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNN):
     '''
-        Same interface to be reused for DB trace
+        this method unpacks standard HANA m_load_history_info rows and fills:
+            - two lists of kps (hostKPIs, srvcKPIs)
+            - dictionay of corresponding styles: kpiStylesNN
+        
+        Same interface reused in DB trace, dbi_sqlite
+        
+        Input rows list structure:
+            ('2.10', '', '', 0, 'SQL', '', '', '', 0, 0) -- header/group
+            ('2.10.01', 'M_LOAD_HISTORY_SERVICE', 'CONNECTION_COUNT', 0, 'Open Connections', 'Number of open SQL connections', '', '', 4251856, 1)
+            
+            r[0] - hierarchy (not used)
+            r[1] - data source
+            r[2] - sql column name for the kpi --> 'name'
+            r[3] - scaling croup
+            r[4] - human readable name         --> 'label' 
+            r[5] - description
+            r[6] - sUnit
+            r[7] - dUnit
+            r[8] - color
+            r[9] - style (solid, dashed, etc)
         
         Output:
             hostKPIs, srvcKPIs are filled with the respective KPIs lists
             
-            kpiStylesNN - GLOBAL <--- list of KPIs...
+            kpiStylesNN pre-created (outside) dict containing 'host' and 'service' keys,
+            will contain styles for KPIs
     '''
     
     for kpi in rows:
+    
+        #log(f'[init kpi] {kpi}')
         
         if kpi[1].lower() == 'm_load_history_host':
-            type = 'host'
+            hType = 'host'
         else:
-            type = 'service'
+            hType = 'service'
     
         if kpi[1] == '': #hierarchy nodes
             if len(kpi[0]) == 1:
@@ -979,7 +1004,7 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
             kpiName = kpi[2].lower()
             kpiDummy = {
                     'hierarchy':    kpi[0],
-                    'type':         type,
+                    'type':         hType,
                     'name':         kpiName,
                     'group':        kpi[3],
                     'label':        kpi[4],
@@ -990,9 +1015,11 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
                     'style':        nsStyle(utils.safeInt(kpi[9]))
                 }
             
-            kpiStylesNN[type][kpiName] = createStyle(kpiDummy)
+            kpiStylesNN[hType][kpiName] = createStyle(kpiDummy)
                     
         if kpi[1].lower() == 'm_load_history_host':
             hostKPIs.append(kpiName)
         else:
             srvcKPIs.append(kpiName)
+            
+    return

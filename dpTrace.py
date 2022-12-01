@@ -83,16 +83,13 @@ class dataProvider:
         log('trace dp: %s' % str(files))
         
     def close(self):
-        pass
+        log('dpTrace: need to clean local structures like self.srvcKPIs')
 
-    def initHosts(self, hosts, hostKPIs, srvcKPIs):
+    def initHosts(self, dpidx):
         '''
-            performs initial load, extract hosts and metadata
+            performs initial load, extract hosts and KPIs metadata
             
-            plus actual KPIs data loaded and calculated
-            
-            KPIDescriptions? not sure
-            
+            plus actual KPIs data loaded and calculated - time consuming, ~60-90 seconds for avg trace (60mb)
         '''
     
         max_lines = 0
@@ -196,7 +193,13 @@ class dataProvider:
                     log('KPI %s not defined in nameserver mapping' % kpi, 6)
 
                 
-            kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
+            # hello, this does not make any sence inside files loop
+            # only make sence once in this form, good luck!
+            hostKPIs = []
+            srvcKPIs = []
+            kpiStylesNN = {'host':{}, 'service':{}}
+            
+            kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNN)
             
             t1 = time.time()
             
@@ -341,13 +344,17 @@ class dataProvider:
         self.srvcKPIs = srvcKPIs.copy()
         
         log('clarifyGroups', 5)
-        kpiDescriptions.clarifyGroups()
-        
+        kpiDescriptions.clarifyGroups(kpiStylesNN['host'])
+        kpiDescriptions.clarifyGroups(kpiStylesNN['service'])
         log('clarifyGroups done ok', 5)
 
         self.lastIndx = ii.copy()
         
         log('for port in self.ports...', 5)
+        
+        hosts = []
+        hostKPIsList = []
+        hostKPIsStyles = []
 
         for port in self.ports:
             log(f'port number: {port}')
@@ -367,21 +374,28 @@ class dataProvider:
                         'host':host,
                         'port':port,
                         'from':stime,
-                        'to':etime
+                        'to':etime,
+                        'dpi': dpidx
                         })
                         
-        log('dbTrace initHosts done fine', 5)
+            if port == '':
+                hostKPIsList.append(hostKPIs)
+                hostKPIsStyles.append(kpiStylesNN['host'])
+            else:
+                hostKPIsList.append(srvcKPIs)
+                hostKPIsStyles.append(kpiStylesNN['service'])
                         
-    def getData(self, host, fromto, kpis, data, wnd=None):
+        log('dbTrace initHosts done fine', 5)
+        
+        return hosts, hostKPIsList, hostKPIsStyles
+                        
+                        
+    #def getData(self, h, fromto, kpiIn, data, kpiStylesNNN, wnd = None): <-- updated signature
+    def getData(self, host, fromto, kpis, data, kpiStylesNNN, wnd=None):
         #log('get data request: %i.%s' % (host, str(kpis)))
         #print('get data request:', host, fromto, kpis)
 
         port = host['port'] 
-
-        if host['port'] == '':
-            type = 'host'
-        else:
-            type = 'service'
         
         data_size = self.lastIndx[port]
         timeline = array('d', [0]*data_size) 
@@ -410,7 +424,7 @@ class dataProvider:
                 
                 rawValue = self.data[port][colindx][i]
                 
-                if 'perSample' in kpiDescriptions.kpiStylesNN[type][kpi]:
+                if 'perSample' in kpiStylesNNN[kpi]:
                     if i == 0:
                         normValue = rawValue / (data['time'][1] - data['time'][0])
                     else:
