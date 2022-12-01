@@ -155,7 +155,11 @@ class sqlite():
                 if columnType is None:
                     columnType = t
                     continue
-                    
+                 
+                # log specific column
+                #if idx == 0:
+                #    log(f'column 0, {v=}, {t=}, {needsConversion=}')
+
                 #if columnType == 1 and (t == 2):
                     # requires conversion from int to float, who cares.
                 
@@ -169,7 +173,7 @@ class sqlite():
                     needsConversion = True
                     break
 
-                if columnType == 4 and (t == 3):
+                if columnType == 4 and (t == 3 or t == -1):
                     needsConversion = True
                     break
 
@@ -177,10 +181,16 @@ class sqlite():
                     break
                     
             if needsConversion == True:
+                log(f'Need to convert column {idx} to str', 5)
                 with profiler('SQLite column convertion'):
                     for r in rows:
                         if type(r[idx]) != str:
+                            log(f'Convert: {r[idx]} ({type(r[idx])})', 5)
                             r[idx] = str(r[idx])
+                        else:
+                            log(f'Already str: {r[idx]}', 5)
+                            
+                columnType = 3
             
             if columnType == 4 and t == 4:
                 # meaning the whole column was timestamp...
@@ -222,6 +232,8 @@ class sqlite():
             
             if rows:
                 colTypes = self.clarifyTypes(rows)
+                
+                log(f'{colTypes=}', 5)
                 
                 #assert len(cur.description) == len(colTypes) +1, f'len(cur.description) == len(colTypes) --> {len(cur.description)} != {len(colTypes)}'
                 if len(cur.description) != len(colTypes):

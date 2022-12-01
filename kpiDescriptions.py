@@ -684,11 +684,16 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         
     if 'style' in kpi:
         st = kpi.get('style', 'unknown')
-        penStyle = penStyles[st]
         
+        if st in penStyles:
+            penStyle = penStyles[st]
+        else:
+            log(f'Unknown pen stile "{st}" for kpi "{kpi["name"]}", using weird one to get attention', 2)
+            penStyle = penStyles['unknown']
+            
         if st == 'unknown': log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])), 2)
     else:
-        log('[W] pen style not defined for %s, using default' % (kpi['name']), 2)
+        log(f"Pen style not defined for {kpi['name']}, using default", 4)
         if style['type'] == 'h':
             penStyle = Qt.DashLine
         else:

@@ -83,7 +83,8 @@ class hostsTable(QTableWidget):
         self.resizeColumnsToContents();
 
         # change of the host to first one with following implicit call of refill(0)
-        self.setCurrentCell(0, 0)
+        log('Skip imlicit refill here')
+        # self.setCurrentCell(0, 0)
         
             
     def initTable(self):
