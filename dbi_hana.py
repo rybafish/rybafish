@@ -280,7 +280,7 @@ class hdbi ():
         # never failed... (what if connection issue...)
         return
 
-    def execute_query_desc(self, connection, sql_string, params, resultSize):
+    def execute_query_desc(self, connection, sql_string, params, resultSize, noLogging=False):
         '''
             The method mainly used by SQL console because it also needs a result set description.
             
@@ -319,10 +319,11 @@ class hdbi ():
         
         # prepare the statement...
         
-        log('[SQL]: %s' % sql_string, 5)
+        if not noLogging:
+            log('[SQL]: %s' % sql_string, 5)
 
-        if len(params) > 0:
-            log('[PRMS]: %s' % str(params), 5)
+            if len(params) > 0:
+                log('[PRMS]: %s' % str(params), 5)
 
         try:
             psid = cursor.prepare(sql_string)
@@ -369,11 +370,7 @@ class hdbi ():
         try:
             ps = cursor.get_prepared_statement(psid)
 
-            if len(params) > 0:
-                log('[PRMS]: %s' % str(params), 5)
-                
             cursor.execute_prepared(ps, [params])
-            
             columns_list = cursor.description_list.copy()
             
             if cursor._function_code == function_codes.DDL:
@@ -442,6 +439,14 @@ class hdbi ():
         return rows_list, columns_list, cursor, psid
 
         
+    def checkTable(self, conn, tableName):
+        r = self.execute_query(conn, f"select table_name from tables where schema_name = session_user and table_name = ?", [tableName])
+        
+        if r:
+            return True
+        else:
+            return False
+
     def ifNumericType(self, t):
         if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT,
             type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):

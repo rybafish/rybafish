@@ -40,6 +40,8 @@ class hostsTable(QTableWidget):
         #hlBrush = QBrush(QColor('#b6dff3'))
         hlBrush = QBrush(QColor('#e0eff3'))
         
+        fromToAvailable = False
+        
         for host in self.hosts:
         
             log(f'hostsUpdated: {host}', 5)
@@ -62,22 +64,24 @@ class hostsTable(QTableWidget):
                 self.setItem(i, 4, QTableWidgetItem(''))
 
             if 'from' in host:
+                fromToAvailable = True
                 if self.columnCount() == 5:
                     self.setColumnCount(7)
                     self.setHorizontalHeaderLabels(['', 'DB', 'host', 'port', 'service', 'from', 'to'])
                 
                 self.setItem(i, 5, QTableWidgetItem(host['from'].strftime('%Y-%m-%d %H:%M:%S')))
                 self.setItem(i, 6, QTableWidgetItem(host['to'].strftime('%Y-%m-%d %H:%M:%S')))
-                    
 
-            if 'from' not in host:
+            if fromToAvailable == False:
                 if self.columnCount() == 7:
                     self.setColumnCount(5)
                     
             for j in range(self.columnCount()):
-                if self.item(i, j) is not None and shadeHost:
+                if shadeHost:
+                    if self.item(i, j) is None:
+                        self.setItem(i, j, QTableWidgetItem(''))
+                    
                     self.item(i, j).setBackground(hlBrush)
-
             i+=1
             
         self.resizeColumnsToContents();

@@ -70,3 +70,6 @@ screens/
 
 # Private design thoughts
 design_thoughts.txt
+
+# csv files
+*.csv

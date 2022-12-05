@@ -51,6 +51,7 @@ import time
 from _constants import build_date, version
 
 from updatesCheck import checkUpdates
+from csvImportDialog import csvImportDialog
 
 from profiler import profiler
 
@@ -603,6 +604,37 @@ class hslWindow(QMainWindow):
             log('menuVariables refill', 5)
             self.kpisTable.refill(h)
         
+    def menuCSV(self):
+        '''
+            show the CSV import dialog in modal mode
+            
+            DBI is to be managed outside (here) connection to me banaged inside (there
+        '''
+        
+        validDPs = [] # list of data providers with dpDB type, others are not suitable for import
+        
+        for dp in self.chartArea.ndp:
+            if type(dp) == dpDB.dataProvider:
+                validDPs.append(dp)
+        
+        if not validDPs:
+            if datetime.datetime.now().second % 17 == 0:
+                motivation = 'Stay safe, smile once in a while, It\'s not so bad.'
+            else:
+                motivation = 'Stay safe.'
+            msgDialog('No database connection', 'You need to open connection to the database first.\n\n'+motivation, parent=self)
+            return
+        
+        csvImport = csvImportDialog(parent=self, ndp=validDPs)
+        csvImport.exec_()
+        
+        csvWidth = csvImport.size().width()
+        csvHeight = csvImport.size().height()
+        
+        self.layout['csvImportLO'] = {'width': csvWidth, 'height': csvHeight}
+        
+        log('csvImport done')
+
     def menuSQLHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/sqlconsole'))
 
@@ -1175,6 +1207,7 @@ class hslWindow(QMainWindow):
             #self.chartArea.dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
             #self.chartArea.initDP(message='Parsing the trace file, will take a minute or so...')
 
+            self.chartArea.cleanDPs()
             # new style, #739
             dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
             dpidx = self.chartArea.appendDP(dp)
@@ -1264,6 +1297,10 @@ class hslWindow(QMainWindow):
             if self.layout['variablesLO']:
                 kpiDescriptions.Variables.width = self.layout['variablesLO']['width']
                 kpiDescriptions.Variables.height = self.layout['variablesLO']['height']
+
+            if self.layout['csvImportLO']:
+                csvImportDialog.width = self.layout['csvImportLO']['width']
+                csvImportDialog.height = self.layout['csvImportLO']['height']
             
             if self.layout['SQLBrowser.Layout']:
                 SQLBrowserDialog.layout = self.layout['SQLBrowser.Layout']
@@ -1398,7 +1435,7 @@ class hslWindow(QMainWindow):
         #menu
         iconPath = resourcePath('ico', 'favicon.png')
 
-        exitAct = QAction('&Exit', self)        
+        exitAct = QAction('&Exit', self)
         exitAct.setShortcut('Alt+Q')
         exitAct.setStatusTip('Exit application')
         exitAct.triggered.connect(self.menuQuit)
@@ -1541,6 +1578,14 @@ class hslWindow(QMainWindow):
         self.essAct.triggered.connect(self.menuEss)
 
         actionsMenu.addAction(self.essAct)
+
+        csvAct = QAction('Import CSV-file', self)
+        csvAct.setStatusTip('Import CSV file into database')
+        csvAct.setShortcut('F12')
+        csvAct.triggered.connect(self.menuCSV)
+        
+        actionsMenu.addSeparator()
+        actionsMenu.addAction(csvAct)
 
         # help menu part
         aboutAct = QAction(QIcon(iconPath), '&About', self)

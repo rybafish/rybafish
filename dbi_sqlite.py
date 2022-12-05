@@ -7,9 +7,8 @@
 import sqlite3
 from datetime import datetime
 
-from utils import cfg
-from utils import getlog
-from utils import dbException
+import utils
+from utils import cfg, dbException
 
 from profiler import profiler
 
@@ -20,7 +19,7 @@ import dpDBCustom
 
 # from dbi_extention import getDBProperties seems not relevant
 
-log = getlog('SQLite')
+log = utils.getlog('SQLite')
 
 class sqlite():
 
@@ -71,9 +70,19 @@ class sqlite():
             for r in rows_tuples:
                 rows.append(list(r))
                     
-        self.clarifyTypes(rows)
+        utils.alignTypes(rows)
         
         return rows
+       
+    '''
+    def checkTable(self, conn, tableName):
+        r = execute_query(f"select name from sqlite_master where type='table' AND name='?'", [tableName])
+        
+        if r:
+            return True
+        else:
+            return False
+    '''
         
     def destroy(self):
         log('DBI Destroy call...')
@@ -97,120 +106,17 @@ class sqlite():
     def get_connection_id(self, conn):
         # not sure this makes any sense for sqlite
         return None
-
-    def clarifyTypes(self, rows):
-        '''
-            scan through rows and detect types
-            perform conversion when required
-            
-            returns list of types per column:
-            
-            1 - int
-            2 - decimal
-            3 - string
-            4 - timestamp
-        '''
-
-        def check_timestamp(v):
-            try:
-                v = datetime.fromisoformat(v)
-            except ValueError:
-                return False
-                
-            return True
-            
-        def detectType(t):
-            #log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}')
-            
-            if type(t) == int:
-                return 1
-                
-            if type(t) == float:
-                return 2
-
-            if type(t) == str:
-                if check_timestamp(t):
-                    return 4
-                else:
-                    return 3
-                
-            return -1
-        
-        if not rows:
-            return None
-            
-        colNum = len(rows[0])
-        columnTypes = []
-        
-        for idx in range(colNum):
-
-            columnType = None
-            needsConversion = False
-            
-            for r in rows:
-                v = r[idx]
-                
-                t = detectType(v)
-                
-                if columnType is None:
-                    columnType = t
-                    continue
-                 
-                # log specific column
-                #if idx == 0:
-                #    log(f'column 0, {v=}, {t=}, {needsConversion=}')
-
-                #if columnType == 1 and (t == 2):
-                    # requires conversion from int to float, who cares.
-                
-                if columnType == 1 and (t == 3):
-                    #downgrade to str
-                    needsConversion = True
-                    columnType = t
-                    break
-                
-                if columnType == 3 and (t == 2 or t == 1):
-                    needsConversion = True
-                    break
-
-                if columnType == 4 and (t == 3 or t == -1):
-                    needsConversion = True
-                    break
-
-                if columnType == -1:
-                    break
-                    
-            if needsConversion == True:
-                log(f'Need to convert column {idx} to str', 5)
-                with profiler('SQLite column convertion'):
-                    for r in rows:
-                        if type(r[idx]) != str:
-                            log(f'Convert: {r[idx]} ({type(r[idx])})', 5)
-                            r[idx] = str(r[idx])
-                        else:
-                            log(f'Already str: {r[idx]}', 5)
-                            
-                columnType = 3
-            
-            if columnType == 4 and t == 4:
-                # meaning the whole column was timestamp...
-                for r in rows:
-                    r[idx] = datetime.fromisoformat(r[idx])
-                    
-            columnTypes.append(columnType)
-                    
-        return columnTypes
     
-    
-    def execute_query_desc(self, connection, sql_string, params, resultSize):
+    def execute_query_desc(self, connection, sql_string, params, resultSize, noLogging=False):
  
         rows = []
         cols = []
 
-        log(f'[SQL] {sql_string}', 4)
-        
-        if params:
-            log(f'[SQL] {params}', 4)
+        if not noLogging:
+            log(f'[SQL] {sql_string}', 4)
+            
+            if params:
+                log(f'[SQL] {params}', 4)
                 
         try:
             cur = connection.cursor()
@@ -231,7 +137,7 @@ class sqlite():
             '''
             
             if rows:
-                colTypes = self.clarifyTypes(rows)
+                colTypes = utils.alignTypes(rows)
                 
                 log(f'{colTypes=}', 5)
                 
@@ -240,7 +146,7 @@ class sqlite():
                     raise dbException(f'len(cur.description) == len(colTypes) --> {len(cur.description)} != {len(colTypes)}')
                 
                 for i in range(len(cur.description)):
-                    cols.append((cur.description[i][0], colTypes[i], None))
+                    cols.append((cur.description[i][0], colTypes[i][0], None))
             
             else:
                 if cur.description:
@@ -297,7 +203,7 @@ class sqlite():
     def checkTable(self, conn, table):
         sql = "select count(*) from sqlite_master where type in ('table', 'view') and lower(name) = ?"
 
-        cnt = self.execute_query(conn, sql, [table])
+        cnt = self.execute_query(conn, sql, [table.lower()])
         
         if cnt and cnt[0][0]:
             return True
@@ -319,16 +225,17 @@ class sqlite():
         host_load_history = self.checkTable(conn, 'm_load_history_host')
         service_load_history = self.checkTable(conn, 'm_load_history_service')
 
-        rows = []
+        rows = [] # host, port, from, to
         
         if host_load_history:
-            hostRows = self.execute_query(conn, "select distinct host, '' from m_load_history_host order by 1", [])
+            #hostRows = self.execute_query(conn, "select distinct host, '' from m_load_history_host order by 1", [])
+            hostRows = self.execute_query(conn, "select host, '', min(time), max(time) from m_load_history_host group by host order by 1", [])
             
             if hostRows:
                 rows = rows + list(hostRows)
                 
         if service_load_history:
-            srvcRows = self.execute_query(conn, "select distinct host, port from m_load_history_service order by 1, 2", [])
+            srvcRows = self.execute_query(conn, "select host, port, min(time), max(time) from m_load_history_service group by host, port order by 1, 2", [])
             
             if srvcRows:
                 rows = rows + list(srvcRows)
@@ -352,6 +259,8 @@ class sqlite():
                         'host': rows[i][0],
                         'service': srv,
                         'port': str(rows[i][1]),
+                        'from': rows[i][2],
+                        'to': rows[i][3],
                         'dpi': dpidx
                         })
 

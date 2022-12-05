@@ -19,6 +19,9 @@ from profiler import profiler
 
 import re
 
+from io import StringIO
+import csv
+
 config = {}
 
 global utils_alertReg
@@ -218,6 +221,9 @@ class Layout():
             
             return False
         
+class csvException(Exception):
+    pass
+
 class vrsException(Exception):
     def __init__ (self, message):
         super().__init__(message)
@@ -282,8 +288,8 @@ def yesNoDialog(title, message, cancel = False, ignore = False, parent = None):
         
     return None
 
-def msgDialog(title, message):
-    msgBox = QMessageBox()
+def msgDialog(title, message, parent=None):
+    msgBox = QMessageBox(parent)
     msgBox.setWindowTitle(title)
     msgBox.setText(message)
 
@@ -536,6 +542,38 @@ else:
     log('threadSafeLogging disabled')
     mtx = fakeMutex()
         
+def sqlNameNorm(header):
+    '''
+        SQL object name normalization
+        lowercased alphanum --> uppercase
+        quoted ones --> same
+        
+        if the first character is not alpha or '_' --> quotes
+    '''
+    def norm_one(header):
+        if header.isupper():
+            return header
+            
+        if len(header) > 2 and header[0] == '"' and header[-1] == '"':
+            return header
+            
+        if header[0].isalpha() or header[0] == '_':
+            return header.upper()
+            
+        return header
+        
+    sp = header.split('.')
+    
+    if len(sp) > 2:
+        return sp
+        
+    res = []
+    
+    for h in sp:
+        res.append(norm_one(h))
+        
+    return '.'.join(res)
+
 @profiler
 def normalize_header(header):
     if header.isupper() and (header[0].isalpha() or header[0] == '_'):
@@ -913,3 +951,298 @@ def timestampToStr(ts, trimZeroes = True):
         s = ts.strftime('%Y-%m-%d %H:%M:%S.%f')
         
     return s
+
+@profiler
+def alignTypes(rows):
+    '''
+        scan through rows and detect types
+        perform conversion when required
+        
+        values in rows array are already in correct types but might be inconsistent
+        this is tipical for SQLite data sources.
+        
+        rows do not have header, data only
+        
+        columns detected inconsistent - will be converted to detected types
+        right in rows array
+        
+        returns list of (type, length) tuples per column:
+        
+            1 - int
+            2 - decimal
+            3 - string
+            4 - timestamp
+        
+        length defined only for str type columns (type 3)
+    '''
+
+    def check_timestamp(v):
+        
+        try:
+            v = datetime.fromisoformat(v)
+        except ValueError:
+            return False
+            
+        return True
+        
+    def detectType(t):
+        #log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}')
+        
+        if type(t) == int:
+            return 1
+            
+        if type(t) == float:
+            return 2
+
+        if type(t) == str:
+            if check_timestamp(t):
+                return 4
+            else:
+                return 3
+            
+        return -1
+    
+    if not rows:
+        return None
+        
+    colNum = len(rows[0])
+    columnTypes = []
+    
+    for idx in range(colNum):
+
+        columnType = None
+        maxLen = None
+        needsConversion = False
+        
+        maxTempLen = 0
+        
+        for r in rows:
+            v = r[idx]
+            
+            t = detectType(v)
+            
+            if columnType is None:
+                columnType = t
+                maxTempLen = 0
+                continue
+             
+            # log specific column
+            #if idx == 0:
+            #    log(f'column 0, {v=}, {t=}, {needsConversion=}')
+
+            #if columnType == 1 and (t == 2):
+                # requires conversion from int to float, who cares.
+            
+            if columnType == 1 and v:
+                maxTempLen = abs(v)
+
+            if columnType == 3 and v:
+                maxTempLen = len(v)
+                
+            if columnType == 1 and (t == 3):
+                #downgrade to str
+                needsConversion = True
+                columnType = t
+                break
+            
+            if columnType == 3 and (t == 2 or t == 1):
+                needsConversion = True
+                break
+
+            if columnType == 4 and (t == 3 or t == -1):
+                needsConversion = True
+                break
+
+            if columnType == -1:
+                break
+        else:
+            maxLen = maxTempLen
+                
+        if needsConversion == True:
+            maxLen = 0
+            log(f'Need to convert column {idx} to str', 5)
+            with profiler('SQLite column convertion'):
+                for r in rows:
+                    if type(r[idx]) != str:
+                        # log(f'Convert: {r[idx]} ({type(r[idx])})', 5)
+                        r[idx] = str(r[idx])
+                    else:
+                        pass
+                        
+                    strLen = len(r[idx])
+                    
+                    if strLen > maxLen:
+                        maxLen = strLen 
+                        
+            columnType = 3
+        
+        if columnType == 4 and t == 4:
+            # meaning the whole column was timestamp...
+            for r in rows:
+                r[idx] = datetime.fromisoformat(r[idx])
+                
+        columnTypes.append((columnType, maxLen))
+                
+    return columnTypes
+
+@profiler
+def detectConvert(rows):
+    '''
+        input - 2dim array of string values
+        
+        the method will try to
+            1) detect integer, decimal, timestamp types
+            2) convert the whole column to this type
+            
+        returned list of tuples: type, length
+    '''
+    
+    pass
+
+@profiler
+def extended_fromisoformat(v):
+    '''
+        this is a bit extended version of the standard fromisoformat
+        which also tries to parse values like 2022-12-04 19:56:34.12
+        standard one will fail because it requres exactly 3 or 6 digits after dot
+        
+        current version only supports 3 digits
+    '''
+    try:
+        return datetime.fromisoformat(v)
+    except ValueError:
+        if len(v) <3:
+            raise ValueError
+            
+        if (v[-1].isnumeric() and v[-2] == '.'):
+            return datetime.fromisoformat(v + '00')
+        elif v[-1].isnumeric() and v[-2].isnumeric() and v[-3] == '.':
+            return datetime.fromisoformat(v + '0')
+            
+        raise ValueError
+
+def parseCSV(txt, delimiter=','):
+
+    '''
+        this is almost 100% copy of def parseResponce(self, resp) with the following changes:
+
+        it does not use self.types, just types variable
+        it returns cols, rows (not just rows)
+    '''
+
+    '''
+        takes csv resp string and creates a rows array
+        ! also builds self.types list
+    
+        Note: local rows but self.types here!
+    '''
+
+    def convert_types():
+        '''
+            performs conversion of rows array
+            based on types list
+            
+            returns list of maxlen for varchars
+        '''
+        
+        maxlenlist = []
+        
+        for c in range(len(types)):
+            ml = 0
+            
+            for i in range(len(rows)):
+                if types[c] == 'int':
+                    rows[i][c] = int(rows[i][c])
+                    if ml < abs(rows[i][c]):
+                        ml = abs(rows[i][c])
+                elif types[c] == 'timestamp':
+                    #rows[i][c] = datetime.fromisoformat(rows[i][c])
+                    rows[i][c] = extended_fromisoformat(rows[i][c])
+                elif types[c] == 'varchar':
+                    if ml < len(rows[i][c]):
+                        ml = len(rows[i][c])
+                else:
+                    pass
+                    
+            if types[c] in ('varchar', 'int'):
+                maxlenlist.append(ml)
+            else:
+                maxlenlist.append(None)
+                
+        return maxlenlist
+    
+    def check_integer(j):
+        log('check column %i for int' % (j), 5)
+        
+        for ii in range(len(rows)):
+            if not rows[ii][j].isdigit():
+                log(f'not a digit: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
+                log(f'not a digit, row for the reference: {str(rows[ii])}', 5)
+                return False
+                
+        return True
+        
+    def check_timestamp(j):
+            
+        log('check column %i for timestamp' % (j), 5)
+        
+        for ii in range(len(rows)):
+            try:
+                v = extended_fromisoformat(rows[ii][j])
+            except ValueError:
+                log('not a timestamp: (%i, %i): %s' % (ii, j, rows[ii][j]), 5)
+                return False
+                
+        return True
+            
+    f = StringIO(txt)
+    reader = csv.reader(f, delimiter=delimiter)
+    
+    rows = []
+    
+    try:
+        header = next(reader)
+    except StopIteration:
+        raise csvException('The input seems to be empty, nothing to process.')
+    
+    log('header:' + str(header), 5)
+    
+    numCols = len(header)
+    
+    i = 0 
+    for row in reader:
+        i+=1
+        if len(row) != numCols:
+            raise csvException(f'Unexpected number of values in row #{i}: {len(row)} != {numCols}')
+        rows.append(row)
+        
+    types = ['']*numCols
+    
+    #detect types
+    for i in range(numCols):
+        if check_integer(i):
+            types[i] = 'int'
+        elif check_timestamp(i):
+            types[i] = 'timestamp'
+        else:
+            types[i] = 'varchar'
+    
+    lenlist = convert_types()
+    
+    #log('types:' + str(types), 5)
+    #log('lenlist:' + str(lenlist), 5)
+    
+    if len(rows) > 1:
+        log('row sample:' + str(rows[1]), 5)
+        
+    # prepare cols list --> difference with dbi_st04 implementation
+    
+    cols = []
+    for i in range(numCols):
+        cols.append((header[i], types[i], lenlist[i]))
+    
+    for c in cols:
+        l = f'({c[2]})' if c[2] is not None else ''
+        log(f'{c[0]}, {c[1]}{l}', 5)
+        
+    return cols, rows
