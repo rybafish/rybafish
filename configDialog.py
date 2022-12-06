@@ -21,7 +21,6 @@ class Config(QDialog):
             dbi = conf.get('dbi')
 
             if conf:
-
                 if dbi == 'SLT':
                     hostport = conf['host']
                 else:
@@ -38,6 +37,11 @@ class Config(QDialog):
                     for i in range(self.driverCB.count()):
                         if dbidict[self.driverCB.itemText(i)] == dbi:
                             self.driverCB.setCurrentIndex(i)
+
+                if 'readonly' in conf:
+                    self.readOnly.setChecked(conf['readonly'])
+                else:
+                    self.readOnly.setChecked(False)
                 
             else:
                 self.hostportEdit.setFocus()
@@ -71,7 +75,11 @@ class Config(QDialog):
             self.setConf(conf)
                 
     def setConfName(self, name):
-        
+        '''
+            set values from the configuration based on conf name
+            conf name must exist in the list of connections and
+            values are going to be implicitly filled by this index
+        '''
         if not name:
             return False
             
@@ -94,7 +102,7 @@ class Config(QDialog):
 
         if dbi == 'SLT':
             filename = hostport
-            if os.path.exists(filename):
+            if os.path.exists(filename) or True: # check for the db existance switched off...
                 cf.config['ok'] = True
                 cf.config['port'] = ''
                 cf.config['host'] = hostport
@@ -136,6 +144,9 @@ class Config(QDialog):
         cf.config['noreload'] = cf.noReload.isChecked()
         cf.config['ssl'] = cf.sslCB.isChecked()
         
+        if cf.config['dbi'] == 'SLT':
+            cf.config['readonly'] = cf.readOnly.isChecked()
+        
         return (cf.config, result == QDialog.Accepted)
         
     def driverChanged(self, index):
@@ -146,13 +157,21 @@ class Config(QDialog):
             self.userEdit.setDisabled(True)
             self.pwdEdit.setDisabled(True)
             self.sslCB.setDisabled(True)
-            self.update()
         elif drv == 'HANA DB':
             self.userEdit.setEnabled(True)
             self.pwdEdit.setEnabled(True)
             self.sslCB.setEnabled(True)
             
+        if drv == 'SQLite DB':
+            self.readOnly.setEnabled(True)
+            self.hostportLabel.setText('DB File:')
+        else:
+            self.hostportLabel.setText('hostname:port')
+            self.readOnly.setEnabled(False)
+            
         self.configurationChanged(self.confCB.currentText())
+
+        self.update()
 
     def confChange(self, i):
     
@@ -188,6 +207,9 @@ class Config(QDialog):
             conf['host'] = host
             conf['port'] = port
             conf['ssl'] = c.get('ssl')
+            
+            if c.get('readonly'):
+                conf['readonly'] = c.get('readonly')
 
             if 'user' in c:
                 conf['user'] = c['user']
@@ -228,6 +250,9 @@ class Config(QDialog):
         cfg['pwd'] = self.pwdEdit.text()
         cfg['hostport'] = self.hostportEdit.text()
         cfg['ssl'] = self.sslCB.isChecked()
+        
+        if cfg['dbi'] == 'SLT':
+            cfg['readonly'] = self.readOnly.isChecked()
         
         items = []
         for i in range(self.confCB.count()):
@@ -322,7 +347,8 @@ class Config(QDialog):
         
         self.pwdEdit.setEchoMode(QLineEdit.Password)
         
-        form.addWidget(QLabel('hostname:port'), 1, 1)
+        self.hostportLabel = QLabel('hostname:port')
+        form.addWidget(self.hostportLabel, 1, 1)
         form.addWidget(QLabel('user'), 2, 1)
         form.addWidget(QLabel('pwd'), 3, 1)
 
@@ -349,6 +375,8 @@ class Config(QDialog):
         checkButton = QPushButton("Check")
         
         self.noReload = QCheckBox('Skip initial KPIs load');
+        self.readOnly = QCheckBox('Read-only connection (SQLite only)');
+        self.readOnly.stateChanged.connect(self.configurationChanged)
 
         # save dialog
         self.confCB = QComboBox()
@@ -443,6 +471,7 @@ class Config(QDialog):
             vbox.addWidget(frm2)
 
         vbox.addWidget(self.noReload)
+        vbox.addWidget(self.readOnly)
         #vbox.addWidget(self.buttons)
         
         vbox.addLayout(buttonsHBox)

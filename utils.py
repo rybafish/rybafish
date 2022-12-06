@@ -120,6 +120,8 @@ class cfgManager():
                 confEntry['pwd'] = pwd
                 
             self.configs[n] = confEntry
+            
+            log(confEntry)
 
     def __init__(self, fname = None):
 
@@ -135,11 +137,8 @@ class cfgManager():
         self.reload()
         
     def updateConf(self, confEntry):
-
         name = confEntry.pop('name')
-        
         self.configs[name] = confEntry
-        
         self.dump()
     
     def removeConf(self, entryName):
@@ -149,8 +148,6 @@ class cfgManager():
         self.dump()
         
     def dump(self):
-
-        #ds = self.configs.copy()
         
         ds = {}
         for n in self.configs:
@@ -158,14 +155,17 @@ class cfgManager():
             if 'pwd' in confEntry:
                 pwd = confEntry['pwd']
                 pwd = self.fernet.encrypt(pwd.encode())
-        
                 confEntry['pwd'] = pwd
-                
                 
             if confEntry.get('dbi') == 'S2J':
                 if 'pwd' in confEntry:
                     del confEntry['pwd']
-                
+                if 'user' in confEntry:
+                    del confEntry['user']
+
+            if confEntry.get('dbi') == 'SLT':
+                if 'pwd' in confEntry:
+                    del confEntry['pwd']
                 if 'user' in confEntry:
                     del confEntry['user']
                     

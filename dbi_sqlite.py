@@ -1,3 +1,4 @@
+import sys
 '''
     SQLite database interface implementation
     
@@ -17,6 +18,9 @@ from kpis import kpis
 import kpiDescriptions
 import dpDBCustom
 
+import os
+import pathlib
+
 # from dbi_extention import getDBProperties seems not relevant
 
 log = utils.getlog('SQLite')
@@ -33,10 +37,18 @@ class sqlite():
         dbFile = server['host']
         log(f'Open connection: {dbFile}')
 
+        filePath = os.path.abspath(dbFile)
+        fileURI = pathlib.Path(filePath).as_uri()
+
+        if server.get('readonly'):
+            fileURI += '?mode=ro'
+            
         try:
-            conn = sqlite3.connect(dbFile, check_same_thread=False)
+            log(f'Open URI: {fileURI}')
+            conn = sqlite3.connect(fileURI, uri=True, check_same_thread=False)
+            #conn = sqlite3.connect(dbFile, check_same_thread=False)
         except sqlite3.Error as e:
-            log(f'Cannot open SQLite source "{dbFile}": {e}', 2)
+            log(f'Cannot open SQLite source "{dbFile} --> {fileURI}": {e}', 2)
             raise dbException('Cannot open SQLite source: ' + str(e))
 
         if dbProperties is not None:
@@ -250,19 +262,30 @@ class sqlite():
             
         #build hosts based on rows
         for i in range(0, len(rows)):
-            
+            print(f'{i}, {rows[i]}')
             ten = str(dbProperties.get('tenant'))
             srv = None
                 
-            hosts.append({
-                        'db': ten,
-                        'host': rows[i][0],
-                        'service': srv,
-                        'port': str(rows[i][1]),
-                        'from': rows[i][2],
-                        'to': rows[i][3],
-                        'dpi': dpidx
-                        })
+            if len(rows[i]) >2: 
+                hostStruct = ({
+                            'db': ten,
+                            'host': rows[i][0],
+                            'service': srv,
+                            'port': str(rows[i][1]),
+                            'from': rows[i][2],
+                            'to': rows[i][3],
+                            'dpi': dpidx
+                            })
+            else:   # no from/to values
+                hostStruct = ({
+                            'db': ten,
+                            'host': rows[i][0],
+                            'service': srv,
+                            'port': str(rows[i][1]),
+                            'dpi': dpidx
+                            })
+            
+            hosts.append(hostStruct)
 
         '''
         '
