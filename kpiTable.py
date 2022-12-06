@@ -379,6 +379,10 @@ class kpiTable(QTableWidget):
         '''
         
         log('refill: %s' % str(host), 5)
+        if host == -1:
+            log('[w] KPIs refill aborted to avoid confusion', 2)
+            self.setRowCount(0)
+            return
         
         if len(self.hosts) == 0:
             return
@@ -393,7 +397,7 @@ class kpiTable(QTableWidget):
                         
         kpiList = self.hostKPIsList[host]
         kpiStyles = self.hostKPIsStyles[host]
-            
+        
         hostKey = self.hosts[host]['host'] + ':' + self.hosts[host]['port']
             
         # go fill the table

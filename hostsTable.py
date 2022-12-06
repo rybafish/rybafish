@@ -32,7 +32,7 @@ class hostsTable(QTableWidget):
             
             currently without cleaning, so to be called for empty table right after connection
         '''
-        log('signal hostsUpdated(): %i' % (len(self.hosts)))
+        log(f'signal hostsUpdated(): {len(self.hosts)}')
         self.setRowCount(len(self.hosts))
         
         i = 0
@@ -44,7 +44,7 @@ class hostsTable(QTableWidget):
         
         for host in self.hosts:
         
-            log(f'hostsUpdated: {host}', 5)
+            log(f'    hostsUpdated: {host}', 5)
             
             shadeHost = host.get('dpi', 0) % 2 
         
@@ -86,11 +86,18 @@ class hostsTable(QTableWidget):
             
         self.resizeColumnsToContents();
 
-        # change of the host to first one with following implicit call of refill(0)
-        log('Skip imlicit refill here')
         # self.setCurrentCell(0, 0)
+        # change of the host to first one with following implicit call of refill(0)
         
+        currentRow = self.currentRow()
+
+        log(f'Do the imlicit refill here')
+        self.setCurrentCell(0, 0)
             
+        if currentRow >= 0:
+            log('Explicit refill call required...')
+            self.hostChanged.emit(0)
+
     def initTable(self):
 
         self.setSelectionBehavior(QAbstractItemView.SelectRows)

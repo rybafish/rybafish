@@ -476,7 +476,7 @@ class hslWindow(QMainWindow):
         self.chartArea.widget.update()
         
         #trigger refill
-        log('menuReloadCustomKPIs refill', 5)
+        log('refill due to menuReloadCustomKPIs ', 5)
         self.kpisTable.refill(self.hostTable.currentRow())
         
         self.statusMessage('Custom KPIs reload finish', False)
@@ -601,7 +601,7 @@ class hslWindow(QMainWindow):
         vrs.exec_()
         
         if h >= 0:
-            log('menuVariables refill', 5)
+            log('refill due to menuVariables ', 5)
             self.kpisTable.refill(h)
         
     def menuCSV(self):
@@ -825,9 +825,14 @@ class hslWindow(QMainWindow):
                 else:
                     self.chartArea.initDP(dpidx)
                     
-                    
+                   
+                '''
                 if not secondary:
-                    self.kpisTable.refill(self.hostTable.currentRow())
+                    log('refill due to non-secondary connection', 5)
+                    #self.hostTable.setCurrentCell(0, 0)
+                    #self.kpisTable.refill(self.hostTable.currentRow())
+                    log('now this logic moved inside initDP', 5)
+                '''
                 
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
