@@ -955,16 +955,16 @@ def timestampToStr(ts, trimZeroes = True):
 @profiler
 def alignTypes(rows):
     '''
-        scan through rows and detect types
-        perform conversion when required
+        scan through rows and detect types, perform conversion when required
+        Main usage is SQLite output that can in fact return strings and integers in the same column
+        and, by the way it is not aware of timestamps and has tham as string.
         
-        values in rows array are already in correct types but might be inconsistent
-        this is tipical for SQLite data sources.
+        So the values in rows array are already in correct types but might be inconsistent.
         
         rows do not have header, data only
         
-        columns detected inconsistent - will be converted to detected types
-        right in rows array
+        if column values detected inconsistent - will be converted to detected type
+        right in rows array (inplase)
         
         returns list of (type, length) tuples per column:
         
@@ -989,18 +989,18 @@ def alignTypes(rows):
         #log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}')
         
         if type(t) == int:
-            return 1
+            return 'int'
             
         if type(t) == float:
-            return 2
+            return 'decimal'
 
         if type(t) == str:
             if check_timestamp(t):
-                return 4
+                return 'timestamp'
             else:
-                return 3
+                return 'varchar'
             
-        return -1
+        return ''
     
     if not rows:
         return None
@@ -1033,27 +1033,27 @@ def alignTypes(rows):
             #if columnType == 1 and (t == 2):
                 # requires conversion from int to float, who cares.
             
-            if columnType == 1 and v:
+            if columnType == 'int' and v:
                 maxTempLen = abs(v)
 
-            if columnType == 3 and v:
+            if columnType == 'varchar' and v:
                 maxTempLen = len(v)
                 
-            if columnType == 1 and (t == 3):
+            if columnType == 'int' and (t == 'varchar'):
                 #downgrade to str
                 needsConversion = True
                 columnType = t
                 break
             
-            if columnType == 3 and (t == 2 or t == 1):
+            if columnType == 'varchar' and (t == 'decimal' or t == 'int'):
                 needsConversion = True
                 break
 
-            if columnType == 4 and (t == 3 or t == -1):
+            if columnType == 'timestamp' and (t == 'varchar' or t == ''):
                 needsConversion = True
                 break
 
-            if columnType == -1:
+            if columnType == '':
                 break
         else:
             maxLen = maxTempLen
@@ -1074,9 +1074,9 @@ def alignTypes(rows):
                     if strLen > maxLen:
                         maxLen = strLen 
                         
-            columnType = 3
+            columnType = 'varchar'
         
-        if columnType == 4 and t == 4:
+        if columnType == 'timestamp' and t == 'timestamp':
             # meaning the whole column was timestamp...
             for r in rows:
                 r[idx] = datetime.fromisoformat(r[idx])
@@ -1122,19 +1122,29 @@ def extended_fromisoformat(v):
         raise ValueError
 
 def parseCSV(txt, delimiter=','):
+    '''
+        it takes all the values = strings as input and tries to detect
+        if the column might be an integer or a timestamp
+        
+        if all the values in the column are recognized specific type - the whole
+        column will be converted to that type
+
+        ! also builds self.types list
+    
+        Note: local rows but self.types here!
+        
+        Returns:
+            cols - list of tuples: (name, type, length)
+                types: strings 'int', 'timestamp', 'varchar'
+            
+            rows - regular list of lists, 2-dim array of values (converted to proper types
+    '''
 
     '''
         this is almost 100% copy of def parseResponce(self, resp) with the following changes:
 
         it does not use self.types, just types variable
         it returns cols, rows (not just rows)
-    '''
-
-    '''
-        takes csv resp string and creates a rows array
-        ! also builds self.types list
-    
-        Note: local rows but self.types here!
     '''
 
     def convert_types():

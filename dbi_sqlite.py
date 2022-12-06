@@ -166,25 +166,25 @@ class sqlite():
         return False
         
     def ifNumericType(self, t):
-        if t in (1, 2):
+        if t in ('int', 'decimal'):
             return True
         else:
             return False
 
     def ifDecimalType(self, t):
-        if t == 2:
+        if t == 'decimal':
             return True
         else:
             return False
         
     def ifVarcharType(self, t):
-        if t == 3:
+        if t == 'varchar':
             return True
         else:
             return False
         
     def ifTSType(self, t):
-        if t == 4:
+        if t == 'timestamp':
             return True
         else:
             return False
