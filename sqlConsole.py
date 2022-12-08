@@ -125,6 +125,28 @@ class sqlWorker(QObject):
                     cons.connect = None
                     self.finished.emit()
                     return
+                    
+                except Exception as e:
+                    log(f'[W] Generic exception duging executeStatement.connect, thread {int(QThread.currentThreadId())}, {type(e)}, {e}', 1)
+
+                    cwd = os.getcwd()
+                    
+                    # It has to start with "Thread exception" otherwise logging will be broken in exception processing
+                    
+                    details = f'Thread exception {type(e)}: {e}\n--\n'
+
+                    (_, _, tb) = sys.exc_info()
+
+                    for s in traceback.format_tb(tb):
+                        details += '>>' + s.replace('__n', '_n').replace(cwd, '..')
+
+                    log(details)
+                    
+                    cons.wrkException = details
+                    cons.connect = None
+                    self.finished.emit()
+                    return
+                    
                 
         #execute the query
         

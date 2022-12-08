@@ -1013,6 +1013,7 @@ def alignTypes(rows):
         needsConversion = False
         
         maxTempLen = 0
+        i = 0
         
         for r in rows:
             v = r[idx]
@@ -1031,17 +1032,20 @@ def alignTypes(rows):
             #if columnType == 1 and (t == 2):
                 # requires conversion from int to float, who cares.
             
+            if columnType == 'int' and (t == 'varchar'):
+                #downgrade to str
+                needsConversion = True
+                columnType = t
+                
+                log(f'column #{idx} downgraded to varchar because of row {i}, value = "{v}"', 5)
+                log(f'row: {r}', 5)
+                break
+                
             if columnType == 'int' and v:
                 maxTempLen = abs(v)
 
             if columnType == 'varchar' and v:
                 maxTempLen = len(v)
-                
-            if columnType == 'int' and (t == 'varchar'):
-                #downgrade to str
-                needsConversion = True
-                columnType = t
-                break
             
             if columnType == 'varchar' and (t == 'decimal' or t == 'int'):
                 needsConversion = True
@@ -1179,11 +1183,14 @@ def parseCSV(txt, delimiter=','):
                 
         return maxlenlist
     
+    @profiler
     def check_integer(j):
         log('check column %i for int' % (j), 5)
         
+        reInt = re.compile(r'^-?\d+$')
+        
         for ii in range(len(rows)):
-            if not rows[ii][j].isdigit():
+            if not reInt.match(rows[ii][j]):
                 log(f'not a digit: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
                 log(f'not a digit, row for the reference: {str(rows[ii])}', 5)
                 return False

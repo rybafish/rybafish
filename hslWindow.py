@@ -1599,7 +1599,7 @@ class hslWindow(QMainWindow):
 
         csvAct = QAction('Import CSV-file', self)
         csvAct.setStatusTip('Import CSV file into database')
-        csvAct.setShortcut('F12')
+        #csvAct.setShortcut('Alt+F12')
         csvAct.triggered.connect(self.menuCSV)
         
         actionsMenu.addSeparator()
