@@ -362,7 +362,7 @@ class csvImportDialog(QDialog):
         
     def log(self, message, error=False):
         if error:
-            message = message.replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;').replace('\'','&#39;').replace('"','&#34;')
+            message = utils.escapeHtml(message)
             self.logText.appendHtml(f'<font color = "red">{message}</font>');
             log('(log) [w] ' + message, 2)
         else:

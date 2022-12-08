@@ -3618,7 +3618,6 @@ class chartArea(QFrame):
                     allOk = False
                     timerF = False
                     self.refreshCB.setCurrentIndex(0) # will disable the timer on this change
-                    log('timer = False 1')
 
         self.renewMaxValues()
         

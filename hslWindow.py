@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt, QUrl, QEvent, QRect, QProcess
+from PyQt5.QtCore import Qt, QUrl, QEvent, QRect, QProcess, QThread
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -61,6 +61,8 @@ class hslWindow(QMainWindow):
     primaryConf = None # primary connection dictionary, keys: host, port, name, dbi, user, pwd, etc
     
     kpisTable = None
+    
+    threadID = None
 
     def __init__(self):
     
@@ -71,6 +73,9 @@ class hslWindow(QMainWindow):
         self.tabs = None
     
         super().__init__()
+        
+        self.threadID = int(QThread.currentThreadId())
+        log(f'[thread] main window thread: {self.threadID}', 5)
         
         self.initUI()
         
@@ -218,6 +223,12 @@ class hslWindow(QMainWindow):
         return kpis
         
     def dumpLayout(self, closeTabs=True, crashMode=False):
+        '''
+            dumps a layout.yaml
+            
+            in normal execution it will also trigger close of the consoles (with backup and disconnection)
+            in crashMode (called on uncought exception) it is questionable if calling clos() makes any sense
+        '''
     
         if self.primaryConf:
             connection = self.primaryConf.get('name')
@@ -315,7 +326,9 @@ class hslWindow(QMainWindow):
                 w = self.tabs.widget(i)
                 
                 if isinstance(w, sqlConsole.sqlConsole):
-                    w.delayBackup()
+                    
+                    if not crashMode:       # during the crash processing explicit backups done outside before dumpLayout call
+                        w.delayBackup()
                     
                     if w.fileName is not None or w.backup is not None:
                         pos = w.cons.textCursor().position()
@@ -329,9 +342,9 @@ class hslWindow(QMainWindow):
                         tabs.append([w.fileName, bkp, pos, block])
                         
                     if closeTabs:
-                        #log('close tab call...', 5)
-                        w.close(None, abandoneExecution = abandone)
-
+                        log('Do the close tab sequence (for one tab)', 5)
+                        # self.statusbar.removeWidget(w.indicator) <<< this will fail when called from the parallel thread (if smth crashed in parallel thread)
+                        w.close(cancelPossible=False, abandoneExecution=abandone)
                         self.tabs.removeTab(i)
 
             tabs.reverse()

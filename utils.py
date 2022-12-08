@@ -120,8 +120,6 @@ class cfgManager():
                 confEntry['pwd'] = pwd
                 
             self.configs[n] = confEntry
-            
-            log(confEntry)
 
     def __init__(self, fname = None):
 
@@ -1256,3 +1254,6 @@ def parseCSV(txt, delimiter=','):
         log(f'{c[0]}, {c[1]}{l}', 5)
         
     return cols, rows
+
+def escapeHtml(msg):
+    return msg.replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;').replace('\'','&#39;').replace('"','&#34;')

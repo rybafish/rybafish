@@ -41,6 +41,7 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 
 import datetime
 import os
+import traceback
 
 #import gc
 
@@ -69,6 +70,7 @@ class sqlWorker(QObject):
     def executeStatement(self):
     
         #print('0 --> main thread method')
+        log(f'[thread] iteslf, child: {int(QThread.currentThreadId())}', 5)
         
         if not self.args:
             log('[!] sqlWorker with no args?')
@@ -205,7 +207,25 @@ class sqlWorker(QObject):
                 
                 log('connectionLost() used to be here, but now no UI possible from the thread')
                 #cons.connectionLost()
-                
+        
+        except Exception as e:
+            log(f'[W] Generic exception duging executeStatement, thread {int(QThread.currentThreadId())}, {type(e)}, {e}', 1)
+
+            cwd = os.getcwd()
+            
+            # It has to start with "Thread exception" otherwise logging will be broken in exception processing
+            
+            details = f'Thread exception {type(e)}: {e}\n--\n'
+            #trace = traceback.StackSummary.format()
+            #trace = traceback.format_exc().splitlines()
+            (_, _, tb) = sys.exc_info()
+
+            for s in traceback.format_tb(tb):
+                details += '>>' + s.replace('__n', '_n').replace(cwd, '..')
+
+            log(details)
+            cons.wrkException = details
+            
         self.finished.emit()
         #time.sleep(0.5)
         
@@ -1653,12 +1673,11 @@ class sqlConsole(QWidget):
         
         self.setFocus()
     
-    def close(self, cancelPossible = True, abandoneExecution = False):
+    def close(self, cancelPossible=True, abandoneExecution=False):
     
-        #log('closing sql console...')
-        #log('indicator:' + self.indicator.status, 4)
+        #log(f'close call: {self.tabname=}, {cancelPossible=}')
         
-        if self.unsavedChanges and cancelPossible is not None:
+        if self.unsavedChanges and cancelPossible:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible, parent=self)
             
             if answer is None: #cancel button
@@ -1678,13 +1697,11 @@ class sqlConsole(QWidget):
             if answer == True:
                 self.saveFile()
                 
-        #log('closing results...', 5)
-        
         self.closeResults(abandoneExecution)
-
+        
         try: 
             self.stopKeepAlive()
-            
+
             if self.sqlRunning and abandoneExecution:
                 log('Something is running in tab \'%s\', abandoning without connection close()...' % self.tabname.rstrip(' *'), 3)
             
@@ -1701,18 +1718,19 @@ class sqlConsole(QWidget):
             super().close()
             self.dbi = None
             return True
+            
         except Exception as e:
             log('close() exception: '+ str(e))
             super().close()
             self.dbi = None
             return True
         
-        #log('super().close()...', 5)
-
+        if self.runtimeTimer is not None:
+            log('runtimeTimer --> off', 5)
+            self.runtimeTimer.stop()
+            self.runtimeTimer = None
         super().close()
-        
-        #log('super().close() done', 5)
-        
+                
         return True
             
     def explainPlan(self, st):
@@ -1991,7 +2009,6 @@ class sqlConsole(QWidget):
         self.timerAutorefresh.start()
     
     def setupAutorefresh(self, interval, suppressLog = False):
-    
         if interval == 0:
             log('Stopping the autorefresh: %s' % self.tabname.rstrip(' *'))
             
@@ -2161,7 +2178,8 @@ class sqlConsole(QWidget):
         
     def stopResults(self):
     
-        log('Stopping all the results, %s...' % (self.tabname.rstrip(' *')), 4)
+        if self.results:
+            log('Stopping all the results, %s...' % (self.tabname.rstrip(' *')), 4)
         
         for result in self.results:
 
@@ -2198,6 +2216,8 @@ class sqlConsole(QWidget):
         '''
             closes all results tabs, detaches resultsets if any LOBs
         '''
+        
+        #log(f'closeResults() {self.tabname.rstrip(" *")}', 5)
         
         if abandon == True:
             cname = self.tabname.rstrip(' *')
@@ -2353,9 +2373,15 @@ class sqlConsole(QWidget):
             self.indicator.repaint()
             
                         
-    def log(self, text, error = False):
+    def log(self, text, error=False, pre=False):
         if error:
-            self.logArea.appendHtml('<font color = "red">%s</font>' % text);
+            if pre:
+                text = f'<pre>{text}</pre>'
+            else:
+                text = utils.escapeHtml(text)
+                text = text.replace('\n', '\n<br />')
+                
+            self.logArea.appendHtml(f'<font color = "red">{text}</font>');
         else:
             self.logArea.appendPlainText(text)
             
@@ -2978,6 +3004,7 @@ class sqlConsole(QWidget):
         '''
         #print('2 --> sql finished')
 
+        log(f'[thread] finished, parent: {int(QThread.currentThreadId())}', 5)
         self.thread.quit()
         self.sqlRunning = False
         
@@ -2991,7 +3018,8 @@ class sqlConsole(QWidget):
             return
         
         if self.wrkException is not None:
-            self.log(self.wrkException, True)
+            pre = self.wrkException[:16] == 'Thread exception'
+            self.log(self.wrkException, True, pre)
             
             #self.thread.quit()
             #self.sqlRunning = False
@@ -3358,9 +3386,7 @@ class sqlConsole(QWidget):
         
         #print('--> self.thread.start()')
         self.thread.start()
-        #log(f'worker thread id: {int(self.thread.currentThreadId())}')
-        #log(f'parent thread id: {int(QThread.currentThreadId())}')
-        #print('<-- self.thread.start()')
+        log(f'[thread] started, parent: {int(QThread.currentThreadId())}', 5)
             
         return
         

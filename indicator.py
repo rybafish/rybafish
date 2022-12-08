@@ -99,3 +99,4 @@ class indicator(QWidget):
         qp.drawRect(int((h - 10 )/2), int((w - 10 )/2), 10, 10)
         
         qp.end()
+       
