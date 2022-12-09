@@ -2216,8 +2216,10 @@ class chartArea(QFrame):
                     i -= 1
                     
                 return i
-                
-            if not idxKnown:
+
+            idx = None
+
+            if not idxKnown and timeKey in data: #711
                 idx = scan(data[timeKey], pointTime) # despite multiline, time has the same layout
             else:
                 idx = idxKnown
@@ -3959,4 +3961,3 @@ class chartArea(QFrame):
             
         if doneSomething:
             self.refreshCB.setCurrentIndex(0) # will disable the timer on this change
-    
