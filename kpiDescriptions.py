@@ -870,12 +870,19 @@ def clarifyGroups(kpiStylesNNN):
         update(kpiStylesNNN['memory_used']['group'], 'mem')
         
 
-    # those two for dpTrace as it is based on ns KPI names
+    # those four for the dpTrace as it is based on ns KPI names
+    # separate for host ones and service ones
     if 'cpuused' in kpiStylesNNN:
         update(kpiStylesNNN['cpuused']['group'], 'cpu')
 
+    if 'indexservercpu' in kpiStylesNNN:
+        update(kpiStylesNNN['indexservercpu']['group'], 'cpu')
+
     if 'memoryused' in kpiStylesNNN:
         update(kpiStylesNNN['memoryused']['group'], 'mem')
+
+    if 'indexservermemused' in kpiStylesNNN:
+        update(kpiStylesNNN['indexservermemused']['group'], 'mem')
 
     if cfg('memoryGB'):
         updateDunit('mem', 'GB')
