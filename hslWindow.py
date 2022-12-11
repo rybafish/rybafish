@@ -592,9 +592,12 @@ class hslWindow(QMainWindow):
             else:
                 self.statusMessage('Warning: SQL Console needs to be open to use this option.', True)
     
+    def menuVariablesHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/variables'))
+
     def menuVariables(self):
-        
         # detect the sql source for currently selected custom KPI if any
+
         idx = None
         
         h = self.hostTable.currentRow()
@@ -650,6 +653,9 @@ class hslWindow(QMainWindow):
 
     def menuSQLHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/sqlconsole'))
+
+    def menuDocHelp(self):
+        QDesktopServices.openUrl(QUrl('https://www.rybafish.net/doc'))
 
     def menuConfHelp(self):
         QDesktopServices.openUrl(QUrl('https://www.rybafish.net/config'))
@@ -1531,6 +1537,12 @@ class hslWindow(QMainWindow):
         
         varsMenu.addAction(varsAct)
 
+        vhelpAct = QAction('Variables help', self)
+        vhelpAct.setStatusTip('Go to RybaFish.net variables tutorial')
+        vhelpAct.triggered.connect(self.menuVariablesHelp)
+
+        varsMenu.addAction(vhelpAct)
+
         sqlMenu = menubar.addMenu('SQL')
         sqlAct = QAction('SQL Browser', self)
         sqlAct.setShortcut('F11')
@@ -1614,6 +1626,10 @@ class hslWindow(QMainWindow):
         confSQLAct.setStatusTip('Short SQL Console reference')
         confSQLAct.triggered.connect(self.menuSQLHelp)
 
+        docHelpAct = QAction('Documentation', self)
+        docHelpAct.setStatusTip('Visit user reference page')
+        docHelpAct.triggered.connect(self.menuDocHelp)
+
         confHelpAct = QAction('Configuration', self)
         confHelpAct.setStatusTip('Configuration options description')
         confHelpAct.triggered.connect(self.menuConfHelp)
@@ -1636,6 +1652,7 @@ class hslWindow(QMainWindow):
         
         helpMenu = menubar.addMenu('&Help')
         
+        helpMenu.addAction(docHelpAct)
         helpMenu.addAction(confSQLAct)
         helpMenu.addAction(confHelpAct)
         helpMenu.addAction(confCustomHelpAct)
@@ -1834,4 +1851,3 @@ class hslWindow(QMainWindow):
         if self.chartArea.dp:
             assert False, 'Should not ever reach this self.chartArea.initDP()'
             self.chartArea.initDP()
-        
