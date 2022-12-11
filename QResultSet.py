@@ -6,7 +6,7 @@ from PyQt5.QtCore import pyqtSignal, Qt, QSize, QTimer
 from PyQt5.QtGui import QFont, QFontMetricsF, QColor, QPixmap, QBrush
 
 import utils
-from utils import cfg, log
+from utils import cfg, log, normalize_header
 
 import lobDialog, searchDialog
 import customSQLs
