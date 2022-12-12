@@ -315,6 +315,7 @@ class QResultSet(QTableWidget):
             
             if ok:
                 self.triggerAutorefresh.emit(value)
+                self.defaultTimer[0] = value
 
         if action == refreshTimerStop:
             log('disabeling the timer...')
