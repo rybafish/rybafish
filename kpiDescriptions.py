@@ -33,6 +33,9 @@ vrsRepl = {}        # dict of pairs from/to per sqlIdx for character replacement
 vrsStr = {}         # current string representation (for KPIs table)
 vrs = {}            # actual dict
 
+def logvar(msg, logl=3):
+    log(msg, component='variables', loglevel=logl)
+
 class Style(UserDict):
     exclude = ['sql'] # keys excluded from vars processing
     def __init__(self, idx, *args):
@@ -271,7 +274,7 @@ class Variables(QDialog):
         self.accept()
         
     def highlightIdx(self, idx):
-        log(f'Need to highlight {idx}', 5)
+        logvar(f'Need to highlight {idx}', 5)
         
         for i in range(self.vTab.rowCount()):
             item = self.vTab.item(i, 0)
@@ -356,7 +359,7 @@ def addVarsDef(sqlIdx, vStr):
     vlist = [s.strip() for s in vStr.split(',')]
     
     if sqlIdx in vrsDef:
-        log('%s already in the dict, anyway...' % sqlIdx, 4)
+        logvar('%s already in the dict, anyway...' % sqlIdx, 4)
         
     vrsDef[sqlIdx] = {}
         
@@ -371,7 +374,7 @@ def addVarsDef(sqlIdx, vStr):
             
         vrsDef[sqlIdx][vName] = vVal
         
-    log('yaml variables for %s defined as %s' % (sqlIdx, str(vrsDef[sqlIdx])))
+    logvar('yaml variables for %s defined as %s' % (sqlIdx, str(vrsDef[sqlIdx])))
     
 
 def addVars(sqlIdx, vStr, overwrite = False):
@@ -392,14 +395,14 @@ def addVars(sqlIdx, vStr, overwrite = False):
         if r:
             smod = s.replace(r[0], r[1])
             if s != smod:
-                log(f'Variable replace {idx}: {s} --> {smod}', 4)
+                logvar(f'Variable replace {idx}: {s} --> {smod}', 4)
             else:
-                log(f'Didn\'t make any changes {idx}: {s} --> {smod}', 4)
+                logvar(f'Didn\'t make any changes {idx}: {s} --> {smod}', 4)
             
                 
             return smod
         else:
-            log(f'no replacement for {idx}, s = {s}', 4)
+            logvar(f'no replacement for {idx}, s = {s}')
             return s
         
     def validate(s):
@@ -410,28 +413,21 @@ def addVars(sqlIdx, vStr, overwrite = False):
         
         for v in vlist:
             if v.find(':') <= 0:
-                log('Not a valid variable definition: [%s]' % v, 2)
+                logvar('Not a valid variable definition: [%s]' % v, 2)
                 return False
                 
         return True
     
-    log('addVars input: %s' % (str(vStr)), 5)
+    logvar('addVars input: %s' % (str(vStr)))
         
     for idx in vrs:
-        log('%s --> %s' % (idx, str(vrs[idx])), 5)
+        logvar('%s --> %s' % (idx, str(vrs[idx])))
     
     if vStr == None:
         return
-    '''
-    if overwrite:
-        if sqlIdx in vrs:
-            log('full refresh of %s vars' % (sqlIdx), a4)
-            
-            vrs[sqlIdx].clear()
-    '''
-    
+
     if not validate(vStr):
-        log('[E] Variables parsing error!', 2)
+        logvar('[E] Variables parsing error!', 2)
         
         #vrsStr[sqlIdx] = None
         msg = 'Variables cannot have commas inside'
@@ -483,31 +479,25 @@ def addVars(sqlIdx, vStr, overwrite = False):
         for v in vrs[sqlIdx]:
             if v not in vNames:
                 if v in vrsDef[sqlIdx]:
-                    log('Variable \'%s\' seems missing in %s, restoring default from YAML' % (v, sqlIdx))
+                    logvar('Variable \'%s\' seems missing in %s, restoring default from YAML' % (v, sqlIdx))
                     vrs[sqlIdx][v] = vrsDef[sqlIdx][v]
                 else:
-                    log('Seems variable \'%s\' is excluded from %s, it will be IGNORED' % (v, sqlIdx))
+                    logvar('Seems variable \'%s\' is excluded from %s, it will be IGNORED' % (v, sqlIdx))
                     #log('Seems variable \'%s\' is excluded from %s, it will be erased from the runtime values' % (v, sqlIdx))
                     #keysDelete.append(v)
                     
-        '''
-        for k in keysDelete:
-            log('deleting %s from %s' %(k, sqlIdx))
-            vrs[sqlIdx].pop(k)
-        '''
-            
     # go through defined variables and add missing ones
     
     if sqlIdx not in vrsDef:
-        log('[W] how come %s is missing in vrsDed??' % sqlIdx, 2)
+        logvar('[W] how come %s is missing in vrsDed??' % sqlIdx, 2)
     else:
-        log('Variables YAML defaults: %s' % str(vrsDef[sqlIdx]), 5)
+        logvar('Variables YAML defaults: %s' % str(vrsDef[sqlIdx]), 5)
         for k in vrsDef[sqlIdx]:
             if k not in vrs[sqlIdx]:
                 vrs[sqlIdx][k] = repl(sqlIdx, vrsDef[sqlIdx][k])
-                log('[W] MUST NOT REACH THIS POINT #602\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
+                logvar('[W] MUST NOT REACH THIS POINT #602\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
         
-    log(f'Actual variables for {sqlIdx} now are {vrs[sqlIdx]}', 4)
+    logvar(f'Actual variables for {sqlIdx} now are {vrs[sqlIdx]}', 4)
 
 
 def processVars(sqlIdx, src):
@@ -871,7 +861,7 @@ def clarifyGroups(kpiStylesNNN):
         
 
     # those four for the dpTrace as it is based on ns KPI names
-    # separate for host ones and service ones
+
     if 'cpuused' in kpiStylesNNN:
         update(kpiStylesNNN['cpuused']['group'], 'cpu')
 

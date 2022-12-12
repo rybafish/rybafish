@@ -321,9 +321,6 @@ class Config(QDialog):
         
         self.driverCB = QComboBox()
 
-        #self.driverCB.addItem('HANA DB')
-        #self.driverCB.addItem('ABAP Proxy')
-        
         for drv in dbidict.keys():
             self.driverCB.addItem(drv)
         
@@ -430,15 +427,6 @@ class Config(QDialog):
         buttonsHBox.addWidget(btnConnect)
         buttonsHBox.addWidget(btnCancel)
         
-        '''
-        self.buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
-            Qt.Horizontal, self)
-
-        self.buttons.accepted.connect(self.accept)
-        self.buttons.rejected.connect(self.reject)
-        '''
-        
         self.status = QLabel()
 
         # okay, Layout:
@@ -452,7 +440,7 @@ class Config(QDialog):
             
             vbox.addWidget(confGroup)
         
-        if cfg('experimental', False) and cfg('S2J', False):
+        if cfg('experimental', False):
             vbox.addLayout(dbiHBox) # driver type selection combo box
         
         vbox.addLayout(form) # main form

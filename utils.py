@@ -41,6 +41,7 @@ decimal_digits = 6
 
 cfg_logmode = 'file'
 cfg_loglevel = 3
+cfg_logcomp = []
 
 configStats = {}
 
@@ -497,13 +498,23 @@ else:
     mtx = fakeMutex()
 
 @profiler
-def log(s, loglevel = 3, nots = False, nonl = False):
+def log(s, loglevel = 3, nots = False, nonl = False, component=None,):
     '''
         log the stuff one way or another...
+
+        comp - logging component to be checked if any
     '''
     
-    if cfg_loglevel < loglevel:
+    if cfg_loglevel < loglevel and not component:
         return
+
+    pfx = ''
+
+    if component:
+        if cfg_logcomp and component in cfg_logcomp:
+            pfx = f'[{component}] '
+        else:
+            return
 
     if not nots:
         ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' '
@@ -511,7 +522,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         ts = ''
     
     if cfg_logmode == 'screen' or cfg_logmode == 'duplicate':
-        print('[l]', s)
+        print('[l]', pfx, s)
         
     if nonl:
         nl = ''
@@ -527,7 +538,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         #f.seek(os.SEEK_END, 0)
     
         try:
-            f.write(ts + str(s) + nl)
+            f.write(ts + pfx + str(s) + nl)
 
         except Exception as e:
             f.write(ts + str(e) + nl)
@@ -710,12 +721,20 @@ def initGlobalSettings():
     global configStats
     global cfg_logmode
     global cfg_loglevel
+    global cfg_logcomp
     
     if cfg('dev'):
         configStats['dummy'] = 0
         
     cfg_logmode = cfg('logmode')
     cfg_loglevel = cfg('loglevel', 3)
+    cfg_logcomp = cfg('log_components', [])
+
+    if type(cfg_logcomp) != list:
+        cfg_comp = []
+
+    if cfg_logcomp:
+        log(f'logging components list: {cfg_logcomp}', 2)
     
     initLocale()
     

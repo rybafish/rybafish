@@ -1301,7 +1301,7 @@ class hslWindow(QMainWindow):
             
             if self.layout['variables']:
                 # kpiDescriptions.vrs = self.layout['variables']
-                log('-----addVars hslWindow-----')
+                log('-----addVars hslWindow-----', component='variables')
                 
                 try:
                     for idx in self.layout['variables']:
@@ -1309,7 +1309,7 @@ class hslWindow(QMainWindow):
                 except utils.vrsException as e:
                     log(str(e), 2)
                     
-                log('-----addVars hslWindow-----')
+                log('-----addVars hslWindow-----', component='variables')
             
             if 'settings' in self.layout.lo:
                 for setting in self.layout.lo['settings']:

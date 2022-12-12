@@ -340,6 +340,10 @@ class dataProvider:
         
         # here in ns notation
         log('copy kpis...', 5)
+        # those two requred to preserver columns indexes in internal data structures
+        # used in getData()
+        # kind of a bit old approach, but it is fine for dpTrace
+        # otherwise srvcKPIs will be required each time for getData
         self.hostKPIs = hostKPIs.copy()
         self.srvcKPIs = srvcKPIs.copy()
         
