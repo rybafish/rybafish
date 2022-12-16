@@ -246,7 +246,7 @@ class dataProvider(QObject):
         if cfg('ess'):
             #dirty but this will work
             sql_string = sql_string.replace('m_load_history', '_sys_statistics.host_load_history')
-        
+
         rows = self.dbi.execute_query(self.connection, sql_string, [])
         
         if len(rows) <= 1:
@@ -1234,4 +1234,3 @@ class dataProvider(QObject):
         t2 = time.time()
 
         log('%i rows, get time: %s, get/parse time %s' % (trace_lines, str(round(t1-t0, 3)), str(round(t2-t1, 3))))
-    

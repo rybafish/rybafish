@@ -243,6 +243,8 @@ class kpiTable(QTableWidget):
             #return super(kpiTable, self).edit(index, trigger, event)
             self.silentMode = True
 
+            log(f'edit self.host: {self.host}')
+
             kpiName = self.kpiNames[index.row()]
                     
             kpiStyles = self.hostKPIsStyles[self.host]
@@ -394,6 +396,7 @@ class kpiTable(QTableWidget):
         self.silentMode = True
         
         self.host = host
+        log(f'refill self.host: {self.host}', 5)
                         
         kpiList = self.hostKPIsList[host]
         kpiStyles = self.hostKPIsStyles[host]
@@ -602,6 +605,8 @@ class kpiTable(QTableWidget):
             
             to be called outside afted alignScales() by a signal
         '''
+        log(f'updateScales host: {self.host}')
+        
         if self.host is None:
             log('update scales? why oh why...', 5)
             return
@@ -686,4 +691,3 @@ class kpiTable(QTableWidget):
         #self.setColumnWidth(10, 30) # threshold
         
         self.itemChanged.connect(self.itemChange)
-        

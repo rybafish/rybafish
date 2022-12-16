@@ -824,12 +824,14 @@ class hslWindow(QMainWindow):
                         if self.layout['legend']:
                             self.chartArea.widget.legend = 'hosts'
                             
-                        self.kpisTable.host = None
+                        # self.kpisTable.host = None
+                        log('removed explicit host = None (3), was the implicit one just performed??', 5)
                     else:
                         log('--> dumplayout, no kpis', 5)
                         self.chartArea.initDP(dpidx)
-                        self.kpisTable.host = None
-                       
+                        # self.kpisTable.host = None
+                        log('removed explicit host = None (4), was the implicit one just performed??', 5)
+
 
                     '''
                     #397, 2021-06-17
@@ -1198,8 +1200,9 @@ class hslWindow(QMainWindow):
         
             self.chartArea.setStatus('sync', True)
                         
-            self.kpisTable.host = None
-            
+            # self.kpisTable.host = None
+            log('removed explicit host = None (1), was the implicit one just performed??', 5)
+
             self.statusMessage('Now reload...', True)
             self.chartArea.reloadChart()
             self.chartArea.setStatus('idle', True)
@@ -1214,7 +1217,9 @@ class hslWindow(QMainWindow):
             self.chartArea.setStatus('sync', True)
             #self.chartArea.initDP(kpis.copy(), message = 'Re-initializing hosts information...')
             reinitDPs()
-            self.kpisTable.host = None
+
+            # self.kpisTable.host = None
+            log('removed explicit host = None (2), was the implicit one just performed??', 5)
             
             self.statusMessage('Now reload...', True)
             self.chartArea.reloadChart()

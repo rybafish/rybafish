@@ -235,7 +235,7 @@ class dbException(Exception):
     CONN = 1
     SQL = 2
 
-    def __init__ (self, message, type = None):
+    def __init__ (self, message, type=None):
         self.type = type
         self.msg = message
         super().__init__(message, type)
