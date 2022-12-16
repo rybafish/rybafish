@@ -73,3 +73,6 @@ design_thoughts.txt
 
 # csv files
 *.csv
+
+# emacs ignore
+.projectile
