@@ -382,7 +382,9 @@ class kpiTable(QTableWidget):
         
         log('refill: %s' % str(host), 5)
         if host == -1:
-            log('[w] KPIs refill aborted to avoid confusion', 2)
+            log('[W] KPIs refill aborted to avoid confusion', 2)
+            log('[W] setting self.host = None', 2)
+            self.host = None
             self.setRowCount(0)
             return
         
