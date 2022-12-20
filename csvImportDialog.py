@@ -3,6 +3,8 @@ import os.path
 
 from PyQt5.QtWidgets import (QPushButton, QDialog, QWidget, QLineEdit, QAction, QStyle,
     QHBoxLayout, QVBoxLayout, QApplication, QLabel, QStatusBar, QPlainTextEdit, QTableWidget, QSplitter, QFileDialog, QComboBox)
+
+from QPlainTextEditLN import QPlainTextEditLN
     
 from PyQt5.QtCore import Qt
 
@@ -396,7 +398,8 @@ class csvImportDialog(QDialog):
         
         self.fileName.addAction(openAct, QLineEdit.TrailingPosition)
         
-        self.csvText = QPlainTextEdit() # 'paste csv data here or open a csv file'
+        # self.csvText = QPlainTextEdit() # 'paste csv data here or open a csv file'
+        self.csvText = QPlainTextEditLN() # 'paste csv data here or open a csv file'
         
         self.csvText.wheelEvent = self.wheelEventMod # dirty horizontal scroll hack
         
