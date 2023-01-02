@@ -359,7 +359,8 @@ class myWidget(QWidget):
                     scaleKpi['label'] = '10 / 100'
                     scaleKpi['yScale'] = 100
                     scaleKpi['unit'] = '%'
-                        
+                    kpiStylesNNN[kpi]['decimal'] = 0
+
                 else:
                     # all the rest:
                     # 0 group means no groupping at all, individual scales
