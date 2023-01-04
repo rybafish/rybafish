@@ -76,3 +76,6 @@ design_thoughts.txt
 
 # emacs ignore
 .projectile
+
+#vscode
+.vscode/
