@@ -51,9 +51,10 @@
         drop_statement - to keep prepared statements cleat
         close_result - to release MVCC
 '''
-import dbi_hana
+#import dbi_hana
 import dbi_st04
 import dbi_sqlite
+import dbi_hdbcli as dbi_hana
 
 from utils import log, cfg
 
