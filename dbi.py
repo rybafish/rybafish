@@ -55,6 +55,7 @@
 import dbi_st04
 import dbi_sqlite
 import dbi_hdbcli as dbi_hana
+#import dbi_hana
 
 from utils import log, cfg
 

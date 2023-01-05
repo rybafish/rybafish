@@ -178,7 +178,7 @@ class sqlWorker(QObject):
             #print('start sql')
             
             m = re.search('^sleep\s?\(\s*(\d+)\s*\)$', txtSub)
-            
+         
             if m is not None:
                 time.sleep(int(m.group(1)))
                 self.rows_list = None

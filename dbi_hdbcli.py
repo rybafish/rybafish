@@ -1,6 +1,6 @@
-from hdbcli import dbapi
 from hdbcli.dbapi import ProgrammingError
 from hdbcli.dbapi import DatabaseError
+from hdbcli import dbapi
 
 import time
 from _constants import build_date, version
@@ -16,28 +16,33 @@ from os import getlogin
 from profiler import profiler
 
 import re
-
-kerberos_re = re.compile(".{1,}@.{1,}")
+import hdbcli
 
 log = getlog('HDB')
+global_authmethods = 'ldap'
+
 
 class hdbi ():
     name = 'HDBCLI'
+    options = {'keepalive': True, 'largeSQL': True}
+
     def __init__(self):
         log('Using HDBCLI as DB driver implementation')
+        self._resultset_id_list = None
             
     def create_connection (self, server, dbProperties = None):
         t0 = time.time()
+        
         try: 
             if server.get('ssl'):
-                log('Opening connection with SSL support', 4)
+                log('Opening regular connection (ssl)', 4)
                 connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False)
-            elif kerberos_re.match(server['user']) & server['password'] == None:
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], authenticationMethods='kerberos')
-                log('Opening SSO connection (no ssl)', 5)
-            elif server.get('ssl') & kerberos_re.match(server['user']) & server['password'] == None:
-                log('Opening SSO connection (ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False, authenticationMethods='kerberos')
+            elif server.get('ssl') and server['user'] == '' and server['password'] == '':
+                log('Opening LDAP connection (ssl)', 5)
+                connection = dbapi.connect(address=server['host'], port=server['port'], encrypt = True, ValidateServerCertificate = False, authenticationMethods=global_authmethods)
+            elif server['user'] == '' and server['password'] == '':
+                log('Opening LDAP connection (no ssl)', 5)
+                connection = dbapi.connect(address=server['host'], port=server['port'], authenticationMethods=global_authmethods)
             else:
                 log('Opening regular connection (no ssl)', 5)
                 connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
@@ -133,11 +138,17 @@ class hdbi ():
             rows_list = []
             columns_list = []
             try:
-                rows = cursor.fetchall() # we always expect just one line, and we hardcode the resultset number for scalars to be the first one (zero)
+                if re.match("SELECT.{1,}", sql_string.upper()):
+                    rows = cursor.fetchall()
+                    columns_list.append(cursor.description)
+                    rows_list.append(rows)
+
+                if re.match("SET.{1,}", sql_string.upper()) or re.match("CREATE.{1,}", sql_string.upper())  or re.match("DROP.{1,}", sql_string.upper()) or re.match("ALTER.{1,}", sql_string.upper()):
+                    log('that was a ddl...', 4)
+                    rows_list = None
+                    columns_list = None
             except ProgrammingError as e:
-                return rows_list, columns_list, cursor, psid
-                    
-            #log('results to fetch: %i' % len(cursor.description_list), 5)
+                log(e, 4)
 
         except BaseException as e:
             log('[!] sql execution issue: %s\n' % e)
@@ -146,9 +157,8 @@ class hdbi ():
             log('[E] unexpected DB error: %s' % str(e))
             raise DatabaseError(str(e))
             
-        # drop_statement(connection, psid) # might be useful to test LOB.read() issues
+        return rows_list, columns_list,None, None
 
-        return rows_list, columns_list, cursor, psid
     
     def execute_query(self, connection, sql_string, params):
 
@@ -218,14 +228,18 @@ class hdbi ():
         try: 
             log(f'Regular consolse, longdate={longdate}, ssl={sslsupport}')
             if server.get('ssl'):
-                log('Opening connection with SSL support', 4)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], authenticationMethods='kerberos')
-            if server['password'] == None:
-                log('Opening connection with KERBEROS', 4)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], authenticationMethods='kerberos')
+                log('Opening regular connection (ssl)', 4)
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False)
+            elif server.get('ssl') and server['user'] == '' and server['password'] == '':
+                log('Opening LDAP connection (ssl)', 5)
+                connection = dbapi.connect(address=server['host'], port=server['port'], encrypt = True, ValidateServerCertificate = False, authenticationMethods=global_authmethods)
+            elif server['user'] == '' and server['password'] == '':
+                log('Opening LDAP connection (no ssl)', 5)
+                connection = dbapi.connect(address=server['host'], port=server['port'], authenticationMethods=global_authmethods)
             else:
                 log('Opening regular connection (no ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], authenticationMethods='kerberos')
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
+
                 
             if cfg('internal', True):
                 setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
@@ -286,3 +300,24 @@ class hdbi ():
         log('closed...', 5)
             
         return
+
+    def ifNumericType(self, t):
+        return False
+
+    def ifRAWType(self, t):
+        return False
+
+    def ifTSType(self, t):
+        return False
+
+    def ifVarcharType(self, t):
+        return False
+            
+    def ifDecimalType(self, t):
+        return False
+
+    def ifLOBType(self, t):
+        return False
+            
+    def ifBLOBType(self, t):
+        return False  
