@@ -16,10 +16,9 @@ from os import getlogin
 from profiler import profiler
 
 import re
-import hdbcli
+from utils import dbException
 
 log = getlog('HDB')
-global_authmethods = 'ldap'
 
 
 class hdbi ():
@@ -36,16 +35,16 @@ class hdbi ():
         try: 
             if server.get('ssl'):
                 log('Opening regular connection (ssl)', 4)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False)
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False, compress = True)
             elif server.get('ssl') and server['user'] == '' and server['password'] == '':
                 log('Opening LDAP connection (ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], encrypt = True, ValidateServerCertificate = False, authenticationMethods=global_authmethods)
+                connection = dbapi.connect(address=server['host'], port=server['port'], encrypt = True, ValidateServerCertificate = False, authenticationMethods='ldap', compress = True)
             elif server['user'] == '' and server['password'] == '':
                 log('Opening LDAP connection (no ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], authenticationMethods=global_authmethods)
+                connection = dbapi.connect(address=server['host'], port=server['port'], authenticationMethods='ldap', compress = True)
             else:
                 log('Opening regular connection (no ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], compress = True)
             
             if cfg('internal', True):
                 setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
@@ -115,7 +114,7 @@ class hdbi ():
             psid = cursor.prepare(sql_string)
         except BaseException as e:
         
-            log('DatabaseError: ' + str(e.code))
+            log('DatabaseError: ' + str(e.errorcode))
         
             if str(e).startswith('Lost connection to HANA server'):
                 raise DatabaseError(str(e))
@@ -123,16 +122,16 @@ class hdbi ():
             log('[!] SQL Error: %s' % sql_string)
             log('[!] SQL Error: %s' % (e))
             
-            raise DatabaseError(str(e))
+            raise dbException(str(e.errortext))
         except Exception as e:
             log("[!] unexpected DB exception, sql: %s" % sql_string)
             log("[!] unexpected DB exception: %s" % str(e))
             log("[!] unexpected DB exception: %s" % sys.exc_info()[0])
-            raise DatabaseError(str(e))
+            raise dbException(str(e))
             
             
         try:
-            cursor.executeprepared([params])
+            cursor.executeprepared((params))
             columns_list = cursor.fetchall
             
             rows_list = []
@@ -184,14 +183,14 @@ class hdbi ():
 
             if str(e).startswith('Lost connection to HANA server'):
                 log('[!] SQL Error: related to connection')
-                raise DatabaseError(str(e))
+                raise dbException(str(e))
             
-            raise DatabaseError(str(e))
+            raise dbException(str(e))
         except Exception as e:
             log("[!] unexpected DB exception, sql: %s" % sql_string)
             log("[!] unexpected DB exception: %s" % str(e))
             log("[!] unexpected DB exception: %s" % sys.exc_info()[0])
-            raise DatabaseError(str(e))
+            raise dbException(str(e))
             
         try:
 
@@ -229,16 +228,16 @@ class hdbi ():
             log(f'Regular consolse, longdate={longdate}, ssl={sslsupport}')
             if server.get('ssl'):
                 log('Opening regular connection (ssl)', 4)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False)
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False, compress = True)
             elif server.get('ssl') and server['user'] == '' and server['password'] == '':
                 log('Opening LDAP connection (ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], encrypt = True, ValidateServerCertificate = False, authenticationMethods=global_authmethods)
+                connection = dbapi.connect(address=server['host'], port=server['port'], encrypt = True, ValidateServerCertificate = False, authenticationMethods='ldap', compress = True)
             elif server['user'] == '' and server['password'] == '':
                 log('Opening LDAP connection (no ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], authenticationMethods=global_authmethods)
+                connection = dbapi.connect(address=server['host'], port=server['port'], authenticationMethods='ldap', compress = True)
             else:
                 log('Opening regular connection (no ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], compress = True)
 
                 
             if cfg('internal', True):
