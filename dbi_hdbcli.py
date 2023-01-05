@@ -261,6 +261,9 @@ class hdbi ():
             if server.get('ssl'):
                 log('Opening connection with SSL support', 4)
                 connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
+            if server['password'] == None:
+                log('Opening connection with KERBEROS', 4)
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], authenticationMethods='kerberos')
             else:
                 log('Opening regular connection (no ssl)', 5)
                 connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
