@@ -138,7 +138,10 @@ class hdbi ():
             columns_list = []
             try:
                 if re.match("SELECT.{1,}", sql_string.upper()):
-                    rows = cursor.fetchall()
+                    if resultSize is not None:
+                        rows = cursor.fetchmany(resultSize)
+                    else:
+                        rows = cursor.fetchall()
                     columns_list.append(cursor.description)
                     rows_list.append(rows)
 
