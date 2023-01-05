@@ -16,7 +16,7 @@ from PyQt5.QtCore import QObject
 
 from array import array
 
-import pyhdb
+#import pyhdb
 import time
 
 import datetime
