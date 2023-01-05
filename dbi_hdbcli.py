@@ -11,32 +11,36 @@ import sys
 
 from utils import cfg, hextostr
 from utils import getlog
-from utils import dbException
 from dbi_extention import getDBProperties
 from os import getlogin
 from profiler import profiler
 
+import re
+
+kerberos_re = re.compile(".{1,}@.{1,}")
+
 log = getlog('HDB')
 
 class hdbi ():
-    name = 'HDB'
-    options = {'keepalive': True, 'largeSQL': True}
-    largeSql = False
+    name = 'HDBCLI'
     def __init__(self):
         log('Using HDBCLI as DB driver implementation')
             
     def create_connection (self, server, dbProperties = None):
         t0 = time.time()
         try: 
-        # normal connection
             if server.get('ssl'):
                 log('Opening connection with SSL support', 4)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False)
+            elif kerberos_re.match(server['user']) & server['password'] == None:
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], authenticationMethods='kerberos')
+                log('Opening SSO connection (no ssl)', 5)
+            elif server.get('ssl') & kerberos_re.match(server['user']) & server['password'] == None:
+                log('Opening SSO connection (ssl)', 5)
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], encrypt = True, ValidateServerCertificate = False, authenticationMethods='kerberos')
             else:
                 log('Opening regular connection (no ssl)', 5)
                 connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
-                
-            #connection.large_sql = False
             
             if cfg('internal', True):
                 setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
@@ -48,7 +52,7 @@ class hdbi ():
         except Exception as e:
             log('[!]: connection failed: %s\n' % e)
             connection = None
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
 
         t1 = time.time()
         
@@ -95,9 +99,6 @@ class hdbi ():
             return
 
         cursor = connection.cursor()
-        #cursor = cursor_mod(connection)
-        
-        # prepare the statement...
         
         if not noLogging:
             log('[SQL]: %s' % sql_string, 5)
@@ -112,17 +113,17 @@ class hdbi ():
             log('DatabaseError: ' + str(e.code))
         
             if str(e).startswith('Lost connection to HANA server'):
-                raise dbException(str(e), dbException.CONN)
+                raise DatabaseError(str(e))
         
             log('[!] SQL Error: %s' % sql_string)
             log('[!] SQL Error: %s' % (e))
             
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
         except Exception as e:
             log("[!] unexpected DB exception, sql: %s" % sql_string)
             log("[!] unexpected DB exception: %s" % str(e))
             log("[!] unexpected DB exception: %s" % sys.exc_info()[0])
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
             
             
         try:
@@ -140,10 +141,10 @@ class hdbi ():
 
         except BaseException as e:
             log('[!] sql execution issue: %s\n' % e)
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
         except Exception as e:
             log('[E] unexpected DB error: %s' % str(e))
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
             
         # drop_statement(connection, psid) # might be useful to test LOB.read() issues
 
@@ -173,14 +174,14 @@ class hdbi ():
 
             if str(e).startswith('Lost connection to HANA server'):
                 log('[!] SQL Error: related to connection')
-                raise dbException(str(e), dbException.CONN)
+                raise DatabaseError(str(e))
             
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
         except Exception as e:
             log("[!] unexpected DB exception, sql: %s" % sql_string)
             log("[!] unexpected DB exception: %s" % str(e))
             log("[!] unexpected DB exception: %s" % sys.exc_info()[0])
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
             
         try:
 
@@ -190,10 +191,10 @@ class hdbi ():
 
         except DatabaseError as e:
             log('[!] sql execution issue: %s\n' % e)
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
         except Exception as e:
             log('[E] unexpected error: %s' % str(e))
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
 
         return rows
 
@@ -205,48 +206,6 @@ class hdbi ():
         else:
             return False
 
-    def ifNumericType(self, t):
-        if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT,
-            type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
-            return True
-        else:
-            return False
-
-    def ifRAWType(self, t):
-        if t == type_codes.VARBINARY:
-            return True
-        else:
-            return False
-
-    def ifTSType(self, t):
-        if t in (type_codes.TIMESTAMP, type_codes.LONGDATE):
-            return True
-        else:
-            return False
-
-    def ifVarcharType(self, t):
-        if t == type_codes.VARCHAR or t == type_codes.NVARCHAR:
-            return True
-        else:
-            return False
-            
-    def ifDecimalType(self, t):
-        if t in (type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
-            return True
-        else:
-            return False
-
-    def ifLOBType(self, t):
-        if t in (type_codes.CLOB, type_codes.NCLOB, type_codes.BLOB, type_codes.TEXT):
-            return True
-        else:
-            return False
-            
-    def ifBLOBType(self, t):
-        if t == type_codes.BLOB:
-            return True
-        else:
-            return False
     
     def console_connection(self, server, dbProperties = None, data_format_version2 = False):
 
@@ -260,13 +219,13 @@ class hdbi ():
             log(f'Regular consolse, longdate={longdate}, ssl={sslsupport}')
             if server.get('ssl'):
                 log('Opening connection with SSL support', 4)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], authenticationMethods='kerberos')
             if server['password'] == None:
                 log('Opening connection with KERBEROS', 4)
                 connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], authenticationMethods='kerberos')
             else:
                 log('Opening regular connection (no ssl)', 5)
-                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                connection = dbapi.connect(address=server['host'], port=server['port'], user=server['user'], password=server['password'], authenticationMethods='kerberos')
                 
             if cfg('internal', True):
                 setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
@@ -279,7 +238,7 @@ class hdbi ():
     #    except pyhdb.exceptions.DatabaseError as e:
             log('[!]: connection failed: %s\n' % e)
             connection = None
-            raise dbException(str(e))
+            raise DatabaseError(str(e))
 
         t1 = time.time()
         
@@ -295,7 +254,7 @@ class hdbi ():
     
         try:
             rows = self.execute_query(conn, "select connection_id from m_connections where own = 'TRUE'", [])
-        except dbException as e:
+        except DatabaseError as e:
             log(f'[E] exception in get_connection_id: {e}', 2)
             return None
 
