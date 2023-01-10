@@ -72,6 +72,8 @@ class QPlainTextEditLN(QWidget):
             endPos = startPos + len(lineFrom.text())
 
             if direction == 'down':
+                if endPos+1 > len(self.document().toPlainText()):
+                    return
                 lineTo = self.document().findBlock(endPos + 1)
             else:
                 lineTo = self.document().findBlock(startPos - 1)
