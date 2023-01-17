@@ -118,7 +118,8 @@ class kpiTable(QTableWidget):
 
     adjustScale = pyqtSignal(['QString', 'QString'])
     
-    setScale = pyqtSignal([int, 'QString', int, int])
+    # setScale = pyqtSignal([int, 'QString', int, int])
+    setScale = pyqtSignal([int, 'QString', object, object]) # details in issue #715
     
     vrsUpdate = pyqtSignal()
     refreshRequest = pyqtSignal()
@@ -237,7 +238,7 @@ class kpiTable(QTableWidget):
             return False
             
         result = super(kpiTable, self).edit(index, trigger, event)
-        
+
         if result and index.column() == 11:
             # variables
             #return super(kpiTable, self).edit(index, trigger, event)
@@ -262,7 +263,7 @@ class kpiTable(QTableWidget):
             
             self.silentMode = False
         
-        if result and index.column() == 3:
+        if result and index.column() == 3: # manual scale
             self.silentMode = True
             
             kpi = self.kpiNames[index.row()]
@@ -296,7 +297,7 @@ class kpiTable(QTableWidget):
         if self.silentMode:
             return
 
-        if item.column() == 3:
+        if item.column() == 3:  # scale change
         
             try:
                 s = item.text()
