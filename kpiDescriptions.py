@@ -653,7 +653,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['dUnit'] = kpi['dUnit']
     else:
         style['sUnit'] = '-'
-
+        style['dUnit'] = '-'
     #create pen
     if 'color' in kpi:
         color = QColor(kpi['color'])
@@ -843,16 +843,18 @@ def clarifyGroups(kpiStylesNNN):
     
         if grpIdx == grpName:
             return
-    
+
         for kpi in kpiStylesNNN:
             if kpiStylesNNN[kpi]['group'] == grpIdx:
                 kpiStylesNNN[kpi]['group'] = grpName
-                    
+
     def updateDunit(grpIdx, dUnit):
         for kpi in kpiStylesNNN:
             if kpiStylesNNN[kpi]['group'] == grpIdx:
                 kpiStylesNNN[kpi]['dUnit'] = dUnit
         
+    log('Clarify groups call...')
+
     if 'cpu' in kpiStylesNNN:
         update(kpiStylesNNN['cpu']['group'], 'cpu')
 
@@ -890,7 +892,30 @@ def clarifyGroups(kpiStylesNNN):
 
     if 'indexserverthreads' in kpiStylesNNN:
         update(kpiStylesNNN['indexserverthreads']['group'], 'thr')
-        
+
+    if cfg('verifyGroupUnits', True):
+        log('check group units...', 5)
+
+        for checkUnit in ['sUnit', 'dUnit']:
+            gunits = {}
+            for kpi in kpiStylesNNN.keys():
+                kv= kpiStylesNNN[kpi]
+                # log(f'{kpi=}, {kv=}')
+                if kv['group'] == 0:
+                    continue # special non-scaled group
+
+                if not kv['group'] in gunits:
+                    gunits[kv['group']] = kv.get(checkUnit)
+                    # log(f"{kv['group']} added: {kv.get(checkUnit)}")
+                else:
+                    if gunits[kv['group']] != kv.get(checkUnit):
+                        raise Exception(f'''{checkUnit} does not match! group: {kv['group']}, kpi: {kpi}
+{gunits[kv['group']]} != {kpiStylesNNN.get(checkUnit)}. Check the KPI definition.
+
+if required, disable this check by setting verifyGroupUnits: False''')
+        else:
+            log('no issues detected', 5)
+
 
 def groups(hostKPIsStyles):
     # generates list of actual kpi groups
