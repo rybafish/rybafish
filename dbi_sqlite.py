@@ -224,7 +224,21 @@ class sqlite():
     
     def initHosts(self, conn, dpidx, dbProperties=[]):
         '''
-            fills up the hosts list, returns nothing
+            custom implementation for sqlite
+
+            it detects list of hosts,
+            checks if hana-like load_history tables exist
+
+            if they do:
+                fakes the standard KPIs for columns existing in those tables
+
+            loads custom KPIs just in case...
+
+            returns:
+                list of hosts
+                list (of lists) of kpis
+                list of corresponding descriptions
+                error description for non critical error (to be displayed, but not to stop the connection)
         '''
         
         hosts = []
@@ -339,6 +353,7 @@ class sqlite():
         #very similar logic called in default dpDB processing... somehow combine in one call?
         hostKPIs = []
         srvcKPIs = []
+        errorStr = None
         kpiStylesNNN = {'host':{}, 'service':{}}
 
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN)
@@ -347,14 +362,14 @@ class sqlite():
         log('load custom KPIs...')
         try:
             dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiStylesNNN)
-        except customKPIException as e:
+            kpiDescriptions.clarifyGroups(kpiStylesNNN['host'])
+            kpiDescriptions.clarifyGroups(kpiStylesNNN['service'])
+        except utils.customKPIException as e:
             log('[e] error loading custom kpis')
             log('[e] fix or delete the problemmatic yaml for proper connect')
-            raise e
-            
-        kpiDescriptions.clarifyGroups(kpiStylesNNN['host'])
-        kpiDescriptions.clarifyGroups(kpiStylesNNN['service'])
-        
+            errorStr = str(e)
+            # raise e
+
         hostKPIsList = []
         hostKPIsStyles = []
         
@@ -366,4 +381,4 @@ class sqlite():
                 hostKPIsList.append(srvcKPIs)
                 hostKPIsStyles.append(kpiStylesNNN['service'])
 
-        return hosts, hostKPIsList, hostKPIsStyles
+        return hosts, hostKPIsList, hostKPIsStyles, errorStr

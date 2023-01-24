@@ -191,8 +191,14 @@ class dataProvider(QObject):
             dpidx - data provider index to link hosts to a dp
             hosts - list of widget.hosts
             
-            returns list of hosts 
-            old-style approach: returns nothing, it fills provided hosts structure (linked from widget) << depricated with #739
+            returns:
+                list of hosts
+                list of kpis: sub-list for every host (service)
+                list of corresponding KPI styles
+            in progress:
+                error text (mostly for custom KPI exceptions)
+
+            old-style approach was: return nothing, fill provided hosts structure (linked from widget) << depricated with #739
             
         '''
         
@@ -309,6 +315,7 @@ class dataProvider(QObject):
         
         # load 'standard" KPIs
         kpis_sql = sql.kpis_info
+        errorStr = None
         
         hostKPIs = []
         srvcKPIs = []
@@ -322,15 +329,17 @@ class dataProvider(QObject):
         # (re)load custom KPIs
         try:
             dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiStylesNNN)
+
+            # those two can generate same exception but due to very different post-check reason
+            kpiDescriptions.clarifyGroups(kpiStylesNNN['host'])
+            kpiDescriptions.clarifyGroups(kpiStylesNNN['service'])
         except customKPIException as e:
             log('[e] error loading custom kpis')
             log('[e] fix or delete the problemmatic yaml for proper connect')
-            raise e
+            errorStr = str(e)
+            # raise e             # seems only the dpDB raises exceptions so far...
 
-        kpiDescriptions.clarifyGroups(kpiStylesNNN['host'])
-        kpiDescriptions.clarifyGroups(kpiStylesNNN['service'])
-        
-        #build new styles structures
+        #now build new styles structures
         
         hostKPIsList = []
         hostKPIsStyles = []
@@ -343,7 +352,7 @@ class dataProvider(QObject):
                 hostKPIsList.append(srvcKPIs)
                 hostKPIsStyles.append(kpiStylesNNN['service'])
 
-        return hosts, hostKPIsList, hostKPIsStyles
+        return hosts, hostKPIsList, hostKPIsStyles, errorStr
         
     def splitKpis(self, kpiStylesNNN, kpis):
         '''

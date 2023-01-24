@@ -2761,7 +2761,7 @@ class chartArea(QFrame):
         self.repaint()
         
         try:
-            newHosts, newKPIs, newStyles = dp.initHosts(dpidx)
+            newHosts, newKPIs, newStyles, errStr = dp.initHosts(dpidx)
 
             # append hosts, not replace if that would be requred, hosts would be cleared above
             for h in newHosts:
@@ -2772,10 +2772,12 @@ class chartArea(QFrame):
                 
             for styles in newStyles:
                 self.hostKPIsStyles.append(styles.copy())      # create a corresponding list of KPIs
-                
-        except utils.customKPIException as e:
-            log('[!] initHosts customKPIException: %s' % str(e), 2)
-            utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + str(e))
+
+            if errStr:
+                log('[!] initHosts customKPIException: %s' %  errStr, 2)
+                utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n'
+                                + errStr
+                                + '\n\nSee more details in .log file')
         except utils.vrsException as e:
             log('[!] variables processing exception: %s' % (str(e)), 1)
             utils.msgDialog('Initialization Error', 'Variables processing error. Check the variables definition, if the message persists, consider deleting layout.yaml\n\n%s' % (str(e)))

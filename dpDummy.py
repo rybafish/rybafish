@@ -134,7 +134,7 @@ class dataProvider:
                 KPIsList[h] += srvcKPIs
                 kpiStylesNNN[h].update(kpiStylesNNold['service'])
             
-        return hosts, KPIsList, kpiStylesNNN
+        return hosts, KPIsList, kpiStylesNNN, None
                     
     def close(self):
         pass

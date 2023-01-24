@@ -391,7 +391,7 @@ class dataProvider:
                         
         log('dbTrace initHosts done fine', 5)
         
-        return hosts, hostKPIsList, hostKPIsStyles
+        return hosts, hostKPIsList, hostKPIsStyles, None
                         
                         
     #def getData(self, h, fromto, kpiIn, data, kpiStylesNNN, wnd = None): <-- updated signature
