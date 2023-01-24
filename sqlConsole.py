@@ -592,7 +592,6 @@ class console(QPlainTextEditLN):
         menuAbort = cmenu.addAction('Generate cancel session sql')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
         
-        #if cfg('experimental'):
         cmenu.addSeparator()
         explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
         sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
@@ -643,7 +642,6 @@ class console(QPlainTextEditLN):
             cursor.insertText('123')
             self.setTextCursor(cursor)
             
-        #if cfg('experimental') and action == sqlFormat:
         if action == sqlFormat:
             self.formatSelection()
         

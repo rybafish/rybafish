@@ -1525,12 +1525,9 @@ class hslWindow(QMainWindow):
         actionsMenu = menubar.addMenu('&Actions')
         
         if cfg('experimental'):
-            # fileMenu.addAction(aboutAct) -- print not sure why its here
-
             fontAct = QAction('&Adjust Fonts', self)
             fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
             fontAct.triggered.connect(self.menuFont)
-            
             actionsMenu.addAction(fontAct)
 
         varsMenu = menubar.addMenu('Variables')

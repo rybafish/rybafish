@@ -200,7 +200,6 @@ class QResultSet(QTableWidget):
         
         i = self.currentColumn()
         
-        #if cfg('experimental'):
         cmenu.addSeparator()
     
         highlightColCh = cmenu.addAction('Highlight changes')
@@ -817,8 +816,6 @@ class QResultSet(QTableWidget):
         
         #fill the result table
         
-        experimental = cfg('experimental') 
-                
         for r in range(len(rows)):
             #log('populate result: %i' % r, 5)
             for c in range(len(row0)):
@@ -873,7 +870,7 @@ class QResultSet(QTableWidget):
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
-                    if experimental and alert_str:
+                    if alert_str:
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
                         
