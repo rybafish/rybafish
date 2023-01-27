@@ -270,6 +270,14 @@ class QResultSet(QTableWidget):
                 value = self.rows[r][c]
                 cname = self.headers[c]
 
+                if cfg('dev'):  # mapping...
+                    hm = cfg('maphost')
+                    pm = cfg('mapport')
+                    if hm and cname == 'HOST':
+                        value = value.replace(hm[0], hm[1])
+                    if pm and cname == 'PORT':
+                        value = int(str(value).replace(pm[0], pm[1]))
+
                 if self.dbi.ifNumericType(self.cols[c][1]):
                     values.append('%s = %s' % (normalize_header(cname), value))
                 elif self.dbi.ifTSType(self.cols[c][1]):
@@ -721,7 +729,11 @@ class QResultSet(QTableWidget):
                 
             
             rows = []
-            
+
+            cfgdev = cfg('dev')
+            hm = cfg('maphost')
+            pm = cfg('mapport')
+
             for r in rowIndex:
                 colIndex[r].sort()
 
@@ -739,6 +751,8 @@ class QResultSet(QTableWidget):
                             values.append(str(value.encode()))
                         else:
                             if self.dbi.ifNumericType(vType):
+                                if cfgdev and pm and self.cols[c][0] == 'PORT': # mapping...
+                                    value = int(str(value).replace(pm[0], pm[1]))
                                 values.append(utils.numberToStrCSV(value, False))
                             elif self.dbi.ifRAWType(vType):
                                 values.append(value.hex())
@@ -746,6 +760,8 @@ class QResultSet(QTableWidget):
                                 #values.append(value.isoformat(' ', timespec='milliseconds'))
                                 values.append(utils.timestampToStr(value))
                             else:
+                                if cfgdev and hm and self.cols[c][0] == 'HOST': # mapping...
+                                    value = value.replace(hm[0], hm[1])
                                 values.append(str(value))
                                 
                 rows.append( ';'.join(values))
@@ -832,8 +848,8 @@ class QResultSet(QTableWidget):
                     item = QTableWidgetItem(val)
                 elif self.dbi.ifNumericType(cols[c][1]):
 
-                    with profiler('mapport'):
-                        if cfgdev and hm: # mapping stuff
+                    if cfgdev and pm: # mapping stuff
+                        with profiler('mapport'):
                             if row0[c] == 'PORT':
                                 val = int(str(val).replace(pm[0], pm[1]))
 
@@ -873,8 +889,8 @@ class QResultSet(QTableWidget):
                     
                 elif self.dbi.ifVarcharType(cols[c][1]):
 
-                    with profiler('maphost'):
-                        if cfgdev and hm: # mapping stuff
+                    if cfgdev and hm: # mapping stuff
+                        with profiler('maphost'):
                             if row0[c] == 'HOST':
                                 val = val.replace(hm[0], hm[1])
 
