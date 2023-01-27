@@ -815,7 +815,11 @@ class QResultSet(QTableWidget):
                 alert_len = len(alert_str)
         
         #fill the result table
-        
+
+        hm = cfg('maphost')
+        pm = cfg('mapport')
+        cfgdev = cfg('dev')
+
         for r in range(len(rows)):
             #log('populate result: %i' % r, 5)
             for c in range(len(row0)):
@@ -827,7 +831,12 @@ class QResultSet(QTableWidget):
                     
                     item = QTableWidgetItem(val)
                 elif self.dbi.ifNumericType(cols[c][1]):
-                
+
+                    with profiler('mapport'):
+                        if cfgdev and hm: # mapping stuff
+                            if row0[c] == 'PORT':
+                                val = int(str(val).replace(pm[0], pm[1]))
+
                     if self.dbi.ifDecimalType(cols[c][1]):
                         val = utils.numberToStrCSV(val)
                     else:
@@ -863,6 +872,12 @@ class QResultSet(QTableWidget):
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     
                 elif self.dbi.ifVarcharType(cols[c][1]):
+
+                    with profiler('maphost'):
+                        if cfgdev and hm: # mapping stuff
+                            if row0[c] == 'HOST':
+                                val = val.replace(hm[0], hm[1])
+
                     item = QTableWidgetItem(val)
                     
                     if '\n' in val:

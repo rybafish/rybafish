@@ -22,8 +22,8 @@ def getDBProperties(connection, queryFunction, log, dbProperties):
                     
                     dbProperties['timeZoneDelta'] = int(dbUTCDelta) - int(hostUTCDelta)
                 elif row[0] == 'sid':
-                    if cfg('sidmapping'):
-                        sm = cfg('sidmapping')
+                    if cfg('mapsid'):
+                        sm = cfg('mapsid')
                         dbProperties['sid'] = row[1].replace(sm[0], sm[1])
                     else:
                         dbProperties['sid'] = row[1]
@@ -52,8 +52,8 @@ def getDBProperties(connection, queryFunction, log, dbProperties):
                     rows = queryFunction(connection, 'select database_name from m_database', [])
 
                     if len(rows) == 1:
-                        if cfg('dbmapping'):
-                            dbmap = cfg('dbmapping')
+                        if cfg('mapdb'):
+                            dbmap = cfg('mapdb')
                             dbProperties['tenant'] = rows[0][0].replace(dbmap[0], dbmap[1])
                         else:
                             dbProperties['tenant'] = rows[0][0]

@@ -262,12 +262,12 @@ class dataProvider(QObject):
         
         # populate hosts list
         # each item is a dict containing tenant, hostname, service_name and port
-        if cfg('hostmapping'):
+        if cfg('maphost'):
             for i in range(0, len(rows)):
             
-                hm = cfg('hostmapping')
-                pm = cfg('portmapping')
-                dm = cfg('dbmapping')
+                hm = cfg('maphost')
+                pm = cfg('mapport')
+                dm = cfg('mapdb')
             
                 skey = '%s:%s' % (rows[i][0], rows[i][1])
                 
@@ -394,9 +394,9 @@ class dataProvider(QObject):
         
         host = h.copy()
                         
-        if cfg('hostmapping'):
-            hm = cfg('hostmapping')
-            pm = cfg('portmapping')
+        if cfg('maphost'):
+            hm = cfg('maphost')
+            pm = cfg('mapport')
             host['host'] = host['host'].replace(hm[1], hm[0])
             host['port'] = host['port'].replace(pm[1], pm[0])
 

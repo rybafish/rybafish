@@ -78,6 +78,15 @@ class sqlWorker(QObject):
             return
             
         sql, result, refreshMode = self.args
+
+        with profiler('map sql'):
+            if cfg('dev'): #mapping
+                hm = cfg('maphost')
+                if hm:
+                    sql = sql.replace("'"+hm[1]+"'", "'"+hm[0]+"'")
+                pm = cfg('mapport')
+                if pm:
+                    sql = sql.replace(pm[1], pm[0])
         
         cons = self.cons # cons - sqlConsole class itself, not just a console...
 
