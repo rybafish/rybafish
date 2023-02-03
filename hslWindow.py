@@ -134,7 +134,8 @@ class hslWindow(QMainWindow):
             abandone = False
             
             if cons.sqlRunning:
-                log('Sems the sql still running, need to show a warning', 4)
+                tabname = cons.tabname.rstrip(' *')
+                log(f'CloseTab: Seems the sql still running in {tabname}, need to show a warning', 4)
                 
                 answer = utils.yesNoDialog('Warning', 'It seems the SQL is still running.\n\nAre you sure you want to close the console and abandon the execution?')
                             
@@ -221,10 +222,13 @@ class hslWindow(QMainWindow):
                 kpis[hst] = self.chartArea.widget.nkpis[i].copy() 
         
         return kpis
-        
-    def dumpLayout(self, closeTabs=True, crashMode=False):
+
+    def dumpLayout(self, closeTabs=True, crashMode=False, mode=None):
+    # def dumpLayout(self, closeTabs=True, crashMode=False, abandonFlag=None):
         '''
             dumps a layout.yaml
+
+            abandonFlag is a list to return abandon value if any
             
             in normal execution it will also trigger close of the consoles (with backup and disconnection)
             in crashMode (called on uncought exception) it is questionable if calling clos() makes any sense
@@ -300,26 +304,34 @@ class hslWindow(QMainWindow):
         
         self.layout['currentTab'] = self.tabs.currentIndex()
         
-        
+        tabname = None
         somethingRunning = False
         for i in range(self.tabs.count() -1, 0, -1):
             w = self.tabs.widget(i)
             if w.sqlRunning:
                 somethingRunning = True
+                tabname = w.tabname.rstrip(' *')
                 break
                 
         abandone = False
         
         if somethingRunning and not crashMode:
-            log('There is something running, need to show a warning', 4)
+            # log('There is something running, need to show a warning', 4)
+            log(f'dumpLayout: Seems the sql still running in {tabname}, need to show a warning', 4)
             
-            answer = utils.yesNoDialog('Warning', 'It seems there is something still running.\n\nAre you sure you want to exit and abandone the execution?')
-                        
+            if mode == 'reconnect':
+                wMessage = f'It\'s not recommended to reconnect having stuff running ({tabname})\nIt will hang untl finished anyway.\n\nProceed anyway?'
+            else:
+                wMessage = f'It seems there is something still running ({tabname}).\n\nAre you sure you want to exit and abandone the execution?'
+
+            answer = utils.yesNoDialog('Warning', wMessage)
             if not answer:
                 self.layoutDumped = False
                 return False
             else:
                 abandone = True
+                # if abandonFlag is not None:
+                #     abandonFlag.append('yep')
             
         if cfg('saveOpenTabs', True):
             for i in range(self.tabs.count() -1, 0, -1):
@@ -354,7 +366,7 @@ class hslWindow(QMainWindow):
             else:
                 if 'tabs' in self.layout.lo:
                     self.layout.lo.pop('tabs')
-                
+
         self.layout['variables'] = kpiDescriptions.vrsStr
         
         if kpiDescriptions.Variables.width:
@@ -764,8 +776,20 @@ class hslWindow(QMainWindow):
                 if cfg('saveLayout', True) and len(self.chartArea.widget.hosts):
                     log('connect dump layout')
                     
-                    self.dumpLayout(closeTabs = False)
-                    
+                    status = self.dumpLayout(closeTabs=False, mode='reconnect')
+
+                    # abandoneReturn = []
+                    # self.dumplayout(closetabs = false, abandonflag=abandonereturn)
+
+                    # if abandoneReturn:
+                    #     abandon = True
+                    # else:
+                    #     abandon = False
+
+                    if status == False:
+                        # abort the reconnection, probably due to user cancel on warning (on running sql)
+                        return
+
                     log('done')
 
                     self.layoutDumped = False
@@ -778,7 +802,19 @@ class hslWindow(QMainWindow):
                     w = self.tabs.widget(i)
                 
                     if isinstance(w, sqlConsole.sqlConsole) and w.conn is not None:
-                        log('closing connection...')
+                        tabname = w.tabname.rstrip(' *')
+                        '''
+                        if abandon:
+                            log(f'ignoring close for {tabname} due to abandone = True', 4) # bug #781
+                            w.dbi = None
+                            w.conn = None
+                            w.connection_id = None
+                            w.sqlRunning = False
+                        else:
+                            log(f'closing connection of {tabname}...')
+                            w.disconnectDB()
+                        '''
+                        log(f'closing connection of {tabname}...')
                         w.disconnectDB()
                         w.indicator.status = 'disconnected'
                         w.indicator.repaint()
