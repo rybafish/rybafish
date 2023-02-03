@@ -67,13 +67,18 @@ class hdbi ():
         t0 = time.time()
         try: 
             # normal connection
+
+            port =server['port']
+            pm = cfg('mapport')
+            if pm:
+                port = int(str(port).replace(pm[1], pm[0]))
             
             if server.get('ssl'):
                 log('Opening connection with SSL support', 4)
-                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], sslsupport=True)
+                connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=server['password'], sslsupport=True)
             else:
                 log('Opening regular connection (no ssl)', 5)
-                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=server['password'])
                 
             connection.large_sql = False
             
@@ -108,6 +113,11 @@ class hdbi ():
         
         sslsupport = server.get('ssl')
         
+        port =server['port']
+        pm = cfg('mapport')
+        if cfg('dev') and pm:
+            port = int(str(port).replace(pm[1], pm[0]))
+
         try: 
             if self.largeSql:
                 old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
@@ -116,7 +126,7 @@ class hdbi ():
                 pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
                 
                 log(f'Largesql console, longdates: {longdate}, ssl: {sslsupport}')
-                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
+                connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
                     
                 connection.large_sql = True
                 self.largeSql = False
@@ -127,7 +137,7 @@ class hdbi ():
                 # normal connection
 
                 log(f'Regular consolse, longdate={longdate}, ssl={sslsupport}')
-                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
+                connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
 
                 connection.large_sql = False
                 self.largeSql = False
@@ -135,8 +145,15 @@ class hdbi ():
             if cfg('internal', True):
                 setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
                 self.execute_query_desc(connection, setApp, [], 0)
-                
-                setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
+
+                uname = getlogin()
+
+                if cfg('dev'):
+                    um = cfg('mapuser')
+                    if um:
+                        uname = uname.replace(um[0], um[1])
+
+                setApp = "set 'APPLICATIONUSER' = '%s'" % uname
                 self.execute_query_desc(connection, setApp, [], 0)
             
         except Exception as e:
@@ -488,5 +505,4 @@ class hdbi ():
         if t == type_codes.BLOB:
             return True
         else:
-            return False        
-            
+            return False
