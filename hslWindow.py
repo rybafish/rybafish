@@ -1543,7 +1543,7 @@ class hslWindow(QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(configAct)
         
-        if cfg('dev'):
+        if cfg('expiremental'):
             fileMenu.addAction(configSecAct)
 
         fileMenu.addAction(importAct)

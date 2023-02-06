@@ -2424,16 +2424,20 @@ class chartArea(QFrame):
 
         self.collisionsDirection = direction
         
+        reportDelta = False
+        if self.widget.highlightedKpi == yVal[1] and self.widget.highlightedKpiHost == yVal[0]:
+            reportDelta = True
+
         self.widget.highlightedKpiHost = yVal[0]
         self.widget.highlightedKpi = yVal[1]
         self.widget.highlightedPoint = yVal[3]
         self.widget.highlightedGBI = yVal[5]
 
-        self.reportHighlighted()
+        self.reportHighlighted(reportDelta)
         self.widget.update()
         
 
-    def reportHighlighted(self):
+    def reportHighlighted(self, reportDelta=False):
     
         point = self.widget.highlightedPoint
         host = self.widget.highlightedKpiHost
@@ -2479,6 +2483,12 @@ class chartArea(QFrame):
             normVal = kpiDescriptions.normalize(kpiStylesNNN[kpi], self.widget.ndata[host][kpi][point], d)
             kpiLabel = kpi
 
+        if reportDelta:
+            deltaVal = normVal - self.widget.highlightedNormVal
+            deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
+        else:
+            deltaVal = ''
+
         self.widget.highlightedNormVal = normVal
 
         scaled_value = utils.numberToStr(normVal, d)
@@ -2487,7 +2497,7 @@ class chartArea(QFrame):
         unit = self.widget.nscales[host][kpi]['unit']
 
         self.widget.setToolTip('%s, %s = %s %s at %s' % (hst, kpiLabel, scaled_value, unit, tm))
-        self.statusMessage('%s, %s = %s %s at %s' % (hst, kpiLabel, scaled_value, unit, tm))
+        self.statusMessage('%s, %s = %s %s at %s%s' % (hst, kpiLabel, scaled_value, unit, tm, deltaVal))
         
     @profiler
     def moveHighlightGantt(self, direction):
