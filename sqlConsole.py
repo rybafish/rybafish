@@ -1338,6 +1338,7 @@ class sqlConsole(QWidget):
         self.abapCopyFlag = [False]     # to be shared with child results instances
         
         self.resultsLeft = False        # when True - warning will be displayed before closing results
+        self.LOBs = False               # True if one of console results has LOBs. Reset with detach
         
         super().__init__()
         self.initUI()
@@ -2093,6 +2094,8 @@ class sqlConsole(QWidget):
         self.timerSet[0] = True
             
     def resultDetached(self):
+        if self.LOBs:
+            self.LOBs = False
         self.indicator.status = 'idle'
         self.indicator.repaint()
         
@@ -2229,6 +2232,7 @@ class sqlConsole(QWidget):
                     result.detachTimer = None
                     
                 result.detach()
+                self.LOBs = False
 
             if self.conn is not None:
                 try:
@@ -3279,9 +3283,6 @@ class sqlConsole(QWidget):
                 for c in result.cols:
                     if self.dbi.ifLOBType(c[1]):
                         result.LOBs = True
-                        
-                        #print('LOBS!', utils.hextostr(result._resultset_id))
-                        
                         break
                         
                         
@@ -3325,8 +3326,12 @@ class sqlConsole(QWidget):
                 self.indicator.status = 'autorefresh'
             elif result.LOBs:
                 self.indicator.status = 'detach'
+                self.LOBs = True
             else:
-                self.indicator.status = 'idle'
+                if self.LOBs:
+                    self.indicator.status = 'detach'
+                else:
+                    self.indicator.status = 'idle'
             
         self.indicator.runtime = None
         self.updateRuntime('stop')
