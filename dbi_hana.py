@@ -82,12 +82,11 @@ class hdbi ():
                 
             connection.large_sql = False
             
-            if cfg('internal', True):
-                setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
-                self.execute_query_desc(connection, setApp, [], 0)
-                
-                setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
-                self.execute_query_desc(connection, setApp, [], 0)
+            setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
+            self.execute_query_desc(connection, setApp, [], 0)
+
+            setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
+            self.execute_query_desc(connection, setApp, [], 0)
 
         except Exception as e:
     #    except pyhdb.exceptions.DatabaseError as e:
@@ -142,19 +141,18 @@ class hdbi ():
                 connection.large_sql = False
                 self.largeSql = False
                 
-            if cfg('internal', True):
-                setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
-                self.execute_query_desc(connection, setApp, [], 0)
+            setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
+            self.execute_query_desc(connection, setApp, [], 0)
 
-                uname = getlogin()
+            uname = getlogin()
 
-                if cfg('dev'):
-                    um = cfg('mapuser')
-                    if um:
-                        uname = uname.replace(um[0], um[1])
+            if cfg('dev'):
+                um = cfg('mapuser')
+                if um:
+                    uname = uname.replace(um[0], um[1])
 
-                setApp = "set 'APPLICATIONUSER' = '%s'" % uname
-                self.execute_query_desc(connection, setApp, [], 0)
+            setApp = "set 'APPLICATIONUSER' = '%s'" % uname
+            self.execute_query_desc(connection, setApp, [], 0)
             
         except Exception as e:
     #    except pyhdb.exceptions.DatabaseError as e:
