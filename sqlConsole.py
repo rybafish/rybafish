@@ -1317,14 +1317,14 @@ class sqlConsole(QWidget):
         
         self.connection_id = None
         
-        self.runtimeTimer = None
+        # self.runtimeTimer = None
         
         self.toolbar = None
 
         # self.psid = None # prepared statement_id for drop_statement -- moved to the resultset!
         
         self.timerAutorefresh = None
-        self.nextAutorefresh = None     # datetime of next planned autorefresh
+        # self.nextAutorefresh = None     # datetime of next planned autorefresh >> moved to ind.
         
         self.defaultTimer = [60]        # list used to trick static value for all tabs in this console.
                                         # wouldn't it be clearer to have this value as console attribue, ha?
@@ -1756,10 +1756,10 @@ class sqlConsole(QWidget):
             self.dbi = None
             return True
         
-        if self.runtimeTimer is not None:
+        if self.indicator.runtimeTimer is not None:
             log('runtimeTimer --> off', 5)
-            self.runtimeTimer.stop()
-            self.runtimeTimer = None
+            self.indicator.runtimeTimer.stop()
+            self.indicator.runtimeTimer = None
         super().close()
                 
         return True
@@ -2036,7 +2036,8 @@ class sqlConsole(QWidget):
         self.refresh(0)
         
         interval = self.timerAutorefresh.interval()/1000
-        self.nextAutorefresh = datetime.datetime.now() + datetime.timedelta(seconds=interval)
+        self.indicator.nextAutorefresh = datetime.datetime.now() + datetime.timedelta(seconds=interval)
+        # self.indicator.nextAutorefresh = self.nextAutorefresh
         self.timerAutorefresh.start()
     
     def setupAutorefresh(self, interval, suppressLog = False):
@@ -2085,7 +2086,8 @@ class sqlConsole(QWidget):
         if self.timerAutorefresh is None:
             self.timerAutorefresh = QTimer(self)
             self.timerAutorefresh.timeout.connect(self.autorefreshRun)
-            self.nextAutorefresh = datetime.datetime.now() + datetime.timedelta(seconds=interval)
+            self.indicator.nextAutorefresh = datetime.datetime.now() + datetime.timedelta(seconds=interval)
+            # self.indicator.nextAutorefresh = self.nextAutorefresh
             self.timerAutorefresh.start(1000 * interval)
         else:
             log('[W] autorefresh timer is already running, ignoring the new one...', 2)
@@ -2096,7 +2098,14 @@ class sqlConsole(QWidget):
     def resultDetached(self):
         if self.LOBs:
             self.LOBs = False
-        self.indicator.status = 'idle'
+        # self.indicator.status = 'idle'
+        # this should fix #787
+
+        if self.timerAutorefresh:
+            self.indicator.status = 'autorefresh'
+        else:
+            self.indicator.status = 'idle'
+
         self.indicator.repaint()
         
     def alertProcessing(self, fileName, volume=-1, manual=False):
@@ -2232,7 +2241,6 @@ class sqlConsole(QWidget):
                     result.detachTimer = None
                     
                 result.detach()
-                self.LOBs = False
 
             if self.conn is not None:
                 try:
@@ -3185,10 +3193,12 @@ class sqlConsole(QWidget):
             logText = 'Query was running for... %s' % utils.formatTime(t1-t0)
             
             self.t0 = None
+            self.indicator.t0 = None
+
             self.log(logText)
 
             self.indicator.runtime = None
-            self.updateRuntime('stop')
+            self.indicator.updateRuntime('stop')
 
             self.indicator.repaint()
             
@@ -3215,6 +3225,7 @@ class sqlConsole(QWidget):
         t1 = time.time()
         
         self.t0 = None
+        self.indicator.t0 = None
 
         logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
         
@@ -3292,6 +3303,7 @@ class sqlConsole(QWidget):
                         
 
             if result.LOBs:
+                self.LOBs = True
                 result.triggerDetachTimer(self)
 
             lobs = ', +LOBs' if result.LOBs else ''
@@ -3326,7 +3338,6 @@ class sqlConsole(QWidget):
                 self.indicator.status = 'autorefresh'
             elif result.LOBs:
                 self.indicator.status = 'detach'
-                self.LOBs = True
             else:
                 if self.LOBs:
                     self.indicator.status = 'detach'
@@ -3334,7 +3345,7 @@ class sqlConsole(QWidget):
                     self.indicator.status = 'idle'
             
         self.indicator.runtime = None
-        self.updateRuntime('stop')
+        self.indicator.updateRuntime('stop')
         self.indicator.repaint()
         
         # should rather be some kind of mutex here...
@@ -3413,6 +3424,7 @@ class sqlConsole(QWidget):
         self.sqlWorker.args = [sql, result, refreshMode]
         
         self.t0 = time.time()
+        self.indicator.t0 = self.t0
         self.sqlRunning = True
         
         self.indicator.bkpStatus = self.indicator.status
@@ -3438,16 +3450,17 @@ class sqlConsole(QWidget):
                 return
                 
         super().keyPressEvent(event)
-        
+
+    '''
     @profiler
-    def updateRuntime(self, mode = None):
-        '''
+    def updateRuntime_DEPRICATED(self, mode = None):
+        ''
             manages the indicator hint and calculates it's value
         
             mode = 'on': enable the hint, emmited by indicator on mouse hover
                 'off': emmited by indicator on exit
                 'stop': triggered manually on stop of sql execution.
-        '''
+        ''
         t0 = self.t0
         t1 = time.time()
                 
@@ -3472,13 +3485,13 @@ class sqlConsole(QWidget):
                     self.runtimeTimer.stop()
                     self.runtimeTimer = None  
 
-                    self.indicator.updateRuntime()
+                    self.indicator.updateRuntimeTT()
                     
                     return
                 
         if mode == 'off' or mode == 'stop':
             self.indicator.runtime = None
-            self.indicator.updateRuntime()
+            self.indicator.updateRuntimeTT()
             return
             
         if t0 is not None:
@@ -3490,8 +3503,10 @@ class sqlConsole(QWidget):
         else:
             self.indicator.runtime = None
             
-        self.indicator.updateRuntime()
+        self.indicator.updateRuntimeTT()
                 
+
+    '''
 
     def reportRuntime(self):
             self.selfRaise.emit(self)

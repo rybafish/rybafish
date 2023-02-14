@@ -190,4 +190,6 @@ if __name__ == '__main__':
     loadConfig = True
     
     sys.exit(app.exec_())
+
+    # except KeyboardInterrupt:
     app.exec_()

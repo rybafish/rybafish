@@ -1061,8 +1061,8 @@ class hslWindow(QMainWindow):
         
         ind.iClicked.connect(console.reportRuntime)
         
-        ind.iToggle.connect(console.updateRuntime)
-                    
+        # ind.iToggle.connect(console.updateRuntime)
+
         self.statusbar.addPermanentWidget(ind)
         
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
@@ -1175,7 +1175,7 @@ class hslWindow(QMainWindow):
         console.indicator = ind
         ind.iClicked.connect(console.reportRuntime)
 
-        ind.iToggle.connect(console.updateRuntime)
+        # ind.iToggle.connect(console.updateRuntime)
         
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
@@ -1754,7 +1754,7 @@ class hslWindow(QMainWindow):
                 
                 ind.iClicked.connect(console.reportRuntime)
                 
-                ind.iToggle.connect(console.updateRuntime)
+                # ind.iToggle.connect(console.updateRuntime)
                 
                 self.statusbar.addPermanentWidget(ind)
                 
@@ -1881,7 +1881,7 @@ class hslWindow(QMainWindow):
             
             ind.iClicked.connect(console.reportRuntime)
 
-            ind.iToggle.connect(console.updateRuntime)
+            # ind.iToggle.connect(console.updateRuntime)
                             
             console.dummyResultTable()
         

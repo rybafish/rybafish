@@ -2127,10 +2127,15 @@ class chartArea(QFrame):
         if flag:
             self.setStatus('sync', True)
         else:
-            self.setStatus('idle', True)
-    
+            if self.timer:
+                self.setStatus('autorefresh', True)
+            else:
+                self.setStatus('idle', True)
+
+
     def indicatorSignal(self):
         self.selfRaise.emit(self.parentWidget())
+
     
     def disableDeadKPIs(self):
         
@@ -2963,6 +2968,9 @@ class chartArea(QFrame):
         
         if self.indicator:
             self.indicator.status = st
+
+            if st == 'autorefresh' and self.timer:
+                self.indicator.nextAutorefresh = datetime.datetime.now() + datetime.timedelta(seconds=self.refreshTime)
             
             if repaint:
                 self.indicator.repaint()
@@ -3032,8 +3040,10 @@ class chartArea(QFrame):
             
             if timer:
                 self.timer.start(1000 * self.refreshTime)
-            
-            self.setStatus('idle', True)
+                self.setStatus('autorefresh', True)
+            else:
+                self.setStatus('idle', True)
+
             return allOk
         
         log('checkboxToggle %i %s' % (host, kpi), 5)
@@ -3155,8 +3165,11 @@ class chartArea(QFrame):
                             if reconnected == False:
                                 allOk = False
                                 
-                    self.setStatus('idle', True)
-                        
+                    if self.timer:
+                        self.setStatus('autorefresh', True)
+                    else:
+                        self.setStatus('idle', True)
+
                 else:
                     print('here 4')
                     for hst in range(0, len(self.widget.hosts)):
@@ -3213,11 +3226,13 @@ class chartArea(QFrame):
             self.refreshTime = 0
             self.timer.stop()
             self.timer = None
+            # self.indicator.nextAutorefresh = None
 
         if txtValue == 'none':
             if self.suppressStatus is None:
                 self.statusMessage('Autorefresh disabled.')
-                
+
+            self.setStatus('idle', True)
             log('Autorefresh disabled.')
             return
         
@@ -3247,6 +3262,7 @@ class chartArea(QFrame):
             self.timer = QTimer(self.window())
             self.timer.timeout.connect(self.refreshTimer)
             self.timer.start(1000 * self.refreshTime)
+            self.setStatus('autorefresh', True)
         
     def scaleChanged(self, i):
         '''
@@ -3671,9 +3687,11 @@ class chartArea(QFrame):
         
         if timerF == True and self.timer is not None:
             self.timer.start(1000 * self.refreshTime)
+            self.setStatus('autorefresh', True)
+        else:
+            self.setStatus('idle', True)
 
         self.reloadLock = False
-        self.setStatus('idle', True)
 
     def scrollRangeChanged (self, min, max):
     
