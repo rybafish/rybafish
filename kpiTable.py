@@ -680,7 +680,7 @@ class kpiTable(QTableWidget):
         self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', ' ', 'Last', 'Description', 'Group', 'Variables'])
         self.horizontalHeader().setMinimumSectionSize(0)
         
-        self.setColumnWidth(0, 1)
+        self.setColumnWidth(0, 22)
         self.setColumnWidth(1, 140) #kpi
         self.setColumnWidth(2, 30) # Style (Pen)
         self.setColumnWidth(3, 70) # y-scale

@@ -459,9 +459,10 @@ class Config(QDialog):
             vbox.addWidget(frm2)
 
         vbox.addWidget(self.noReload)
-        vbox.addWidget(self.readOnly)
-        #vbox.addWidget(self.buttons)
-        
+
+        if cfg('experimental'):
+            vbox.addWidget(self.readOnly)
+
         vbox.addLayout(buttonsHBox)
         
         self.setWindowIcon(QIcon(iconPath))
