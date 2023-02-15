@@ -1,3 +1,5 @@
+import sys #temp
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPen, QColor
 
@@ -30,6 +32,9 @@ vrsRepl = {}        # dict of pairs from/to per sqlIdx for character replacement
 
 vrsStr = {}         # current string representation (for KPIs table)
 vrs = {}            # actual dict
+
+def logvar(msg, logl=3):
+    log(msg, component='variables', loglevel=logl)
 
 class Style(UserDict):
     exclude = ['sql'] # keys excluded from vars processing
@@ -269,7 +274,7 @@ class Variables(QDialog):
         self.accept()
         
     def highlightIdx(self, idx):
-        log(f'Need to highlight {idx}', 5)
+        logvar(f'Need to highlight {idx}', 5)
         
         for i in range(self.vTab.rowCount()):
             item = self.vTab.item(i, 0)
@@ -354,7 +359,7 @@ def addVarsDef(sqlIdx, vStr):
     vlist = [s.strip() for s in vStr.split(',')]
     
     if sqlIdx in vrsDef:
-        log('%s already in the dict, anyway...' % sqlIdx, 4)
+        logvar('%s already in the dict, anyway...' % sqlIdx, 4)
         
     vrsDef[sqlIdx] = {}
         
@@ -369,7 +374,7 @@ def addVarsDef(sqlIdx, vStr):
             
         vrsDef[sqlIdx][vName] = vVal
         
-    log('yaml variables for %s defined as %s' % (sqlIdx, str(vrsDef[sqlIdx])))
+    logvar('yaml variables for %s defined as %s' % (sqlIdx, str(vrsDef[sqlIdx])))
     
 
 def addVars(sqlIdx, vStr, overwrite = False):
@@ -390,14 +395,14 @@ def addVars(sqlIdx, vStr, overwrite = False):
         if r:
             smod = s.replace(r[0], r[1])
             if s != smod:
-                log(f'Variable replace {idx}: {s} --> {smod}', 4)
+                logvar(f'Variable replace {idx}: {s} --> {smod}', 4)
             else:
-                log(f'Didn\'t make any changes {idx}: {s} --> {smod}', 4)
+                logvar(f'Didn\'t make any changes {idx}: {s} --> {smod}', 4)
             
                 
             return smod
         else:
-            log(f'no replacement for {idx}, s = {s}', 4)
+            logvar(f'no replacement for {idx}, s = {s}')
             return s
         
     def validate(s):
@@ -408,28 +413,21 @@ def addVars(sqlIdx, vStr, overwrite = False):
         
         for v in vlist:
             if v.find(':') <= 0:
-                log('Not a valid variable definition: [%s]' % v, 2)
+                logvar('Not a valid variable definition: [%s]' % v, 2)
                 return False
                 
         return True
     
-    log('addVars input: %s' % (str(vStr)), 5)
+    logvar('addVars input: %s' % (str(vStr)))
         
     for idx in vrs:
-        log('%s --> %s' % (idx, str(vrs[idx])), 5)
+        logvar('%s --> %s' % (idx, str(vrs[idx])))
     
     if vStr == None:
         return
-    '''
-    if overwrite:
-        if sqlIdx in vrs:
-            log('full refresh of %s vars' % (sqlIdx), a4)
-            
-            vrs[sqlIdx].clear()
-    '''
-    
+
     if not validate(vStr):
-        log('[E] Variables parsing error!', 2)
+        logvar('[E] Variables parsing error!', 2)
         
         #vrsStr[sqlIdx] = None
         msg = 'Variables cannot have commas inside'
@@ -481,31 +479,25 @@ def addVars(sqlIdx, vStr, overwrite = False):
         for v in vrs[sqlIdx]:
             if v not in vNames:
                 if v in vrsDef[sqlIdx]:
-                    log('Variable \'%s\' seems missing in %s, restoring default from YAML' % (v, sqlIdx))
+                    logvar('Variable \'%s\' seems missing in %s, restoring default from YAML' % (v, sqlIdx))
                     vrs[sqlIdx][v] = vrsDef[sqlIdx][v]
                 else:
-                    log('Seems variable \'%s\' is excluded from %s, it will be IGNORED' % (v, sqlIdx))
+                    logvar('Seems variable \'%s\' is excluded from %s, it will be IGNORED' % (v, sqlIdx))
                     #log('Seems variable \'%s\' is excluded from %s, it will be erased from the runtime values' % (v, sqlIdx))
                     #keysDelete.append(v)
                     
-        '''
-        for k in keysDelete:
-            log('deleting %s from %s' %(k, sqlIdx))
-            vrs[sqlIdx].pop(k)
-        '''
-            
     # go through defined variables and add missing ones
     
     if sqlIdx not in vrsDef:
-        log('[W] how come %s is missing in vrsDed??' % sqlIdx, 2)
+        logvar('[W] how come %s is missing in vrsDed??' % sqlIdx, 2)
     else:
-        log('Variables YAML defaults: %s' % str(vrsDef[sqlIdx]), 5)
+        logvar('Variables YAML defaults: %s' % str(vrsDef[sqlIdx]), 5)
         for k in vrsDef[sqlIdx]:
             if k not in vrs[sqlIdx]:
                 vrs[sqlIdx][k] = repl(sqlIdx, vrsDef[sqlIdx][k])
-                log('[W] MUST NOT REACH THIS POINT #602\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
+                logvar('[W] MUST NOT REACH THIS POINT #602\'%s\' was missing, setting to the default value from %s: %s' % (k, sqlIdx, vrsDef[sqlIdx][k]), 4)
         
-    log(f'Actual variables for {sqlIdx} now are {vrs[sqlIdx]}', 4)
+    logvar(f'Actual variables for {sqlIdx} now are {vrs[sqlIdx]}', 4)
 
 
 def processVars(sqlIdx, src):
@@ -618,13 +610,13 @@ def resetRaduga():
     currentIndex = 0
     
 kpiStylesN = {}
-kpiStylesNN = {'host':{}, 'service':{}}
+kpiStylesNN = {'host':{}, 'service':{}}     # supposed to keep all the kpi styles definitions
 
 customSql = {}
 
 def createStyle(kpi, custom = False, sqlIdx = None):
 
-    log(str(kpi))
+    #log(str(kpi))
 
     #style = {}
     style = Style(sqlIdx)
@@ -661,7 +653,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['dUnit'] = kpi['dUnit']
     else:
         style['sUnit'] = '-'
-
+        style['dUnit'] = '-'
     #create pen
     if 'color' in kpi:
         color = QColor(kpi['color'])
@@ -682,11 +674,16 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         
     if 'style' in kpi:
         st = kpi.get('style', 'unknown')
-        penStyle = penStyles[st]
         
+        if st in penStyles:
+            penStyle = penStyles[st]
+        else:
+            log(f'Unknown pen stile "{st}" for kpi "{kpi["name"]}", using weird one to get attention', 2)
+            penStyle = penStyles['unknown']
+            
         if st == 'unknown': log('[W] pen style unknown: %s - [%s]' % (kpi['name'], (kpi['style'])), 2)
     else:
-        log('[W] pen style not defined for %s, using default' % (kpi['name']), 2)
+        log(f"Pen style not defined for {kpi['name']}, using default", 4)
         if style['type'] == 'h':
             penStyle = Qt.DashLine
         else:
@@ -777,19 +774,18 @@ def customKpi (kpi):
     else:
         return False
 
-def getTimeKey(type, kpi):
+def getTimeKey(kpiStylesNNN, kpi):
 
     if customKpi(kpi):
-        timeKey = 'time:' + kpiStylesNN[type][kpi]['sql']
+        timeKey = 'time:' + kpiStylesNNN[kpi]['sql']
     else:
         timeKey = 'time'
         
     return timeKey
 
-def getSubtype(type, kpi):
-
-    if kpi in kpiStylesNN[type]:
-        subtype = kpiStylesNN[type][kpi]['subtype']
+def getSubtype(kpiStylesNNN, kpi):
+    if kpi in kpiStylesNNN:
+        subtype = kpiStylesNNN[kpi]['subtype']
     else:
         subtype = None
         
@@ -815,9 +811,11 @@ def hType (i, hosts):
     else:
         return 'service'
         
-def clarifyGroups():
+def clarifyGroups(kpiStylesNNN):
     '''
-        gives pre-defined names to most useful groups
+        gives pre-defined names to most useful groups like memory and threads
+        for the new style kpiStylesNNN needs to be called for every type: host/service
+        (before multiplication) or just every host
     '''
 
     thread_kpis = ['active_thread_count',
@@ -845,62 +843,89 @@ def clarifyGroups():
     
         if grpIdx == grpName:
             return
-    
-        for h in kpiStylesNN:
-            for kpi in kpiStylesNN[h]:
-                if kpiStylesNN[h][kpi]['group'] == grpIdx:
-                    kpiStylesNN[h][kpi]['group'] = grpName
-                    
+
+        for kpi in kpiStylesNNN:
+            if kpiStylesNNN[kpi]['group'] == grpIdx:
+                kpiStylesNNN[kpi]['group'] = grpName
+
     def updateDunit(grpIdx, dUnit):
-        for h in kpiStylesNN:
-            for kpi in kpiStylesNN[h]:
-                if kpiStylesNN[h][kpi]['group'] == grpIdx:
-                    kpiStylesNN[h][kpi]['dUnit'] = dUnit
+        for kpi in kpiStylesNNN:
+            if kpiStylesNNN[kpi]['group'] == grpIdx:
+                kpiStylesNNN[kpi]['dUnit'] = dUnit
         
-    for h in kpiStylesNN:
-        log(f'updating "{h}"')
-    
-        if 'cpu' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['cpu']['group'], 'cpu')
+    log('Clarify groups call...')
 
-        if 'memory_used' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['memory_used']['group'], 'mem')
-            
+    if 'cpu' in kpiStylesNNN:
+        update(kpiStylesNNN['cpu']['group'], 'cpu')
 
-        # those two for dpTrace as it is based on ns KPI names
-        if 'cpuused' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['cpuused']['group'], 'cpu')
-
-        if 'memoryused' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['memoryused']['group'], 'mem')
-
-        if cfg('memoryGB'):
-            updateDunit('mem', 'GB')
-            
-        # enforce threads scaling
-        if thread_kpis[0] in kpiStylesNN[h]:
-            update_hardcoded(kpiStylesNN[h], thread_kpis, 33)
-
-        if 'active_thread_count' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['active_thread_count']['group'], 'thr')
-            
-        # now the same for ns... 
-        if thread_kpis_ns[0] in kpiStylesNN[h]:
-            update_hardcoded(kpiStylesNN[h], thread_kpis_ns, 33)
-
-        if 'indexserverthreads' in kpiStylesNN[h]:
-            update(kpiStylesNN[h]['indexserverthreads']['group'], 'thr')
+    if 'memory_used' in kpiStylesNNN:
+        update(kpiStylesNNN['memory_used']['group'], 'mem')
         
 
-def groups():
+    # those four for the dpTrace as it is based on ns KPI names
+
+    if 'cpuused' in kpiStylesNNN:
+        update(kpiStylesNNN['cpuused']['group'], 'cpu')
+
+    if 'indexservercpu' in kpiStylesNNN:
+        update(kpiStylesNNN['indexservercpu']['group'], 'cpu')
+
+    if 'memoryused' in kpiStylesNNN:
+        update(kpiStylesNNN['memoryused']['group'], 'mem')
+
+    if 'indexservermemused' in kpiStylesNNN:
+        update(kpiStylesNNN['indexservermemused']['group'], 'mem')
+
+    if cfg('memoryGB'):
+        updateDunit('mem', 'GB')
+        
+    # enforce threads scaling
+    if thread_kpis[0] in kpiStylesNNN:
+        update_hardcoded(kpiStylesNNN, thread_kpis, 33)
+
+    if 'active_thread_count' in kpiStylesNNN:
+        update(kpiStylesNNN['active_thread_count']['group'], 'thr')
+        
+    # now the same for ns... 
+    if thread_kpis_ns[0] in kpiStylesNNN:
+        update_hardcoded(kpiStylesNNN, thread_kpis_ns, 33)
+
+    if 'indexserverthreads' in kpiStylesNNN:
+        update(kpiStylesNNN['indexserverthreads']['group'], 'thr')
+
+    if cfg('verifyGroupUnits', True):
+        log('check group units...', 5)
+
+        for checkUnit in ['sUnit', 'dUnit']:
+            gunits = {}
+            for kpi in kpiStylesNNN.keys():
+                kv= kpiStylesNNN[kpi]
+                # log(f'{kpi=}, {kv=}')
+                if kv['group'] == 0:
+                    continue # special non-scaled group
+
+                if not kv['group'] in gunits:
+                    gunits[kv['group']] = kv.get(checkUnit)
+                    # log(f"{kv['group']} added: {kv.get(checkUnit)}")
+                else:
+                    if gunits[kv['group']] != kv.get(checkUnit):
+                        raise utils.customKPIException(f'''{checkUnit} does not match! group: {kv['group']}, kpi: {kpi}
+{gunits[kv['group']]} != {kpiStylesNNN.get(checkUnit)}. Check the KPI definition.
+
+if required, disable this check by setting verifyGroupUnits: False''')
+        else:
+            log('no issues detected', 5)
+
+
+def groups(hostKPIsStyles):
     # generates list of actual kpi groups
 
     groups = []
 
-    for h in kpiStylesNN:
-        for kpi in kpiStylesNN[h]:
-            if kpiStylesNN[h][kpi]['group'] not in groups:
-                groups.append(kpiStylesNN[h][kpi]['group'])
+    for kpiStylesNNN in hostKPIsStyles:
+        for kpi in kpiStylesNNN:
+            if kpiStylesNNN[kpi]['group'] not in groups:
+                groups.append(kpiStylesNNN[kpi]['group'])
                 
     return groups
 
@@ -952,22 +977,44 @@ def denormalize (kpi, value):
     else:
         return value
         
-def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
+def initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNN):
     '''
-        Same interface to be reused for DB trace
+        this method unpacks standard HANA m_load_history_info rows and fills:
+            - two lists of kps (hostKPIs, srvcKPIs)
+            - dictionay of corresponding styles: kpiStylesNN
+        
+        Same interface reused in DB trace, dbi_sqlite
+        
+        Input rows list structure:
+            ('2.10', '', '', 0, 'SQL', '', '', '', 0, 0) -- header/group
+            ('2.10.01', 'M_LOAD_HISTORY_SERVICE', 'CONNECTION_COUNT', 0, 'Open Connections', 'Number of open SQL connections', '', '', 4251856, 1)
+            
+            r[0] - hierarchy (not used)
+            r[1] - data source
+            r[2] - sql column name for the kpi --> 'name'
+            r[3] - scaling croup
+            r[4] - human readable name         --> 'label' 
+            r[5] - description
+            r[6] - sUnit
+            r[7] - dUnit
+            r[8] - color
+            r[9] - style (solid, dashed, etc)
         
         Output:
             hostKPIs, srvcKPIs are filled with the respective KPIs lists
             
-            kpiStylesNN - GLOBAL <--- list of KPIs...
+            kpiStylesNN pre-created (outside) dict containing 'host' and 'service' keys,
+            will contain styles for KPIs
     '''
     
     for kpi in rows:
+    
+        #log(f'[init kpi] {kpi}')
         
         if kpi[1].lower() == 'm_load_history_host':
-            type = 'host'
+            hType = 'host'
         else:
-            type = 'service'
+            hType = 'service'
     
         if kpi[1] == '': #hierarchy nodes
             if len(kpi[0]) == 1:
@@ -979,20 +1026,22 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs):
             kpiName = kpi[2].lower()
             kpiDummy = {
                     'hierarchy':    kpi[0],
-                    'type':         type,
+                    'type':         hType,
                     'name':         kpiName,
                     'group':        kpi[3],
                     'label':        kpi[4],
                     'description':  kpi[5],
                     'sUnit':        kpi[6],
                     'dUnit':        kpi[7],
-                    'color':        kpi[8],
-                    'style':        nsStyle(kpi[9])
+                    'color':        utils.safeInt(kpi[8]),
+                    'style':        nsStyle(utils.safeInt(kpi[9]))
                 }
             
-            kpiStylesNN[type][kpiName] = createStyle(kpiDummy)
+            kpiStylesNN[hType][kpiName] = createStyle(kpiDummy)
                     
         if kpi[1].lower() == 'm_load_history_host':
             hostKPIs.append(kpiName)
         else:
             srvcKPIs.append(kpiName)
+            
+    return

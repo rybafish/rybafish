@@ -18,7 +18,7 @@ class QPlainTextEditLN(QWidget):
         rehighlightSig = pyqtSignal()
         tabSwitchSignal = pyqtSignal(int)
         
-        def __init__(self, parent = None):
+        def __init__(self, parent=None):
             super().__init__(parent)
         
         '''
@@ -72,6 +72,8 @@ class QPlainTextEditLN(QWidget):
             endPos = startPos + len(lineFrom.text())
 
             if direction == 'down':
+                if endPos+1 > len(self.document().toPlainText()):
+                    return
                 lineTo = self.document().findBlock(endPos + 1)
             else:
                 lineTo = self.document().findBlock(startPos - 1)
@@ -386,7 +388,7 @@ class QPlainTextEditLN(QWidget):
             
             self.locked  = False
             
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         super().__init__(parent)
         
         #self.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
@@ -436,6 +438,11 @@ class QPlainTextEditLN(QWidget):
         #self.keyPressEvent = self.edit.keyPressEvent
         
         self.rehighlightSig = self.edit.rehighlightSig
+
+        # required for csvImport
+        self.setLineWrapMode = self.edit.setLineWrapMode
+        self.horizontalScrollBar = self.edit.horizontalScrollBar
+        self.verticalScrollBar = self.edit.verticalScrollBar
         
         self.locked = False
     
@@ -464,5 +471,4 @@ class QPlainTextEditLN(QWidget):
         #qp.setPen(QColor('#080'))
         #qp.drawRect(0, 0, w-2, h-2)
         
-        qp.end()    
-  
+        qp.end()

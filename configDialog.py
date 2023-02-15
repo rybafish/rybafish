@@ -1,4 +1,4 @@
-import sys
+import sys, os
 from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
     QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFormLayout, QLineEdit, QLabel, QCheckBox, QComboBox, QFrame, QGroupBox, QSplitter)
     
@@ -18,8 +18,14 @@ class Config(QDialog):
     
     def setConf(self, conf):
         try:
+            dbi = conf.get('dbi')
+
             if conf:
-                hostport = conf['host'] + ':' + str(conf['port'])
+                if dbi == 'SLT':
+                    hostport = conf['host']
+                else:
+                    hostport = conf['host'] + ':' + str(conf['port'])
+                
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
                 self.pwdEdit.setText(conf['password'])
@@ -27,12 +33,15 @@ class Config(QDialog):
                 if 'ssl' in conf:
                     self.sslCB.setChecked(conf['ssl'])
                                 
-                dbi = conf.get('dbi')
-                
                 if dbi:
                     for i in range(self.driverCB.count()):
                         if dbidict[self.driverCB.itemText(i)] == dbi:
                             self.driverCB.setCurrentIndex(i)
+
+                if 'readonly' in conf:
+                    self.readOnly.setChecked(conf['readonly'])
+                else:
+                    self.readOnly.setChecked(False)
                 
             else:
                 self.hostportEdit.setFocus()
@@ -66,7 +75,11 @@ class Config(QDialog):
             self.setConf(conf)
                 
     def setConfName(self, name):
-        
+        '''
+            set values from the configuration based on conf name
+            conf name must exist in the list of connections and
+            values are going to be implicitly filled by this index
+        '''
         if not name:
             return False
             
@@ -84,21 +97,44 @@ class Config(QDialog):
         result = cf.exec_()
         
         hostport = cf.hostportEdit.text()
-
-        try:
-            host, port = hostport.split(':')
         
-            port = int(port)
+        dbi = dbidict[cf.driverCB.currentText()]
 
-            cf.config['ok'] = True
-            cf.config['host'] = host
-            cf.config['port'] = port
-        except:
-            cf.hostportEdit.setStyleSheet("color: red;")
-            cf.config['ok'] = False
-            cf.config['port'] = ''
-            cf.config['host'] = hostport
-        
+        if dbi == 'SLT':
+            filename = hostport
+            if os.path.exists(filename) or True: # check for the db existance switched off...
+                cf.config['ok'] = True
+                cf.config['port'] = ''
+                cf.config['host'] = hostport
+            else:
+                log(f'File does not exist: {filename}', 2)
+                cf.config['error'] = f'Cannot start the connection.\nFile does not exist: {filename}'
+                cf.config['ok'] = False
+        else:
+            try:
+            
+                if dbi == 'SLT':
+                    host = hostport
+                    port = ''
+                else:
+                    host, port = hostport.split(':')
+            
+                port = int(port)
+
+                cf.config['ok'] = True
+                cf.config['host'] = host
+                cf.config['port'] = port
+                
+            #ValueError
+            except Exception as e:
+                log(f'getConfig exception {type(e)}')
+                log(f'getConfig exception {e}')
+                cf.hostportEdit.setStyleSheet("color: red;")
+                cf.config['ok'] = False
+                cf.config['port'] = ''
+                cf.config['host'] = hostport
+                cf.config['error'] = f'Connection exception: {type(e)}\n{e}'
+
         cf.config['name'] = cf.confCB.currentText()
         cf.config['dbi'] = dbidict[cf.driverCB.currentText()]
         
@@ -108,31 +144,47 @@ class Config(QDialog):
         cf.config['noreload'] = cf.noReload.isChecked()
         cf.config['ssl'] = cf.sslCB.isChecked()
         
+        if cf.config['dbi'] == 'SLT':
+            cf.config['readonly'] = cf.readOnly.isChecked()
+        
         return (cf.config, result == QDialog.Accepted)
         
     def driverChanged(self, index):
     
         drv = self.driverCB.currentText()
         
-        if drv == 'ABAP Proxy':
+        if drv == 'ABAP Proxy' or drv == 'SQLite DB':
             self.userEdit.setDisabled(True)
             self.pwdEdit.setDisabled(True)
             self.sslCB.setDisabled(True)
-            self.update()
         elif drv == 'HANA DB':
             self.userEdit.setEnabled(True)
             self.pwdEdit.setEnabled(True)
             self.sslCB.setEnabled(True)
             
+        if drv == 'SQLite DB':
+            self.readOnly.setEnabled(True)
+            self.hostportLabel.setText('DB File:')
+        else:
+            self.hostportLabel.setText('hostname:port')
+            self.readOnly.setEnabled(False)
+            
         self.configurationChanged(self.confCB.currentText())
+
+        self.update()
 
     def confChange(self, i):
     
         def parseHost(hostport):
+            dbi = c.get('dbi')
         
             try:
-                host, port = hostport.split(':')
-                port = int(port)
+                if dbi == 'SLT':
+                    host = hostport
+                    port = ''
+                else:
+                    host, port = hostport.split(':')
+                    port = int(port)
                 
                 self.hostportEdit.setStyleSheet("color: black;")
 
@@ -155,6 +207,9 @@ class Config(QDialog):
             conf['host'] = host
             conf['port'] = port
             conf['ssl'] = c.get('ssl')
+            
+            if c.get('readonly'):
+                conf['readonly'] = c.get('readonly')
 
             if 'user' in c:
                 conf['user'] = c['user']
@@ -195,6 +250,9 @@ class Config(QDialog):
         cfg['pwd'] = self.pwdEdit.text()
         cfg['hostport'] = self.hostportEdit.text()
         cfg['ssl'] = self.sslCB.isChecked()
+        
+        if cfg['dbi'] == 'SLT':
+            cfg['readonly'] = self.readOnly.isChecked()
         
         items = []
         for i in range(self.confCB.count()):
@@ -262,8 +320,9 @@ class Config(QDialog):
         form = QGridLayout()
         
         self.driverCB = QComboBox()
-        self.driverCB.addItem('HANA DB')
-        self.driverCB.addItem('ABAP Proxy')
+
+        for drv in dbidict.keys():
+            self.driverCB.addItem(drv)
         
         iconPath = resourcePath('ico', 'favicon.png')
         
@@ -285,7 +344,8 @@ class Config(QDialog):
         
         self.pwdEdit.setEchoMode(QLineEdit.Password)
         
-        form.addWidget(QLabel('hostname:port'), 1, 1)
+        self.hostportLabel = QLabel('hostname:port')
+        form.addWidget(self.hostportLabel, 1, 1)
         form.addWidget(QLabel('user'), 2, 1)
         form.addWidget(QLabel('pwd'), 3, 1)
 
@@ -312,6 +372,8 @@ class Config(QDialog):
         checkButton = QPushButton("Check")
         
         self.noReload = QCheckBox('Skip initial KPIs load');
+        self.readOnly = QCheckBox('Read-only connection (SQLite only)');
+        self.readOnly.stateChanged.connect(self.configurationChanged)
 
         # save dialog
         self.confCB = QComboBox()
@@ -365,15 +427,6 @@ class Config(QDialog):
         buttonsHBox.addWidget(btnConnect)
         buttonsHBox.addWidget(btnCancel)
         
-        '''
-        self.buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
-            Qt.Horizontal, self)
-
-        self.buttons.accepted.connect(self.accept)
-        self.buttons.rejected.connect(self.reject)
-        '''
-        
         self.status = QLabel()
 
         # okay, Layout:
@@ -387,8 +440,8 @@ class Config(QDialog):
             
             vbox.addWidget(confGroup)
         
-        if cfg('experimental', False) and cfg('S2J', False):
-            vbox.addLayout(dbiHBox) # driver type
+        if cfg('experimental', False):
+            vbox.addLayout(dbiHBox) # driver type selection combo box
         
         vbox.addLayout(form) # main form
         
@@ -406,8 +459,10 @@ class Config(QDialog):
             vbox.addWidget(frm2)
 
         vbox.addWidget(self.noReload)
-        #vbox.addWidget(self.buttons)
-        
+
+        if cfg('experimental'):
+            vbox.addWidget(self.readOnly)
+
         vbox.addLayout(buttonsHBox)
         
         self.setWindowIcon(QIcon(iconPath))

@@ -67,22 +67,26 @@ class hdbi ():
         t0 = time.time()
         try: 
             # normal connection
+
+            port =server['port']
+            pm = cfg('mapport')
+            if pm:
+                port = int(str(port).replace(pm[1], pm[0]))
             
             if server.get('ssl'):
                 log('Opening connection with SSL support', 4)
-                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], sslsupport=True)
+                connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=server['password'], sslsupport=True)
             else:
                 log('Opening regular connection (no ssl)', 5)
-                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'])
+                connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=server['password'])
                 
             connection.large_sql = False
             
-            if cfg('internal', True):
-                setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
-                self.execute_query_desc(connection, setApp, [], 0)
-                
-                setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
-                self.execute_query_desc(connection, setApp, [], 0)
+            setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
+            self.execute_query_desc(connection, setApp, [], 0)
+
+            setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
+            self.execute_query_desc(connection, setApp, [], 0)
 
         except Exception as e:
     #    except pyhdb.exceptions.DatabaseError as e:
@@ -100,7 +104,7 @@ class hdbi ():
         
         return connection
 
-    def console_connection (self, server, dbProperties = None, data_format_version2 = False):
+    def console_connection(self, server, dbProperties = None, data_format_version2 = False):
 
         longdate = cfg('longdate', True)
 
@@ -108,6 +112,11 @@ class hdbi ():
         
         sslsupport = server.get('ssl')
         
+        port =server['port']
+        pm = cfg('mapport')
+        if cfg('dev') and pm:
+            port = int(str(port).replace(pm[1], pm[0]))
+
         try: 
             if self.largeSql:
                 old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
@@ -116,7 +125,7 @@ class hdbi ():
                 pyhdb.protocol.constants.MAX_SEGMENT_SIZE = pyhdb.protocol.constants.MAX_MESSAGE_SIZE - 32
                 
                 log(f'Largesql console, longdates: {longdate}, ssl: {sslsupport}')
-                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
+                connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
                     
                 connection.large_sql = True
                 self.largeSql = False
@@ -127,17 +136,23 @@ class hdbi ():
                 # normal connection
 
                 log(f'Regular consolse, longdate={longdate}, ssl={sslsupport}')
-                connection = pyhdb.connect(host=server['host'], port=server['port'], user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
+                connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=server['password'], data_format_version2=longdate, sslsupport=sslsupport)
 
                 connection.large_sql = False
                 self.largeSql = False
                 
-            if cfg('internal', True):
-                setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
-                self.execute_query_desc(connection, setApp, [], 0)
-                
-                setApp = "set 'APPLICATIONUSER' = '%s'" % getlogin()
-                self.execute_query_desc(connection, setApp, [], 0)
+            setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
+            self.execute_query_desc(connection, setApp, [], 0)
+
+            uname = getlogin()
+
+            if cfg('dev'):
+                um = cfg('mapuser')
+                if um:
+                    uname = uname.replace(um[0], um[1])
+
+            setApp = "set 'APPLICATIONUSER' = '%s'" % uname
+            self.execute_query_desc(connection, setApp, [], 0)
             
         except Exception as e:
     #    except pyhdb.exceptions.DatabaseError as e:
@@ -152,12 +167,23 @@ class hdbi ():
         return connection
 
     def get_connection_id(self, conn):
-        rows = self.execute_query(conn, "select connection_id from m_connections where own = 'TRUE'", [])
+    
+        if not conn:
+            log('[w] get_connection_id call with non existing connection', 2)
+            return None
+    
+        try:
+            rows = self.execute_query(conn, "select connection_id from m_connections where own = 'TRUE'", [])
+        except dbException as e:
+            log(f'[E] exception in get_connection_id: {e}', 2)
+            return None
 
         if len(rows):
             connection_id = rows[0][0]
+            log('connection id: {connection_id}', 4)
             return connection_id
         else:
+            log('[W] connection id not detected', 2)
             return None
         
 
@@ -269,13 +295,34 @@ class hdbi ():
         # never failed... (what if connection issue...)
         return
 
-    def execute_query_desc(self, connection, sql_string, params, resultSize):
+    def execute_query_desc(self, connection, sql_string, params, resultSize, noLogging=False):
         '''
             The method mainly used by SQL console because it also needs a result set description.
             
             additionaly it is use in Gantt customKPIs because of the dynamic number of return columns 
             
             It also used a modified version of the pyhdb cursor implementation because of the https://github.com/rybafish/rybafish/issues/97
+            
+        Return structure
+            The call returns:
+            rows_list - list of 2-dimentional arrays of results sets, see below
+            cols_list - list (of lists) of descriptions, see below
+            cursor - cursor might be used for some additional interaction with the db layer, extract list of result set ids...
+            psid - statement id to be used in...
+            
+            the interface supports multiple result sets this is why rows_list and columns_list are double-layered
+            in case of single resultset, i.e. select 1 a, 2 b, 3 c from dumy)
+            
+            row_list = [                # first resultset
+                    [1, 2 , 3]          # row itself
+            ]
+            col_list = [                # first resultset
+                ['A', <int>],           # first column named A, type - integer
+                ['B', <int>],           # ...
+                ['C', <int>]
+            ]
+            
+            top level of both lists has the same number of elements (resultsets)
         '''
 
         if not connection:
@@ -287,10 +334,11 @@ class hdbi ():
         
         # prepare the statement...
         
-        log('[SQL]: %s' % sql_string, 5)
+        if not noLogging:
+            log('[SQL]: %s' % sql_string, 5)
 
-        if len(params) > 0:
-            log('[PRMS]: %s' % str(params), 5)
+            if len(params) > 0:
+                log('[PRMS]: %s' % str(params), 5)
 
         try:
             psid = cursor.prepare(sql_string)
@@ -337,11 +385,7 @@ class hdbi ():
         try:
             ps = cursor.get_prepared_statement(psid)
 
-            if len(params) > 0:
-                log('[PRMS]: %s' % str(params), 5)
-                
             cursor.execute_prepared(ps, [params])
-            
             columns_list = cursor.description_list.copy()
             
             if cursor._function_code == function_codes.DDL:
@@ -408,108 +452,16 @@ class hdbi ():
         # drop_statement(connection, psid) # might be useful to test LOB.read() issues
 
         return rows_list, columns_list, cursor, psid
-        
-    '''
-    def DEPR_get_data(connection, kpis, times, data):
-        ''
-            requests list of kpis from connection c where time between times.from times.to into &data
-            
-            to do: tenant, hostm port
-        ''
-        
-        if not connection:
-            log('no db connection...')
-            return
-            
-        params = []
-        
-        kpis = ['time', 'cpu', 'memory_used']
-        
-        sql_string = 'select time, cpu, memory_used from m_load_history_service where time > add_seconds(now(), -3600*12) order by time asc'
-            
-        t0 = time.time()
-        
-        rows = self.execute_query(connection, sql_string, params)
-        
-        kpi_map = {}
-        for kpi in kpiDescriptions.kpiStyles:
-            kpi_map[kpi[5]] = kpi[2]
-        
 
-        trace_lines = len(rows)
         
-        t1 = time.time()
+    def checkTable(self, conn, tableName):
+        r = self.execute_query(conn, f"select table_name from tables where schema_name = session_user and table_name = ?", [tableName])
         
-        i = 0
-        for row in rows:
-            if i == 0: # allocate memory
-                
-                for j in range(0, len(kpis)):
-                    
-                    if j == 0: #time
-                        data['time'] = [0] * (trace_lines)  #array('d', [0]*data_size) ??
-                    else:
-                        data[kpi_map[kpis[j]]] = [0]* (trace_lines)  #array('l', [0]*data_size) ??
-            
-            for j in range(0, len(kpis)):
-                if j == 0: #time column always 1st
-                    data['time'][i] = row[j].timestamp()
-                else:
-                    data[kpi_map[kpis[j]]][i] = row[j]
-            
-            i+=1
+        if r:
+            return True
+        else:
+            return False
 
-        t2 = time.time()
-
-        log('trace get time: %s, get/parse time %s (%i rows)' % (str(round(t1-t0, 3)), str(round(t2-t1, 3)), trace_lines))
-
-    def DEPR_initHosts(c, hosts, hostKPIs, srvcKPIs):
-        '
-            this one to be called once after the connect to prepare info on hosts/services available
-            AND KPIs
-        '
-
-        kpis_sql = 'select view_name, column_name from m_load_history_info order by display_hierarchy'
-
-        if not c:
-            log('no db connection...')
-            return
-
-        sql_string = sql.hosts_info
-
-        t0 = time.time()
-        
-        rows = self.execute_query(c, sql_string)
-        
-        for i in range(0, len(rows)):
-            hosts.append({
-                        'host':rows[i][0],
-                        'port':rows[i][1],
-                        'from':rows[i][2],
-                        'to':rows[i][3]
-                        })
-
-        rows = self.execute_query(c, kpis_sql)
-        
-        for kpi in rows:
-        
-            if kpi[1] == '': #hierarchy nodes
-                continue
-                
-            sqlName = kpi[1].lower()
-        
-            if kpi[0].lower() == 'm_load_history_host':
-                if kpiDescriptions.findKPIsql('h', sqlName):
-                    hostKPIs.append(sqlName)
-            else:
-                if kpiDescriptions.findKPIsql('s', sqlName):
-                    srvcKPIs.append(sqlName)
-
-        t1 = time.time()
-        
-        log('hostsInit time: %s' % (str(round(t1-t0, 3))))
-    '''
-        
     def ifNumericType(self, t):
         if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT,
             type_codes.DECIMAL, type_codes.REAL, type_codes.DOUBLE):
@@ -551,4 +503,4 @@ class hdbi ():
         if t == type_codes.BLOB:
             return True
         else:
-            return False        
+            return False

@@ -3,6 +3,12 @@ from datetime import datetime
 from utils import cfg
 
 def getDBProperties(connection, queryFunction, log, dbProperties):
+        '''
+            supplement initial DB connection with additional DB information
+            extract main DB properties like timezone, SID, version, tenant name etc (HANA DB)
+            
+            Currently used for HDB, S2J.
+        '''
         if dbProperties is not None:
         
             rows = queryFunction(connection, 'select distinct key, value from m_host_information where key in (?, ?, ?)', ['timezone_offset', 'sid', 'build_version'])
@@ -16,8 +22,8 @@ def getDBProperties(connection, queryFunction, log, dbProperties):
                     
                     dbProperties['timeZoneDelta'] = int(dbUTCDelta) - int(hostUTCDelta)
                 elif row[0] == 'sid':
-                    if cfg('sidmapping'):
-                        sm = cfg('sidmapping')
+                    if cfg('mapsid'):
+                        sm = cfg('mapsid')
                         dbProperties['sid'] = row[1].replace(sm[0], sm[1])
                     else:
                         dbProperties['sid'] = row[1]
@@ -46,8 +52,8 @@ def getDBProperties(connection, queryFunction, log, dbProperties):
                     rows = queryFunction(connection, 'select database_name from m_database', [])
 
                     if len(rows) == 1:
-                        if cfg('dbmapping'):
-                            dbmap = cfg('dbmapping')
+                        if cfg('mapdb'):
+                            dbmap = cfg('mapdb')
                             dbProperties['tenant'] = rows[0][0].replace(dbmap[0], dbmap[1])
                         else:
                             dbProperties['tenant'] = rows[0][0]

@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, 
     QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView)
     
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QBrush, QColor
     
 from PyQt5.QtCore import Qt
 
@@ -32,12 +32,21 @@ class hostsTable(QTableWidget):
             
             currently without cleaning, so to be called for empty table right after connection
         '''
-        log('signal hostsUpdated(): %i' % (len(self.hosts)))
+        log(f'signal hostsUpdated(): {len(self.hosts)}')
         self.setRowCount(len(self.hosts))
         
         i = 0
         
+        #hlBrush = QBrush(QColor('#b6dff3'))
+        hlBrush = QBrush(QColor('#e0eff3'))
+        
+        fromToAvailable = False
+        
         for host in self.hosts:
+        
+            log(f'    hostsUpdated: {host}', 5)
+            
+            shadeHost = host.get('dpi', 0) % 2 
         
             self.setRowHeight(i, 10)
             
@@ -55,26 +64,40 @@ class hostsTable(QTableWidget):
                 self.setItem(i, 4, QTableWidgetItem(''))
 
             if 'from' in host:
+                fromToAvailable = True
                 if self.columnCount() == 5:
                     self.setColumnCount(7)
                     self.setHorizontalHeaderLabels(['', 'DB', 'host', 'port', 'service', 'from', 'to'])
                 
                 self.setItem(i, 5, QTableWidgetItem(host['from'].strftime('%Y-%m-%d %H:%M:%S')))
                 self.setItem(i, 6, QTableWidgetItem(host['to'].strftime('%Y-%m-%d %H:%M:%S')))
-                    
 
-            if 'from' not in host:
+            if fromToAvailable == False:
                 if self.columnCount() == 7:
                     self.setColumnCount(5)
-
+                    
+            for j in range(self.columnCount()):
+                if shadeHost:
+                    if self.item(i, j) is None:
+                        self.setItem(i, j, QTableWidgetItem(''))
+                    
+                    self.item(i, j).setBackground(hlBrush)
             i+=1
             
         self.resizeColumnsToContents();
 
+        # self.setCurrentCell(0, 0)
         # change of the host to first one with following implicit call of refill(0)
-        self.setCurrentCell(0, 0)
         
+        currentRow = self.currentRow()
+
+        log(f'Do the imlicit refill here')
+        self.setCurrentCell(0, 0)
             
+        if currentRow >= 0:
+            log('Explicit refill call required...')
+            self.hostChanged.emit(0)
+
     def initTable(self):
 
         self.setSelectionBehavior(QAbstractItemView.SelectRows)

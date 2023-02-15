@@ -64,3 +64,15 @@ screens/
 
 # trace files if any
 *.trc
+
+# SQLite data files
+*.db
+
+# Private design thoughts
+design_thoughts.txt
+
+# csv files
+*.csv
+
+# emacs ignore
+.projectile

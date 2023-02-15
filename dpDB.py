@@ -1,3 +1,17 @@
+'''
+    dpDB is the main data provider based on the database interface (dbi)
+    
+    It kinda impliments kinda "interface" to be usable in charts.
+    
+    Main calls are: 
+        initHosts
+        getData
+            those two use database interface inside with minor adjustments
+            depending on dbi itself.
+        
+    those two calls must be implemented in any dataprovider.
+'''
+
 from PyQt5.QtCore import QObject
 
 from array import array
@@ -45,7 +59,8 @@ class dataProvider(QObject):
     
         super().__init__()
         
-        log('connecting to %s:\\\\%s:%i...' % (server['dbi'], server['host'], server['port']))
+        #log('connecting to %s:\\\\%s:%i...' % (server['dbi'], server['host'], server['port']))
+        log(f"Connecting to {server['dbi']}:\\\\{server['host']}:{server['port']}...")
 
         dbimpl = dbi(server['dbi'])
         self.dbi = dbimpl.dbinterface
@@ -170,20 +185,47 @@ class dataProvider(QObject):
             self.connection = None
             self.disconnected.emit()
         
+    @profiler
+    def initHosts(self, dpidx):
+        '''
+            dpidx - data provider index to link hosts to a dp
+            hosts - list of widget.hosts
+            
+            returns:
+                list of hosts
+                list of kpis: sub-list for every host (service)
+                list of corresponding KPI styles
+            in progress:
+                error text (mostly for custom KPI exceptions)
+
+            old-style approach was: return nothing, fill provided hosts structure (linked from widget) << depricated with #739
+            
+        '''
         
-    def initHosts(self, hosts, hostKPIs, srvcKPIs):
+        hosts = []
     
         tenant = self.dbProperties.get('tenant')
-    
-        kpis_sql = sql.kpis_info
-
+                    
+        log(f'Init hosts dpDB wrapper. hosts: {hosts}')
+        
         if not self.connection:
-            log('no db connection...')
+            log('No db connection...')
             return
+            
+        if hasattr(self.dbi, 'initHosts'):
+            return self.dbi.initHosts(self.connection, dpidx, self.dbProperties)
 
-        log('init hosts: %s' % str(hosts))
-        log('init hosts, hostKPIs: %s' % str(hostKPIs))
-        log('init hosts, srvcKPIs: %s' % str(srvcKPIs))
+        '''
+            below is the default old-style hard-code implementation for HANA + S2J dbis
+            as you see above it will be only used if dbi does not have its own initHosts
+            implementation.
+            
+            it is not moved to dbi_hana and dbi_st04 beacause this will require the
+            code duplication or another import, so, just leave this legacy impl here.
+        '''
+        
+        # prepare data for populating hosts/services list
+        # it is based on port/service name mapping available in m_services
 
         if tenant and tenant.lower() == 'systemdb':
             sql_string = 'select host, port, database_name, service_name from sys_databases.m_services order by host, port'
@@ -192,6 +234,7 @@ class dataProvider(QObject):
             
         rows = self.dbi.execute_query(self.connection, sql_string, [])
         
+        # this is a dict to enrich hosts table with service names based on SQL above
         services = {}
         
         for r in rows:
@@ -202,15 +245,14 @@ class dataProvider(QObject):
             
             skey = '%s:%s' % (host, port)
             services[skey] = [ten, srv]
-            
+
+        #extract hosts and services based on m_load_ views...
         sql_string = sql.hosts_info
 
         if cfg('ess'):
             #dirty but this will work
             sql_string = sql_string.replace('m_load_history', '_sys_statistics.host_load_history')
 
-        t0 = time.time()
-        
         rows = self.dbi.execute_query(self.connection, sql_string, [])
         
         if len(rows) <= 1:
@@ -218,12 +260,14 @@ class dataProvider(QObject):
             log('[W] try checking m_load_history views if there any data', 1)
             log('[W] potential reason: missing MONITORING role', 1)
         
-        if cfg('hostmapping'):
+        # populate hosts list
+        # each item is a dict containing tenant, hostname, service_name and port
+        if cfg('maphost'):
             for i in range(0, len(rows)):
             
-                hm = cfg('hostmapping')
-                pm = cfg('portmapping')
-                dm = cfg('dbmapping')
+                hm = cfg('maphost')
+                pm = cfg('mapport')
+                dm = cfg('mapdb')
             
                 skey = '%s:%s' % (rows[i][0], rows[i][1])
                 
@@ -240,6 +284,7 @@ class dataProvider(QObject):
                             'port':rows[i][1].replace(pm[0], pm[1]),
                             #'from':rows[i][2],
                             #'to':rows[i][3]
+                            'dpi': dpidx
                             })
         else:
             for i in range(0, len(rows)):
@@ -257,28 +302,59 @@ class dataProvider(QObject):
                             'port':rows[i][1],
                             #'from':rows[i][2],
                             #'to':rows[i][3]
+                            'dpi': dpidx
                             })
-
+                            
+        #return hosts
+        
+        '''                 ' '
+        '                     '
+        '       K P I s       '
+        '                     '
+        ' '                 '''
+        
+        # load 'standard" KPIs
+        kpis_sql = sql.kpis_info
+        errorStr = None
+        
+        hostKPIs = []
+        srvcKPIs = []
+        kpiStylesNNN = {'host':{}, 'service':{}}
+        
         rows = self.dbi.execute_query(self.connection, kpis_sql, [])
         
-        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs)
+        #very similar logic called in dbi_sqlite.initHosts... somehow combine in one call?
+        kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN)
 
-        t1 = time.time()
-
+        # (re)load custom KPIs
         try:
-            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiDescriptions.kpiStylesNN)
+            dpDBCustom.scanKPIsN(hostKPIs, srvcKPIs, kpiStylesNNN)
+
+            # those two can generate same exception but due to very different post-check reason
+            kpiDescriptions.clarifyGroups(kpiStylesNNN['host'])
+            kpiDescriptions.clarifyGroups(kpiStylesNNN['service'])
         except customKPIException as e:
             log('[e] error loading custom kpis')
             log('[e] fix or delete the problemmatic yaml for proper connect')
-            raise e
+            errorStr = str(e)
+            # raise e             # seems only the dpDB raises exceptions so far...
 
-        t2 = time.time()
+        #now build new styles structures
         
-        kpiDescriptions.clarifyGroups()
+        hostKPIsList = []
+        hostKPIsStyles = []
         
-        log('hostsInit time: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
+        for host in hosts:
+            if host['port'] == '':
+                hostKPIsList.append(hostKPIs)               # append here because we add a new item for every host
+                hostKPIsStyles.append(kpiStylesNNN['host']) # same here
+            else:
+                hostKPIsList.append(srvcKPIs)
+                hostKPIsStyles.append(kpiStylesNNN['service'])
+
+        return hosts, hostKPIsList, hostKPIsStyles, errorStr
         
-    def splitKpis(self, type, kpis):
+    def splitKpis(self, kpiStylesNNN, kpis):
         '''
             devides KPIs per source
             '-' entry will contain default ones (m_load_history_...)
@@ -286,14 +362,15 @@ class dataProvider(QObject):
         kpisList = {}
         kpisList['-'] = []
         
+        
         for kpi in kpis:
-            if kpi not in kpiStylesNN[type]:
+            if kpi not in kpiStylesNNN:
                 #kpi disappeared on the fly, who cares
                 log('[!] kpi description does not exist, skipping (%s)' % kpi)
                 continue
                 
             if customKpi(kpi):
-                src = kpiDescriptions.kpiStylesNN[type][kpi]['sql']
+                src = kpiStylesNNN[kpi]['sql']
                 if src in kpisList:
                     kpisList[src].append(kpi)
                 else:
@@ -304,17 +381,22 @@ class dataProvider(QObject):
         return kpisList
         
     @profiler
-    def getData(self, h, fromto, kpiIn, data, wnd = None):
+    def getData(self, h, fromto, kpiIn, data, kpiStylesNNN, wnd = None):
         '''
+        
+            h - host structure
+            fromto dict with 'from' abd 'to' keys
+            kpiIn - list of kpis to request, including custom ones (called cs-something)
+        
             returns boolean
             False = some kpis were disabled due to sql errors
         '''
         
         host = h.copy()
-                
-        if cfg('hostmapping'):
-            hm = cfg('hostmapping')
-            pm = cfg('portmapping')
+                        
+        if cfg('maphost'):
+            hm = cfg('maphost')
+            pm = cfg('mapport')
             host['host'] = host['host'].replace(hm[1], hm[0])
             host['port'] = host['port'].replace(pm[1], pm[0])
 
@@ -339,7 +421,7 @@ class dataProvider(QObject):
         
         params = []
     
-        kpiList = self.splitKpis(type, kpiIn)
+        kpiList = self.splitKpis(kpiStylesNNN, kpiIn)
 
         if host['port'] == '':
             t = 'h'
@@ -394,7 +476,7 @@ class dataProvider(QObject):
             if len(kpis) == 0:
                 continue
                 
-            subtype = kpiDescriptions.getSubtype(type, kpis[0])
+            subtype = kpiStylesNNN[kpis[0]].get('subtype')
             
             if host['port'] == '':
                 if kpiSrc == '-':
@@ -420,20 +502,16 @@ class dataProvider(QObject):
                 if kpiSrc == '-':
                     kpisSql.append(kpi)
                 else:
-                    kpisSql.append(kpiDescriptions.kpiStylesNN[type][kpi]['sqlname'])
+                    kpisSql.append(kpiStylesNNN[kpi]['sqlname'])
                     
-            '''
-            if 'nofilter' in kpiDescriptions.kpiStylesNN[type][kpi] and kpiDescriptions.kpiStylesNN[type][kpi]['nofilter']:
-                nofilter = True
-            '''
-            if kpiDescriptions.kpiStylesNN[type][kpi].get('nofilter'):
+            if kpiStylesNNN[kpi].get('nofilter'):
                 nofilter = True
             
             cols = ', '.join(kpisSql)
             
             if subtype == 'multiline':
                 firstKpi = kpis[0]
-                style = kpiDescriptions.kpiStylesNN[type][firstKpi]
+                style = kpiStylesNNN[firstKpi]
                 groupby = style['groupby']
                 cols += ', ' + groupby
             
@@ -477,10 +555,10 @@ class dataProvider(QObject):
                         
                     title = ''
                     
-                    if kpiDescriptions.kpiStylesNN[type][kpi].get('title') == True:
+                    if kpiStylesNNN[kpi].get('title') == True:
                         title += ', title'
                         
-                    if kpiDescriptions.kpiStylesNN[type][kpi].get('gradient') == True:
+                    if kpiStylesNNN[kpi].get('gradient') == True:
                         title += ', gradient'
                       
                     sql = 'select entity, "START", "STOP", details%s %s %s%s order by entity desc, "START"' % (title, fromTable, hfilter_now, gtfilter_now)
@@ -488,9 +566,9 @@ class dataProvider(QObject):
 
             try:
                 if not gantt:
-                        self.getHostKpis(type, kpis, data, sql, params_now, kpiSrc)
+                        self.getHostKpis(kpiStylesNNN, kpis, data, sql, params_now, kpiSrc)
                 else:
-                    self.getGanttData(type, kpis[0], data, sql, params_now, kpiSrc)
+                    self.getGanttData(kpiStylesNNN, kpis[0], data, sql, params_now, kpiSrc)
                     
             except dbException as e:
             
@@ -520,12 +598,11 @@ class dataProvider(QObject):
                 if reply == True:
                     # need to mark failed kpis as disabled
                     
-                    #badSrc = kpiDescriptions.kpiStylesNN[type][kpis[0]]['sql']
                     badSrc = kpiSrc                    
                     
-                    for kpi in kpiDescriptions.kpiStylesNN[type]:
-                        if kpiDescriptions.kpiStylesNN[type][kpi]['sql'] == badSrc:
-                            kpiDescriptions.kpiStylesNN[type][kpi]['disabled'] = True
+                    for kpi in kpiStylesNNN:
+                        if kpiStylesNNN[kpi]['sql'] == badSrc:
+                            kpiStylesNNN[kpi]['disabled'] = True
                             
                             log('disable custom kpi due to exception: %s%s' % (badSrc, kpi))
 
@@ -558,7 +635,7 @@ class dataProvider(QObject):
         for kpi in kpiIn.copy():
             #print('kpi: ', kpi)
             
-            if kpi not in kpiDescriptions.kpiStylesNN[type] or 'disabled' in kpiDescriptions.kpiStylesNN[type][kpi]:
+            if kpi not in kpiStylesNNN or 'disabled' in kpiStylesNNN[kpi]:
                 # this will affect the actual list of enabled kpis, which is good!
                 kpiIn.remove(kpi)
                 
@@ -566,7 +643,7 @@ class dataProvider(QObject):
         
         return 
 
-    def getGanttData(self, type, kpi, data, sql, params, kpiSrc):
+    def getGanttData(self, kpiStylesNNN, kpi, data, sql, params, kpiSrc):
         
         @profiler
         def normalizeGradient(brMin, brMax, fromTo = (0, 100)):
@@ -627,7 +704,7 @@ class dataProvider(QObject):
         for i in range(len(cols_list[0])):
             col = cols_list[0][i]
             
-            br = kpiDescriptions.kpiStylesNN[type][kpi].get('gradient')
+            br = kpiStylesNNN[kpi].get('gradient')
             
             if br and col[0] == 'GRADIENT': #'GRADIENT'
                 brIndex = i
@@ -642,7 +719,6 @@ class dataProvider(QObject):
         
         t0 = time.time()
         
-        #title = kpiDescriptions.kpiStylesNN[type][kpi].get('title')
         titleValue = None
         brValue = None
         
@@ -784,10 +860,12 @@ class dataProvider(QObject):
         '''
     
     @profiler
-    def getHostKpis(self, type, kpis, data, sql, params, kpiSrc):
+    def getHostKpis(self, kpiStylesNNN, kpis, data, sql, params, kpiSrc):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
+            
+            sql - ready to be executed SQL
         '''
         
         def printDump(data):
@@ -877,7 +955,7 @@ class dataProvider(QObject):
             
         if len(kpis) > 0:
             #print(kpis, kpiSrc)
-            subtype = kpiDescriptions.getSubtype(type, kpis[0])
+            subtype = kpiStylesNNN[kpis[0]].get('subtype')
         
         trace_lines = len(rows)
         
@@ -900,21 +978,21 @@ class dataProvider(QObject):
             
             gb = []
             
-            stacked = kpiStylesNN[type][kpis[0]]['stacked']
+            stacked = kpiStylesNNN[kpis[0]]['stacked']
             stacked = processVars(kpiSrc, stacked)
             stacked = safeBool(stacked)
             
-            orderby = kpiStylesNN[type][kpis[0]]['orderby']
-            orderdesc = kpiStylesNN[type][kpis[0]]['descending']
+            orderby = kpiStylesNNN[kpis[0]]['orderby']
+            orderdesc = kpiStylesNNN[kpis[0]]['descending']
             
-            others = kpiStylesNN[type][kpis[0]].get('others')
+            others = kpiStylesNNN[kpis[0]].get('others')
             
             if others:
                 others = processVars(kpiSrc, others)
                 others = safeBool(others)
                 
                 if others:
-                    lc = kpiStylesNN[type][kpis[0]]['legendCount']
+                    lc = kpiStylesNNN[kpis[0]]['legendCount']
                     lc = processVars(kpiSrc, lc)
                     lc = safeInt(lc, 5)
                     others = lc
@@ -925,12 +1003,6 @@ class dataProvider(QObject):
         t = None
         
         try:
-            '''
-            for j in range(len(kpis)):
-                if 'perSample' in kpiStylesNN[type][kpis[j]]:
-                    p rint('%s --> adjust!!!' % (kpis[j]))
-                    p rint('%s --> %s' % (kpiStylesNN[type][kpis[j]]['sUnit'], kpiStylesNN[type][kpis[j]]['dUnit']))
-            '''
             
             if len(rows) == 0:
                 for key in data:
@@ -1043,7 +1115,7 @@ class dataProvider(QObject):
                             if rawValue is None:
                                 data[kpis_[j]][i] = -1
                             else:
-                                if 'perSample' in kpiStylesNN[type][kpis_[j]]:
+                                if 'perSample' in kpiStylesNNN[kpis_[j]]:
                                 
                                     # /sample --> /sec
                                     # do NOT normalize here, only devide by delta seconds
@@ -1171,4 +1243,3 @@ class dataProvider(QObject):
         t2 = time.time()
 
         log('%i rows, get time: %s, get/parse time %s' % (trace_lines, str(round(t1-t0, 3)), str(round(t2-t1, 3))))
-    

@@ -11,16 +11,11 @@ from io import StringIO
 import csv
 
 from utils import cfg
-#from utils import log as ulog
 from utils import getlog
 from utils import dbException
 
 from dbi_extention import getDBProperties
 
-'''
-def log(s, p = 3):
-    ulog('[S2J] ' + s, p)
-'''
 log = getlog('HDB')
 
 class s2j():
@@ -169,7 +164,7 @@ class s2j():
         def convert_types():
             '''
                 performs conversion of rows array
-                based on types array
+                based on types list
             '''
             for c in range(len(self.types)):
                 for i in range(len(rows)):
@@ -206,7 +201,6 @@ class s2j():
                 
         f = StringIO(resp)
         reader = csv.reader(f, delimiter=',')
-        
         
         rows = []
         
@@ -256,7 +250,7 @@ class s2j():
     def get_connection_id(self, conn):
         return None
 
-    def execute_query_desc(self, connection, sql_string, params, resultSize):
+    def execute_query_desc(self, connection, sql_string, params, resultSize, noLogging=False):
     # self.rows_list, self.cols_list, dbCursor, psid = self.dbi.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
     
         self.execute_query(connection, sql_string, params)

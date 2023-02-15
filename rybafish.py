@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt
 import hslWindow
 
 from PyQt5 import QtCore
+from PyQt5.QtCore import QThread
 
 from utils import log
 
@@ -54,20 +55,20 @@ class ExceptionHandler(QtCore.QObject):
                 pass
     
         cwd = os.getcwd()
-        log('[!] fatal exception\n')
+        log('[!] fatal exception\n---------')
         
-        #details = '%s: %s\n' % (str(exctype), str(value))
         details = '%s.%s: %s\n\n' % (exctype.__module__ , exctype.__qualname__  , str(value))
-        #???
 
         #self.errorSignal.emit()
         #sys._excepthook(exctype, value, traceback)
-        
 
         for s in traceback.format_tb(tb):
             details += '>>' + s.replace('\\n', '\n').replace(cwd, '..')
 
         log(details, nots = True)
+        
+        exceptionThreadID = int(QThread.currentThreadId())
+        log(f'[thread] crashed: {exceptionThreadID}')
 
         if ryba is not None and ryba.tabs:
             for i in range(ryba.tabs.count() -1, 0, -1):
@@ -77,22 +78,41 @@ class ExceptionHandler(QtCore.QObject):
                 if isinstance(w, sqlConsole.sqlConsole):
                     w.delayBackup()
 
+        log('Crash backups done...', 5)
         try:
             if utils.cfg('saveLayout', True) and ryba:
-                ryba.dumpLayout()
+                ryba.dumpLayout(closeTabs=False, crashMode=True)
+                log('crash layout dumped')
         except Exception as e:
             log('[!] Exception during exception handler: %s' % str(e))
             details += '\n[!] Exception during exception handler:\n'
             details += str(e)
 
-        msgBox = QMessageBox()
-        msgBox.setWindowTitle('Fatal error')
-        msgBox.setText('Unhandled exception occured. Check the log file for details.\n\nIf you want to report this issue, press "Show Details" and copy the call stack.')
+        log('Layout dump done...', 5)
+
+        log('Show the crash message...')
         
+        if ryba is not None:
+            msgBox = QMessageBox(ryba)
+            #761
+            #this is expected to fail if the crash is in child thread... what are you gonna do
+            #Qt will print the message: "QObject::setParent: Cannot set parent, new parent is in a different thread"
+            #but this cannot be logged
+        else:
+            msgBox = QMessageBox()
+            
+        # 761
+        if ryba and ryba.threadID == exceptionThreadID:
+            msgBox.setWindowTitle('Fatal error')
+        else:
+            msgBox.setWindowTitle('Fatal error in child thread, check the details in .log file')
+            
+        msgBox.setText('Unhandled exception occured. Check the log file for details.\n\nIf you want to report this issue, press "Show Details" and copy the call stack.')
         msgBox.setIcon(QMessageBox.Critical)
         msgBox.setDetailedText(details)
         iconPath = resourcePath('ico', 'favicon.png')
         msgBox.setWindowIcon(QIcon(iconPath))
+
         msgBox.exec_()
         
         sys.exit(0)
@@ -170,4 +190,6 @@ if __name__ == '__main__':
     loadConfig = True
     
     sys.exit(app.exec_())
+
+    # except KeyboardInterrupt:
     app.exec_()

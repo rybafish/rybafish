@@ -123,3 +123,4 @@ call test04_combo2(1, ?, ?);
 -- make sure lobs scalar work
 select top 1 host || ':' || port host from m_load_history_service where port like '%03';
 call sys.management_console_proc('profiler clear', '...', ?);
+call sys.management_console_proc('help mm', '...', ?);

@@ -72,11 +72,11 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
 
     vrs = {}
     
-    log(f'-----> kpi file: {file}')
+    #log(f'-----> kpi file: {file}')
     
     if 'variables' in kpiFile:
     
-        log('---- init dpDBCustom variables  ----')
+        #log('---- init dpDBCustom variables  ----')
 
         if 'variablesReplace' in kpiFile:
             log(f'-----> variablesReplace: {file}')
@@ -89,12 +89,13 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
             else:
                 log(f'Unexpected variablesReplace format: {repl!r}')
         else:
-            log(f'-----> no variables repl: {kpiFile}')
+            pass
+            #log(f'-----> no variables repl: {kpiFile}')
 
         if srcIdx not in vrsStrDef:
             addVarsDef(srcIdx, kpiFile['variables'])
         
-        log('----- addVars dpDBCustom start ----')
+        #log('----- addVars dpDBCustom start ----')
         #if srcIdx not in vrsStr:
         try:
             addVars(srcIdx, kpiFile['variables'], False)
@@ -102,7 +103,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
             log('[!] addVars processing error: %s: %s' % (str(type(e)), str(e)))
             raise vrsException('%s: %s' % (str(type(e)), str(e)))
             
-        log('----- addVars dpDBCustom stop -----')
+        #log('----- addVars dpDBCustom stop -----')
 
     kpis = kpiFile['kpis']
     
@@ -134,7 +135,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
 
 
         if errorSuffix != '':
-            log('[W] custom KPI with this already exists: %s, disabeling' % (csName))
+            log('[W] custom KPI with this name already exists: %s, disabeling' % (csName))
 
             kpi['label'] = '[E] the KPI name must be unique! (label: %s, name: %s)' % (kpi['label'], kpi['name'])
             kpi['description'] = 'change the KPI name in YAML definition: ' + file

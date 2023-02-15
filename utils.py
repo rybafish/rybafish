@@ -1,3 +1,6 @@
+'''
+    random stuff used in random places
+'''
 import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QIcon
@@ -19,6 +22,9 @@ from profiler import profiler
 
 import re
 
+from io import StringIO
+import csv
+
 config = {}
 
 global utils_alertReg
@@ -35,6 +41,7 @@ decimal_digits = 6
 
 cfg_logmode = 'file'
 cfg_loglevel = 3
+cfg_logcomp = []
 
 configStats = {}
 
@@ -132,11 +139,8 @@ class cfgManager():
         self.reload()
         
     def updateConf(self, confEntry):
-
         name = confEntry.pop('name')
-        
         self.configs[name] = confEntry
-        
         self.dump()
     
     def removeConf(self, entryName):
@@ -146,8 +150,6 @@ class cfgManager():
         self.dump()
         
     def dump(self):
-
-        #ds = self.configs.copy()
         
         ds = {}
         for n in self.configs:
@@ -155,14 +157,17 @@ class cfgManager():
             if 'pwd' in confEntry:
                 pwd = confEntry['pwd']
                 pwd = self.fernet.encrypt(pwd.encode())
-        
                 confEntry['pwd'] = pwd
-                
                 
             if confEntry.get('dbi') == 'S2J':
                 if 'pwd' in confEntry:
                     del confEntry['pwd']
-                
+                if 'user' in confEntry:
+                    del confEntry['user']
+
+            if confEntry.get('dbi') == 'SLT':
+                if 'pwd' in confEntry:
+                    del confEntry['pwd']
                 if 'user' in confEntry:
                     del confEntry['user']
                     
@@ -218,6 +223,9 @@ class Layout():
             
             return False
         
+class csvException(Exception):
+    pass
+
 class vrsException(Exception):
     def __init__ (self, message):
         super().__init__(message)
@@ -227,7 +235,7 @@ class dbException(Exception):
     CONN = 1
     SQL = 2
 
-    def __init__ (self, message, type = None):
+    def __init__ (self, message, type=None):
         self.type = type
         self.msg = message
         super().__init__(message, type)
@@ -282,8 +290,8 @@ def yesNoDialog(title, message, cancel = False, ignore = False, parent = None):
         
     return None
 
-def msgDialog(title, message):
-    msgBox = QMessageBox()
+def msgDialog(title, message, parent=None):
+    msgBox = QMessageBox(parent)
     msgBox.setWindowTitle(title)
     msgBox.setText(message)
 
@@ -490,13 +498,23 @@ else:
     mtx = fakeMutex()
 
 @profiler
-def log(s, loglevel = 3, nots = False, nonl = False):
+def log(s, loglevel = 3, nots = False, nonl = False, component=None,):
     '''
         log the stuff one way or another...
+
+        comp - logging component to be checked if any
     '''
     
-    if cfg_loglevel < loglevel:
+    if cfg_loglevel < loglevel and not component:
         return
+
+    pfx = ''
+
+    if component:
+        if cfg_logcomp and component in cfg_logcomp:
+            pfx = f'[{component}] '
+        else:
+            return
 
     if not nots:
         ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' '
@@ -504,7 +522,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         ts = ''
     
     if cfg_logmode == 'screen' or cfg_logmode == 'duplicate':
-        print('[l]', s)
+        print('[l]', pfx, s)
         
     if nonl:
         nl = ''
@@ -520,7 +538,7 @@ def log(s, loglevel = 3, nots = False, nonl = False):
         #f.seek(os.SEEK_END, 0)
     
         try:
-            f.write(ts + str(s) + nl)
+            f.write(ts + pfx + str(s) + nl)
 
         except Exception as e:
             f.write(ts + str(e) + nl)
@@ -536,6 +554,38 @@ else:
     log('threadSafeLogging disabled')
     mtx = fakeMutex()
         
+def sqlNameNorm(header):
+    '''
+        SQL object name normalization
+        lowercased alphanum --> uppercase
+        quoted ones --> same
+        
+        if the first character is not alpha or '_' --> quotes
+    '''
+    def norm_one(header):
+        if header.isupper():
+            return header
+            
+        if len(header) > 2 and header[0] == '"' and header[-1] == '"':
+            return header
+            
+        if header[0].isalpha() or header[0] == '_':
+            return header.upper()
+            
+        return header
+        
+    sp = header.split('.')
+    
+    if len(sp) > 2:
+        return sp
+        
+    res = []
+    
+    for h in sp:
+        res.append(norm_one(h))
+        
+    return '.'.join(res)
+
 @profiler
 def normalize_header(header):
     if header.isupper() and (header[0].isalpha() or header[0] == '_'):
@@ -671,12 +721,20 @@ def initGlobalSettings():
     global configStats
     global cfg_logmode
     global cfg_loglevel
+    global cfg_logcomp
     
     if cfg('dev'):
         configStats['dummy'] = 0
         
     cfg_logmode = cfg('logmode')
     cfg_loglevel = cfg('loglevel', 3)
+    cfg_logcomp = cfg('log_components', [])
+
+    if type(cfg_logcomp) != list:
+        cfg_comp = []
+
+    if cfg_logcomp:
+        log(f'logging components list: {cfg_logcomp}', 2)
     
     initLocale()
     
@@ -913,3 +971,318 @@ def timestampToStr(ts, trimZeroes = True):
         s = ts.strftime('%Y-%m-%d %H:%M:%S.%f')
         
     return s
+
+@profiler
+def alignTypes(rows):
+    '''
+        scan through rows and detect types, perform conversion when required
+        Main usage is SQLite output that can in fact return strings and integers in the same column
+        and, by the way it is not aware of timestamps and has tham as string.
+        
+        So the values in rows array are already in correct types but might be inconsistent.
+        
+        rows do not have header, data only
+        
+        if column values detected inconsistent - will be converted to detected type
+        right in rows array (inplase)
+        
+        returns list of (type, length) tuples per column:
+        
+            1 - int
+            2 - decimal
+            3 - string
+            4 - timestamp
+        
+        length defined only for str type columns (type 3)
+    '''
+
+    def check_timestamp(v):
+        
+        try:
+            v = datetime.fromisoformat(v)
+        except ValueError:
+            return False
+            
+        return True
+        
+    def detectType(t):
+        #log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}')
+        
+        if type(t) == int:
+            return 'int'
+            
+        if type(t) == float:
+            return 'decimal'
+
+        if type(t) == str:
+            if check_timestamp(t):
+                return 'timestamp'
+            else:
+                return 'varchar'
+            
+        return ''
+    
+    if not rows:
+        return None
+        
+    colNum = len(rows[0])
+    columnTypes = []
+    
+    for idx in range(colNum):
+
+        columnType = None
+        maxLen = None
+        needsConversion = False
+        
+        maxTempLen = 0
+        i = 0
+        
+        for r in rows:
+            v = r[idx]
+            
+            t = detectType(v)
+            
+            if columnType is None:
+                columnType = t
+                maxTempLen = 0
+                continue
+             
+            # log specific column
+            #if idx == 0:
+            #    log(f'column 0, {v=}, {t=}, {needsConversion=}')
+
+            #if columnType == 1 and (t == 2):
+                # requires conversion from int to float, who cares.
+            
+            if columnType == 'int' and (t == 'varchar'):
+                #downgrade to str
+                needsConversion = True
+                columnType = t
+                
+                log(f'column #{idx} downgraded to varchar because of row {i}, value = "{v}"', 5)
+                log(f'row: {r}', 5)
+                break
+                
+            if columnType == 'int' and v:
+                maxTempLen = abs(v)
+
+            if columnType == 'varchar' and v:
+                maxTempLen = len(v)
+            
+            if columnType == 'varchar' and (t == 'decimal' or t == 'int'):
+                needsConversion = True
+                break
+
+            if columnType == 'timestamp' and (t == 'varchar' or t == ''):
+                needsConversion = True
+                break
+
+            if columnType == '':
+                break
+        else:
+            maxLen = maxTempLen
+                
+        if needsConversion == True:
+            maxLen = 0
+            log(f'Need to convert column {idx} to str', 5)
+            with profiler('SQLite column convertion'):
+                for r in rows:
+                    if type(r[idx]) != str:
+                        # log(f'Convert: {r[idx]} ({type(r[idx])})', 5)
+                        r[idx] = str(r[idx])
+                    else:
+                        pass
+                        
+                    strLen = len(r[idx])
+                    
+                    if strLen > maxLen:
+                        maxLen = strLen 
+                        
+            columnType = 'varchar'
+        
+        if columnType == 'timestamp' and t == 'timestamp':
+            # meaning the whole column was timestamp...
+            for r in rows:
+                r[idx] = datetime.fromisoformat(r[idx])
+                
+        columnTypes.append((columnType, maxLen))
+                
+    return columnTypes
+
+@profiler
+def detectConvert(rows):
+    '''
+        input - 2dim array of string values
+        
+        the method will try to
+            1) detect integer, decimal, timestamp types
+            2) convert the whole column to this type
+            
+        returned list of tuples: type, length
+    '''
+    
+    pass
+
+@profiler
+def extended_fromisoformat(v):
+    '''
+        this is a bit extended version of the standard fromisoformat
+        which also tries to parse values like 2022-12-04 19:56:34.12
+        standard one will fail because it requres exactly 3 or 6 digits after dot
+        
+        current version only supports 3 digits
+    '''
+    try:
+        return datetime.fromisoformat(v)
+    except ValueError:
+        if len(v) <3:
+            raise ValueError
+            
+        if (v[-1].isnumeric() and v[-2] == '.'):
+            return datetime.fromisoformat(v + '00')
+        elif v[-1].isnumeric() and v[-2].isnumeric() and v[-3] == '.':
+            return datetime.fromisoformat(v + '0')
+            
+        raise ValueError
+
+def parseCSV(txt, delimiter=','):
+    '''
+        it takes all the values = strings as input and tries to detect
+        if the column might be an integer or a timestamp
+        
+        if all the values in the column are recognized specific type - the whole
+        column will be converted to that type
+
+        ! also builds self.types list
+    
+        Note: local rows but self.types here!
+        
+        Returns:
+            cols - list of tuples: (name, type, length)
+                types: strings 'int', 'timestamp', 'varchar'
+            
+            rows - regular list of lists, 2-dim array of values (converted to proper types
+    '''
+
+    '''
+        this is almost 100% copy of def parseResponce(self, resp) with the following changes:
+
+        it does not use self.types, just types variable
+        it returns cols, rows (not just rows)
+    '''
+
+    def convert_types():
+        '''
+            performs conversion of rows array
+            based on types list
+            
+            returns list of maxlen for varchars
+        '''
+        
+        maxlenlist = []
+        
+        for c in range(len(types)):
+            ml = 0
+            
+            for i in range(len(rows)):
+                if types[c] == 'int':
+                    rows[i][c] = int(rows[i][c])
+                    if ml < abs(rows[i][c]):
+                        ml = abs(rows[i][c])
+                elif types[c] == 'timestamp':
+                    #rows[i][c] = datetime.fromisoformat(rows[i][c])
+                    rows[i][c] = extended_fromisoformat(rows[i][c])
+                elif types[c] == 'varchar':
+                    if ml < len(rows[i][c]):
+                        ml = len(rows[i][c])
+                else:
+                    pass
+                    
+            if types[c] in ('varchar', 'int'):
+                maxlenlist.append(ml)
+            else:
+                maxlenlist.append(None)
+                
+        return maxlenlist
+    
+    @profiler
+    def check_integer(j):
+        log('check column %i for int' % (j), 5)
+        
+        reInt = re.compile(r'^-?\d+$')
+        
+        for ii in range(len(rows)):
+            if not reInt.match(rows[ii][j]):
+                log(f'not a digit: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
+                log(f'not a digit, row for the reference: {str(rows[ii])}', 5)
+                return False
+                
+        return True
+        
+    def check_timestamp(j):
+            
+        log('check column %i for timestamp' % (j), 5)
+        
+        for ii in range(len(rows)):
+            try:
+                v = extended_fromisoformat(rows[ii][j])
+            except ValueError:
+                log('not a timestamp: (%i, %i): %s' % (ii, j, rows[ii][j]), 5)
+                return False
+                
+        return True
+            
+    f = StringIO(txt)
+    reader = csv.reader(f, delimiter=delimiter)
+    
+    rows = []
+    
+    try:
+        header = next(reader)
+    except StopIteration:
+        raise csvException('The input seems to be empty, nothing to process.')
+    
+    log('header:' + str(header), 5)
+    
+    numCols = len(header)
+    
+    i = 0 
+    for row in reader:
+        i+=1
+        if len(row) != numCols:
+            raise csvException(f'Unexpected number of values in row #{i}: {len(row)} != {numCols}')
+        rows.append(row)
+        
+    types = ['']*numCols
+    
+    #detect types
+    for i in range(numCols):
+        if check_integer(i):
+            types[i] = 'int'
+        elif check_timestamp(i):
+            types[i] = 'timestamp'
+        else:
+            types[i] = 'varchar'
+    
+    lenlist = convert_types()
+    
+    #log('types:' + str(types), 5)
+    #log('lenlist:' + str(lenlist), 5)
+    
+    if len(rows) > 1:
+        log('row sample:' + str(rows[1]), 5)
+        
+    # prepare cols list --> difference with dbi_st04 implementation
+    
+    cols = []
+    for i in range(numCols):
+        cols.append((header[i], types[i], lenlist[i]))
+    
+    for c in cols:
+        l = f'({c[2]})' if c[2] is not None else ''
+        log(f'{c[0]}, {c[1]}{l}', 5)
+        
+    return cols, rows
+
+def escapeHtml(msg):
+    return msg.replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;').replace('\'','&#39;').replace('"','&#34;')
