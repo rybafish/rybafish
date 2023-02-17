@@ -148,14 +148,14 @@ def gotResponse(QNetworkReply):
         lastVersion = ver.get('versionBeta')
         lastBuild = ver.get('dateBeta')
         message = ver.get('messageBeta')
-        linkMessage = 'To download this version and review last changes please visit <a href="https://www.rybafish.net/">rybafish.net</a>.'
-        
+        linkMessage = 'To download last BETA version and review last changes visit <a href="https://www.rybafish.net/changelog">rybafish.net</a>.'
+
     else:
         lastVersion = ver.get('version')
         lastBuild = ver.get('date')
         message = ver.get('message')
-        linkMessage = 'To download last BETA version and review last changes visit <a href="https://www.rybafish.net/changelog">rybafish.net</a>.'
-            
+        linkMessage = 'To download this version and review last changes please visit <a href="https://www.rybafish.net/">rybafish.net</a>.'
+
     try:
         buildDateDT = lastBuild
         buildDate = buildDateDT.strftime('%Y-%m-%d')
