@@ -445,7 +445,8 @@ class kpiTable(QTableWidget):
                 
                 #log('myCheckBox, %s.%s' % (str(host), kpiName), 5)
                 cb = myCheckBox(host, kpiName)
-                cb.setStyleSheet("QCheckBox::indicator { width: 10px; height: 10px; margin-left:16px;}")
+                # cb.setStyleSheet("QCheckBox::indicator { width: 10px; height: 10px; margin-left:16px;}")
+                cb.setStyleSheet("QCheckBox::indicator { width: 10px; height: 10px; margin-left: 10px;}")
 
                 if kpiName in self.nkpis[host]:
                     cb.setChecked(True)
@@ -667,6 +668,13 @@ class kpiTable(QTableWidget):
         
         self.silentMode = False
         
+    def columnResized(self, idx, oldSize, newSize):
+        '''protect checkbox column removed from table at all'''
+
+        if idx == 0: # and newSize < 10:
+            self.setColumnWidth(0, 21)
+
+
     def initTable(self):
         self.setColumnCount(12)
         self.SelectionMode(QAbstractItemView.NoSelection) #doesn't work for some reason
@@ -680,7 +688,7 @@ class kpiTable(QTableWidget):
         self.setHorizontalHeaderLabels(['', 'KPI', 'Style', 'Y-Scale', 'Unit', 'Max', 'Average', ' ', 'Last', 'Description', 'Group', 'Variables'])
         self.horizontalHeader().setMinimumSectionSize(0)
         
-        self.setColumnWidth(0, 22)
+        self.setColumnWidth(0, 21)
         self.setColumnWidth(1, 140) #kpi
         self.setColumnWidth(2, 30) # Style (Pen)
         self.setColumnWidth(3, 70) # y-scale
@@ -695,3 +703,4 @@ class kpiTable(QTableWidget):
         #self.setColumnWidth(10, 30) # threshold
         
         self.itemChanged.connect(self.itemChange)
+        self.horizontalHeader().sectionResized.connect(self.columnResized)
