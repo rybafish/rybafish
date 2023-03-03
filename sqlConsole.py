@@ -3631,7 +3631,7 @@ class sqlConsole(QWidget):
             self.ABAPCopy.toggled.connect(self.toolbarABAP)
             self.toolbar.addWidget(self.ABAPCopy)
             
-            tbHelp = QAction(QIcon(resourcePath('ico', 'help.png')), 'SQL Usage Help', self)
+            tbHelp = QAction(QIcon(resourcePath('ico', 'help.png')), 'SQL Console Help', self)
             tbHelp.triggered.connect(self.toolbarHelp)
             self.toolbar.addAction(tbHelp)
 
