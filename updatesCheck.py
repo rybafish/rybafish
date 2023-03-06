@@ -334,7 +334,7 @@ class updateInfo(QDialog):
         else:
             updateStr = 'To download last version and review last changes please visit rybafish.net.'
 
-        log(updateStr)
+        log(updateStr, 2)
         
         msgBox.addWidget(QLabel(verStr))
         
