@@ -8,4 +8,4 @@ PyYAML
 PyHDB
 cryptography
 sqlparse
-sqlite
+# sqlite3...

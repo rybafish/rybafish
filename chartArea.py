@@ -1947,13 +1947,14 @@ class myWidget(QWidget):
         
         #x is in pixels
         x = self.side_margin + self.left_margin +self.step_size
-        
+
         #have to align this to have proper marks
         
         self.delta = self.t_from.timestamp() % t_scale
         
-        if t_scale == 60*60*4:
-            self.delta -= 3600 # not sure, could be a bug (what if negative?)
+        if cfg('bug795', False):        # lol, seems a bug indeed
+            if t_scale == 60*60*4:
+                self.delta -= 3600*1    # not sure, could be a bug (what if negative?)
         
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
@@ -2016,7 +2017,7 @@ class myWidget(QWidget):
                 hrs_scale = 60*24*4
                 
             min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
-            
+
             if sec_scale is not None:
                 if c_time.timestamp() % sec_scale == 0:
                     major_line = True
