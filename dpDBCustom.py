@@ -51,7 +51,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
     log('loading custom kpis file: %s' % (os.path.join(path, file)))
     
     try: 
-        f = open(os.path.join(path, file), 'r')
+        f = open(os.path.join(path, file), 'r', encoding='utf8')
         
         for l in f:
             if l[0] == '\t':
