@@ -908,7 +908,7 @@ def clarifyGroups(kpiStylesNNN):
                     gunits[kv['group']] = kv.get(checkUnit)
                     # log(f"{kv['group']} added: {kv.get(checkUnit)}")
                 else:
-                    if gunits[kv['group']] != kv.get(checkUnit):
+                    if gunits[kv['group']] != kv.get(checkUnit) and kv['group']:
                         raise utils.customKPIException(f'''{checkUnit} does not match! group: {kv['group']}, kpi: {kpi}
 {gunits[kv['group']]} != {kpiStylesNNN.get(checkUnit)}. Check the KPI definition.
 
