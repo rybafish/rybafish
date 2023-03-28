@@ -737,6 +737,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['descending'] = kpi.get('desc', False)
             style['legendCount'] = kpi.get('legendCount', 5)
             style['others'] = kpi.get('others', False)
+            style['async'] = kpi.get('async', False)
 
             ordby = kpi.get('orderby', 'unknown')
             if ordby not in ['max', 'avg', 'name', 'deviation']:

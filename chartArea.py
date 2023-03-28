@@ -928,6 +928,8 @@ class myWidget(QWidget):
                 #log('scanForHint dont continue?..', 5)
 
 
+            asyncMultiline = kpiStylesNNN[kpi].get('async')
+
             if subtype == 'multiline':
                 rounds = len(data[kpi])
             else:
@@ -935,11 +937,11 @@ class myWidget(QWidget):
                 
             bubbleStop = False
             
-            #log('scanForHint [%s], rounds : %i' %(subtype, rounds), 5)
+            # log('scanForHint [%s], rounds : %i' %(subtype, rounds), 5)
                 
             for rc in range(rounds):
             
-                #log('scanForHint rc: %i' %(rc), 5)
+                # log('scanForHint rc: %i' %(rc), 5)
 
                 if subtype == 'multiline':
                     scan = data[kpi][rc][1]
@@ -956,6 +958,10 @@ class myWidget(QWidget):
                 if i == array_size: # crash #538
                     continue
 
+                if scan[i] == -1: #initially for asyncMultiline: no data in this point
+                    #but seems relevant for all
+                    continue
+
                 y_min = scan[i] # crash here, #538 
                 y_max = scan[i]
 
@@ -963,8 +969,6 @@ class myWidget(QWidget):
                 while i < array_size and timeline[i] <= trgt_time + time_delta:
                     # note: for really zoomed in time scales there's a possibility
                     # that this loop will not be execuded even once
-                    
-                    #print('i, j, ymin, ymax, value', i, j, y_min, y_max, scan[i])
                     
                     if timeline[j] < trgt_time and j < array_size - 1:
                         j+=1 # scan for exact value in closest point
@@ -980,8 +984,12 @@ class myWidget(QWidget):
                     i+=1
                     
                 #if y_min != y_max:
-                j -= 1 # THIS is the point right before the trgt_time
-            
+
+                if asyncMultiline:
+                    j = moveAsync('left', scan, i)
+                else:
+                    j -= 1 # THIS is the point right before the trgt_time
+
                 found_some = False
 
                 if (scales[kpi]['y_max'] - scales[kpi]['y_min']) == 0:
@@ -1414,7 +1422,7 @@ class myWidget(QWidget):
             
             return ls
             
-        def calculateOne():
+        def calculateOne(asyncMultiline=False):
             #start_point = 0  # only requred for performance analysis, disabled
         
             x0 = 0
@@ -1502,8 +1510,17 @@ class myWidget(QWidget):
                     
                     
                 #print(x, y)
-                points[points_to_draw] = QPoint(int(x), int(y))
-                points_to_draw += 1
+
+                if asyncMultiline and dataArray[i] == -1:
+                    # just skip this point for the async multiline KPIs
+                    # it might require additional check, like if the
+                    # previous point for same kpi is not -1... i > 0?
+                    # but so far looks good
+                    # #799
+                    pass
+                else:
+                    points[points_to_draw] = QPoint(int(x), int(y))
+                    points_to_draw += 1
                 '''
                 try: 
                     points[points_to_draw] = QPoint(x, y)
@@ -1856,6 +1873,7 @@ class myWidget(QWidget):
                 #
                 
                 subtype = kpiStylesNNN[kpi].get('subtype')
+                asyncMultiline = kpiStylesNNN[kpi].get('async')
                 
                 if subtype == 'multiline':
                     rounds = len(self.ndata[h][kpi])
@@ -1882,7 +1900,7 @@ class myWidget(QWidget):
                         kpiPen.setWidth(cfg('chartWidth', 1))
                         qp.setPen(kpiPen)
 
-                    points_to_draw = calculateOne()
+                    points_to_draw = calculateOne(asyncMultiline)
 
                     with profiler('myWidget.drawPolyline'):
                         qp.drawPolyline(QPolygon(points[:points_to_draw]))
@@ -2074,6 +2092,24 @@ class myWidget(QWidget):
         
         qp.end()
         
+
+def moveAsync(direction, d, i):
+    '''this one to skip -1s in multiline async'''
+
+    if direction == 'left':
+        i -= 1
+        while i > 0 and d[i] < 0:
+            i -= 1
+        if d[i] != -1 and i >= 0:
+            return i
+    else:
+        i += 1
+        while i < len(d)-1 and d[i] < 0:
+            i += 1
+        if i < len(d) and d[i] != -1:
+            return i
+
+    return None
 
 class chartArea(QFrame):
     
@@ -2576,8 +2612,9 @@ class chartArea(QFrame):
             self.widget.update()
             self.reportHighlighted()
 
+
     def keyPressEventZ(self, event):
-            
+
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_Up:
@@ -2593,14 +2630,26 @@ class chartArea(QFrame):
                 self.moveHighlightGantt('down')
             
         if event.key() == Qt.Key_Left:
-            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint is not None:
                 # move highlighted point one step left
                 host = self.widget.highlightedKpiHost
                 kpi = self.widget.highlightedKpi
-                
-                if self.widget.highlightedPoint > 0:
-                    self.widget.highlightedPoint -= 1
-                    self.widget.update()
+
+
+                kpiStylesNNN = self.hostKPIsStyles[host]
+                subtype = kpiStylesNNN[kpi].get('subtype')
+                gbi = self.widget.highlightedGBI
+
+                if gbi is not None:
+                    i = moveAsync('left', self.widget.ndata[host][kpi][gbi][1], self.widget.highlightedPoint)
+                    if i is not None:
+                        self.widget.highlightedPoint = i
+                        self.widget.update()
+
+                else:
+                    if self.widget.highlightedPoint > 0:
+                        self.widget.highlightedPoint -= 1
+                        self.widget.update()
                     
                     self.reportHighlighted()
             elif modifiers == Qt.AltModifier and self.widget.highlightedEntity is not None:
@@ -2618,19 +2667,25 @@ class chartArea(QFrame):
                 kpi = self.widget.highlightedKpi
                 
                 kpiStylesNNN = self.hostKPIsStyles[host]
-                
                 subtype = kpiStylesNNN[kpi].get('subtype')
+                gbi = self.widget.highlightedGBI
                 
                 if subtype == 'multiline':
                     dSize = len(self.widget.ndata[host][kpi][0][1]) # this is time kpi but for multiline it equals to kpi data itelf...
                 else:
                     dSize = len(self.widget.ndata[host][kpi])
                     
-                if self.widget.highlightedPoint < dSize - 1:
-                    self.widget.highlightedPoint += 1
-                    self.widget.update()
-                    
-                    self.reportHighlighted()
+                if gbi is not None:
+                    i = moveAsync('right', self.widget.ndata[host][kpi][gbi][1], self.widget.highlightedPoint)
+                    if i is not None:
+                        self.widget.highlightedPoint = i
+                        self.widget.update()
+                else:
+                    if self.widget.highlightedPoint < dSize - 1:
+                        self.widget.highlightedPoint += 1
+                        self.widget.update()
+
+                        self.reportHighlighted()
             elif modifiers == Qt.AltModifier and self.widget.highlightedEntity is not None:
                 self.moveHighlightGantt('right')
             else:
