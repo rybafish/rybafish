@@ -738,6 +738,14 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['legendCount'] = kpi.get('legendCount', 5)
             style['others'] = kpi.get('others', False)
 
+            acml = kpi.get('async', False)
+
+            if acml and style['stacked']:
+                log(f'[E] KPI cannot have async and stacked options enabled at the same time: {sqlIdx}', 2)
+                raise utils.customKPIException(f"Unsupported async mode for stacked multiline KPI: {kpi['name']}")
+            else:
+                style['async'] = True
+
             ordby = kpi.get('orderby', 'unknown')
             if ordby not in ['max', 'avg', 'name', 'deviation']:
                 log('[W] unsupported orderby value %s/%s, using default (max)' % (kpi['name'], kpi.get('orderby')), 2)
