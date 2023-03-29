@@ -928,7 +928,10 @@ class myWidget(QWidget):
                 #log('scanForHint dont continue?..', 5)
 
 
-            asyncMultiline = kpiStylesNNN[kpi].get('async')
+            if 'async' in kpiStylesNNN[kpi]:
+                asyncMultiline = kpiStylesNNN[kpi].get('async')
+            else:
+                asyncMultiline = False
 
             if subtype == 'multiline':
                 rounds = len(data[kpi])
@@ -1873,7 +1876,11 @@ class myWidget(QWidget):
                 #
                 
                 subtype = kpiStylesNNN[kpi].get('subtype')
-                asyncMultiline = kpiStylesNNN[kpi].get('async')
+                # asyncMultiline = kpiStylesNNN[kpi].get('async')
+                if 'async' in kpiStylesNNN[kpi]:
+                    asyncMultiline = kpiStylesNNN[kpi].get('async')
+                else:
+                    asyncMultiline = False
                 
                 if subtype == 'multiline':
                     rounds = len(self.ndata[h][kpi])
@@ -2242,7 +2249,7 @@ class chartArea(QFrame):
         @profiler
         def getY(data, host, timeKey, kpi, pointTime, idxKnown=None, gbi=None):
             @profiler
-            def scan(a, v):
+            def scan(a, v, vals=None):
                 '''Scans for a value t in ordered array a, returns index of first value greather t'''
                 
                 i = 0
@@ -2255,6 +2262,15 @@ class chartArea(QFrame):
                 while i<l and a[i]<v:
                     i += 1
 
+                # scan for the latest non-negative... this is actually for asyncMultiline but we dont check here
+                while i > 0 and i < l and vals[i] == -1:
+                    i -= 1
+
+                # scan for the first not negative...
+                if i == 0 and vals[i] == -1:
+                    while i < l and vals[i] == -1:
+                        i += 1
+
                 if i == l:
                     i -= 1
                     
@@ -2262,8 +2278,13 @@ class chartArea(QFrame):
 
             idx = None
 
-            if not idxKnown and timeKey in data: #711
-                idx = scan(data[timeKey], pointTime) # despite multiline, time has the same layout
+            if gbi is None:
+                dataArray = data[kpi]
+            else:
+                dataArray = data[kpi][gbi][1]
+
+            if idxKnown is None and timeKey in data: #711
+                idx = scan(data[timeKey], pointTime, dataArray) # despite multiline, time has the same layout
             else:
                 idx = idxKnown
                 
@@ -2307,7 +2328,7 @@ class chartArea(QFrame):
         
         
         timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpiName)
-                
+
         if timeKey is None:
             log(f'Cannot identify time key for {kpiName} in {kpis}', 2)
             self.statusMessage('Cannot identify time key, check logs, please report this issue.')
@@ -2324,9 +2345,10 @@ class chartArea(QFrame):
                 
         # this will be required in messy getY implementation
         wsize = self.widget.size()
-        
+
+        # extract current Y (idx ignored)
         targetY, idx = getY(data, h, timeKey, kpiName, None, idxKnown=point, gbi=tgbi)
-            
+
         # now iterate through the KPIs of the same style and detect the closest one somehow
                 
         ys = [] # list of tuples: (host, kpi, Y, gbi) gbi is not None for multilines
@@ -2362,10 +2384,9 @@ class chartArea(QFrame):
                         gbi = None
                 
                     y, idx = getY(self.widget.ndata[checkHost], checkHost, timeKey, checkKPI, pointTime, idxKnown=None, gbi=gbi)
-                    
                     if y is None:
                         continue
-                    
+
                     if y == targetY:
                         if not (checkHost == self.widget.highlightedKpiHost and checkKPI == self.widget.highlightedKpi and tgbi==gbi):
                             collisions += 1
@@ -2618,13 +2639,13 @@ class chartArea(QFrame):
         modifiers = QApplication.keyboardModifiers()
 
         if event.key() == Qt.Key_Up:
-            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint is not None:
                 self.moveHighlight('up')
             elif modifiers == Qt.AltModifier and self.widget.highlightedEntity:
                 self.moveHighlightGantt('up')
 
         if event.key() == Qt.Key_Down:
-            if modifiers == Qt.AltModifier and self.widget.highlightedPoint:
+            if modifiers == Qt.AltModifier and self.widget.highlightedPoint is not None:
                 self.moveHighlight('down')
             elif modifiers == Qt.AltModifier and self.widget.highlightedEntity:
                 self.moveHighlightGantt('down')
@@ -3151,9 +3172,7 @@ class chartArea(QFrame):
             # add kpi
             fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
             
-            print('here 1')
             if modifiers & Qt.ControlModifier:
-                print('here 2')
                 # okay this is a confusing one:
                 # on Control+click we by default only add the kpi for all the hosts, _same port_
                 # BUT if Shift also pressed - we ignore the port and add bloody everything
@@ -3177,7 +3196,6 @@ class chartArea(QFrame):
                             #self.widget.nkpis[hst].append(kpi)
                             kpis[hst] = self.widget.nkpis[hst] + [kpi]
             else:
-                print('here 3')
                 #self.widget.nkpis[host].append(kpi)
                 kpis = self.widget.nkpis[host] + [kpi]
                 
@@ -3227,14 +3245,11 @@ class chartArea(QFrame):
                         self.setStatus('idle', True)
 
                 else:
-                    print('here 4')
                     for hst in range(0, len(self.widget.hosts)):
                         if hst == host:
-                            print('here 5')
                             # normal click after alt-click (somewhere before)
                             allOk = request_kpis(self, host_d, host, kpi, kpis)
                         else: 
-                            print('here 6')
                             #check for kpis existing in host list but not existing in data:
                             diff = substract(self.widget.nkpis[hst], self.widget.ndata[hst].keys())
 

@@ -1222,11 +1222,11 @@ class dataProvider(QObject):
                 for i in range(frames):
                     # print(i)
                     
-                    acc_value = -1 # have to make it -1 to be consustent with all the other kpis
+                    acc_value = -1 # have to make it -1 to be consistent with all the other kpis
                     
                     for gbi in range(len(gb)):
                     
-                        if scan[gbi][1][i] > 0:             # otherwise it decreases the stacked values, #568
+                        if scan[gbi][1][i] > 0:             # otherwise consistent decreases the stacked values, #568
                         
                             if acc_value == -1:
                                 # otherwise accumulated values are -1
