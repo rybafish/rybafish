@@ -2665,14 +2665,13 @@ class chartArea(QFrame):
                     i = moveAsync('left', self.widget.ndata[host][kpi][gbi][1], self.widget.highlightedPoint)
                     if i is not None:
                         self.widget.highlightedPoint = i
-                        self.widget.update()
 
                 else:
                     if self.widget.highlightedPoint > 0:
                         self.widget.highlightedPoint -= 1
-                        self.widget.update()
-                    
-                    self.reportHighlighted()
+
+                self.reportHighlighted(True)
+                self.widget.update()
             elif modifiers == Qt.AltModifier and self.widget.highlightedEntity is not None:
                 self.moveHighlightGantt('left')
             else:
@@ -2700,13 +2699,12 @@ class chartArea(QFrame):
                     i = moveAsync('right', self.widget.ndata[host][kpi][gbi][1], self.widget.highlightedPoint)
                     if i is not None:
                         self.widget.highlightedPoint = i
-                        self.widget.update()
                 else:
                     if self.widget.highlightedPoint < dSize - 1:
                         self.widget.highlightedPoint += 1
-                        self.widget.update()
 
-                        self.reportHighlighted()
+                self.reportHighlighted(True)
+                self.widget.update()
             elif modifiers == Qt.AltModifier and self.widget.highlightedEntity is not None:
                 self.moveHighlightGantt('right')
             else:
