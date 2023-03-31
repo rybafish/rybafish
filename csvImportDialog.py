@@ -270,7 +270,7 @@ class csvImportDialog(QDialog):
                 
             self.log('Create statement executed...')
         else:
-            self.log(f'Target object already exists {targetObject}, will try to use existing one...')
+            self.logText.appendHtml(f'<font color="blue">Target object already exists: {targetObject}</font>, will try to use existing one...')
             
         self.repaint()
         
