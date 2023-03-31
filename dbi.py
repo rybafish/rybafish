@@ -40,7 +40,7 @@
 
         getAutoComplete(schema, term)
             - this forms an sql query for the ctrl+space functionality in console
-            just skip it if you are not sure
+            just skip it if you are not sure, it will be safely ignored
         
         type checks for LOBs processing and correct result render
             ifNumericType
