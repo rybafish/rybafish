@@ -28,7 +28,7 @@ from utils import cfg, hextostr
 from utils import getlog
 from utils import dbException
 
-from dbi_extention import getDBProperties
+from dbi_extention import getDBProperties, getAutoComplete
 
 from os import getlogin
 
@@ -461,6 +461,10 @@ class hdbi ():
             return True
         else:
             return False
+
+    def getAutoComplete(self, schema, term):
+        sql, params = getAutoComplete(schema, term) # shared one
+        return sql, params
 
     def ifNumericType(self, t):
         if t in (type_codes.TINYINT, type_codes.SMALLINT, type_codes.INT, type_codes.BIGINT,

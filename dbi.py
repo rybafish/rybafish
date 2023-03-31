@@ -37,6 +37,10 @@
                 
         drop_statement(connection, psid)
             - most likely can be just empty
+
+        getAutoComplete(schema, term)
+            - this forms an sql query for the ctrl+space functionality in console
+            just skip it if you are not sure
         
         type checks for LOBs processing and correct result render
             ifNumericType
@@ -96,5 +100,3 @@ class dbi:
                 raise Exception(f'Unknown DB driver name: {dbidictRev.get(dbtype)} - {dbtype}')
         else:
             log('[DBI] reusing existing instance')
-            
-            

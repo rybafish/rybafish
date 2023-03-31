@@ -1785,7 +1785,11 @@ class sqlConsole(QWidget):
             if self.sqlRunning:
                 self.log('Autocomplete is blocked while the sql is still running...')
                 return
-            
+
+            if not hasattr(self.dbi, 'getAutoComplete'):
+                self.log('Autocomplete is not implemented for this DBI.')
+                return
+
             cursor = self.cons.textCursor()
             pos = cursor.position()
             linePos = cursor.positionInBlock();
@@ -1822,7 +1826,7 @@ class sqlConsole(QWidget):
                 term = line[i+1:linePos].lower() + '%'
                     
             if linePos - i <= 2:
-                #string is to short for autocomplete search
+                #string is too short for autocomplete search
                 return
                  
             if j == -1:
@@ -1843,14 +1847,11 @@ class sqlConsole(QWidget):
             self.indicator.repaint()
             
             t0 = time.time()
-            
 
             try:
-                if schema == 'PUBLIC':
-                    rows = self.dbi.execute_query(self.conn, 'select distinct schema_name object, \'SCHEMA\' type from schemas where lower(schema_name) like ? union select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [term, schema, term])
-                else:
-                    rows = self.dbi.execute_query(self.conn, 'select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1', [schema, term])
-                    
+                sql, params = self.dbi.getAutoComplete(schema, term)
+                rows = self.dbi.execute_query(self.conn, sql, params)
+
             except dbException as e:
                 err = str(e)
                 
