@@ -919,7 +919,7 @@ def clarifyGroups(kpiStylesNNN):
                 else:
                     if gunits[kv['group']] != kv.get(checkUnit) and kv['group']:
                         raise utils.customKPIException(f'''{checkUnit} does not match! group: {kv['group']}, kpi: {kpi}
-{gunits[kv['group']]} != {kpiStylesNNN.get(checkUnit)}. Check the KPI definition.
+{gunits[kv['group']]} != {kpiStylesNNN[kpi].get(checkUnit)}. Check the KPI definition.
 
 if required, disable this check by setting verifyGroupUnits: False''')
         else:
