@@ -636,7 +636,8 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         style['nofilter'] = True if kpi.get('nofilter') else False
             
     # optional stuff
-    style['group'] = kpi.get('group', '')
+    group = kpi.get('group') or 0 # both None and '' to be translated to int(0)
+    style['group'] = group
     style['desc'] = kpi.get('description', '')
     style['label'] = kpi.get('label', '')
         
@@ -741,7 +742,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             acml = kpi.get('async', False)
 
             if acml and style['stacked']:
-                log(f'[E] KPI cannot have async and stacked options enabled at the same time: {sqlIdx}', 2)
+                log('[E] KPI cannot have async and stacked options enabled at the same time: {sqlIdx}', 2)
                 raise utils.customKPIException(f"Unsupported async mode for stacked multiline KPI: {kpi['name']}")
             else:
                 style['async'] = True

@@ -2983,7 +2983,7 @@ class chartArea(QFrame):
         kpiStylesNNN = self.hostKPIsStyles[host]
         
         group = kpiStylesNNN[kpi]['group']
-        
+
         if  group == 0:
             if yMax == -1:
                 if 'manual_scale' in kpiStylesNNN[kpi]:
