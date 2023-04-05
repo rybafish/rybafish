@@ -653,8 +653,8 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['sUnit'] = kpi['sUnit']
             style['dUnit'] = kpi['dUnit']
     else:
-        style['sUnit'] = '-'
-        style['dUnit'] = '-'
+        style['sUnit'] = ''
+        style['dUnit'] = ''
     #create pen
     if 'color' in kpi:
         color = QColor(kpi['color'])
