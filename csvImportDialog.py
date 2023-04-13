@@ -51,6 +51,7 @@ class csvImportDialog(QDialog):
 
     height = None
     width = None
+    lastDir = ''
     
     def __init__(self, parent=None, ndp=[]):
 
@@ -270,7 +271,7 @@ class csvImportDialog(QDialog):
                 
             self.log('Create statement executed...')
         else:
-            self.log(f'Target object already exists {targetObject}, will try to use existing one...')
+            self.logText.appendHtml(f'<font color="blue">Target object already exists: {targetObject}</font>, will try to use existing one (append data)...')
             
         self.repaint()
         
@@ -346,16 +347,22 @@ class csvImportDialog(QDialog):
         fname = self.fileName.text()
         log(f'loading {fname}', 4)
         
-        with open(fname, mode='r') as f:
-            txt = f.read()
-            self.csvText.setPlainText(txt)
-    
+        try:
+            with open(fname, mode='r') as f:
+                csvImportDialog.lastDir = os.path.dirname(fname)
+                print('lastDir --> ', self.lastDir)
+                txt = f.read()
+                self.csvText.setPlainText(txt)
+        except FileNotFoundError:
+            self.log(f'File not found: \'{fname}\'', True)
+
     def openFile(self):
-        fname = QFileDialog.getOpenFileName(self, 'Open file', '','*.csv')
-        if fname:
+        fname = QFileDialog.getOpenFileName(self, 'Open file', self.lastDir,'*.csv')
+        if len(fname) > 0 and fname[0]:
             self.fileName.setText(fname[0])
             self.loadCSV()
-            
+
+            # self.lastDir = os.path.dirname(fname[0])
             file = os.path.basename(fname[0])
             file = os.path.splitext(file)[0] # no extention
             
@@ -377,6 +384,14 @@ class csvImportDialog(QDialog):
     def createChanged(self):
         self.lastChange = 'createText'
     
+    def reload(self):
+        self.loadCSV()
+        file = self.fileName.text()
+        file = os.path.basename(file)
+        file = os.path.splitext(file)[0] # no extention
+        self.targetObject.setText(file)
+
+
     def initUI(self):
 
         iconPath = utils.resourcePath('ico', 'favicon.png')
@@ -440,6 +455,8 @@ class csvImportDialog(QDialog):
         #okBtn = QPushButton('Ok')
         cancelBtn = QPushButton('Close')
         cancelBtn.clicked.connect(self.reject)
+        reloadBtn = QPushButton('Reload')
+        reloadBtn.clicked.connect(self.reload)
         
         # csv loader wrapper object
         wrapperCSV = QWidget()
@@ -447,7 +464,7 @@ class csvImportDialog(QDialog):
         loCSVinternal = QHBoxLayout()
         loCSVinternal.addWidget(QLabel('File:'))
         loCSVinternal.addWidget(self.fileName)
-        loCSVinternal.addWidget(QPushButton('Reload'))
+        loCSVinternal.addWidget(reloadBtn)
         
         loCSV.addLayout(loCSVinternal)
         loCSV.addWidget(self.csvText)

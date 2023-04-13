@@ -43,7 +43,11 @@ class dataProvider:
         
         self.data = {}
         self.ports = []
+        self.portLen = {}
         self.lastIndx = []
+        self.dbProperties = {}
+
+        self.dbProperties['dbi'] = 'TRC'
         
         self.TZShift = 0
         
@@ -53,7 +57,6 @@ class dataProvider:
             if m is not None:
                 sign = m.groups()[0]
                 utc_offset = m.groups()[1]
-                
                 utc_offset = int(utc_offset)
                 
                 if sign == '-':
@@ -77,6 +80,7 @@ class dataProvider:
             log(f'trace import using UTC offset: {dbUTCDelta}, calculated shift: {self.TZShift}', 2)
         
         
+        self.dbProperties['timeZoneOffset'] = self.TZShift
         self.supportedKPIs = ['indexserverCpu', 'indexserverMemUsed', 'indexserverMemLimit']
 
         self.files = files
@@ -108,7 +112,10 @@ class dataProvider:
                 trace_lines = len(open(filename).readlines())
                 
             f = open(filename)
-            
+
+            if not self.dbProperties.get('tenant'):
+                self.dbProperties['tenant'] = filename
+
             #scan first lines to count number of ports
             i = -1 
             host = ''
@@ -150,18 +157,23 @@ class dataProvider:
                         host = row[hostIdx]
                     
                     if port in self.ports:
-                        #break
+                        self.portLen[port] += 1
                         continue
                     else:
                         self.ports.append(port)
+                        self.portLen[port] = 1
                 
-                i += 1
-                
+                i += 1          # will reach here only for new port
+
+            # meaning i = number of ports
+
             trace_lines = int((trace_lines - 1) / i)
             
             t1 = time.time()
             log('ports: %s' % str(self.ports))
+            log(f'portlen: {self.portLen}')
             log('ports scan time: %s' % str(round(t1-t0, 3)))
+            log(f'{trace_lines=}, {i=}', 5)
 
             rows = []
             for kpi in titles:
@@ -203,7 +215,7 @@ class dataProvider:
             
             t1 = time.time()
             
-            log('lines per port: %i' % trace_lines)
+            log('lines per port: %i' % trace_lines) # bug 811 here, beause some instances might be down for some time
             log('init time: %s' % str(round(t1-t0, 3)))
             
             # allocate stuff
@@ -219,12 +231,12 @@ class dataProvider:
                 
                 if port == '':
                     for i in range(0, len(hostKPIs)+1):
-                        data[port][i] = [-1]* (trace_lines + 1)
+                        data[port][i] = [-1]* (self.portLen[port] + 1)
                 else:
                     for i in range(0, len(srvcKPIs)+1):
-                        data[port][i] = [-1]* (trace_lines + 1)
+                        data[port][i] = [-1]* (self.portLen[port] + 1)
                         
-            log(f'allocations done, {trace_lines+1} per port', 5)
+            log(f'allocations done, sizes: {self.portLen}', 5)
 
             f.seek(0) # and destroy
             
@@ -325,9 +337,11 @@ class dataProvider:
                 ii[port] += 1
                 i += 1
                 
-                if ii[port] >= trace_lines:
-                    log('line count reached: %i', trace_lines)
-                    break
+                if ii[port] == self.portLen[port]:
+                    log(f'line count reached: {port}, {self.portLen[port]}', 3)
+
+                if ii[port] >= self.portLen[port]:
+                    continue
             
         t2 = time.time()
         log('parsing time %s' % str(round(t2-t1, 3)))
@@ -399,6 +413,7 @@ class dataProvider:
         #log('get data request: %i.%s' % (host, str(kpis)))
         #print('get data request:', host, fromto, kpis)
 
+        tzShift = self.dbProperties.get('timestampShift', 0)
         port = host['port'] 
         
         data_size = self.lastIndx[port]
@@ -412,11 +427,10 @@ class dataProvider:
         
             data[kpi] = ds
         
+        # seems it is just ignoring the from/to:
         for i in range(0, data_size):
-            data['time'][i] = self.data[port][0][i]
+            data['time'][i] = self.data[port][0][i] + tzShift
             
-        timeKey = 'time'
-        
         for kpi in kpis:
             if port == '':
                 colindx = self.hostKPIs.index(kpi) + 1

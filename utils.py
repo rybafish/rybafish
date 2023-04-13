@@ -1286,3 +1286,48 @@ def parseCSV(txt, delimiter=','):
 
 def escapeHtml(msg):
     return msg.replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;').replace('\'','&#39;').replace('"','&#34;')
+
+def secondsToTime(sec):
+    '''converts seconds to hh:mm format
+    if %60 != 0 - leaves as is, seconds, but returns str'''
+
+    if sec < 0:
+        sec = -sec
+        sign = '-'
+    else:
+        sign = ''
+
+    s = time.strftime('%H:%M:%S', time.gmtime(sec))
+    return sign+s
+
+def secondsToTZ(sec):
+    if sec < 0:
+        sec = -sec
+        sign = '-'
+    else:
+        sign = '+'
+
+    if sec %1800 == 0:
+        s = time.strftime('%H:%M', time.gmtime(sec))
+    else:
+        s = secondsToTime(sec)
+
+    return sign + s
+
+def timeToSeconds(s):
+    g = re.search(r'(-?)(\d\d?):(\d\d):(\d\d)', s)
+
+    if not g:
+        return None
+
+    s = g[1]
+    hh = int(g[2])
+    mm = int(g[3])
+    ss = int(g[4])
+
+    sec = hh*3600 + mm*60 + ss
+
+    if s:
+        return -sec
+    else:
+        return sec

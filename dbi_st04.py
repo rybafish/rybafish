@@ -14,7 +14,7 @@ from utils import cfg
 from utils import getlog
 from utils import dbException
 
-from dbi_extention import getDBProperties
+from dbi_extention import getDBProperties, getAutoComplete
 
 log = getlog('HDB')
 
@@ -273,7 +273,11 @@ class s2j():
     
     def drop_statement(self, connection, psid):
         pass
-        
+
+    def getAutoComplete(self, schema, term):
+        sql, params = getAutoComplete(schema, term) # shared one
+        return sql, params
+
     def ifLOBType(self, t):
         return False
         

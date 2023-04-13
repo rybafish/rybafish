@@ -1,3 +1,4 @@
+# things shared by S2J and HANA interfaces
 import re
 from datetime import datetime
 from utils import cfg
@@ -67,3 +68,14 @@ def getDBProperties(connection, queryFunction, log, dbProperties):
                     log('[w] tenant request error: %s' % str(e))
                     
                     dbProperties['tenant'] = None
+
+def getAutoComplete(schema, term):
+    '''returns sql for autocomplete statement'''
+    if schema == 'PUBLIC':
+        sql = 'select distinct schema_name object, \'SCHEMA\' type from schemas where lower(schema_name) like ? union select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1'
+        params = [term, schema, term]
+    else:
+        sql = 'select distinct object_name object, object_type type from objects where schema_name = ? and lower(object_name) like ? order by 1'
+        params = [schema, term]
+
+    return sql, params

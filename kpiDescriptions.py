@@ -636,7 +636,8 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         style['nofilter'] = True if kpi.get('nofilter') else False
             
     # optional stuff
-    style['group'] = kpi.get('group', '')
+    group = kpi.get('group') or 0 # both None and '' to be translated to int(0)
+    style['group'] = group
     style['desc'] = kpi.get('description', '')
     style['label'] = kpi.get('label', '')
         
@@ -652,8 +653,8 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['sUnit'] = kpi['sUnit']
             style['dUnit'] = kpi['dUnit']
     else:
-        style['sUnit'] = '-'
-        style['dUnit'] = '-'
+        style['sUnit'] = ''
+        style['dUnit'] = ''
     #create pen
     if 'color' in kpi:
         color = QColor(kpi['color'])
@@ -737,6 +738,14 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['descending'] = kpi.get('desc', False)
             style['legendCount'] = kpi.get('legendCount', 5)
             style['others'] = kpi.get('others', False)
+
+            acml = kpi.get('async', False)
+
+            if acml and style['stacked']:
+                log('[E] KPI cannot have async and stacked options enabled at the same time: {sqlIdx}', 2)
+                raise utils.customKPIException(f"Unsupported async mode for stacked multiline KPI: {kpi['name']}")
+            else:
+                style['async'] = True
 
             ordby = kpi.get('orderby', 'unknown')
             if ordby not in ['max', 'avg', 'name', 'deviation']:
@@ -901,16 +910,16 @@ def clarifyGroups(kpiStylesNNN):
             for kpi in kpiStylesNNN.keys():
                 kv= kpiStylesNNN[kpi]
                 # log(f'{kpi=}, {kv=}')
-                if kv['group'] == 0:
+                if kv['group'] == 0 or kv['group'] == '0': # this look ugly... #809
                     continue # special non-scaled group
 
                 if not kv['group'] in gunits:
                     gunits[kv['group']] = kv.get(checkUnit)
                     # log(f"{kv['group']} added: {kv.get(checkUnit)}")
                 else:
-                    if gunits[kv['group']] != kv.get(checkUnit):
+                    if gunits[kv['group']] != kv.get(checkUnit) and kv['group']:
                         raise utils.customKPIException(f'''{checkUnit} does not match! group: {kv['group']}, kpi: {kpi}
-{gunits[kv['group']]} != {kpiStylesNNN.get(checkUnit)}. Check the KPI definition.
+{gunits[kv['group']]} != {kpiStylesNNN[kpi].get(checkUnit)}. Check the KPI definition.
 
 if required, disable this check by setting verifyGroupUnits: False''')
         else:

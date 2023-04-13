@@ -171,6 +171,13 @@ class sqlite():
 
         return [rows], [cols], None, None
         
+
+    def getAutoComplete(self, schema, term):
+        sql = '''select distinct name, type from sqlite_master where type in ('table', 'view') and lower(name) like (?)''';
+        params = [term]
+        return sql, params
+
+
     def ifLOBType(self, t):
         return False
 
