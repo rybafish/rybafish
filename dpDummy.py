@@ -17,6 +17,8 @@ class dataProvider:
     options = []
 
     def __init__(self):
+        self.dbProperties = {}
+        self.dbProperties['dbi'] = 'DMY'
         log('dummy data provider init()')
         
     def initHosts(self, dpidx):

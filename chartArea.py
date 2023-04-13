@@ -36,6 +36,8 @@ import dpDummy
 import dpTrace
 import dpDB
 
+from tzDialog import tzDialog
+
 from profiler import profiler
 
 class myWidget(QWidget):
@@ -2901,14 +2903,10 @@ class chartArea(QFrame):
 
             log('reload from init dp', 4)
             
-        #log('timeZoneDelta check here')
-            
         if hasattr(dp, 'dbProperties') and 'timeZoneDelta' in dp.dbProperties:
         
             self.widget.timeZoneDelta = dp.dbProperties['timeZoneDelta']
             
-            #log(f'timeZoneDelta yeeees: {self.widget.timeZoneDelta}')
-
             starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
             starttime -= datetime.timedelta(seconds= (starttime.timestamp() % 3600 - self.widget.timeZoneDelta))
                     
@@ -2916,7 +2914,6 @@ class chartArea(QFrame):
             self.toEdit.setText('')
         
         else:
-            #log('timeZoneDelta nope')
             self.widget.timeZoneDelta = 0
             
         self.hostsUpdated.emit()
@@ -3802,6 +3799,45 @@ class chartArea(QFrame):
             self.toEdit.setStyleSheet("color: black;")
         else:            
             QLineEdit.keyPressEvent(self.toEdit, event)
+
+
+    def alignTZ(self):
+        '''Okay, there are two things
+        1. TZ delta
+        2. TZ shift
+
+        TZ delta is only to adjust things on the screen, it does not affect actual TS
+        TZ shift is _added_ to the TSs coming from the DP, like trace
+
+        if the only DP has TZ shift, it also makes sence to inherit it to TZ delta
+        '''
+
+        mintz = None
+        for i in range(len(self.ndp)):
+            prop = self.ndp[i].dbProperties
+            tzdelta = prop.get('timeZoneDelta', 0)
+            if mintz is None:
+                mintz = tzdelta
+            else:
+                if mintz > tzdelta:
+                    mintz = tzdelta
+
+        self.widget.timeZoneDelta = mintz
+
+    def adjustTimeZones(self, dpidx):
+        print(f'Got TZ change request: {dpidx}')
+        dp = self.ndp[dpidx]
+
+        if hasattr(dp, 'dbProperties'):
+            print(dp.dbProperties)
+
+        tzd = tzDialog(self, self.ndp)
+        res = tzd.exec_()
+
+        if res:
+            self.alignTZ()
+
+
 
     def __init__(self):
         

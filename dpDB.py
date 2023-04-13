@@ -58,14 +58,14 @@ class dataProvider(QObject):
     def __init__(self, server):
     
         super().__init__()
+        self.dbProperties = {}
         
-        #log('connecting to %s:\\\\%s:%i...' % (server['dbi'], server['host'], server['port']))
         log(f"Connecting to {server['dbi']}:\\\\{server['host']}:{server['port']}...")
 
         dbimpl = dbi(server['dbi'])
         self.dbi = dbimpl.dbinterface
         
-        self.dbProperties = {}
+        self.dbProperties['dbi'] = 'DB'
         
         try: 
             conn = self.dbi.create_connection(server, self.dbProperties)
@@ -385,15 +385,30 @@ class dataProvider(QObject):
         '''
         
             h - host structure
-            fromto dict with 'from' abd 'to' keys
+            fromto dict with 'from' abd 'to' keys (str)
             kpiIn - list of kpis to request, including custom ones (called cs-something)
         
             returns boolean
             False = some kpis were disabled due to sql errors
         '''
         
+        # log(f'[GET DATA]: dbi: {self.dbi}')
+        # log(f'[GET DATA]: prop: {self.dbProperties}')
+        tzShift = self.dbProperties.get('timestampShift', 0)
+
+        if tzShift:
+            if fromto['from'] != '' and fromto['from'][0] != '-': # regular time
+                ftime = datetime.datetime.strptime(fromto['from'], '%Y-%m-%d %H:%M:%S')
+                ftime -= datetime.timedelta(seconds=tzShift)
+                fromto['from'] = ftime.strftime('%Y-%m-%d %H:%M:%S')
+
+            if fromto['to'] != '':
+                ttime = datetime.datetime.strptime(fromto['to'], '%Y-%m-%d %H:%M:%S')
+                ttime -= datetime.timedelta(seconds=tzShift)
+                fromto['to'] = ttime.strftime('%Y-%m-%d %H:%M:%S')
+
         host = h.copy()
-                        
+
         if cfg('maphost'):
             hm = cfg('maphost')
             pm = cfg('mapport')
@@ -566,9 +581,9 @@ class dataProvider(QObject):
 
             try:
                 if not gantt:
-                        self.getHostKpis(kpiStylesNNN, kpis, data, sql, params_now, kpiSrc)
+                        self.getHostKpis(kpiStylesNNN, kpis, data, sql, params_now, kpiSrc, tzShift)
                 else:
-                    self.getGanttData(kpiStylesNNN, kpis[0], data, sql, params_now, kpiSrc)
+                    self.getGanttData(kpiStylesNNN, kpis[0], data, sql, params_now, kpiSrc, tzShift)
                     
             except dbException as e:
             
@@ -643,7 +658,7 @@ class dataProvider(QObject):
         
         return 
 
-    def getGanttData(self, kpiStylesNNN, kpi, data, sql, params, kpiSrc):
+    def getGanttData(self, kpiStylesNNN, kpi, data, sql, params, kpiSrc, tzShift):
         
         @profiler
         def normalizeGradient(brMin, brMax, fromTo = (0, 100)):
@@ -731,10 +746,9 @@ class dataProvider(QObject):
 
         for r in rows:
             entity = str(r[0])
-            start = r[1]
-            stop = r[2]
-            #print('row:', j, r[3], start.strftime('%H:%M:%S'), stop.strftime('%H:%M:%S'))
-            
+            start = r[1] + datetime.timedelta(seconds=tzShift)
+            stop = r[2] + datetime.timedelta(seconds=tzShift)
+
             dur = formatTime((stop - start).total_seconds(), skipSeconds=True, skipMs=True)
             desc = str(r[3]).replace('$duration', dur)
 
@@ -860,7 +874,7 @@ class dataProvider(QObject):
         '''
     
     @profiler
-    def getHostKpis(self, kpiStylesNNN, kpis, data, sql, params, kpiSrc):
+    def getHostKpis(self, kpiStylesNNN, kpis, data, sql, params, kpiSrc, tzShift):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
@@ -1098,7 +1112,7 @@ class dataProvider(QObject):
                     
                 for j in range(0, len(kpis_)):
                     if j == 0: #time column always 1st
-                        data[timeKey][ii] = row[j].timestamp()
+                        data[timeKey][ii] = row[j].timestamp() + tzShift
                         
                     else:
 

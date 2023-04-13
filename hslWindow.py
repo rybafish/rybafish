@@ -700,6 +700,53 @@ class hslWindow(QMainWindow):
     def menuConfigSecondary(self):
         self.processConnection(secondary=True)
         
+    def updateWindowTitle(self):
+
+        dp = None
+        conf = self.primaryConf
+
+        if self.chartArea.ndp:
+            dp = self.chartArea.ndp[0]
+
+        if conf is None and dp is None: # normally, only on start
+            self.setWindowTitle('RybaFish Charts [%s]' % version)
+            return
+
+        if dp is None:
+            dp = {}             # safity first
+
+        sid = dp.dbProperties.get('sid', '')
+
+        if conf:
+            user = conf.get('user', '') + '@' + sid
+        else:
+            user = ''
+
+        tenant = dp.dbProperties.get('tenant')
+
+        if tenant and conf:
+            windowStr = ('%s %s@%s' % (conf.get('user'), tenant, sid))
+        else:
+            if tenant:
+                windowStr = tenant
+            else:
+                windowStr = user
+
+        dbver = dp.dbProperties.get('version')
+
+        if dbver:
+            windowStr += ', ' + dbver
+
+        windowStr += ' - ' + version
+
+        if self.chartArea.widget.timeZoneDelta:
+            tz = ' time: ' + utils.secondsToTZ(self.chartArea.widget.timeZoneDelta)
+        else:
+            tz = ''
+
+        self.setWindowTitle(f'RybaFish Charts [{windowStr}]{tz}')
+
+
     def processConnection(self, secondary=False):
         log(f'processConnection, {secondary=}')
         
@@ -914,29 +961,32 @@ class hslWindow(QMainWindow):
                     log('reload from menuConfig #2', 4)
                     self.chartArea.reloadChart()
                     
-                if 'sid' in dp.dbProperties:
-                    sid = dp.dbProperties['sid']
-                else:
-                    sid = ''
-                
+                # if 'sid' in dp.dbProperties:
+                #     sid = dp.dbProperties['sid']
+                # else:
+                #     sid = ''
+
+                sid = dp.dbProperties.get('sid', '')
                 propStr = conf['user'] + '@' + sid
                 
-                tenant = dp.dbProperties.get('tenant')
-                
-                if tenant:
-                    windowStr = ('%s %s@%s' % (conf['user'], tenant, sid))
-                else:
-                    windowStr = propStr
-                    
-                dbver = dp.dbProperties.get('version')
-                    
-                if dbver:
-                    windowStr += ', ' + dbver
-                
-                windowStr += ' - ' + version
-                
+                # sid = dp.dbProperties.get('sid', '')
+                # tenant = dp.dbProperties.get('tenant')
+
+                # if tenant:
+                #     windowStr = ('%s %s@%s' % (conf['user'], tenant, sid))
+                # else:
+                #     windowStr = propStr
+
+                # dbver = dp.dbProperties.get('version')
+
+                # if dbver:
+                #     windowStr += ', ' + dbver
+
+                # windowStr += ' - ' + version
+
                 self.tabs.setTabText(0, propStr)
-                self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
+                self.updateWindowTitle()
+                # self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
                 
                 #setup keep alives
                 
@@ -1215,6 +1265,18 @@ class hslWindow(QMainWindow):
             
         self.chartArea.widget.update()
     
+    def menuTZ(self):
+
+            i = self.hostTable.currentRow()
+            if len(self.chartArea.widget.hosts) > 0:
+                dpidx = self.chartArea.widget.hosts[i]['dpi']
+            else:
+                self.statusMessage('Seems there are no hosts/data providers: you need to connect first', True)
+                return
+
+            self.chartArea.adjustTimeZones(dpidx)
+            self.updateWindowTitle()
+
     def menuEss(self):
         def reinitDPs():
             '''
@@ -1281,6 +1343,8 @@ class hslWindow(QMainWindow):
             toTime = self.chartArea.widget.hosts[0]['to']
             fromTime = toTime - datetime.timedelta(hours = 10)
             
+            self.updateWindowTitle()
+
             self.chartArea.toEdit.setText(toTime.strftime('%Y-%m-%d %H:%M:%S'))
             self.chartArea.fromEdit.setText(fromTime.strftime('%Y-%m-%d %H:%M:%S'))
             
@@ -1543,7 +1607,7 @@ class hslWindow(QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(configAct)
         
-        if cfg('expiremental'):
+        if cfg('experimental'):
             fileMenu.addAction(configSecAct)
 
         fileMenu.addAction(importAct)
@@ -1641,6 +1705,14 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(self.tbAct)
         
+        self.tzAct = QAction('Manage Time Zones', self)
+        self.tzAct.setStatusTip('View/adjust data provider (server) time zone')
+        if cfg('dev'):
+            self.tzAct.setShortcut('Alt+Z')
+        self.tzAct.triggered.connect(self.menuTZ)
+
+        actionsMenu.addAction(self.tzAct)
+
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
         self.essAct.triggered.connect(self.menuEss)
@@ -1722,9 +1794,7 @@ class hslWindow(QMainWindow):
         else:
             self.setGeometry(200, 200, 1400, 800)
         
-        
-        self.setWindowTitle('RybaFish Charts [%s]' % version)
-        
+        self.updateWindowTitle()
         self.setWindowIcon(QIcon(iconPath))
         
         scrollPosition = []
@@ -1819,6 +1889,8 @@ class hslWindow(QMainWindow):
 
         # host table row change signal
         self.hostTable.hostChanged.connect(kpisTable.refill)
+
+        self.hostTable.adjustTimeZones.connect(self.chartArea.adjustTimeZones)
 
         # to fill hosts
         self.chartArea.hostsUpdated.connect(self.hostTable.hostsUpdated)

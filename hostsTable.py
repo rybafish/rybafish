@@ -14,10 +14,31 @@ class hostsTable(QTableWidget):
     hosts = [] # pointer (?) to chartArea.widget.hosts, updated by... import?
     
     hostChanged = pyqtSignal([int])
+    adjustTimeZones = pyqtSignal([int])
 
     def __init__(self):
         super().__init__()
         self.initTable()
+
+    def contextMenuEvent(self, event):
+
+        cmenu = QMenu(self)
+
+        #if cfg('dev'):
+        setTimeZone = cmenu.addAction('Manage Time Zone')
+        openSQLConsole = cmenu.addAction('Open SQL Console for this data provider')
+        # cmenu.addSeparator()
+
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
+
+        if action == setTimeZone:
+            i = self.currentRow()
+            dpidx = self.hosts[i]['dpi']
+            print(f'Set time zone, row: {i}')
+            print(f'host: {self.hosts[i]}')
+            print(f'dp index: {dpidx}')
+
+            self.adjustTimeZones.emit(dpidx)
 
     def cellChanged(self, nrow, ncol, prow, pcol):
 

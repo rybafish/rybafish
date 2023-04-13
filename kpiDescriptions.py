@@ -910,7 +910,7 @@ def clarifyGroups(kpiStylesNNN):
             for kpi in kpiStylesNNN.keys():
                 kv= kpiStylesNNN[kpi]
                 # log(f'{kpi=}, {kv=}')
-                if kv['group'] == 0:
+                if kv['group'] == 0 or kv['group'] == '0': # this look ugly... #809
                     continue # special non-scaled group
 
                 if not kv['group'] in gunits:

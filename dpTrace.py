@@ -57,7 +57,6 @@ class dataProvider:
             if m is not None:
                 sign = m.groups()[0]
                 utc_offset = m.groups()[1]
-                
                 utc_offset = int(utc_offset)
                 
                 if sign == '-':
@@ -81,6 +80,7 @@ class dataProvider:
             log(f'trace import using UTC offset: {dbUTCDelta}, calculated shift: {self.TZShift}', 2)
         
         
+        self.dbProperties['timeZoneOffset'] = self.TZShift
         self.supportedKPIs = ['indexserverCpu', 'indexserverMemUsed', 'indexserverMemLimit']
 
         self.files = files
@@ -112,7 +112,10 @@ class dataProvider:
                 trace_lines = len(open(filename).readlines())
                 
             f = open(filename)
-            
+
+            if not self.dbProperties.get('tenant'):
+                self.dbProperties['tenant'] = filename
+
             #scan first lines to count number of ports
             i = -1 
             host = ''
@@ -410,6 +413,7 @@ class dataProvider:
         #log('get data request: %i.%s' % (host, str(kpis)))
         #print('get data request:', host, fromto, kpis)
 
+        tzShift = self.dbProperties.get('timestampShift', 0)
         port = host['port'] 
         
         data_size = self.lastIndx[port]
@@ -423,11 +427,10 @@ class dataProvider:
         
             data[kpi] = ds
         
+        # seems it is just ignoring the from/to:
         for i in range(0, data_size):
-            data['time'][i] = self.data[port][0][i]
+            data['time'][i] = self.data[port][0][i] + tzShift
             
-        timeKey = 'time'
-        
         for kpi in kpis:
             if port == '':
                 colindx = self.hostKPIs.index(kpi) + 1
