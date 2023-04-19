@@ -814,7 +814,9 @@ class hslWindow(QMainWindow):
             log(f'secondary?? {secondary=}')
             self.primaryConf = conf.copy()
         
-        log(f'after connection dialog {connConf=}, {self.primaryConf}')
+        if cfg('dev') and False:
+            # WARNING - this will dump plaintext pwd!
+            log(f'after connection dialog {connConf=}, {self.primaryConf}', 6) # #815
         
         if ok and conf['ok']:
         
