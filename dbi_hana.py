@@ -55,7 +55,9 @@ class hdbi ():
     for k in pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS:
         logline +=('    %s = %s\n' % (k, str(pyhdb.protocol.constants.DEFAULT_CONNECTION_OPTIONS[k])))
         
-    log(logline, 4)
+    # actually, never used...
+    if False:
+        log(logline, 4)
 
     largeSql = False
     

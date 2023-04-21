@@ -547,6 +547,7 @@ def log(s, loglevel = 3, nots = False, nonl = False, component=None,):
         
         mtx.unlock()
 
+
 if cfg('threadSafeLogging', False):
     log('threadSafeLogging enabled')
     mtx = QMutex()
@@ -1286,6 +1287,164 @@ def parseCSV(txt, delimiter=','):
 
 def escapeHtml(msg):
     return msg.replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;').replace('\'','&#39;').replace('"','&#34;')
+
+@profiler
+def turboClean():
+
+    rf_time = None
+    log_time = None
+
+    if cfg('doNotTurboClean', False):
+        return
+
+    try:
+        st1 = os.stat('.log')
+        log_time = st1.st_ctime
+        st2 = os.stat('RybaFish.exe')
+        rf_time = st2.st_ctime
+    except FileNotFoundError:
+        pass
+
+    if rf_time and log_time:
+        if rf_time > log_time:
+            log('purge logs mode 13...')
+            purgeLogs(mode=13)
+        else:
+            log('no purge 13 required')
+
+    purgeLogs(mode=0)
+
+def purgeLogs(mode):
+
+    fname = '.log'
+    # this one was way too slow
+    def seekLines_DEPR(num):
+        lineSeek = {}
+        seek = None
+        i = 0
+
+        try:
+            with open(fname, 'r') as f:
+                l = f.readline()
+                while l:
+                    lineSeek[i] = seek
+                    seek = f.tell()
+                    l = f.readline()
+                    i += 1
+        except:
+            return None
+
+        if i - num > 0:
+            return lineSeek[i-num]
+        else:
+            return None
+
+    def seekConfig():
+        seek = None
+        try:
+            with open(fname, 'r') as f:
+                l = f.readline()
+                while l:
+                    if len(l) > 48 and l[20:48] == 'after connection dialog conn':
+                        seek = f.tell()
+                    l = f.readline()
+        except:
+            return None
+
+        return seek
+
+    def seekSize(size, size2):
+        '''
+            size - top limit for the log size
+                    the same chunk size used to scan lines
+
+            size2 - this is the size of the log after truncation
+                    size2 supposed to be less then size itself
+                    otherwise the seekSize will be executed each time
+                    and we don't want that, right?
+
+
+        '''
+        def printLines(i):
+            print(f'{i}, {lines1=}')
+            print(f'{i}, {lines2=}')
+            print(f'{i}, {lines3=}')
+
+
+        assert size > size2, f'incorrect seekSize call, {size}<{size2}'
+
+        seek = None
+        fsize = 0
+
+        try:
+            with open(fname, 'r') as f:
+                lines1 = f.readlines(size)
+                lines2 = f.readlines(size)
+                lines3 = f.readlines(size)
+
+                while lines3:
+                    lines1 = lines2
+                    lines2 = lines3
+                    lines3 = f.readlines(size)
+                    if not lines3:
+                        break
+
+                fsize = f.tell()
+        except:
+            return None
+
+        if fsize < size:
+            return None
+
+        if len(os.linesep) > 1: #compensate damn windows \r\n...
+            eolSize = 1
+        else:
+            eolSize = 0
+
+        lines = lines1 + lines2
+        seekback = 0
+
+        for i in range(len(lines)-1, -1, -1):
+            l = lines[i]
+            seekback += len(l) + eolSize
+            if seekback > size2:
+                break
+
+        seek = fsize - seekback
+
+        return seek
+
+    seek = None
+
+    if mode == 13:
+        seek = seekConfig()
+    else:
+        s1 = cfg('logSizeMax', 10*1024**2)
+        s2 = cfg('logSizeTarget', 1*1024**2)
+
+        if type(s1) != int or type(s2) != int or (s1 != 0 and s1 <= s2):
+            s1, s2 = 10*1024**2, 1*1024**2
+
+        if s1 != 0:
+            log(f'turboclean check: {s1}/{s2}...', 5)
+            seek = seekSize(s1, s2)
+
+    if not seek:
+        return
+
+    log(f'turboclean execution...', 4)
+    # scanning...
+    lines = []
+    with open(fname, 'r') as f:
+        f.seek(seek)
+        lines = f.readlines()
+
+    # writing...
+    ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with open(fname, 'w') as f:
+        f.writelines([f'...truncated on {ts}...\n'])
+        f.writelines(lines)
+
 
 def secondsToTime(sec):
     '''converts seconds to hh:mm format

@@ -179,6 +179,8 @@ if __name__ == '__main__':
     from profiler import calibrate
     calibrate()
 
+    utils.turboClean()
+
     ryba = hslWindow.hslWindow()
 
     try:
