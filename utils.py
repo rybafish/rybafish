@@ -1297,9 +1297,12 @@ def turboClean():
     if cfg('doNotTurboClean', False):
         return
 
+    logsize = None
+
     try:
         st1 = os.stat('.log')
         log_time = st1.st_ctime
+        logSize = st1.st_size
         st2 = os.stat('RybaFish.exe')
         rf_time = st2.st_ctime
     except FileNotFoundError:
@@ -1312,9 +1315,9 @@ def turboClean():
         else:
             log('no purge 13 required')
 
-    purgeLogs(mode=0)
+    purgeLogs(mode=0, sizeKnown=logSize)
 
-def purgeLogs(mode):
+def purgeLogs(mode, sizeKnown=None):
 
     fname = '.log'
     # this one was way too slow
@@ -1425,14 +1428,14 @@ def purgeLogs(mode):
         if type(s1) != int or type(s2) != int or (s1 != 0 and s1 <= s2):
             s1, s2 = 10*1024**2, 1*1024**2
 
-        if s1 != 0:
-            log(f'turboclean check: {s1}/{s2}...', 5)
+        if s1 != 0 and sizeKnown is not None and sizeKnown >= s1:
+            log(f'turboclean check: {s1}/{s2}, size={sizeKnown}...', 5)
             seek = seekSize(s1, s2)
 
     if not seek:
         return
 
-    log(f'turboclean execution...', 4)
+    log(f'turboclean seek({numberToStr(seek)})', 4)
     # scanning...
     lines = []
     with open(fname, 'r') as f:
@@ -1444,7 +1447,7 @@ def purgeLogs(mode):
     with open(fname, 'w') as f:
         f.writelines([f'...truncated on {ts}...\n'])
         f.writelines(lines)
-
+        log(f'turboclean written: ({numberToStr(f.tell())})', 4)
 
 def secondsToTime(sec):
     '''converts seconds to hh:mm format

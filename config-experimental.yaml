@@ -109,3 +109,6 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 ## Use custom decimal point
 #decimalPoint: '.'
 
+## log size truncation parameters
+#logSizeMax: 10485760
+#logSizeTarget: 1048576
