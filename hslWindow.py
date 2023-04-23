@@ -1406,6 +1406,10 @@ class hslWindow(QMainWindow):
         if cfg('saveLayout', True):
             self.layout = Layout(True)
             
+            if not self.layout['nomode13']:
+                utils.purgeLogs(mode=13)
+                self.layout['nomode13'] = True
+
             if self.layout['variables']:
                 # kpiDescriptions.vrs = self.layout['variables']
                 log('-----addVars hslWindow-----', component='variables')

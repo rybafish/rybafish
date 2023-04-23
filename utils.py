@@ -1290,9 +1290,7 @@ def escapeHtml(msg):
 
 @profiler
 def turboClean():
-
-    rf_time = None
-    log_time = None
+    # this one only calls size-based cleanup (mode 0)
 
     if cfg('doNotTurboClean', False):
         return
@@ -1301,19 +1299,9 @@ def turboClean():
 
     try:
         st1 = os.stat('.log')
-        log_time = st1.st_ctime
         logSize = st1.st_size
-        st2 = os.stat('RybaFish.exe')
-        rf_time = st2.st_ctime
     except FileNotFoundError:
         pass
-
-    if rf_time and log_time:
-        if rf_time > log_time:
-            log('purge logs mode 13...')
-            purgeLogs(mode=13)
-        else:
-            log('no purge 13 required')
 
     purgeLogs(mode=0, sizeKnown=logSize)
 
@@ -1354,6 +1342,7 @@ def purgeLogs(mode, sizeKnown=None):
         except:
             return None
 
+        log('mode 13 turboclean detected...', 5)
         return seek
 
     def seekSize(size, size2):
@@ -1428,7 +1417,7 @@ def purgeLogs(mode, sizeKnown=None):
         if type(s1) != int or type(s2) != int or (s1 != 0 and s1 <= s2):
             s1, s2 = 10*1024**2, 1*1024**2
 
-        if s1 != 0 and sizeKnown is not None and sizeKnown >= s1:
+        if s1 != 0 and sizeKnown is not None and sizeKnown >= s1: # also checks current log size
             log(f'turboclean check: {s1}/{s2}, size={sizeKnown}...', 5)
             seek = seekSize(s1, s2)
 

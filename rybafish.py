@@ -179,7 +179,7 @@ if __name__ == '__main__':
     from profiler import calibrate
     calibrate()
 
-    utils.turboClean()
+    utils.turboClean()          # truncate logs
 
     ryba = hslWindow.hslWindow()
 
