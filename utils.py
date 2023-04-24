@@ -534,7 +534,7 @@ def log(s, loglevel = 3, nots = False, nonl = False, component=None,):
         with profiler('log mutex lock'):
             mtx.tryLock(200)
             
-        f = open('.log', 'a')
+        f = open('rybafish.log', 'a')
         #f.seek(os.SEEK_END, 0)
     
         try:
@@ -1298,7 +1298,7 @@ def turboClean():
     logsize = None
 
     try:
-        st1 = os.stat('.log')
+        st1 = os.stat('rybafish.log')
         logSize = st1.st_size
     except FileNotFoundError:
         pass
@@ -1307,7 +1307,7 @@ def turboClean():
 
 def purgeLogs(mode, sizeKnown=None):
 
-    fname = '.log'
+    fname = 'rybafish.log'
     # this one was way too slow
     def seekLines_DEPR(num):
         lineSeek = {}
@@ -1330,7 +1330,7 @@ def purgeLogs(mode, sizeKnown=None):
         else:
             return None
 
-    def seekConfig():
+    def seekConfig_DEPR():      # 818
         seek = None
         try:
             with open(fname, 'r') as f:
@@ -1409,7 +1409,9 @@ def purgeLogs(mode, sizeKnown=None):
     seek = None
 
     if mode == 13:
-        seek = seekConfig()
+        # seek = seekConfig() # 818
+        if os.path.exists('.log'):
+            os.remove('.log')
     else:
         s1 = cfg('logSizeMax', 10*1024**2)
         s2 = cfg('logSizeTarget', 1*1024**2)

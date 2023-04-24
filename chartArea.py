@@ -2869,7 +2869,7 @@ class chartArea(QFrame):
                 log('[!] initHosts customKPIException: %s' %  errStr, 2)
                 utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n'
                                 + errStr
-                                + '\n\nSee more details in .log file')
+                                + '\n\nSee more details in rybafish.log file')
         except utils.vrsException as e:
             log('[!] variables processing exception: %s' % (str(e)), 1)
             utils.msgDialog('Initialization Error', 'Variables processing error. Check the variables definition, if the message persists, consider deleting layout.yaml\n\n%s' % (str(e)))

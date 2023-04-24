@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame, 
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QSplitter, QStyleFactory, QTableWidget,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
