@@ -88,10 +88,14 @@ class cfgManager():
     configs = {}
     path = None
     
+    def encode(pwd):
+        return cfgManager.fernet.encrypt(pwd.encode())
+
+    def decode(pwd):
+        return cfgManager.fernet.decrypt(pwd).decode()
+
     def reload(self):
-        from cryptography.fernet import Fernet
-        self.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
-    
+
         cfs = None
 
         self.configs = {}
@@ -117,15 +121,19 @@ class cfgManager():
         for n in cfs:
                 
             confEntry = cfs[n]
-            
+
+            '''
             if 'pwd' in confEntry:
                 pwd = confEntry['pwd']
                 pwd = self.fernet.decrypt(pwd).decode()
                 confEntry['pwd'] = pwd
+            '''
                 
             self.configs[n] = confEntry
 
     def __init__(self, fname = None):
+        from cryptography.fernet import Fernet
+        cfgManager.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
 
         if fname is None:
             script = sys.argv[0]
@@ -154,10 +162,10 @@ class cfgManager():
         ds = {}
         for n in self.configs:
             confEntry = self.configs[n].copy()
-            if 'pwd' in confEntry:
-                pwd = confEntry['pwd']
-                pwd = self.fernet.encrypt(pwd.encode())
-                confEntry['pwd'] = pwd
+            # if 'pwd' in confEntry:
+                # pwd = confEntry['pwd']
+                # pwd = self.fernet.encrypt(pwd.encode())
+                # confEntry['pwd'] = pwd
                 
             if confEntry.get('dbi') == 'S2J':
                 if 'pwd' in confEntry:
