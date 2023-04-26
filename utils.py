@@ -89,9 +89,13 @@ class cfgManager():
     path = None
     
     def encode(pwd):
+        if not pwd:
+            return None
         return cfgManager.fernet.encrypt(pwd.encode())
 
     def decode(pwd):
+        if not pwd:
+            return None
         return cfgManager.fernet.decrypt(pwd).decode()
 
     def reload(self):

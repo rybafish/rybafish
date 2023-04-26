@@ -121,7 +121,7 @@ class hdbi ():
         if cfg('dev') and pm:
             port = int(str(port).replace(pm[1], pm[0]))
 
-        try: 
+        try:
             if self.largeSql:
                 old_ms = pyhdb.protocol.constants.MAX_MESSAGE_SIZE
                 old_ss = pyhdb.protocol.constants.MAX_SEGMENT_SIZE
