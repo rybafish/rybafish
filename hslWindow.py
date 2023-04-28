@@ -270,6 +270,7 @@ class hslWindow(QMainWindow):
             self.layout['connectionName'] = connection
         else:
             if self.primaryConf:
+                log('[?] Not possible point', 5)
                 self.layout['connectionName'] = None
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
@@ -315,7 +316,7 @@ class hslWindow(QMainWindow):
                 
         abandone = False
         
-        if somethingRunning and not crashMode:
+        if somethingRunning and not crashMode and mode != 'secondaryConnection':
             # log('There is something running, need to show a warning', 4)
             log(f'dumpLayout: Seems the sql still running in {tabname}, need to show a warning', 4)
             
@@ -748,6 +749,16 @@ class hslWindow(QMainWindow):
 
 
     def processConnection(self, secondary=False):
+        '''
+        shows the connection dialog and triggers connection
+        both primary and secondary
+
+        !! it will redifine self.primaryConnection configuration if not secondary
+
+        initial connection shown in the dialog will be based on self.primaryConf
+        if not yet connected in this session - primaryConnection loaded from layout.yaml
+        '''
+
         log(f'processConnection, {secondary=}')
         
         conf = None
@@ -815,7 +826,6 @@ class hslWindow(QMainWindow):
             self.primaryConf = conf.copy()
         
         if cfg('dev') and False:
-            # WARNING - this will dump plaintext pwd!
             log(f'after connection dialog {connConf=}, {self.primaryConf}', 6) # #815
         
         if ok and conf['ok']:
@@ -825,7 +835,12 @@ class hslWindow(QMainWindow):
                 if cfg('saveLayout', True) and len(self.chartArea.widget.hosts):
                     log('connect dump layout')
                     
-                    status = self.dumpLayout(closeTabs=False, mode='reconnect')
+                    if secondary:
+                        dumpMode = 'secondaryConnection'
+                    else:
+                        dumpMode = 'reconnect'
+
+                    status = self.dumpLayout(closeTabs=False, mode=dumpMode)
 
                     # abandoneReturn = []
                     # self.dumplayout(closetabs = false, abandonflag=abandonereturn)
@@ -1192,6 +1207,7 @@ class hslWindow(QMainWindow):
     def menuSQLConsole(self):
     
         conf = self.primaryConf
+        secondary = False
         
         if conf is None:
             self.statusMessage('No configuration...', False)
@@ -1210,6 +1226,11 @@ class hslWindow(QMainWindow):
         tname = self.generateTabName()
                 
         try:
+            dpWarning = None
+
+            if False and secondary: # not yet ;)
+                dpWarning = '<font color="red>Warning:</font> secondary connection (id)'
+
             console = sqlConsole.sqlConsole(self, conf, tname) # self = window
             log('seems connected...')
         except dbException as e:
