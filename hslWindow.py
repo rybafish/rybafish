@@ -59,6 +59,7 @@ class hslWindow(QMainWindow):
 
     statusbar = None
     primaryConf = None # primary connection dictionary, keys: host, port, name, dbi, user, pwd, etc
+    configurations = {}
     
     kpisTable = None
     
@@ -900,6 +901,8 @@ class hslWindow(QMainWindow):
                 dp = dpDB.dataProvider(conf) # db data provider
                 
                 dpidx = self.chartArea.appendDP(dp)
+                self.configurations[dpidx] = conf
+
                 log(f'Dataprovider added, idx: {dpidx}', 5)
                 
                 if 'disconnectSignal' in dp.options:
@@ -1204,15 +1207,49 @@ class hslWindow(QMainWindow):
         return tname
         
 
-    def menuSQLConsole(self):
-    
-        conf = self.primaryConf
-        secondary = False
-        
+    def openSecondaryConsole(self, dpidx):
+        if not self.configurations:
+            log('[W] no configurations found!', 2)
+
+        if dpidx not in self.configurations or True:
+            log(f'[!] {dpidx} is not known configuration')
+            log(f'known indexes are: {self.configurations.keys()}')
+
+        conf = self.configurations[dpidx]
+        self.sqlConsoleCall(configuration=conf, dpidx=dpidx)
+
+    def sqlConsoleCall(self, configuration=None, dpidx=None):
+        # to be called from menuSQLConsole (menu signal) and my code (secondary connection)
+        conf = None
+        dpWarning = None
+
+        if configuration is None:
+            log('menuSQLConsole...')
+            secondary = False
+            conf = self.primaryConf
+        else:
+            if dpidx is not None:
+                dp = self.chartArea.ndp[dpidx]
+                prop = dp.dbProperties
+                dpid = configuration.get('dbi', '')
+                dpid += ': ' + str(prop.get('tenant', ''))
+            else:
+                dpid = '?? '+configuration.get('dbi') + ' / ' + configuration.get('host')+':'+configuration('port')
+
+            user = configuration.get('user')
+
+            if user:
+                dpid += f' ({user})'
+
+            dpWarning = f'<font color="red">Warning:</font> secondary connection: {dpid}'
+            log('menuSQLConsole, secondary connection...')
+            secondary = True
+            conf = configuration
+
         if conf is None:
             self.statusMessage('No configuration...', False)
             return
-            
+
         self.statusMessage('Connecting...', True)
 
         ind = indicator()
@@ -1220,18 +1257,11 @@ class hslWindow(QMainWindow):
 
         ind.status = 'sync'
         ind.repaint()
-        
-        log('menuSQLConsole...')
-        
+
         tname = self.generateTabName()
-                
+
         try:
-            dpWarning = None
-
-            if False and secondary: # not yet ;)
-                dpWarning = '<font color="red>Warning:</font> secondary connection (id)'
-
-            console = sqlConsole.sqlConsole(self, conf, tname) # self = window
+            console = sqlConsole.sqlConsole(self, conf, tname, dpWarning=dpWarning) # self = window
             log('seems connected...')
         except dbException as e:
             log('[!] failed to open console expectedly')
@@ -1245,41 +1275,43 @@ class hslWindow(QMainWindow):
             self.statusMessage('Connection error?', True)
             return
         '''
-        
+
         console.indicator = ind
         ind.iClicked.connect(console.reportRuntime)
 
         # ind.iToggle.connect(console.updateRuntime)
-        
+
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
         self.tabs.addTab(console, tname)
-        
+
         console.selfRaise.connect(self.raiseTab)
         console.statusMessage.connect(self.statusMessage)
-        
+
         console.alertSignal.connect(self.popUp)
         console.tabSwitchSignal.connect(self.switchTab)
         console.sqlBrowserSignal.connect(self.menuSQLBrowser)
-        
+
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
         if console.unsavedChanges:
             # if autoloaded from backup
             # cannot be triggered from inside as signal not connected on __init__
             self.changeActiveTabName(console.tabname + ' *')
-        
+
         if self.layout == None:
             # no backups to avoid conflicts...
             console.noBackup = True
-            
+
         console.cons.setFocus()
-        
+
         self.statusMessage('', False)
         console.indicator.status = 'idle'
         console.indicator.repaint()
-            
-    
+        
+    def menuSQLConsole(self):
+        self.sqlConsoleCall()
+
     def menuColorize(self):
         if cfg('colorize', False) == False:
             utils.cfgSet('colorize', True)
@@ -1359,6 +1391,7 @@ class hslWindow(QMainWindow):
             #self.chartArea.initDP(message='Parsing the trace file, will take a minute or so...')
 
             self.chartArea.cleanDPs()
+            self.configurations.clear()
             # new style, #739
             dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
             dpidx = self.chartArea.appendDP(dp)
@@ -1918,6 +1951,7 @@ class hslWindow(QMainWindow):
         self.hostTable.hostChanged.connect(kpisTable.refill)
 
         self.hostTable.adjustTimeZones.connect(self.chartArea.adjustTimeZones)
+        self.hostTable.openSecondaryConsole.connect(self.openSecondaryConsole)
 
         # to fill hosts
         self.chartArea.hostsUpdated.connect(self.hostTable.hostsUpdated)

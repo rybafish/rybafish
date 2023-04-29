@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidgetItem,
-        QTabWidget, QApplication, QMenu, QFileDialog, QMessageBox, QInputDialog,
-        QToolBar, QAction, QStyle, QCheckBox, QToolButton)
+                             QTabWidget, QApplication, QMenu, QFileDialog, QMessageBox, QInputDialog, QLabel,
+                             QToolBar, QAction, QStyle, QCheckBox, QToolButton)
 
 from PyQt5.QtGui import QTextCursor, QColor, QFont, QFontMetricsF, QIcon
 from PyQt5.QtGui import QTextCharFormat, QBrush, QDesktopServices
@@ -1271,7 +1271,7 @@ class sqlConsole(QWidget):
     
     #gc.set_debug(gc.gc.DEBUG_LEAK)
 
-    def __init__(self, window, config, tabname = None):
+    def __init__(self, window, config, tabname=None, dpWarning=None):
     
         self.thread = QThread()             # main sql processing thread
         self.sqlWorker = sqlWorker(self)    # thread worker object (linked to console instance)
@@ -1341,7 +1341,7 @@ class sqlConsole(QWidget):
         self.LOBs = False               # True if one of console results has LOBs. Reset with detach
         
         super().__init__()
-        self.initUI()
+        self.initUI(dpWarning)
         
         
         if tabname is not None:
@@ -3651,7 +3651,7 @@ class sqlConsole(QWidget):
             self.toolbar.hide()
 
 
-    def initUI(self):
+    def initUI(self, dpWarning=None):
         '''
             main sqlConsole UI 
         '''
@@ -3686,6 +3686,9 @@ class sqlConsole(QWidget):
         if cfg('sqlConsoleToolbar', True):
             self.toolbarEnable()
                     
+        if dpWarning:
+            self.vbar.addWidget(QLabel(dpWarning))
+
         self.vbar.addWidget(self.spliter)
         
         self.setLayout(self.vbar)
