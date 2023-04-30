@@ -890,6 +890,7 @@ class hslWindow(QMainWindow):
                 
                 if not secondary:
                     self.chartArea.cleanDPs()
+                    self.configurations.clear()
 
                 self.statusMessage('Connecting...', False)
                 self.repaint()
@@ -1005,8 +1006,9 @@ class hslWindow(QMainWindow):
 
                 # windowStr += ' - ' + version
 
-                self.tabs.setTabText(0, propStr)
-                self.updateWindowTitle()
+                if not secondary:
+                    self.tabs.setTabText(0, propStr)
+                    self.updateWindowTitle()
                 # self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
                 
                 #setup keep alives
@@ -1241,7 +1243,7 @@ class hslWindow(QMainWindow):
             if user:
                 dpid += f' ({user})'
 
-            dpWarning = f'<font color="red">Warning:</font> secondary connection: {dpid}'
+            dpWarning = f'<font color="blue">Secondary connection</font>: {dpid}'
             log('menuSQLConsole, secondary connection...')
             secondary = True
             conf = configuration
