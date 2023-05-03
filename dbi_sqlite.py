@@ -134,7 +134,10 @@ class sqlite():
             cur = connection.cursor()
             cur.execute(sql_string, params)
             
-            rows_tuples = cur.fetchmany(resultSize)
+            if resultSize is None:
+                rows_tuples = cur.fetchall()
+            else:
+                rows_tuples = cur.fetchmany(resultSize)
             
             with profiler('SQLite rows convertion'):
                 for r in rows_tuples:

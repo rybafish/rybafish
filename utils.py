@@ -990,7 +990,7 @@ def alignTypes(rows):
     '''
         scan through rows and detect types, perform conversion when required
         Main usage is SQLite output that can in fact return strings and integers in the same column
-        and, by the way it is not aware of timestamps and has tham as string.
+        and, by the way it is not aware of timestamps and has them as string.
         
         So the values in rows array are already in correct types but might be inconsistent.
         
@@ -1012,8 +1012,11 @@ def alignTypes(rows):
     def check_timestamp(v):
         
         try:
-            v = datetime.fromisoformat(v)
+            # v = datetime.fromisoformat(v)
+            v = extended_fromisoformat(v)
+            # log(f'is timestamp? {v} (yes)', 5)
         except ValueError:
+            # log(f'is timestamp? {v} (NO)', 5)
             return False
             
         return True
@@ -1053,8 +1056,10 @@ def alignTypes(rows):
         for r in rows:
             v = r[idx]
             
-            t = detectType(v)
-            
+            if columnType != 'varchar':
+                t = detectType(v)
+                # cannot break as we also calculate maxlenth here below (maxTempLen)
+
             if columnType is None:
                 columnType = t
                 maxTempLen = 0
@@ -1116,7 +1121,8 @@ def alignTypes(rows):
         if columnType == 'timestamp' and t == 'timestamp':
             # meaning the whole column was timestamp...
             for r in rows:
-                r[idx] = datetime.fromisoformat(r[idx])
+                # r[idx] = datetime.fromisoformat(r[idx])
+                r[idx] = extended_fromisoformat(r[idx])
                 
         columnTypes.append((columnType, maxLen))
                 
@@ -1143,11 +1149,23 @@ def extended_fromisoformat(v):
         which also tries to parse values like 2022-12-04 19:56:34.12
         standard one will fail because it requres exactly 3 or 6 digits after dot
         
-        current version only supports 3 digits
+        current version only supports <6 digits after dot
     '''
     try:
-        return datetime.fromisoformat(v)
+        # return datetime.fromisoformat(v)
+        return datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
+
     except ValueError:
+        if v.find('.') == -1:
+            v += '.000'
+
+        return datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
+
+        raise ValueError
+
+        '''
+        #old implementation
+
         if len(v) <3:
             raise ValueError
             
@@ -1157,6 +1175,7 @@ def extended_fromisoformat(v):
             return datetime.fromisoformat(v + '0')
             
         raise ValueError
+        '''
 
 def parseCSV(txt, delimiter=','):
     '''
