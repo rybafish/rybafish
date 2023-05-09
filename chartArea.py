@@ -850,7 +850,7 @@ class myWidget(QWidget):
                     y = i * y_scale + y_scale*0.5 - height/2 + y_shift # this is the center of the gantt line
 
                     j = 0
-                    
+
                     reportRange = None
                     
                     for t in gc[entity]:
@@ -956,7 +956,7 @@ class myWidget(QWidget):
                     scan = data[kpi]
 
                 j = i
-                
+
                 #log('scanForHint len(scan) %i' %(len(scan)), 5)
                 #log('scanForHint i: %i' %(i), 5)
                 
@@ -994,6 +994,9 @@ class myWidget(QWidget):
                     j = moveAsync('left', scan, i)
                 else:
                     j -= 1 # THIS is the point right before the trgt_time
+
+                if j is None:   # #831
+                    continue
 
                 found_some = False
 
@@ -1036,6 +1039,7 @@ class myWidget(QWidget):
                         self.highlightedKpi = None
 
                     d = kpiStylesNNN[kpi].get('decimal', 0)
+
                     normVal = kpiDescriptions.normalize(kpiStylesNNN[kpi], scan[j], d)
 
                     scaled_value = utils.numberToStr(normVal, d)

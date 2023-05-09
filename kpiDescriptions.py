@@ -741,11 +741,14 @@ def createStyle(kpi, custom = False, sqlIdx = None):
 
             acml = kpi.get('async', False)
 
-            if acml and style['stacked']:
-                log('[E] KPI cannot have async and stacked options enabled at the same time: {sqlIdx}', 2)
-                raise utils.customKPIException(f"Unsupported async mode for stacked multiline KPI: {kpi['name']}")
+            if acml:
+                if style['stacked']:
+                    log('[E] KPI cannot have async and stacked options enabled at the same time: {sqlIdx}', 2)
+                    raise utils.customKPIException(f"Unsupported async mode for stacked multiline KPI: {kpi['name']}")
+                else:
+                    style['async'] = True
             else:
-                style['async'] = True
+                style['async'] = False
 
             ordby = kpi.get('orderby', 'unknown')
             if ordby not in ['max', 'avg', 'name', 'deviation']:
