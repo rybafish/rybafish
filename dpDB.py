@@ -718,7 +718,7 @@ class dataProvider(QObject):
 
         for i in range(len(cols_list[0])):
             col = cols_list[0][i]
-            
+
             br = kpiStylesNNN[kpi].get('gradient')
             
             if br and col[0] == 'GRADIENT': #'GRADIENT'
@@ -726,7 +726,7 @@ class dataProvider(QObject):
                 
                 brMin = rows[0][brIndex]
                 brMax = rows[0][brIndex]
-                
+
             if col[0] == 'TITLE':
                 tIndex = i
 
