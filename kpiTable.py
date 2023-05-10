@@ -255,7 +255,7 @@ class kpiTable(QTableWidget):
             idx = style['sql']
 
             if kpiDescriptions.vrsStrErr.get(idx):
-                label = '[!!!] ' + kpiDescriptions.vrsStr.get(idx)
+                label = '[!!!] ' + kpiDescriptions.vrsStr.get(idx, ' ?')
             else:
                 label = kpiDescriptions.vrsStr.get(idx)
 
