@@ -145,6 +145,7 @@ class Variables(QDialog):
     
         if mode == 'defaults':
             lvrsStr = vrsStrDef
+            vrsStr.clear()      # #832.2 fix?
             #lvrs = vrsDef -- those already parsed/replaced, cannot use those
         else:
             lvrsStr = vrsStr
@@ -421,7 +422,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
     logvar('addVars input: %s' % (str(vStr)))
         
     for idx in vrs:
-        logvar('%s --> %s' % (idx, str(vrs[idx])))
+        logvar('    %s --> %s' % (idx, str(vrs[idx])), 5)
     
     if vStr == None:
         return
@@ -443,6 +444,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
         vrs[sqlIdx] = {}
 
     if sqlIdx not in vrsStr or overwrite:
+        logvar(f'setting defaults for {sqlIdx}', 5)
         vrsStr[sqlIdx] = vStr
 
     vlist = [s.strip() for s in vStr.split(',')]
@@ -741,11 +743,14 @@ def createStyle(kpi, custom = False, sqlIdx = None):
 
             acml = kpi.get('async', False)
 
-            if acml and style['stacked']:
-                log('[E] KPI cannot have async and stacked options enabled at the same time: {sqlIdx}', 2)
-                raise utils.customKPIException(f"Unsupported async mode for stacked multiline KPI: {kpi['name']}")
+            if acml:
+                if style['stacked']:
+                    log('[E] KPI cannot have async and stacked options enabled at the same time: {sqlIdx}', 2)
+                    raise utils.customKPIException(f"Unsupported async mode for stacked multiline KPI: {kpi['name']}")
+                else:
+                    style['async'] = True
             else:
-                style['async'] = True
+                style['async'] = False
 
             ordby = kpi.get('orderby', 'unknown')
             if ordby not in ['max', 'avg', 'name', 'deviation']:

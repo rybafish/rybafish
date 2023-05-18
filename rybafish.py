@@ -105,7 +105,7 @@ class ExceptionHandler(QtCore.QObject):
         if ryba and ryba.threadID == exceptionThreadID:
             msgBox.setWindowTitle('Fatal error')
         else:
-            msgBox.setWindowTitle('Fatal error in child thread, check the details in .log file')
+            msgBox.setWindowTitle('Fatal error in child thread, check the details in rybafish.log file')
             
         msgBox.setText('Unhandled exception occured. Check the log file for details.\n\nIf you want to report this issue, press "Show Details" and copy the call stack.')
         msgBox.setIcon(QMessageBox.Critical)
@@ -178,6 +178,8 @@ if __name__ == '__main__':
     
     from profiler import calibrate
     calibrate()
+
+    utils.turboClean()          # truncate logs
 
     ryba = hslWindow.hslWindow()
 

@@ -30,7 +30,7 @@ except:
     
     print(s)
     
-    f = open('.log', 'a')
+    f = open('rybafish.log', 'a')
     f.seek(os.SEEK_END, 0)
     
     ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' '
@@ -51,7 +51,7 @@ def log(s):
         print('[l]', s)
         
     if config.get('logmode') != 'screen':
-        f = open('.log', 'a')
+        f = open('rybafish.log', 'a')
         f.seek(os.SEEK_END, 0)
         try:
             f.write(ts + str(s) + '\n')

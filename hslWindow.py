@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame, 
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QSplitter, QStyleFactory, QTableWidget,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
@@ -59,6 +59,7 @@ class hslWindow(QMainWindow):
 
     statusbar = None
     primaryConf = None # primary connection dictionary, keys: host, port, name, dbi, user, pwd, etc
+    configurations = {}
     
     kpisTable = None
     
@@ -270,6 +271,7 @@ class hslWindow(QMainWindow):
             self.layout['connectionName'] = connection
         else:
             if self.primaryConf:
+                log('[?] Not possible point', 5)
                 self.layout['connectionName'] = None
         
         self.layout['pos'] = [self.pos().x(), self.pos().y()]
@@ -315,7 +317,7 @@ class hslWindow(QMainWindow):
                 
         abandone = False
         
-        if somethingRunning and not crashMode:
+        if somethingRunning and not crashMode and mode != 'secondaryConnection':
             # log('There is something running, need to show a warning', 4)
             log(f'dumpLayout: Seems the sql still running in {tabname}, need to show a warning', 4)
             
@@ -748,6 +750,16 @@ class hslWindow(QMainWindow):
 
 
     def processConnection(self, secondary=False):
+        '''
+        shows the connection dialog and triggers connection
+        both primary and secondary
+
+        !! it will redifine self.primaryConnection configuration if not secondary
+
+        initial connection shown in the dialog will be based on self.primaryConf
+        if not yet connected in this session - primaryConnection loaded from layout.yaml
+        '''
+
         log(f'processConnection, {secondary=}')
         
         conf = None
@@ -814,7 +826,8 @@ class hslWindow(QMainWindow):
             log(f'secondary?? {secondary=}')
             self.primaryConf = conf.copy()
         
-        log(f'after connection dialog {connConf=}, {self.primaryConf}')
+        if cfg('dev') and False:
+            log(f'after connection dialog {connConf=}, {self.primaryConf}', 6) # #815
         
         if ok and conf['ok']:
         
@@ -823,7 +836,12 @@ class hslWindow(QMainWindow):
                 if cfg('saveLayout', True) and len(self.chartArea.widget.hosts):
                     log('connect dump layout')
                     
-                    status = self.dumpLayout(closeTabs=False, mode='reconnect')
+                    if secondary:
+                        dumpMode = 'secondaryConnection'
+                    else:
+                        dumpMode = 'reconnect'
+
+                    status = self.dumpLayout(closeTabs=False, mode=dumpMode)
 
                     # abandoneReturn = []
                     # self.dumplayout(closetabs = false, abandonflag=abandonereturn)
@@ -841,36 +859,38 @@ class hslWindow(QMainWindow):
 
                     self.layoutDumped = False
 
-                # need to disconnect open consoles first...
-                self.statusMessage('Disconnecing open consoles...', False)
-                
-                for i in range(self.tabs.count()):
-                
-                    w = self.tabs.widget(i)
-                
-                    if isinstance(w, sqlConsole.sqlConsole) and w.conn is not None:
-                        tabname = w.tabname.rstrip(' *')
-                        '''
-                        if abandon:
-                            log(f'ignoring close for {tabname} due to abandone = True', 4) # bug #781
-                            w.dbi = None
-                            w.conn = None
-                            w.connection_id = None
-                            w.sqlRunning = False
-                        else:
+                if not secondary:
+                    # need to disconnect open consoles first...
+                    self.statusMessage('Disconnecing open consoles...', False)
+
+                    for i in range(self.tabs.count()):
+
+                        w = self.tabs.widget(i)
+
+                        if isinstance(w, sqlConsole.sqlConsole) and w.conn is not None:
+                            tabname = w.tabname.rstrip(' *')
+                            '''
+                            if abandon:
+                                log(f'ignoring close for {tabname} due to abandone = True', 4) # bug #781
+                                w.dbi = None
+                                w.conn = None
+                                w.connection_id = None
+                                w.sqlRunning = False
+                            else:
+                                log(f'closing connection of {tabname}...')
+                                w.disconnectDB()
+                            '''
                             log(f'closing connection of {tabname}...')
                             w.disconnectDB()
-                        '''
-                        log(f'closing connection of {tabname}...')
-                        w.disconnectDB()
-                        w.indicator.status = 'disconnected'
-                        w.indicator.repaint()
-                        log('disconnected...')
-                        
+                            w.indicator.status = 'disconnected'
+                            w.indicator.repaint()
+                            log('disconnected...')
+
                 # close damn chart console
                 
                 if not secondary:
                     self.chartArea.cleanDPs()
+                    self.configurations.clear()
 
                 self.statusMessage('Connecting...', False)
                 self.repaint()
@@ -882,6 +902,8 @@ class hslWindow(QMainWindow):
                 dp = dpDB.dataProvider(conf) # db data provider
                 
                 dpidx = self.chartArea.appendDP(dp)
+                self.configurations[dpidx] = conf
+
                 log(f'Dataprovider added, idx: {dpidx}', 5)
                 
                 if 'disconnectSignal' in dp.options:
@@ -984,8 +1006,9 @@ class hslWindow(QMainWindow):
 
                 # windowStr += ' - ' + version
 
-                self.tabs.setTabText(0, propStr)
-                self.updateWindowTitle()
+                if not secondary:
+                    self.tabs.setTabText(0, propStr)
+                    self.updateWindowTitle()
                 # self.setWindowTitle('RybaFish Charts [%s]' % windowStr)
                 
                 #setup keep alives
@@ -1186,14 +1209,49 @@ class hslWindow(QMainWindow):
         return tname
         
 
-    def menuSQLConsole(self):
-    
-        conf = self.primaryConf
-        
+    def openSecondaryConsole(self, dpidx):
+        if not self.configurations:
+            log('[W] no configurations found!', 2)
+
+        if dpidx not in self.configurations or True:
+            log(f'[!] {dpidx} is not known configuration')
+            log(f'known indexes are: {self.configurations.keys()}')
+
+        conf = self.configurations[dpidx]
+        self.sqlConsoleCall(configuration=conf, dpidx=dpidx)
+
+    def sqlConsoleCall(self, configuration=None, dpidx=None):
+        # to be called from menuSQLConsole (menu signal) and my code (secondary connection)
+        conf = None
+        dpWarning = None
+
+        if configuration is None:
+            log('menuSQLConsole...')
+            secondary = False
+            conf = self.primaryConf
+        else:
+            if dpidx is not None:
+                dp = self.chartArea.ndp[dpidx]
+                prop = dp.dbProperties
+                dpid = configuration.get('dbi', '')
+                dpid += ': ' + str(prop.get('tenant', ''))
+            else:
+                dpid = '?? '+configuration.get('dbi') + ' / ' + configuration.get('host')+':'+configuration('port')
+
+            user = configuration.get('user')
+
+            if user:
+                dpid += f' ({user})'
+
+            dpWarning = f'<font color="blue">Secondary connection</font>: {dpid}'
+            log('menuSQLConsole, secondary connection...')
+            secondary = True
+            conf = configuration
+
         if conf is None:
             self.statusMessage('No configuration...', False)
             return
-            
+
         self.statusMessage('Connecting...', True)
 
         ind = indicator()
@@ -1201,13 +1259,11 @@ class hslWindow(QMainWindow):
 
         ind.status = 'sync'
         ind.repaint()
-        
-        log('menuSQLConsole...')
-        
+
         tname = self.generateTabName()
-                
+
         try:
-            console = sqlConsole.sqlConsole(self, conf, tname) # self = window
+            console = sqlConsole.sqlConsole(self, conf, tname, dpWarning=dpWarning) # self = window
             log('seems connected...')
         except dbException as e:
             log('[!] failed to open console expectedly')
@@ -1221,41 +1277,43 @@ class hslWindow(QMainWindow):
             self.statusMessage('Connection error?', True)
             return
         '''
-        
+
         console.indicator = ind
         ind.iClicked.connect(console.reportRuntime)
 
         # ind.iToggle.connect(console.updateRuntime)
-        
+
         console.nameChanged.connect(self.changeActiveTabName)
         console.cons.closeSignal.connect(self.closeTab)
         self.tabs.addTab(console, tname)
-        
+
         console.selfRaise.connect(self.raiseTab)
         console.statusMessage.connect(self.statusMessage)
-        
+
         console.alertSignal.connect(self.popUp)
         console.tabSwitchSignal.connect(self.switchTab)
         console.sqlBrowserSignal.connect(self.menuSQLBrowser)
-        
+
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
         if console.unsavedChanges:
             # if autoloaded from backup
             # cannot be triggered from inside as signal not connected on __init__
             self.changeActiveTabName(console.tabname + ' *')
-        
+
         if self.layout == None:
             # no backups to avoid conflicts...
             console.noBackup = True
-            
+
         console.cons.setFocus()
-        
+
         self.statusMessage('', False)
         console.indicator.status = 'idle'
         console.indicator.repaint()
-            
-    
+        
+    def menuSQLConsole(self):
+        self.sqlConsoleCall()
+
     def menuColorize(self):
         if cfg('colorize', False) == False:
             utils.cfgSet('colorize', True)
@@ -1335,6 +1393,7 @@ class hslWindow(QMainWindow):
             #self.chartArea.initDP(message='Parsing the trace file, will take a minute or so...')
 
             self.chartArea.cleanDPs()
+            self.configurations.clear()
             # new style, #739
             dp = dpTrace.dataProvider(fname[0], timezone_offset=fileUTCshift) # db data provider
             dpidx = self.chartArea.appendDP(dp)
@@ -1404,6 +1463,10 @@ class hslWindow(QMainWindow):
         if cfg('saveLayout', True):
             self.layout = Layout(True)
             
+            if not self.layout['nomode13']:
+                utils.purgeLogs(mode=13)
+                self.layout['nomode13'] = True
+
             if self.layout['variables']:
                 # kpiDescriptions.vrs = self.layout['variables']
                 log('-----addVars hslWindow-----', component='variables')
@@ -1721,8 +1784,7 @@ class hslWindow(QMainWindow):
 
         csvAct = QAction('Import CSV-file', self)
         csvAct.setStatusTip('Import CSV file into database')
-        if cfg('dev'):
-            csvAct.setShortcut('Alt+F12')
+        # csvAct.setShortcut('Alt+F12')
         csvAct.triggered.connect(self.menuCSV)
         
         actionsMenu.addSeparator()
@@ -1891,6 +1953,7 @@ class hslWindow(QMainWindow):
         self.hostTable.hostChanged.connect(kpisTable.refill)
 
         self.hostTable.adjustTimeZones.connect(self.chartArea.adjustTimeZones)
+        self.hostTable.openSecondaryConsole.connect(self.openSecondaryConsole)
 
         # to fill hosts
         self.chartArea.hostsUpdated.connect(self.hostTable.hostsUpdated)

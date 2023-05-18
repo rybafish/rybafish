@@ -15,6 +15,7 @@ class hostsTable(QTableWidget):
     
     hostChanged = pyqtSignal([int])
     adjustTimeZones = pyqtSignal([int])
+    openSecondaryConsole = pyqtSignal([int])
 
     def __init__(self):
         super().__init__()
@@ -34,11 +35,12 @@ class hostsTable(QTableWidget):
         if action == setTimeZone:
             i = self.currentRow()
             dpidx = self.hosts[i]['dpi']
-            print(f'Set time zone, row: {i}')
-            print(f'host: {self.hosts[i]}')
-            print(f'dp index: {dpidx}')
-
             self.adjustTimeZones.emit(dpidx)
+
+        if action == openSQLConsole:
+            i = self.currentRow()
+            dpidx = self.hosts[i]['dpi']
+            self.openSecondaryConsole.emit(dpidx)
 
     def cellChanged(self, nrow, ncol, prow, pcol):
 

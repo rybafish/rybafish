@@ -28,11 +28,12 @@ class Config(QDialog):
                 
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
-                self.pwdEdit.setText(conf['password'])
-                                
+                # self.pwdEdit.setText(conf['password'])
+                self.pwdEdit.setText(cfgManager.decode(conf['password']))
+
                 if 'ssl' in conf:
                     self.sslCB.setChecked(conf['ssl'])
-                                
+
                 if dbi:
                     for i in range(self.driverCB.count()):
                         if dbidict[self.driverCB.itemText(i)] == dbi:
@@ -45,9 +46,9 @@ class Config(QDialog):
                 
             else:
                 self.hostportEdit.setFocus()
-        except:
-            pass
-    
+        except Exception as e:
+            log(f'[!] setConf exception: {e}', 2)
+
     
     def __init__(self, conf, parent = None):
         #super().__init__(parent)
@@ -139,7 +140,7 @@ class Config(QDialog):
         cf.config['dbi'] = dbidict[cf.driverCB.currentText()]
         
         cf.config['user'] = cf.userEdit.text()
-        cf.config['password'] = cf.pwdEdit.text().strip()
+        cf.config['password'] = cfgManager.encode(cf.pwdEdit.text().strip())
         
         cf.config['noreload'] = cf.noReload.isChecked()
         cf.config['ssl'] = cf.sslCB.isChecked()
@@ -177,7 +178,7 @@ class Config(QDialog):
     
         def parseHost(hostport):
             dbi = c.get('dbi')
-        
+
             try:
                 if dbi == 'SLT':
                     host = hostport
@@ -247,7 +248,7 @@ class Config(QDialog):
         cfg['name'] = txt
         cfg['dbi'] = dbidict[self.driverCB.currentText()]
         cfg['user'] = self.userEdit.text()
-        cfg['pwd'] = self.pwdEdit.text()
+        cfg['pwd'] = cfgManager.encode(self.pwdEdit.text())
         cfg['hostport'] = self.hostportEdit.text()
         cfg['ssl'] = self.sslCB.isChecked()
         

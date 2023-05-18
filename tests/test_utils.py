@@ -1,5 +1,6 @@
 import pytest
 import utils
+from datetime import datetime
 
 utils.initLocale()
 
@@ -53,3 +54,25 @@ def test_decimal_rounding(input, expected):
 ])
 def test_cvs_numbers(input, expected):
     assert utils.numberToStrCSV(input, False) == expected
+
+@pytest.mark.parametrize("input, expected", [
+    ('2023-05-02 20:01:00', '2023-05-02 20:01:00'),
+    ('2023-05-02 20:01:00.1', '2023-05-02 20:01:00.100000'),
+    ('2023-05-02 20:01:00.123', '2023-05-02 20:01:00.123000'),
+    ('2023-05-02 20:01:00.1234', '2023-05-02 20:01:00.123400'),
+    ('2023-05-02 20:01:00.123456', '2023-05-02 20:01:00.123456'),
+])
+def test_iso_format(input, expected):
+    assert utils.extended_fromisoformat(input) == datetime.fromisoformat(expected)
+
+@pytest.mark.parametrize("input", [
+    ('.2023-05-02 20:27:00'),
+    ('2023-05-02 2027:00'),
+    ('.'),
+    (''),
+    ('i...i'),
+    ('2023-05-02.20:28:00'),
+])
+def test_iso_format_not(input):
+    with pytest.raises(ValueError) as e:
+        utils.extended_fromisoformat(input)

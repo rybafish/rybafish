@@ -88,10 +88,18 @@ class cfgManager():
     configs = {}
     path = None
     
+    def encode(pwd):
+        if not pwd:
+            return None
+        return cfgManager.fernet.encrypt(pwd.encode())
+
+    def decode(pwd):
+        if not pwd:
+            return None
+        return cfgManager.fernet.decrypt(pwd).decode()
+
     def reload(self):
-        from cryptography.fernet import Fernet
-        self.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
-    
+
         cfs = None
 
         self.configs = {}
@@ -117,15 +125,19 @@ class cfgManager():
         for n in cfs:
                 
             confEntry = cfs[n]
-            
+
+            '''
             if 'pwd' in confEntry:
                 pwd = confEntry['pwd']
                 pwd = self.fernet.decrypt(pwd).decode()
                 confEntry['pwd'] = pwd
+            '''
                 
             self.configs[n] = confEntry
 
     def __init__(self, fname = None):
+        from cryptography.fernet import Fernet
+        cfgManager.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
 
         if fname is None:
             script = sys.argv[0]
@@ -154,10 +166,10 @@ class cfgManager():
         ds = {}
         for n in self.configs:
             confEntry = self.configs[n].copy()
-            if 'pwd' in confEntry:
-                pwd = confEntry['pwd']
-                pwd = self.fernet.encrypt(pwd.encode())
-                confEntry['pwd'] = pwd
+            # if 'pwd' in confEntry:
+                # pwd = confEntry['pwd']
+                # pwd = self.fernet.encrypt(pwd.encode())
+                # confEntry['pwd'] = pwd
                 
             if confEntry.get('dbi') == 'S2J':
                 if 'pwd' in confEntry:
@@ -534,7 +546,7 @@ def log(s, loglevel = 3, nots = False, nonl = False, component=None,):
         with profiler('log mutex lock'):
             mtx.tryLock(200)
             
-        f = open('.log', 'a')
+        f = open('rybafish.log', 'a')
         #f.seek(os.SEEK_END, 0)
     
         try:
@@ -546,6 +558,7 @@ def log(s, loglevel = 3, nots = False, nonl = False, component=None,):
         f.close()
         
         mtx.unlock()
+
 
 if cfg('threadSafeLogging', False):
     log('threadSafeLogging enabled')
@@ -977,7 +990,7 @@ def alignTypes(rows):
     '''
         scan through rows and detect types, perform conversion when required
         Main usage is SQLite output that can in fact return strings and integers in the same column
-        and, by the way it is not aware of timestamps and has tham as string.
+        and, by the way it is not aware of timestamps and has them as string.
         
         So the values in rows array are already in correct types but might be inconsistent.
         
@@ -999,14 +1012,17 @@ def alignTypes(rows):
     def check_timestamp(v):
         
         try:
-            v = datetime.fromisoformat(v)
+            # v = datetime.fromisoformat(v)
+            v = extended_fromisoformat(v)
+            # log(f'is timestamp? {v} (yes)', 5)
         except ValueError:
+            # log(f'is timestamp? {v} (NO)', 5)
             return False
             
         return True
         
     def detectType(t):
-        #log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}')
+        # log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}', 6)
         
         if type(t) == int:
             return 'int'
@@ -1036,12 +1052,24 @@ def alignTypes(rows):
         
         maxTempLen = 0
         i = 0
+        jdeb = 0
         
+        # log(f'column {idx}, {columnType=}', 6)
         for r in rows:
             v = r[idx]
+
+            # log(f'row {jdeb}, value : {v}', 6)
+            jdeb += 1
             
-            t = detectType(v)
-            
+            if columnType != 'varchar':
+                t = detectType(v)
+                # cannot break as we also calculate maxlenth here below (maxTempLen)
+
+            # log(f'1. {columnType=}, {t=}', 6)
+
+            # if columnType == 'varchar' and t != 'varchar':
+            #     needsConversion = True
+
             if columnType is None:
                 columnType = t
                 maxTempLen = 0
@@ -1066,10 +1094,13 @@ def alignTypes(rows):
             if columnType == 'int' and v:
                 maxTempLen = abs(v)
 
-            if columnType == 'varchar' and v:
-                maxTempLen = len(v)
-            
+            # log(f'2. {columnType=}, {t=}', 6)
+
             if columnType == 'varchar' and (t == 'decimal' or t == 'int'):
+                needsConversion = True
+                break
+
+            if columnType == 'varchar' and (type(v) == float or type(v) == int):
                 needsConversion = True
                 break
 
@@ -1077,10 +1108,15 @@ def alignTypes(rows):
                 needsConversion = True
                 break
 
+            if columnType == 'varchar' and v:
+                maxTempLen = len(v)
+
             if columnType == '':
                 break
         else:
             maxLen = maxTempLen
+
+        # log(f'type detected: {columnType}, {needsConversion=}, {maxLen=}', 6)
                 
         if needsConversion == True:
             maxLen = 0
@@ -1103,7 +1139,8 @@ def alignTypes(rows):
         if columnType == 'timestamp' and t == 'timestamp':
             # meaning the whole column was timestamp...
             for r in rows:
-                r[idx] = datetime.fromisoformat(r[idx])
+                # r[idx] = datetime.fromisoformat(r[idx])
+                r[idx] = extended_fromisoformat(r[idx])
                 
         columnTypes.append((columnType, maxLen))
                 
@@ -1130,11 +1167,23 @@ def extended_fromisoformat(v):
         which also tries to parse values like 2022-12-04 19:56:34.12
         standard one will fail because it requres exactly 3 or 6 digits after dot
         
-        current version only supports 3 digits
+        current version only supports <6 digits after dot
     '''
     try:
-        return datetime.fromisoformat(v)
+        # return datetime.fromisoformat(v)
+        return datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
+
     except ValueError:
+        if v.find('.') == -1:
+            v += '.000'
+
+        return datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
+
+        raise ValueError
+
+        '''
+        #old implementation
+
         if len(v) <3:
             raise ValueError
             
@@ -1144,6 +1193,7 @@ def extended_fromisoformat(v):
             return datetime.fromisoformat(v + '0')
             
         raise ValueError
+        '''
 
 def parseCSV(txt, delimiter=','):
     '''
@@ -1286,6 +1336,158 @@ def parseCSV(txt, delimiter=','):
 
 def escapeHtml(msg):
     return msg.replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;').replace('\'','&#39;').replace('"','&#34;')
+
+@profiler
+def turboClean():
+    # this one only calls size-based cleanup (mode 0)
+
+    if cfg('doNotTurboClean', False):
+        return
+
+    logsize = None
+
+    try:
+        st1 = os.stat('rybafish.log')
+        logSize = st1.st_size
+    except FileNotFoundError:
+        pass
+
+    purgeLogs(mode=0, sizeKnown=logSize)
+
+def purgeLogs(mode, sizeKnown=None):
+
+    fname = 'rybafish.log'
+    # this one was way too slow
+    def seekLines_DEPR(num):
+        lineSeek = {}
+        seek = None
+        i = 0
+
+        try:
+            with open(fname, 'r') as f:
+                l = f.readline()
+                while l:
+                    lineSeek[i] = seek
+                    seek = f.tell()
+                    l = f.readline()
+                    i += 1
+        except:
+            return None
+
+        if i - num > 0:
+            return lineSeek[i-num]
+        else:
+            return None
+
+    def seekConfig_DEPR():      # 818
+        seek = None
+        try:
+            with open(fname, 'r') as f:
+                l = f.readline()
+                while l:
+                    if len(l) > 48 and l[20:48] == 'after connection dialog conn':
+                        seek = f.tell()
+                    l = f.readline()
+        except:
+            return None
+
+        log('mode 13 turboclean detected...', 5)
+        return seek
+
+    def seekSize(size, size2):
+        '''
+            size - top limit for the log size
+                    the same chunk size used to scan lines
+
+            size2 - this is the size of the log after truncation
+                    size2 supposed to be less then size itself
+                    otherwise the seekSize will be executed each time
+                    and we don't want that, right?
+
+
+        '''
+        def printLines(i):
+            print(f'{i}, {lines1=}')
+            print(f'{i}, {lines2=}')
+            print(f'{i}, {lines3=}')
+
+
+        assert size > size2, f'incorrect seekSize call, {size}<{size2}'
+
+        seek = None
+        fsize = 0
+
+        try:
+            with open(fname, 'r') as f:
+                lines1 = f.readlines(size)
+                lines2 = f.readlines(size)
+                lines3 = f.readlines(size)
+
+                while lines3:
+                    lines1 = lines2
+                    lines2 = lines3
+                    lines3 = f.readlines(size)
+                    if not lines3:
+                        break
+
+                fsize = f.tell()
+        except:
+            return None
+
+        if fsize < size:
+            return None
+
+        if len(os.linesep) > 1: #compensate damn windows \r\n...
+            eolSize = 1
+        else:
+            eolSize = 0
+
+        lines = lines1 + lines2
+        seekback = 0
+
+        for i in range(len(lines)-1, -1, -1):
+            l = lines[i]
+            seekback += len(l) + eolSize
+            if seekback > size2:
+                break
+
+        seek = fsize - seekback
+
+        return seek
+
+    seek = None
+
+    if mode == 13:
+        # seek = seekConfig() # 818
+        if os.path.exists('.log'):
+            os.remove('.log')
+    else:
+        s1 = cfg('logSizeMax', 10*1024**2)
+        s2 = cfg('logSizeTarget', 1*1024**2)
+
+        if type(s1) != int or type(s2) != int or (s1 != 0 and s1 <= s2):
+            s1, s2 = 10*1024**2, 1*1024**2
+
+        if s1 != 0 and sizeKnown is not None and sizeKnown >= s1: # also checks current log size
+            log(f'turboclean check: {s1}/{s2}, size={sizeKnown}...', 5)
+            seek = seekSize(s1, s2)
+
+    if not seek:
+        return
+
+    log(f'turboclean seek({numberToStr(seek)})', 4)
+    # scanning...
+    lines = []
+    with open(fname, 'r') as f:
+        f.seek(seek)
+        lines = f.readlines()
+
+    # writing...
+    ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with open(fname, 'w') as f:
+        f.writelines([f'...truncated on {ts}...\n'])
+        f.writelines(lines)
+        log(f'turboclean written: ({numberToStr(f.tell())})', 4)
 
 def secondsToTime(sec):
     '''converts seconds to hh:mm format

@@ -255,7 +255,7 @@ class kpiTable(QTableWidget):
             idx = style['sql']
 
             if kpiDescriptions.vrsStrErr.get(idx):
-                label = '[!!!] ' + kpiDescriptions.vrsStr.get(idx)
+                label = '[!!!] ' + kpiDescriptions.vrsStr.get(idx, ' ?')
             else:
                 label = kpiDescriptions.vrsStr.get(idx)
 
@@ -335,10 +335,12 @@ class kpiTable(QTableWidget):
                     item_text = kpiDescriptions.vrsStrDef[idx]
                 else:
                     item_text = ''
+
+                log('[variables] Resetting to default definition from cached stuff', 4)
+                log(f'[variables] which is: {item_text}', 4)
                     
-                item.setText(item_text)
-                log('Resetting to default definition', 4)
-                
+                # item.setText(item_text) #833, it is called imlicitly
+
             if not self.vrsLock:
                 log('-----addVars kpiTable ----->', 4)
             

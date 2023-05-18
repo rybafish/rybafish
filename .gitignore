@@ -46,6 +46,7 @@ layout.yaml
 
 # log file 
 .log
+rybafish.log
 
 # custom sql folder
 sql/

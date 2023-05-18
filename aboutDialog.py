@@ -76,7 +76,7 @@ class About(QDialog):
                 log('[W] Aborting due to SSL issues', 2)
                 
                 if stopFlag is None or er == 6:
-                    self.updatesLabel.setText('SSL error, check the .log file for the details.' + '\n' + sslErrorsStr)
+                    self.updatesLabel.setText('SSL error, check rybafish.log file for the details.' + '\n' + sslErrorsStr)
                     
                 stopFlag = True
             else:

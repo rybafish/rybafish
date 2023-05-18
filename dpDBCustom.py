@@ -92,7 +92,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
             pass
             #log(f'-----> no variables repl: {kpiFile}')
 
-        if srcIdx not in vrsStrDef:
+        if srcIdx not in vrsStrDef or True: # update anyway, #832.1
             addVarsDef(srcIdx, kpiFile['variables'])
         
         #log('----- addVars dpDBCustom start ----')
