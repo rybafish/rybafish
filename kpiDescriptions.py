@@ -145,6 +145,7 @@ class Variables(QDialog):
     
         if mode == 'defaults':
             lvrsStr = vrsStrDef
+            vrsStr.clear()      # #832.2 fix?
             #lvrs = vrsDef -- those already parsed/replaced, cannot use those
         else:
             lvrsStr = vrsStr
@@ -421,7 +422,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
     logvar('addVars input: %s' % (str(vStr)))
         
     for idx in vrs:
-        logvar('%s --> %s' % (idx, str(vrs[idx])))
+        logvar('    %s --> %s' % (idx, str(vrs[idx])), 5)
     
     if vStr == None:
         return
@@ -443,6 +444,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
         vrs[sqlIdx] = {}
 
     if sqlIdx not in vrsStr or overwrite:
+        logvar(f'setting defaults for {sqlIdx}', 5)
         vrsStr[sqlIdx] = vStr
 
     vlist = [s.strip() for s in vStr.split(',')]

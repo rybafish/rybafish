@@ -1022,7 +1022,7 @@ def alignTypes(rows):
         return True
         
     def detectType(t):
-        #log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}')
+        # log(f'detectType: {str(t)[:8]}, {type(t)} {len(str(t))}', 6)
         
         if type(t) == int:
             return 'int'
@@ -1052,13 +1052,23 @@ def alignTypes(rows):
         
         maxTempLen = 0
         i = 0
+        jdeb = 0
         
+        # log(f'column {idx}, {columnType=}', 6)
         for r in rows:
             v = r[idx]
+
+            # log(f'row {jdeb}, value : {v}', 6)
+            jdeb += 1
             
             if columnType != 'varchar':
                 t = detectType(v)
                 # cannot break as we also calculate maxlenth here below (maxTempLen)
+
+            # log(f'1. {columnType=}, {t=}', 6)
+
+            # if columnType == 'varchar' and t != 'varchar':
+            #     needsConversion = True
 
             if columnType is None:
                 columnType = t
@@ -1084,10 +1094,13 @@ def alignTypes(rows):
             if columnType == 'int' and v:
                 maxTempLen = abs(v)
 
-            if columnType == 'varchar' and v:
-                maxTempLen = len(v)
-            
+            # log(f'2. {columnType=}, {t=}', 6)
+
             if columnType == 'varchar' and (t == 'decimal' or t == 'int'):
+                needsConversion = True
+                break
+
+            if columnType == 'varchar' and (type(v) == float or type(v) == int):
                 needsConversion = True
                 break
 
@@ -1095,10 +1108,15 @@ def alignTypes(rows):
                 needsConversion = True
                 break
 
+            if columnType == 'varchar' and v:
+                maxTempLen = len(v)
+
             if columnType == '':
                 break
         else:
             maxLen = maxTempLen
+
+        # log(f'type detected: {columnType}, {needsConversion=}, {maxLen=}', 6)
                 
         if needsConversion == True:
             maxLen = 0

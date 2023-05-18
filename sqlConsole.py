@@ -137,7 +137,7 @@ class sqlWorker(QObject):
                     return
                     
                 except Exception as e:
-                    log(f'[W] Generic exception duging executeStatement.connect, thread {int(QThread.currentThreadId())}, {type(e)}, {e}', 1)
+                    log(f'[W] Generic exception during executeStatement.connect, thread {int(QThread.currentThreadId())}, {type(e)}, {e}', 1)
 
                     cwd = os.getcwd()
                     
@@ -241,7 +241,7 @@ class sqlWorker(QObject):
                 #cons.connectionLost()
         
         except Exception as e:
-            log(f'[W] Generic exception duging executeStatement, thread {int(QThread.currentThreadId())}, {type(e)}, {e}', 1)
+            log(f'[W] Generic exception during executeStatement, thread {int(QThread.currentThreadId())}, {type(e)}, {e}', 1)
 
             cwd = os.getcwd()
             
