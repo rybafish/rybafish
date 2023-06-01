@@ -1748,6 +1748,7 @@ class hslWindow(QMainWindow):
 
         reloadCustomKPIsAct = QAction('Reload Custom &KPIs', self)
         reloadCustomKPIsAct.setStatusTip('Reload definition of custom KPIs')
+        reloadCustomKPIsAct.setShortcut('Ctrl+K')
         reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
 
         actionsMenu.addAction(reloadCustomKPIsAct)
