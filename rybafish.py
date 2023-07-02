@@ -174,7 +174,7 @@ if __name__ == '__main__':
 
     log('Starting RybaFish %s/%s build %s' % (version, platform, build_date))
     log(f'Python version: {sys.version}', 5)
-    log('Qt version: %s' %(QtCore.QT_VERSION_STR), 5)
+    log(f'Qt version: {QtCore.PYQT_VERSION_STR}/{QtCore.QT_VERSION_STR}')
     
     from profiler import calibrate
     calibrate()

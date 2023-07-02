@@ -2985,7 +2985,7 @@ class sqlConsole(QWidget):
             log('disconnectAlert = True', 5)
             disconnectAlert = True
         else:
-            log('disconnectAlert -- None', 5)
+            log(f'disconnectAlert = None, because timer: {self.timerAutorefresh}, config alertDisconnected={cfg("alertDisconnected")}', 5)
         
         self.stopResults()
         

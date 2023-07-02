@@ -69,6 +69,7 @@ class QResultSet(QTableWidget):
         font = QFont ()
         font.setPointSize(fontSize)
         
+        self.horizontalHeader().setFont(font);
         self.setFont(font)
         
         itemFont = QTableWidgetItem('').font()
