@@ -77,3 +77,6 @@ design_thoughts.txt
 
 # emacs ignore
 .projectile
+
+# pyenv stuff
+.python-version
