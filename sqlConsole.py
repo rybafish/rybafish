@@ -1343,9 +1343,6 @@ class sqlConsole(QWidget):
         self.secondary = None           # Str describing the DP on secondary DP, used for warning
         self.prod = None                # True for production connections
 
-        # if dpWarning:
-            # self.secondary = dpWarning
-
         self.dpid = dpid
 
         super().__init__()
@@ -1385,6 +1382,7 @@ class sqlConsole(QWidget):
         self.cons.explainSignal.connect(self.explainPlan)
 
         if config is None:
+            self.consoleStatus()
             return
         
         try:
@@ -1398,8 +1396,6 @@ class sqlConsole(QWidget):
             self.conn = self.dbi.console_connection(config)
             self.config = config
 
-            log('deb, config: ' + str(config))
-            
             self.connection_id = self.dbi.get_connection_id(self.conn)
             #log('connection open, id: %s' % self.connection_id)
             '''
@@ -1963,7 +1959,6 @@ class sqlConsole(QWidget):
     
         try: 
             log('connectDB, indicator sync?', 4)
-            log(f'deb, {hex(id(self.config))}, {self.config}')
             self.indicator.status = 'sync'
             self.indicator.repaint()
 
@@ -3673,6 +3668,8 @@ class sqlConsole(QWidget):
         if self.config:
             log(self.config, 5)
         else:
+            self.warnLabel.setText('')
+            self.warnLabel.setVisible(False)
             log('No config in console status, exit', 4)
             return
 

@@ -778,50 +778,7 @@ class hslWindow(QMainWindow):
         if not connConf.get('name') and self.layout and not secondary:
             connConf['setToName'] = self.layout['connectionName']
 
-        '''
-        log(f'right before {connConf=}')
-        log(f'right before {self.primaryConf=}')
-        log(f'right before {conf=}')
-
-        if conf is connConf:
-            log('right before conf is connConf')
-        else:
-            log('right before conf is not connConf')
-            
-        if conf is self.primaryConf:
-            log('right before conf is self.primaryConf') 
-        else:
-            log('right before conf is not self.primaryConf')
-
-        if connConf is self.primaryConf:
-            log('right before connConf is self.primaryConf') 
-        else:
-            log('right before connConf is not self.primaryConf')
-        '''
-
         conf, ok = configDialog.Config.getConfig(connConf, self)
-
-        '''
-        log(f'right after {connConf=}')
-        log(f'right after {self.primaryConf=}')
-        log(f'right after {conf=}')
-        
-        if conf is connConf:
-            log('right after conf is connConf')
-        else:
-            log('right after conf is not connConf')
-            
-        if conf is self.primaryConf:
-            log('right after conf is self.primaryConf')  # <<--- yep
-        else:
-            log('right after conf is not self.primaryConf')
-        
-        if connConf is self.primaryConf:
-            log('right after connConf is self.primaryConf') 
-        else:
-            log('right after connConf is not self.primaryConf')
-        '''
-
 
         conf['usage'] = None
 
@@ -1737,6 +1694,8 @@ class hslWindow(QMainWindow):
         sqlFolderAct.triggered.connect(self.menuSQLFolder)
         sqlMenu.addAction(sqlFolderAct)
         
+
+        self.tzAct = QAction('Manage Time Zones', self)
         layoutMenu = menubar.addMenu('&Layout')
         
         layoutAct = QAction('Save window layout', self)
@@ -1784,9 +1743,8 @@ class hslWindow(QMainWindow):
             
         self.tbAct.triggered.connect(self.menuSQLToolbar)
 
-        actionsMenu.addAction(self.tbAct)
-        
-        self.tzAct = QAction('Manage Time Zones', self)
+        sqlMenu.addAction(self.tbAct)
+
         self.tzAct.setStatusTip('View/adjust data provider (server) time zone')
         if cfg('dev'):
             self.tzAct.setShortcut('Alt+Z')

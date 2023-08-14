@@ -2220,8 +2220,11 @@ class chartArea(QFrame):
             for kpi in delKpis:
                 log('[w] removing %s from nscales becaouse it does not exist (disabled?)' % (kpi), 2)
                 del self.widget.nscales[host][kpi]
-                log('[w] removing %s from data ' % (kpi), 2)
-                del self.widget.ndata[host][kpi]
+                if kpi in self.widget.ndata[host]:
+                    log('[w] removing %s from data ' % (kpi), 2)
+                    del self.widget.ndata[host][kpi]
+                else:
+                    log(f'[w] oops, {kpi} is missing, skip', 2)
 
     def statusMessage(self, str, repaint = False):
         if repaint: 
