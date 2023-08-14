@@ -763,7 +763,7 @@ class hslWindow(QMainWindow):
         log(f'processConnection, {secondary=}')
         
         conf = None
-        
+
         if secondary:
             connConf = None
         else:
@@ -800,7 +800,7 @@ class hslWindow(QMainWindow):
         '''
 
         conf, ok = configDialog.Config.getConfig(connConf, self)
-                
+
         '''
         log(f'right after {connConf=}')
         log(f'right after {self.primaryConf=}')
@@ -822,8 +822,10 @@ class hslWindow(QMainWindow):
             log('right after connConf is not self.primaryConf')
         '''
 
+
+        conf['usage'] = None
+
         if ok and not secondary:
-            log(f'secondary?? {secondary=}')
             self.primaryConf = conf.copy()
         
         if cfg('dev') and False:
@@ -855,7 +857,7 @@ class hslWindow(QMainWindow):
                         # abort the reconnection, probably due to user cancel on warning (on running sql)
                         return
 
-                    log('done')
+                    log('dump done')
 
                     self.layoutDumped = False
 
@@ -900,7 +902,18 @@ class hslWindow(QMainWindow):
                 # 2022-11-23
                 #self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
                 dp = dpDB.dataProvider(conf) # db data provider
-                
+
+                if hasattr(dp, 'dbProperties'):
+                    if dp.dbProperties.get('usage'):
+                        usage = dp.dbProperties.get('usage')
+                        log(f'usage detected, updating conf: {usage}', 5)
+
+                        conf['usage'] = usage
+
+                        if not secondary:
+                            log('also updating the primaryConf prop', 5)
+                            self.primaryConf['usage'] = usage
+
                 dpidx = self.chartArea.appendDP(dp)
                 self.configurations[dpidx] = conf
 
@@ -915,11 +928,15 @@ class hslWindow(QMainWindow):
                 self.chartArea.setStatus('idle')
 
                 for i in range(self.tabs.count()):
-                
                     w = self.tabs.widget(i)
                 
-                    if isinstance(w, sqlConsole.sqlConsole):
+                    if not secondary and isinstance(w, sqlConsole.sqlConsole):
                         w.config = conf
+                        if cfg('dev'):
+                            log(f'updating tab conf {i}, {hex(id(conf))}, config = {conf}', 5)
+                        else:
+                            log(f'updating tab conf {i}, {hex(id(conf))}', 5)
+
                         
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
@@ -1073,8 +1090,8 @@ class hslWindow(QMainWindow):
                 msgBox.exec_()
                 
                 self.statusMessage('', False)
-                
-        
+
+
     def changeActiveTabName(self, name):
     
         i = self.tabs.currentIndex()
@@ -1223,7 +1240,7 @@ class hslWindow(QMainWindow):
     def sqlConsoleCall(self, configuration=None, dpidx=None):
         # to be called from menuSQLConsole (menu signal) and my code (secondary connection)
         conf = None
-        dpWarning = None
+        dpid = None
 
         if configuration is None:
             log('menuSQLConsole...')
@@ -1233,8 +1250,7 @@ class hslWindow(QMainWindow):
             if dpidx is not None:
                 dp = self.chartArea.ndp[dpidx]
                 prop = dp.dbProperties
-                dpid = configuration.get('dbi', '')
-                dpid += ': ' + str(prop.get('tenant', ''))
+                dpid = str(prop.get('tenant', ''))
             else:
                 dpid = '?? '+configuration.get('dbi') + ' / ' + configuration.get('host')+':'+configuration('port')
 
@@ -1243,10 +1259,11 @@ class hslWindow(QMainWindow):
             if user:
                 dpid += f' ({user})'
 
-            dpWarning = f'<font color="blue">Secondary connection</font>: {dpid}'
             log('menuSQLConsole, secondary connection...')
+
             secondary = True
-            conf = configuration
+            conf = configuration.copy()
+            conf['secondary'] = True
 
         if conf is None:
             self.statusMessage('No configuration...', False)
@@ -1263,7 +1280,7 @@ class hslWindow(QMainWindow):
         tname = self.generateTabName()
 
         try:
-            console = sqlConsole.sqlConsole(self, conf, tname, dpWarning=dpWarning) # self = window
+            console = sqlConsole.sqlConsole(self, conf, tname, dpid=dpid) # self = window
             log('seems connected...')
         except dbException as e:
             log('[!] failed to open console expectedly')

@@ -8,13 +8,13 @@ from PyQt5.QtCore import Qt
 
 from utils import resourcePath
 
-from utils import log, cfg, cfgManager
+from utils import log, deb, cfg, cfgManager
 
 from dbi import dbidict
 
 class Config(QDialog):
 
-    config = {}
+    # config = {}, face palm, 2023-08-12, face palm
     
     def setConf(self, conf):
         try:
@@ -60,6 +60,7 @@ class Config(QDialog):
         self.initUI()
         
         self.conf = conf
+        self.config = {}
         
         name = conf.get('setToName')
         
@@ -100,6 +101,8 @@ class Config(QDialog):
         hostport = cf.hostportEdit.text()
         
         dbi = dbidict[cf.driverCB.currentText()]
+
+        # cf.config = {}
 
         if dbi == 'SLT':
             filename = hostport
