@@ -30,7 +30,7 @@ from utils import resourcePath
 import importTrace
 import utils
 
-from utils import log, cfg, safeBool, safeInt
+from utils import log, deb, cfg, safeBool, safeInt
 
 import dpDummy
 import dpTrace
@@ -3068,6 +3068,12 @@ class chartArea(QFrame):
             # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
             # self.widget.paintLock = True
             
+
+            if len(self.ndp) == 0:
+                log('Seems not connected, as self.ndp is empty')
+                self.statusMessage('Not connected to the DB', True)
+                return False
+
             log(f'request_kpis, {host_d}')
             
             dpidx = host_d['dpi']
