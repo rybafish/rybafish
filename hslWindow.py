@@ -31,7 +31,7 @@ from indicator import indicator
 from utils import resourcePath
 
 from utils import loadConfig
-from utils import log
+from utils import log, deb
 from utils import cfg
 from utils import Layout
 from utils import dbException, msgDialog
@@ -296,7 +296,9 @@ class hslWindow(QMainWindow):
 
         if self.chartArea.widget.legend:
             self.layout['legend'] = True
-        
+        else:
+            self.layout['legend'] = False
+
         self.layout['hostTableWidth'] = hostTableWidth
         self.layout['KPIsTableWidth'] = KPIsTableWidth
 
