@@ -10,6 +10,9 @@ dist/
 #local backup dir
 bkp/
 
+#local tmp dir
+tmp/
+
 #exclude pyhdb folder
 pyhdb/
 

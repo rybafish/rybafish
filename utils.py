@@ -560,7 +560,7 @@ def log(s, loglevel=3, nots=False, nonl=False, component=None,):
         mtx.unlock()
 
 def deb(s):
-    log(s, 5, component='deb ')
+    log(s, 5, component='deb')
 
 if cfg('threadSafeLogging', False):
     log('threadSafeLogging enabled')

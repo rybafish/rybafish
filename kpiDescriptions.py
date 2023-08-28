@@ -17,7 +17,7 @@ customColors = {}       # color customization
 
 import utils
         
-from utils import log, cfg
+from utils import deb, log, cfg
 from utils import vrsException
 from utils import resourcePath
 from collections import UserDict
@@ -771,7 +771,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['pen'] = QPen(color, 1, penStyle)
 
     style['sql'] = sqlIdx
-    
+
     '''
     except Exception as e:
         log(str(kpi))
