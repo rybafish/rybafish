@@ -1937,7 +1937,7 @@ class myWidget(QWidget):
             draws grid and labels
             based on scale and timespan        
         '''
-        
+
         wsize = self.size()
         
         # calculate vertical size and force align it to 10
@@ -1958,7 +1958,7 @@ class myWidget(QWidget):
         qp.setFont(QFont('SansSerif', self.conf_fontSize))
         
         t_scale = self.t_scale
-        
+
         seconds = (self.t_to - self.t_from).total_seconds()
         
         qp.setPen(self.gridColor)
@@ -1982,15 +1982,17 @@ class myWidget(QWidget):
         #have to align this to have proper marks
         
         self.delta = self.t_from.timestamp() % t_scale
-        
-        if cfg('bug795', False):        # lol, seems a bug indeed
+
+        if not cfg('bug795', False):        # lol, seems a bug indeed, #866
             if t_scale == 60*60*4:
-                self.delta -= 3600*1    # not sure, could be a bug (what if negative?)
+                tzCalc = datetime.datetime.strptime('2023-09-03 00:00:00', '%Y-%m-%d %H:%M:%S')
+                tzGridCompensation = 24*3600 - tzCalc.timestamp() % (24*3600)
+                self.delta -= tzGridCompensation    # not sure, could be a bug (what if negative?)
         
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
         delta = self.delta
-                
+
         x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
         x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
 
@@ -2047,6 +2049,7 @@ class myWidget(QWidget):
                 min_scale = 60*24
                 hrs_scale = 60*24*4
                 
+            # number of minutes since the day start
             min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
 
             if sec_scale is not None:
