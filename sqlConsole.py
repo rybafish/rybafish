@@ -3666,7 +3666,7 @@ class sqlConsole(QWidget):
     def consoleStatus(self):
 
         if self.config:
-            log(self.config, 5)
+            log('console config exists', 5)
         else:
             self.warnLabel.setText('')
             self.warnLabel.setVisible(False)

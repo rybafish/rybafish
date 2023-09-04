@@ -501,8 +501,8 @@ class dataProvider(QObject):
                         fromTable = 'from m_load_history_host'
                 else:
                     sql = kpiDescriptions.customSql[kpiSrc]
-                    kpiDescriptions.processVars(kpiSrc, sql)
-                    fromTable = 'from (%s)' % sql
+                    sqlstr = kpiDescriptions.processVars(kpiSrc, sql)
+                    fromTable = 'from (%s)' % sqlstr
             else:
                 if kpiSrc == '-':
                     if cfg('ess', False):
