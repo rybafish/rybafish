@@ -299,8 +299,6 @@ class myWidget(QWidget):
             if g != '0':
                 groupMax[g] = self.getGroupMax(g)
                 
-        log(f'------ {groupMax=}')
-
         for h in range(len(self.hosts)):
         
             log(f'update scales {h}: {self.hosts[h]}')
@@ -347,7 +345,7 @@ class myWidget(QWidget):
                 #if kpiDescriptions.kpiGroup[kpi] == 'mem':
                 
                 groupName = kpiStylesNNN[kpi]['group']
-                
+
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = str(scaleKpi['max'])
@@ -363,6 +361,16 @@ class myWidget(QWidget):
                     scaleKpi['unit'] = '%'
                     kpiStylesNNN[kpi]['decimal'] = 0
 
+                    subtype = kpiStylesNNN[kpi].get('subtype')
+
+                    if subtype == 'multiline' and kpi in self.nscalesml[h]:
+                        d = 0
+                        for gb in self.nscalesml[h][kpi]:
+                            mx = self.nscalesml[h][kpi][gb]['max']
+                            lst = self.nscalesml[h][kpi][gb]['last']
+                            self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], mx, d), d)
+                            self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], lst, d), d)
+                            self.nscalesml[h][kpi][gb]['avg_label'] = ''
                 else:
                     # all the rest:
                     # 0 group means no groupping at all, individual scales

@@ -891,12 +891,7 @@ class hslWindow(QMainWindow):
                 
                     if not secondary and isinstance(w, sqlConsole.sqlConsole):
                         w.config = conf
-                        if cfg('dev'):
-                            log(f'updating tab conf {i}, {hex(id(conf))}, config = {conf}', 5)
-                        else:
-                            log(f'updating tab conf {i}, {hex(id(conf))}', 5)
 
-                        
                 if cfg('saveKPIs', True):
                     if self.layout and 'kpis' in self.layout.lo:
                         log('dumplayout, init kpis:' + str(self.layout['kpis']), 5)
