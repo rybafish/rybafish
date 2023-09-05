@@ -3912,7 +3912,7 @@ class chartArea(QFrame):
         
         self.scaleCB.setFocusPolicy(Qt.ClickFocus)
         
-        self.scaleCB.setCurrentIndex(3)
+        self.scaleCB.setCurrentIndex(4)
         
         self.scaleCB.currentIndexChanged.connect(self.scaleChanged)
         
