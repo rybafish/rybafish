@@ -1965,7 +1965,7 @@ class myWidget(QWidget):
         qp.setPen(QColor('#000'))
         qp.setFont(QFont('SansSerif', self.conf_fontSize))
         
-        t_scale = self.t_scale
+        t_scale = self.t_scale  # seconds in one grid cell, based on zoom: '4 hours' = 4*3600
 
         seconds = (self.t_to - self.t_from).total_seconds()
         
@@ -1989,13 +1989,16 @@ class myWidget(QWidget):
 
         #have to align this to have proper marks
         
+        log(f'{t_scale=}', component='grid_tz')
         self.delta = self.t_from.timestamp() % t_scale
 
         if not cfg('bug795', False):        # lol, seems a bug indeed, #866
-            if t_scale == 60*60*4:
+            if t_scale == 60*60*4 or True:
                 tzCalc = datetime.datetime.strptime('2023-09-03 00:00:00', '%Y-%m-%d %H:%M:%S')
-                tzGridCompensation = 24*3600 - tzCalc.timestamp() % (24*3600)
+                tzGridCompensation = tzCalc.timestamp() % (24*3600) % t_scale
+                log(f'{tzGridCompensation=}', component='grid_tz')
                 self.delta -= tzGridCompensation    # not sure, could be a bug (what if negative?)
+                log(f'{self.delta=}', component='grid_tz')
         
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
@@ -2057,7 +2060,7 @@ class myWidget(QWidget):
                 min_scale = 60*24
                 hrs_scale = 60*24*4
                 
-            # number of minutes since the day start
+            # number of minutes since the grid start
             min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
 
             if sec_scale is not None:
@@ -2072,6 +2075,9 @@ class myWidget(QWidget):
                 if min % hrs_scale == 0:
                     date_mark = True
                     
+            ct = c_time.strftime('%Y-%m-%d %H:%M:%S')
+            log(f'{ct=}, {min=}, {major_line=}', component='grid_tz')
+
             if major_line:
             
                 qp.setPen(self.gridColorMj)
