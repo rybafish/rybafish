@@ -192,7 +192,7 @@ class hdbi ():
 
         if len(rows):
             connection_id = rows[0][0]
-            log('connection id: {connection_id}', 4)
+            log(f'connection id: {connection_id}', 4)
             return connection_id
         else:
             log('[W] connection id not detected', 2)

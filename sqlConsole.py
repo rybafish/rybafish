@@ -601,7 +601,7 @@ class console(QPlainTextEditLN):
         menuConnect = cmenu.addAction('(re)connecto to the DB')
         menuAbort = cmenu.addAction('Generate cancel session sql')
         menuClose = cmenu.addAction('Close console\tCtrl+W')
-        
+
         cmenu.addSeparator()
         explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
         sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
@@ -1271,7 +1271,7 @@ class sqlConsole(QWidget):
     
     #gc.set_debug(gc.gc.DEBUG_LEAK)
 
-    def __init__(self, window, config, tabname=None, dpWarning=None):
+    def __init__(self, window, config, tabname=None, dpid=None):
     
         self.thread = QThread()             # main sql processing thread
         self.sqlWorker = sqlWorker(self)    # thread worker object (linked to console instance)
@@ -1339,9 +1339,14 @@ class sqlConsole(QWidget):
         
         self.resultsLeft = False        # when True - warning will be displayed before closing results
         self.LOBs = False               # True if one of console results has LOBs. Reset with detach
-        
+
+        self.secondary = None           # Str describing the DP on secondary DP, used for warning
+        self.prod = None                # True for production connections
+
+        self.dpid = dpid
+
         super().__init__()
-        self.initUI(dpWarning)
+        self.initUI()
         
         
         if tabname is not None:
@@ -1377,9 +1382,10 @@ class sqlConsole(QWidget):
         self.cons.explainSignal.connect(self.explainPlan)
 
         if config is None:
+            self.consoleStatus()
             return
         
-        try: 
+        try:
             # get (existing or create) db interface instance
             dbimpl = dbi(config['dbi'])         # this is a class name
             self.dbi = dbimpl.dbinterface       # and this is interface instance now
@@ -1389,7 +1395,7 @@ class sqlConsole(QWidget):
             log('starting console connection')
             self.conn = self.dbi.console_connection(config)
             self.config = config
-            
+
             self.connection_id = self.dbi.get_connection_id(self.conn)
             #log('connection open, id: %s' % self.connection_id)
             '''
@@ -1408,6 +1414,8 @@ class sqlConsole(QWidget):
             raise e
             return
             
+        self.consoleStatus()
+
         # print(self.conn.session_id) it's not where clear how to get the connection_id
         # 
 
@@ -1916,7 +1924,10 @@ class sqlConsole(QWidget):
                 
                 self.conn = None
                 self.connection_id = None
-                
+
+                self.prod = None
+                self.secondary = None
+
                 self.indicator.status = 'disconnected'
                 self.indicator.repaint()
                 self.log('\nDisconnected')
@@ -1947,7 +1958,7 @@ class sqlConsole(QWidget):
             return
     
         try: 
-            log('connectDB, indicator sync', 4)
+            log('connectDB, indicator sync?', 4)
             self.indicator.status = 'sync'
             self.indicator.repaint()
 
@@ -1968,8 +1979,9 @@ class sqlConsole(QWidget):
                 
                 self.sqlWorker.dbi = self.dbi
                 
-            self.conn = self.dbi.console_connection(self.config)                
-            
+            self.conn = self.dbi.console_connection(self.config)
+
+            self.consoleStatus()
             '''
             rows = self.dbi.execute_query(self.conn, "select connection_id  from m_connections where own = 'TRUE'", [])
             
@@ -3651,7 +3663,55 @@ class sqlConsole(QWidget):
             self.toolbar.hide()
 
 
-    def initUI(self, dpWarning=None):
+    def consoleStatus(self):
+
+        if self.config:
+            log('console config exists', 5)
+        else:
+            self.warnLabel.setText('')
+            self.warnLabel.setVisible(False)
+            log('No config in console status, exit', 4)
+            return
+
+        if self.config.get('secondary'):
+            log('Secondary console usage detected', 2)
+            self.secondary = True
+
+        if self.config.get('usage') == 'PRODUCTION':
+            log('PROD console usage detected', 2)
+            self.prod = True
+
+        self.warnChange()
+
+    def warnChange(self):
+        '''changes the label above the console text'''
+
+        txt = ''
+
+        if self.secondary:
+            dbi = self.config.get('dbi', '')
+            txt = f'Secondary connection: {dbi}'
+
+            if self.dpid:
+                txt += f', {self.dpid}'
+        if self.prod:
+            if self.secondary:
+                txt += ' <b>[PROD]</b>'
+            else:
+                txt += '[PROD]'
+
+        if txt:
+            txt = f'<font color="blue">{txt}</font>'
+            self.warnLabel.setText(txt)
+            self.warnLabel.setVisible(True)
+        else:
+            self.warnLabel.setText('')
+            self.warnLabel.setVisible(False)
+
+        log(f'warn change: {txt}', 5)
+
+
+    def initUI(self):
         '''
             main sqlConsole UI 
         '''
@@ -3677,6 +3737,8 @@ class sqlConsole(QWidget):
         #self.logArea = QPlainTextEdit()
         self.logArea = logArea()
         
+        self.warnLabel = QLabel('')
+
         self.spliter.addWidget(self.cons)
         self.spliter.addWidget(self.resultTabs)
         self.spliter.addWidget(self.logArea)
@@ -3686,8 +3748,7 @@ class sqlConsole(QWidget):
         if cfg('sqlConsoleToolbar', True):
             self.toolbarEnable()
                     
-        if dpWarning:
-            self.vbar.addWidget(QLabel(dpWarning))
+        self.vbar.addWidget(self.warnLabel)
 
         self.vbar.addWidget(self.spliter)
         

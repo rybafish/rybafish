@@ -286,7 +286,7 @@ class sqlite():
             
         #build hosts based on rows
         for i in range(0, len(rows)):
-            print(f'{i}, {rows[i]}')
+            #print(f'{i}, {rows[i]}')
             ten = str(dbProperties.get('tenant'))
             srv = None
                 

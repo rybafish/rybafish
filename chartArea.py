@@ -30,7 +30,7 @@ from utils import resourcePath
 import importTrace
 import utils
 
-from utils import log, cfg, safeBool, safeInt
+from utils import log, deb, cfg, safeBool, safeInt
 
 import dpDummy
 import dpTrace
@@ -299,8 +299,6 @@ class myWidget(QWidget):
             if g != '0':
                 groupMax[g] = self.getGroupMax(g)
                 
-        log(f'------ {groupMax=}')
-
         for h in range(len(self.hosts)):
         
             log(f'update scales {h}: {self.hosts[h]}')
@@ -347,7 +345,7 @@ class myWidget(QWidget):
                 #if kpiDescriptions.kpiGroup[kpi] == 'mem':
                 
                 groupName = kpiStylesNNN[kpi]['group']
-                
+
                 if groupName == 'cpu':
                     scaleKpi['y_max'] = 100
                     scaleKpi['max_label'] = str(scaleKpi['max'])
@@ -363,6 +361,16 @@ class myWidget(QWidget):
                     scaleKpi['unit'] = '%'
                     kpiStylesNNN[kpi]['decimal'] = 0
 
+                    subtype = kpiStylesNNN[kpi].get('subtype')
+
+                    if subtype == 'multiline' and kpi in self.nscalesml[h]:
+                        d = 0
+                        for gb in self.nscalesml[h][kpi]:
+                            mx = self.nscalesml[h][kpi][gb]['max']
+                            lst = self.nscalesml[h][kpi][gb]['last']
+                            self.nscalesml[h][kpi][gb]['max_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], mx, d), d)
+                            self.nscalesml[h][kpi][gb]['last_label'] = utils.numberToStr(kpiDescriptions.normalize(kpiStylesNNN[kpi], lst, d), d)
+                            self.nscalesml[h][kpi][gb]['avg_label'] = ''
                 else:
                     # all the rest:
                     # 0 group means no groupping at all, individual scales
@@ -1937,7 +1945,7 @@ class myWidget(QWidget):
             draws grid and labels
             based on scale and timespan        
         '''
-        
+
         wsize = self.size()
         
         # calculate vertical size and force align it to 10
@@ -1957,8 +1965,8 @@ class myWidget(QWidget):
         qp.setPen(QColor('#000'))
         qp.setFont(QFont('SansSerif', self.conf_fontSize))
         
-        t_scale = self.t_scale
-        
+        t_scale = self.t_scale  # seconds in one grid cell, based on zoom: '4 hours' = 4*3600
+
         seconds = (self.t_to - self.t_from).total_seconds()
         
         qp.setPen(self.gridColor)
@@ -1981,16 +1989,21 @@ class myWidget(QWidget):
 
         #have to align this to have proper marks
         
+        log(f'{t_scale=}', component='grid_tz')
         self.delta = self.t_from.timestamp() % t_scale
-        
-        if cfg('bug795', False):        # lol, seems a bug indeed
-            if t_scale == 60*60*4:
-                self.delta -= 3600*1    # not sure, could be a bug (what if negative?)
+
+        if not cfg('bug795', False):        # lol, seems a bug indeed, #866
+            if t_scale == 60*60*4 or True:
+                tzCalc = datetime.datetime.strptime('2023-09-03 00:00:00', '%Y-%m-%d %H:%M:%S')
+                tzGridCompensation = tzCalc.timestamp() % (24*3600) % t_scale
+                log(f'{tzGridCompensation=}', component='grid_tz')
+                self.delta -= tzGridCompensation    # not sure, could be a bug (what if negative?)
+                log(f'{self.delta=}', component='grid_tz')
         
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
         delta = self.delta
-                
+
         x_left_border = 0 - self.pos().x() # x is negative if scrolled to the right
         x_right_border = 0 - self.pos().x() + self.parentWidget().size().width()
 
@@ -2047,6 +2060,7 @@ class myWidget(QWidget):
                 min_scale = 60*24
                 hrs_scale = 60*24*4
                 
+            # number of minutes since the grid start
             min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
 
             if sec_scale is not None:
@@ -2061,6 +2075,9 @@ class myWidget(QWidget):
                 if min % hrs_scale == 0:
                     date_mark = True
                     
+            ct = c_time.strftime('%Y-%m-%d %H:%M:%S')
+            log(f'{ct=}, {min=}, {major_line=}', component='grid_tz')
+
             if major_line:
             
                 qp.setPen(self.gridColorMj)
@@ -2220,8 +2237,11 @@ class chartArea(QFrame):
             for kpi in delKpis:
                 log('[w] removing %s from nscales becaouse it does not exist (disabled?)' % (kpi), 2)
                 del self.widget.nscales[host][kpi]
-                log('[w] removing %s from data ' % (kpi), 2)
-                del self.widget.ndata[host][kpi]
+                if kpi in self.widget.ndata[host]:
+                    log('[w] removing %s from data ' % (kpi), 2)
+                    del self.widget.ndata[host][kpi]
+                else:
+                    log(f'[w] oops, {kpi} is missing, skip', 2)
 
     def statusMessage(self, str, repaint = False):
         if repaint: 
@@ -3065,6 +3085,12 @@ class chartArea(QFrame):
             # this is REALLY not clear why paintEvent triggered here in case of yesNoDialog
             # self.widget.paintLock = True
             
+
+            if len(self.ndp) == 0:
+                log('Seems not connected, as self.ndp is empty')
+                self.statusMessage('Not connected to the DB', True)
+                return False
+
             log(f'request_kpis, {host_d}')
             
             dpidx = host_d['dpi']
@@ -3892,7 +3918,7 @@ class chartArea(QFrame):
         
         self.scaleCB.setFocusPolicy(Qt.ClickFocus)
         
-        self.scaleCB.setCurrentIndex(3)
+        self.scaleCB.setCurrentIndex(4)
         
         self.scaleCB.currentIndexChanged.connect(self.scaleChanged)
         
