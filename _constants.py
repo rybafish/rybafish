@@ -1,6 +1,6 @@
 # getarated automaticaly based on myryba.spec
 
-build_date = "2023-08-17 22:33:44"
-version = "0.95 Ishkhan"
+build_date = "2023-09-17 17:12:24"
+version = "0.96 beta I"
 platform = "Windows"
-isbeta = False
+isbeta = True
