@@ -235,6 +235,16 @@ class QPlainTextEditLN(QWidget):
             
             cursor.endEditBlock() 
                 
+        def wheelEvent(self, event):
+            modifiers = QApplication.keyboardModifiers()
+
+            if modifiers & Qt.ControlModifier:
+                # this is processed one level higher
+                return None
+
+            super().wheelEvent(event)
+
+
         def keyPressEvent (self, event):
 
             modifiers = QApplication.keyboardModifiers()
@@ -272,6 +282,7 @@ class QPlainTextEditLN(QWidget):
             else:
                 super().keyPressEvent(event)
 
+
     class LineNumberArea(QWidget):
         def __init__(self, edit):
 
@@ -294,16 +305,22 @@ class QPlainTextEditLN(QWidget):
             fontSize = cfg('console-fontSize', 10)
             
             self.font.setPointSize(fontSize)
-            
-            self.fm = QFontMetrics(self.font)
-            
-            self.fontHeight = self.fm.height()
-            self.fontWidth = self.fm.width('0')
-            
-            self.adjustWidth(1)
-            
+            self.updateFontMetrix()
+
             self.fromLine = None
             self.toLine = None
+
+        def updateFontMetrix(self):
+            self.fm = QFontMetrics(self.font)
+
+            self.fontHeight = self.fm.height()
+            self.fontWidth = self.fm.width('0')
+
+            self.adjustWidth(1)
+
+        def updateFont(self, fontSize):
+            self.font.setPointSize(fontSize)
+            self.updateFontMetrix()
 
         def adjustWidth(self, lines):
 
@@ -388,6 +405,39 @@ class QPlainTextEditLN(QWidget):
             
             self.locked  = False
             
+    def zoomFont(self, mode):
+        '''Zoom the font of the .edit widget'''
+
+        fnt = self.edit.font()
+        size = fnt.pointSizeF()
+
+        if mode == '+':
+            size += 1
+
+        if mode == '-' and self.fontSize > 1:
+            size -= 1
+
+        if mode in ['+', '-']:
+            fnt.setPointSizeF(size)
+            # self.edit.setFont(fnt) ## not required as we change actual font instance
+
+    def wheelEvent(self, event):
+        '''Zoom the font of the .edit widget'''
+
+        p = event.angleDelta()
+
+        modifiers = QApplication.keyboardModifiers()
+
+        if modifiers == Qt.ControlModifier:
+
+            if p.y() >0:
+                self.zoomFont(mode='+')
+            if p.y() <0:
+                self.zoomFont(mode='-')
+
+            # self.lineNumbers.updateFont(self.fontSize)
+
+
     def __init__(self, parent=None):
         super().__init__(parent)
         

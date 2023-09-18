@@ -349,6 +349,7 @@ class console(QPlainTextEditLN):
         try: 
             font = QFont ('Consolas', fontSize)
         except:
+            log('[W] :wQFont(Consolas)')
             font = QFont ()
             font.setPointSize(fontSize)
             
