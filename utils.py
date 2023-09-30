@@ -941,6 +941,12 @@ def formatTimeShort(t):
     
     return s
 
+def formatTimeus(us):
+    '''return formatted time in microsec'''
+
+    s = numberToStr(us) + ' ' + chr(181) + 's'
+    return s
+
 @profiler
 def formatTime(t, skipSeconds = False, skipMs = False):
     

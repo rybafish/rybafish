@@ -3204,6 +3204,7 @@ class sqlConsole(QWidget):
             t0 = self.t0
             t1 = time.time()
             
+            #there is no dbCursor at this point, so no server time for you...
             logText = 'Query was running for... %s' % utils.formatTime(t1-t0)
             
             self.t0 = None
@@ -3241,8 +3242,15 @@ class sqlConsole(QWidget):
         self.t0 = None
         self.indicator.t0 = None
 
-        logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
-        
+        sptStr = ''
+        if dbCursor is not None and hasattr(dbCursor, 'servertime'):
+            spt = dbCursor.servertime
+            sptStr = ' (' + utils.formatTimeus(spt) + ')'
+
+        # logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
+        timeStr = utils.formatTime(t1-t0, skipSeconds = True)
+        logText = f'Query execution time: {timeStr}{sptStr}'
+
         rows_list = self.sqlWorker.rows_list
         cols_list = self.sqlWorker.cols_list
         resultset_id_list = self.sqlWorker.resultset_id_list

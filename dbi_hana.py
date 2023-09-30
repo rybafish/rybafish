@@ -472,7 +472,7 @@ class hdbi ():
         except Exception as e:
             log('[E] unexpected DB error: %s' % str(e))
             raise dbException(str(e))
-            
+
         # drop_statement(connection, psid) # might be useful to test LOB.read() issues
 
         return rows_list, columns_list, cursor, psid
