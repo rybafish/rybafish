@@ -1099,6 +1099,7 @@ class hslWindow(QMainWindow):
         console.alertSignal.connect(self.popUp)
         console.tabSwitchSignal.connect(self.switchTab)
         console.sqlBrowserSignal.connect(self.menuSQLBrowser)
+        console.fontUpdateSignal.connect(self.syncConsoleFonts)
         
         ind = indicator()
         console.indicator = ind
@@ -1264,6 +1265,7 @@ class hslWindow(QMainWindow):
         console.alertSignal.connect(self.popUp)
         console.tabSwitchSignal.connect(self.switchTab)
         console.sqlBrowserSignal.connect(self.menuSQLBrowser)
+        console.fontUpdateSignal.connect(self.syncConsoleFonts)
 
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -1424,6 +1426,20 @@ class hslWindow(QMainWindow):
     def setTabName(self, str):
         self.tabs.setTabText(0, str)
         
+    def syncConsoleFonts(self, mode):
+        if mode == 'console':
+            fontSize = cfg('console-fontSize')
+            for i in range(self.tabs.count()):
+                w = self.tabs.widget(i)
+                if isinstance(w, sqlConsole.sqlConsole):
+                    w.cons.zoomFont(mode='=', tosize=fontSize)
+        if mode == 'resultSet':
+            for i in range(self.tabs.count()):
+                w = self.tabs.widget(i)
+                if isinstance(w, sqlConsole.sqlConsole):
+                    w.resultFontUpdate()
+
+
     def initUI(self):
     
         global rybaSplash
@@ -1856,6 +1872,7 @@ class hslWindow(QMainWindow):
                 console.alertSignal.connect(self.popUp)
                 console.tabSwitchSignal.connect(self.switchTab)
                 console.sqlBrowserSignal.connect(self.menuSQLBrowser)
+                console.fontUpdateSignal.connect(self.syncConsoleFonts)
                 
                 ind.iClicked.connect(console.reportRuntime)
                 
@@ -1977,6 +1994,7 @@ class hslWindow(QMainWindow):
             console.alertSignal.connect(self.popUp)
             console.tabSwitchSignal.connect(self.switchTab)
             console.sqlBrowserSignal.connect(self.menuSQLBrowser)
+            console.fontUpdateSignal.connect(self.syncConsoleFonts)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 

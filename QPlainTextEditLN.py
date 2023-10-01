@@ -7,10 +7,11 @@ from PyQt5.QtCore import Qt, QSize
 
 from PyQt5.QtCore import pyqtSignal
 
-from utils import cfg
+from utils import cfg, cfgSet
 
 class QPlainTextEditLN(QWidget):
 
+    fontUpdateSignal = pyqtSignal()
     tabSwitchSignal = pyqtSignal(int)
 
     class PlainTextEdit(QPlainTextEdit):
@@ -300,27 +301,29 @@ class QPlainTextEditLN(QWidget):
             self.setMinimumSize(QSize(100, 15))
             self.edit = edit
 
-            self.font = self.edit.font()
-            
-            fontSize = cfg('console-fontSize', 10)
-            
-            self.font.setPointSize(fontSize)
             self.updateFontMetrix()
 
             self.fromLine = None
             self.toLine = None
 
         def updateFontMetrix(self):
-            self.fm = QFontMetrics(self.font)
+            font = self.font()
+            self.fm = QFontMetrics(font)
 
             self.fontHeight = self.fm.height()
             self.fontWidth = self.fm.width('0')
 
-            self.adjustWidth(1)
+            lines = self.edit.blockCount()
+            self.adjustWidth(lines)
 
-        def updateFont(self, fontSize):
-            self.font.setPointSize(fontSize)
+        def updateFont(self, fontSize=None):
+
+            font = self.edit.font()
+
+            self.setFont(font)
             self.updateFontMetrix()
+
+            return
 
         def adjustWidth(self, lines):
 
@@ -357,15 +360,8 @@ class QPlainTextEditLN(QWidget):
 
             qp.setPen(QColor('#888'))
             
-            #margin = 3
-            
-            #fln = self.edit.verticalScrollBar().value()
-            
-            qp.setFont(self.font)
-            
             block = self.edit.firstVisibleBlock()
             i = block.blockNumber()
-
 
             if self.fromLine is not None:
                 delta = self.fromLine - 1
@@ -385,12 +381,19 @@ class QPlainTextEditLN(QWidget):
                 
                 offset = self.baseWidth - self.fm.width(ln)
                 y = int(self.edit.blockBoundingGeometry(block).translated(self.edit.contentOffset()).top())
+                # font 46, height = 71, delta = -14
+                # font 24, height = 37, delta = -7
+                # font 10, height = 15, delta -2
                 
-                y += self.fontHeight - 1
+                yfix = int((self.fontHeight - 5) / 5) # this formula is 100% incorrect but I give up
+                # let me know if you know why Linenumbers Area font and plaintext font scale / render on a different place.
+
+                y += self.fontHeight
+                #y += self.fontHeight - 1
                 
                 # check if on the screen yet
                 if y >= QPaintEvent.rect().top():
-                    qp.drawText(offset, y, ln)
+                    qp.drawText(offset, y - yfix, ln)
                     
                 # check if out of the screen already
                 if y >= QPaintEvent.rect().bottom():
@@ -405,21 +408,30 @@ class QPlainTextEditLN(QWidget):
             
             self.locked  = False
             
-    def zoomFont(self, mode):
+    def zoomFont(self, mode, tosize=None):
         '''Zoom the font of the .edit widget'''
 
         fnt = self.edit.font()
-        size = fnt.pointSizeF()
+        size = fnt.pointSize()
 
         if mode == '+':
             size += 1
 
-        if mode == '-' and self.fontSize > 1:
+        if mode == '-' and size > 1:
             size -= 1
 
         if mode in ['+', '-']:
             fnt.setPointSizeF(size)
-            # self.edit.setFont(fnt) ## not required as we change actual font instance
+            self.edit.setFont(fnt)
+            self.lineNumbers.updateFont(size)
+
+            cfgSet('console-fontSize', size)
+            self.fontUpdateSignal.emit()
+
+        if mode == '=' and tosize:
+            fnt.setPointSize(tosize)
+            self.edit.setFont(fnt)
+            self.lineNumbers.updateFont(size)
 
     def wheelEvent(self, event):
         '''Zoom the font of the .edit widget'''
@@ -435,7 +447,11 @@ class QPlainTextEditLN(QWidget):
             if p.y() <0:
                 self.zoomFont(mode='-')
 
-            # self.lineNumbers.updateFont(self.fontSize)
+
+    def setFont(self, font):
+        self.edit.setFont(font)
+        # self.lineNumbers.setFont(font)
+        self.lineNumbers.updateFont()
 
 
     def __init__(self, parent=None):
@@ -472,7 +488,6 @@ class QPlainTextEditLN(QWidget):
         self.toPlainText = self.edit.toPlainText
         self.viewport = self.edit.viewport
 
-        self.setFont = self.edit.setFont
         self.setStyleSheet = self.edit.setStyleSheet
         
         self.edit.contextMenuEvent = self.contextMenuEvent # not sure why this works but it does.

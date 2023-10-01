@@ -306,7 +306,7 @@ class console(QPlainTextEditLN):
     explainSignal = pyqtSignal(['QString'])
     
     autocompleteSignal = pyqtSignal()
-    
+
     def insertTextS(self, str):
         cursor = self.textCursor()
         cursor.clearSelection()
@@ -354,8 +354,8 @@ class console(QPlainTextEditLN):
             font.setPointSize(fontSize)
             
         self.setFont(font)
-        
-        
+        # self.lineNumbers.updateFontMetrix()
+
         #self.setStyleSheet('{selection-background-color: #48F; selection-color: #fff;}')
         self.setStyleSheet('selection-background-color: #48F')
 
@@ -365,7 +365,7 @@ class console(QPlainTextEditLN):
         self.selectionChanged.connect(self.consSelection)
         
         self.rehighlightSig.connect(self.rehighlight)
-        
+
     def rehighlight(self):
         #need to force re-highlight manually because of #476
 
@@ -1269,6 +1269,7 @@ class sqlConsole(QWidget):
     sqlBrowserSignal = pyqtSignal()
     
     tabSwitchSignal = pyqtSignal(int)
+    fontUpdateSignal = pyqtSignal(['QString'])
     
     #gc.set_debug(gc.gc.DEBUG_LEAK)
 
@@ -2218,6 +2219,7 @@ class sqlConsole(QWidget):
         result.alertSignal.connect(self.alertProcessing)
         result.detachSignal.connect(self.resultDetached)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
+        result.fontUpdateSignal.connect(self.fontResultUpdated)
         
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results)+1)
@@ -3720,6 +3722,17 @@ class sqlConsole(QWidget):
         log(f'warn change: {txt}', 5)
 
 
+    def fontUpdated(self):
+        self.fontUpdateSignal.emit('console')
+
+    def fontResultUpdated(self):
+        self.fontUpdateSignal.emit('resultSet')
+
+    def resultFontUpdate(self):
+        fontSize = cfg('result-fontSize')
+        for r in self.results:
+            r.zoomFont(mode='=', toSize=fontSize)
+
     def initUI(self):
         '''
             main sqlConsole UI 
@@ -3737,6 +3750,7 @@ class sqlConsole(QWidget):
         
         self.cons.openFileSignal.connect(self.openFile)
         self.cons.goingToCrash.connect(self.delayBackup)
+        self.cons.fontUpdateSignal.connect(self.fontUpdated)
         
         self.resultTabs = QTabWidget()
         
