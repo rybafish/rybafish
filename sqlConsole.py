@@ -2220,6 +2220,7 @@ class sqlConsole(QWidget):
         result.detachSignal.connect(self.resultDetached)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         result.fontUpdateSignal.connect(self.fontResultUpdated)
+        result.closeRequestSignal.connect(self.close)
         
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results)+1)
