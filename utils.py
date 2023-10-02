@@ -559,8 +559,8 @@ def log(s, loglevel=3, nots=False, nonl=False, component=None,):
         
         mtx.unlock()
 
-def deb(s):
-    log(s, 5, component='deb')
+def deb(s, comp='deb'):
+    log(s, 5, component=comp)
 
 if cfg('threadSafeLogging', False):
     log('threadSafeLogging enabled')
@@ -939,6 +939,12 @@ def formatTimeShort(t):
         format = '%H:%M:%S'
         s = time.strftime(format, time.gmtime(ti))
     
+    return s
+
+def formatTimeus(us):
+    '''return formatted time in microsec'''
+
+    s = numberToStr(us) + ' ' + chr(181) + 's'
     return s
 
 @profiler

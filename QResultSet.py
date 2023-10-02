@@ -26,6 +26,8 @@ class QResultSet(QTableWidget):
     executeSQL = pyqtSignal(['QString', 'QString'])
     triggerAutorefresh = pyqtSignal([int])
     detachSignal = pyqtSignal()
+    fontUpdateSignal = pyqtSignal()
+    closeRequestSignal = pyqtSignal()
     
     def __init__(self, conn):
     
@@ -782,6 +784,9 @@ class QResultSet(QTableWidget):
             
             if event.key() == Qt.Key_C or event.key() == Qt.Key_Insert:
                 self.copyCells(abapMode=self.abapCopyFlag[0])
+
+            if event.key() == Qt.Key_W:
+                self.closeRequestSignal.emit()
         
         else:
             super().keyPressEvent(event)
@@ -1009,6 +1014,29 @@ class QResultSet(QTableWidget):
 
         return False
 
+    def zoomFont(self, mode, toSize=None):
+        fnt = self.font()
+        size = fnt.pointSizeF()
+
+        if mode == '+':
+            size += 1
+
+        if mode == '-' and size > 1:
+            size -= 1
+
+        if mode in ['+', '-']:
+            fnt.setPointSizeF(size)
+            self.horizontalHeader().setFont(fnt);
+            self.setFont(fnt)
+
+            utils.cfgSet('result-fontSize', int(size))
+            self.fontUpdateSignal.emit()
+
+        if mode == '=':
+            fnt.setPointSizeF(toSize)
+            self.setFont(fnt)
+            self.horizontalHeader().setFont(fnt);
+
     def wheelEvent (self, event):
     
         p = event.angleDelta()
@@ -1026,5 +1054,12 @@ class QResultSet(QTableWidget):
             
             step = self.horizontalScrollBar().singleStep() * 2 #pageStep()
             self.horizontalScrollBar().setValue(x + mode * step)
+        elif modifiers == Qt.ControlModifier:
+            p = event.angleDelta()
+
+            if p.y() >0:
+                self.zoomFont(mode='+')
+            if p.y() <0:
+                self.zoomFont(mode='-')
         else:
             super().wheelEvent(event)

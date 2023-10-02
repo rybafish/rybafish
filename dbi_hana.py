@@ -40,6 +40,14 @@ from profiler import profiler
 
 log = getlog('HDB')
 
+def check_pyhdb_version():
+    '''detect if the pyhdb is correct or outdated SAP version'''
+
+    if hasattr(pyhdb.protocol.constants.function_codes, 'COMMIT'):
+        return 'RyHDB'          # correct fork
+    else:
+        return 'SAP'            # incorrect old version
+
 class hdbi ():
 
     name = 'HDB'
@@ -69,6 +77,9 @@ class hdbi ():
         t0 = time.time()
         try: 
             # normal connection
+
+            if check_pyhdb_version() == 'SAP':
+                raise Exception('Seems you are using RybaFish with standard PyHDB, this will not work.\n\nYou need to get PyHDB fork from rybafish repository.')
 
             port =server['port']
             pm = cfg('mapport')
@@ -126,6 +137,7 @@ class hdbi ():
         port =server['port']
         pm = cfg('mapport')
         pwdDecoded = cfgManager.decode(server['password'])
+
         if cfg('dev') and pm:
             port = int(str(port).replace(pm[1], pm[0]))
 
@@ -460,7 +472,7 @@ class hdbi ():
         except Exception as e:
             log('[E] unexpected DB error: %s' % str(e))
             raise dbException(str(e))
-            
+
         # drop_statement(connection, psid) # might be useful to test LOB.read() issues
 
         return rows_list, columns_list, cursor, psid

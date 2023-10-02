@@ -306,7 +306,7 @@ class console(QPlainTextEditLN):
     explainSignal = pyqtSignal(['QString'])
     
     autocompleteSignal = pyqtSignal()
-    
+
     def insertTextS(self, str):
         cursor = self.textCursor()
         cursor.clearSelection()
@@ -349,12 +349,13 @@ class console(QPlainTextEditLN):
         try: 
             font = QFont ('Consolas', fontSize)
         except:
+            log('[W] :wQFont(Consolas)')
             font = QFont ()
             font.setPointSize(fontSize)
             
         self.setFont(font)
-        
-        
+        # self.lineNumbers.updateFontMetrix()
+
         #self.setStyleSheet('{selection-background-color: #48F; selection-color: #fff;}')
         self.setStyleSheet('selection-background-color: #48F')
 
@@ -364,7 +365,7 @@ class console(QPlainTextEditLN):
         self.selectionChanged.connect(self.consSelection)
         
         self.rehighlightSig.connect(self.rehighlight)
-        
+
     def rehighlight(self):
         #need to force re-highlight manually because of #476
 
@@ -1268,6 +1269,7 @@ class sqlConsole(QWidget):
     sqlBrowserSignal = pyqtSignal()
     
     tabSwitchSignal = pyqtSignal(int)
+    fontUpdateSignal = pyqtSignal(['QString'])
     
     #gc.set_debug(gc.gc.DEBUG_LEAK)
 
@@ -2217,6 +2219,8 @@ class sqlConsole(QWidget):
         result.alertSignal.connect(self.alertProcessing)
         result.detachSignal.connect(self.resultDetached)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
+        result.fontUpdateSignal.connect(self.fontResultUpdated)
+        result.closeRequestSignal.connect(self.close)
         
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results)+1)
@@ -3203,6 +3207,7 @@ class sqlConsole(QWidget):
             t0 = self.t0
             t1 = time.time()
             
+            #there is no dbCursor at this point, so no server time for you...
             logText = 'Query was running for... %s' % utils.formatTime(t1-t0)
             
             self.t0 = None
@@ -3240,8 +3245,15 @@ class sqlConsole(QWidget):
         self.t0 = None
         self.indicator.t0 = None
 
-        logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
-        
+        sptStr = ''
+        if dbCursor is not None and hasattr(dbCursor, 'servertime'):
+            spt = dbCursor.servertime
+            sptStr = ' (' + utils.formatTimeus(spt) + ')'
+
+        # logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
+        timeStr = utils.formatTime(t1-t0, skipSeconds = True)
+        logText = f'Query execution time: {timeStr}{sptStr}'
+
         rows_list = self.sqlWorker.rows_list
         cols_list = self.sqlWorker.cols_list
         resultset_id_list = self.sqlWorker.resultset_id_list
@@ -3711,6 +3723,17 @@ class sqlConsole(QWidget):
         log(f'warn change: {txt}', 5)
 
 
+    def fontUpdated(self):
+        self.fontUpdateSignal.emit('console')
+
+    def fontResultUpdated(self):
+        self.fontUpdateSignal.emit('resultSet')
+
+    def resultFontUpdate(self):
+        fontSize = cfg('result-fontSize')
+        for r in self.results:
+            r.zoomFont(mode='=', toSize=fontSize)
+
     def initUI(self):
         '''
             main sqlConsole UI 
@@ -3728,6 +3751,7 @@ class sqlConsole(QWidget):
         
         self.cons.openFileSignal.connect(self.openFile)
         self.cons.goingToCrash.connect(self.delayBackup)
+        self.cons.fontUpdateSignal.connect(self.fontUpdated)
         
         self.resultTabs = QTabWidget()
         

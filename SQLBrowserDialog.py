@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, QObject, QThread
 from PyQt5.QtCore import pyqtSignal, QRect, QItemSelectionModel
 
 from utils import resourcePath
-from utils import log, cfg
+from utils import log, cfg, deb
 
 from profiler import profiler
 
@@ -80,7 +80,7 @@ class SQLBrowser(QTreeView):
 
     def __init__(self):
         super().__init__()
-        
+
         self.expandedNodes = []
         
         self.folderIcon = self.style().standardIcon(QStyle.SP_DirIcon)
@@ -159,7 +159,12 @@ class SQLBrowser(QTreeView):
     
         j = 0
                 
+        deb(f'parseFlat, {folder=}', 'sqlbrowser')
+
+        foldersAdded = []
+
         for (f, fpath, fdesc, fmode, offset) in files:
+
             if filter:
                 if (
                     (f.lower().find(filter) < 0) 
@@ -170,7 +175,9 @@ class SQLBrowser(QTreeView):
                     
             #print('ok, something left:', f)
             
+            deb(f'file: {f=}, {fpath=}', 'sqlbrowser')
             hier = f.split(os.sep)
+            deb(f'hier: {hier}', 'sqlbrowser')
             
             for i in range(len(hier)-1):
                 
@@ -184,9 +191,15 @@ class SQLBrowser(QTreeView):
                 
                 #nodePath = folder + '\\' + '\\'.join(hier[:i+1])
                 nodePath = '\\'.join(hier[:i+1])
-                
+                deb(f'{nodePath=}, {folder=}', 'sqlbrowser')
+
                 if i < len(st):
                     if hier[i] != st[i]:
+                        if len(folder) >= len(nodePath) or nodePath in foldersAdded:
+                            deb(f'skip 1 {nodePath}', 'sqlbrowser')
+                            continue
+                        # this seem to be never reached after #879 fix``
+                        deb(f'adding noSlice (never reached code?): {hier[i]=}, {parentPath=}, {nodePath=}', 'sqlbrowser')
                         noSlice = True
                         st = st[:i]
                         st.append(hier[i])
@@ -194,10 +207,15 @@ class SQLBrowser(QTreeView):
                         nodez.append((parentPath, nodePath, hier[i], None, None, None))
 
                 else:
+                    if len(folder) >= len(nodePath) or nodePath in foldersAdded:
+                        deb(f'skip 2 {nodePath}', 'sqlbrowser')
+                        continue
+
+                    deb(f'adding folder {hier[i]=}, {parentPath=}, {nodePath=}', 'sqlbrowser')
                     st.append(hier[i])
-                                        
+                    foldersAdded.append(nodePath)
                     nodez.append((parentPath, nodePath, hier[i], None, None, None))
-                    
+
             if noSlice == False and i+1 < len(st):
                 st = st[:i+1]
 
@@ -211,6 +229,7 @@ class SQLBrowser(QTreeView):
         # populate leaves now:
         for file in leaves.keys():
             f = leaves[file]
+            deb(f'add leaves, {file}, {f}', 'sqlbrowser')
             nodez.append((f[1], None, f[0], f[2], f[3], f[4]))
 
         return nodez
@@ -289,6 +308,7 @@ class SQLBrowser(QTreeView):
         '''
         #nodes = {}
         
+        deb(f'build model call: {folder=}, {filterStr=}', 'sqlbrowser')
         needComments = False
         
         self.model.clear()
@@ -304,14 +324,21 @@ class SQLBrowser(QTreeView):
             needComments = True
             self.flatStructure = self.flattenFolder(folder)
             
+        for f in self.flatStructure:
+            deb(f'flatStr: {f}', 'sqlbrowser')
+
         filterLower = filterStr.lower()
             
         nodez = self.parseFlat(folder, self.flatStructure, filter=filterLower)
+
+        for z in nodez:
+            deb(f'nodez --> {[z[0], z[1], z[2]]}', 'sqlbrowser')
         
         parents = ['']              # stack of the parent nodes
         parentNodes = {}
 
         parentNodes[folder] = parentItem
+        deb(f'nodes keys: {parentNodes.keys()}', 'sqlbrowser')
         
         i = 0
         rowsAdded = 0
@@ -334,7 +361,11 @@ class SQLBrowser(QTreeView):
         
         for i in range(len(nodez)):
 
+            deb(f'i: {i}', 'sqlbrowser')
+
             (parent, mine, node, data, desc, offset) = nodez[i]
+
+            deb(f'i: {i}, parent: {parent}', 'sqlbrowser')
 
             if parent == '':
                 continue
@@ -367,6 +398,9 @@ class SQLBrowser(QTreeView):
 
                 if self.selectedPath == mine:
                     self.searchItem = item
+
+                deb(f'parent: {parent}', 'sqlbrowser')
+                deb(item, 'sqlbrowser')
 
                 parentNodes[parent].appendRow(item)
                 rowsAdded += 1
@@ -729,4 +763,3 @@ if __name__ == '__main__':
     
     profiler.report()
     sys.exit()
-    
