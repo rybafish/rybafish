@@ -28,7 +28,7 @@ from QPlainTextEditLN import QPlainTextEditLN
 from QResultSet import QResultSet
 
 from utils import cfg
-from utils import dbException, log
+from utils import dbException, log, deb
 from utils import resourcePath
 from utils import normalize_header
 
@@ -164,6 +164,7 @@ class sqlWorker(QObject):
             # t0 = time.time()
             
             #print('clear rows array here?')
+            deb('thread sql execution try block enter')
             
             suffix = ''
             
@@ -197,7 +198,9 @@ class sqlWorker(QObject):
                 psid = None
                 self.resultset_id_list = None
             else:
+                deb('thread sql execution just before sql')
                 self.rows_list, self.cols_list, dbCursor, psid = self.dbi.execute_query_desc(cons.conn, sql, [], resultSizeLimit)
+                deb('thread sql execution just after sql')
             
                 if dbCursor:
                     self.resultset_id_list = dbCursor._resultset_id_list
@@ -218,13 +221,12 @@ class sqlWorker(QObject):
         except dbException as e:
             err = str(e)
             
-            # fixme 
-            # cons.log('DB Exception:' + err, True)
-            
+            deb(f'thread DB exception: {e}')
             cons.wrkException = 'DB Exception: ' + err
             
             if e.type == dbException.CONN:
                 # fixme 
+                deb('thread exception type == CONN')
                 log('connection lost, should we close it?')
 
                 try: 
@@ -239,6 +241,8 @@ class sqlWorker(QObject):
                 
                 log('connectionLost() used to be here, but now no UI possible from the thread')
                 #cons.connectionLost()
+            else:
+                deb('thread exception type != CONN')
         
         except Exception as e:
             log(f'[W] Generic exception during executeStatement, thread {int(QThread.currentThreadId())}, {type(e)}, {e}', 1)
@@ -1335,6 +1339,8 @@ class sqlConsole(QWidget):
                                         
         self.timerSet = [False]
         
+        self.timerReconnect = None      # Timer for scheduled reconnect loop
+
         self.lockRefreshTB = False      # lock the toolbar button due to change from resultset context menu
         
         self.abapCopyFlag = [False]     # to be shared with child results instances
@@ -1912,7 +1918,14 @@ class sqlConsole(QWidget):
         else:
             self.log('\nConsole seems to be disconnected')
         
-    def disconnectDB(self):
+    def disconnectDB(self, keepReconnect=False):
+
+        deb(f'disconnectFB, {keepReconnect=}')
+
+        if self.timerReconnect is not None:
+            log('Stopping reconnect timer')
+            self.timerReconnect.stop()
+            self.timerReconnect = None
 
         try: 
         
@@ -2245,7 +2258,7 @@ class sqlConsole(QWidget):
             # stop autorefresh if any
             if self.timerAutorefresh is not None:
                 log('Stopping autorefresh as it was enabled')
-                result.log('--> Stopping the autorefresh...', True)
+                # result.log('--> Stopping the autorefresh...', True)
                 self.timerAutorefresh.stop()
                 self.timerAutorefresh = None
                 
@@ -2987,6 +3000,53 @@ class sqlConsole(QWidget):
             result = self.newResult(self.conn, st)
             self.executeStatement(st, result)
     
+    def connectionRestoreCall(self):
+        '''serve the restore connection idle loop timer'''
+        log('connection restore callback triggered, timer --> pause', 4)
+
+        if self.timerReconnect is not None:
+            self.timerReconnect.stop()
+            # ts = datetime.datetime.now().strftime('%H:%M:%S')
+            # self.log(f'[{ts}] restore connection disabled due to explicit disconnect')
+        else:
+            deb('connection restore callback timer is None, aborting')
+            return
+
+        try:
+            self.reconnect()
+            log('No exception...', 4)
+        except dbException as e:
+            log(f'connection error: {e}', 2)
+
+        timer = cfg('reconnectTimer') * 1000
+
+        if self.conn or not timer:
+            log('Connection restored, abandon the timer', 4)
+            if len(self.defaultTimer):
+                   autoRefreshTime = self.defaultTimer[0]
+                   log('setting up autorefressh back...', 4)
+                   self.setupAutorefresh(autoRefreshTime)
+                   ts = datetime.datetime.now().strftime('%H:%M:%S')
+                   self.log(f'[{ts}] autorefresh restored: {autoRefreshTime}')
+        else:
+            log('Connection failed, launching timer again')
+            self.timerReconnect.start(timer)
+
+
+    def connectionRestoreLoop(self):
+        '''schedule autorefresh loop
+
+        this method should be only called for autorefresh consoles
+        because it WILL trigger the autorefresh setup when connection
+        restored, there is no any check foe that inside
+
+        '''
+        interval = 60
+        log(f'scheduling the reconnection timer: {interval} seconds...', 5)
+        self.timerReconnect = QTimer(self)
+        self.timerReconnect.timeout.connect(self.connectionRestoreCall)
+        self.timerReconnect.start(1000 * interval)
+
     def connectionLost(self, err_str = ''):
         '''
             very synchronous call, it holds controll until connection status resolved
@@ -3004,8 +3064,17 @@ class sqlConsole(QWidget):
             log(f'disconnectAlert = None, because timer: {self.timerAutorefresh}, config alertDisconnected={cfg("alertDisconnected")}', 5)
         
         self.stopResults()
-        
-        
+
+        if disconnectAlert:
+            log('play the disconnect sound...', 4)
+            self.alertProcessing(cfg('alertDisconnected'), manual=True)
+
+        if cfg('reconnectTimer'):
+            ts = datetime.datetime.now().strftime('%H:%M:%S')
+            self.log(f'[{ts}] This console will try to reconnect automatically, check the log to see progress')
+            self.connectionRestoreLoop()
+            return
+
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle(f'Console connection lost ({tname})')
         msgBox.setText('Connection failed, reconnect?')
@@ -3015,10 +3084,6 @@ class sqlConsole(QWidget):
         msgBox.setWindowIcon(QIcon(iconPath))
         msgBox.setIcon(QMessageBox.Warning)
 
-        if disconnectAlert:
-            log('play the disconnect sound...', 4)
-            self.alertProcessing(cfg('alertDisconnected'), manual=True)
-            
         reply = None
         
         while reply != QMessageBox.No and self.conn is None:
@@ -3072,6 +3137,10 @@ class sqlConsole(QWidget):
         
         log('(%s) psid to save --> %s' % (self.tabname.rstrip(' *'), utils.hextostr(self.sqlWorker.psid)), 4)
         
+        deb(f'{self.dbi=}')
+        deb(f'{self.conn=}')
+        deb(f'{self.wrkException=}')
+
         if self.dbi is None:
             log('dbi is None during sqlFinished. Likely due to close() call executed before, aborting processing', 2)
             return
@@ -3080,6 +3149,7 @@ class sqlConsole(QWidget):
             pre = self.wrkException[:16] == 'Thread exception'
             self.log(self.wrkException, True, pre)
             
+            deb(f'wrkException: {self.wrkException}')
             #self.thread.quit()
             #self.sqlRunning = False
 

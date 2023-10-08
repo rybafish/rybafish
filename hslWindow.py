@@ -828,24 +828,29 @@ class hslWindow(QMainWindow):
 
                         w = self.tabs.widget(i)
 
-                        if isinstance(w, sqlConsole.sqlConsole) and w.conn is not None:
+                        if isinstance(w, sqlConsole.sqlConsole):
                             tabname = w.tabname.rstrip(' *')
-                            '''
-                            if abandon:
-                                log(f'ignoring close for {tabname} due to abandone = True', 4) # bug #781
-                                w.dbi = None
-                                w.conn = None
-                                w.connection_id = None
-                                w.sqlRunning = False
-                            else:
+                            if w.timerReconnect is not None:
+                                w.timerReconnect.stop()
+                                w.timerReconnect = None
+                                log(f'{tabname} timerReconnect disabled due to explicit re-connect')
+                            if w.conn is not None:
+                                '''
+                                if abandon:
+                                    log(f'ignoring close for {tabname} due to abandone = True', 4) # bug #781
+                                    w.dbi = None
+                                    w.conn = None
+                                    w.connection_id = None
+                                    w.sqlRunning = False
+                                else:
+                                    log(f'closing connection of {tabname}...')
+                                    w.disconnectDB()
+                                '''
                                 log(f'closing connection of {tabname}...')
                                 w.disconnectDB()
-                            '''
-                            log(f'closing connection of {tabname}...')
-                            w.disconnectDB()
-                            w.indicator.status = 'disconnected'
-                            w.indicator.repaint()
-                            log('disconnected...')
+                                w.indicator.status = 'disconnected'
+                                w.indicator.repaint()
+                                log('disconnected...')
 
                 # close damn chart console
                 
