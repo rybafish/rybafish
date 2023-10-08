@@ -2091,8 +2091,11 @@ class sqlConsole(QWidget):
             self.timerSet[0] = False
             
             return
-         
-        
+
+        if self.dbi is None or self.conn is None:
+            self.log('Seems the console is not connected, connect first.')
+            return
+
         if self.resultTabs.count() == 0:
             self.log('Execute some SQL first, autorefresh related to result set.')
             return
