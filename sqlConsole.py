@@ -1722,7 +1722,7 @@ class sqlConsole(QWidget):
     
     def close(self, cancelPossible=True, abandoneExecution=False):
     
-        #log(f'close call: {self.tabname=}, {cancelPossible=}')
+        # log(f'close call: {self.tabname=}, {cancelPossible=}', 5)
         
         if self.unsavedChanges and cancelPossible:
             answer = utils.yesNoDialog('Unsaved changes', 'There are unsaved changes in "%s" tab, do yo want to save?' % self.tabname, cancelPossible, parent=self)
@@ -1776,6 +1776,7 @@ class sqlConsole(QWidget):
             log('runtimeTimer --> off', 5)
             self.indicator.runtimeTimer.stop()
             self.indicator.runtimeTimer = None
+
         super().close()
                 
         return True
@@ -2238,8 +2239,7 @@ class sqlConsole(QWidget):
         result.detachSignal.connect(self.resultDetached)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         result.fontUpdateSignal.connect(self.fontResultUpdated)
-        result.closeRequestSignal.connect(self.close)
-        
+
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results)+1)
         else:

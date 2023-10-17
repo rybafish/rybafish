@@ -27,8 +27,7 @@ class QResultSet(QTableWidget):
     triggerAutorefresh = pyqtSignal([int])
     detachSignal = pyqtSignal()
     fontUpdateSignal = pyqtSignal()
-    closeRequestSignal = pyqtSignal()
-    
+
     def __init__(self, conn):
     
         self._resultset_id = None    # filled manually right after execute_query
@@ -786,7 +785,7 @@ class QResultSet(QTableWidget):
                 self.copyCells(abapMode=self.abapCopyFlag[0])
 
             if event.key() == Qt.Key_W:
-                self.closeRequestSignal.emit()
+                super().keyPressEvent(event)
         
         else:
             super().keyPressEvent(event)
