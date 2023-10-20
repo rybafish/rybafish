@@ -253,7 +253,7 @@ class hdbi ():
             log('[!] SQL Error: %s' % sql_string[0:256])
             log('[!] SQL Error: %s' % (e))
 
-            if str(e).startswith('Lost connection to HANA server'):
+            if str(e).startswith('Lost connection to HANA server') or e.code is None:
                 log('[!] SQL Error: related to connection')
                 raise dbException(str(e), dbException.CONN)
             
@@ -370,7 +370,7 @@ class hdbi ():
         
             log('DatabaseError: ' + str(e.code))
         
-            if str(e).startswith('Lost connection to HANA server'):
+            if str(e).startswith('Lost connection to HANA server') or e.code is None:
                 raise dbException(str(e), dbException.CONN)
         
             log('[!] SQL Error: %s' % sql_string)
