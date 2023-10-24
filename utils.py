@@ -26,6 +26,7 @@ from io import StringIO
 import csv
 
 config = {}
+statement_hints = None
 
 global utils_alertReg
 __alertReg__ = None
@@ -508,6 +509,15 @@ if cfg('threadSafeLogging', False):
     mtx = QMutex()
 else:
     mtx = fakeMutex()
+
+@profiler
+def loadHints():
+    global statement_hints
+
+    if statement_hints is None:
+        statement_hints = cfg('knownStatements', [])
+
+loadHints()
 
 @profiler
 def log(s, loglevel=3, nots=False, nonl=False, component=None,):
@@ -1541,3 +1551,4 @@ def timeToSeconds(s):
         return -sec
     else:
         return sec
+

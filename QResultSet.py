@@ -105,6 +105,14 @@ class QResultSet(QTableWidget):
         self.abapCopyFlag = [False]
 
         
+    @profiler
+    def checkHighlight(self, col, value):
+        '''check for additional highlighters'''
+
+        if self.headers[col] == 'STATEMENT_HASH':
+            if value in utils.statement_hints:
+                return True
+
     def highlightRefresh(self):
         rows = self.rowCount()
         cols = self.columnCount()
@@ -123,6 +131,8 @@ class QResultSet(QTableWidget):
         clr = QColor(int(clr.red()*0.9), int(clr.green()*0.9), int(clr.blue()*0.95))
         hlBrushLOB = QBrush(clr)
         
+        hl2Brush = QBrush(QColor('#dfe'))
+
         wBrush = QBrush(QColor('#ffffff'))
         wBrushLOB = QBrush(QColor('#f4f4f4'))
         
@@ -147,7 +157,7 @@ class QResultSet(QTableWidget):
                     hl = True
                 else:
                     hl = False
-            
+
             if hl:
                 for j in range(cols):
                     if j in lobCols:
@@ -159,8 +169,16 @@ class QResultSet(QTableWidget):
                     if j in lobCols:
                         self.item(i, j).setBackground(wBrushLOB)
                     else:
-                        self.item(i, j).setBackground(wBrush)
-                    
+                        # self.item(i, j).setBackground(wBrush)
+                        if self.checkHighlight(j, self.item(i, col).text()):
+                            hl2 = True
+                        else:
+                            hl2 = False
+                        if hl2 == False:
+                            self.item(i, j).setBackground(wBrush)
+                        else:
+                            self.item(i, j).setBackground(hl2Brush)
+
             if value is None:
                 val = self.item(i, col).text()
     
@@ -906,6 +924,10 @@ class QResultSet(QTableWidget):
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
                         
+                    if self.checkHighlight(c, val):
+                        item.setBackground(QBrush(QColor('#dfe')))
+                        item.setToolTip('Some useful info... but not yet...')
+
                     if alert_str:
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
@@ -925,29 +947,6 @@ class QResultSet(QTableWidget):
                                 
                                 sound, volume = utils.parseAlertString(val)
                                 
-                                '''
-                                
-                                old style messy approach...
-                                
-                                if val == alert_str: 
-                                    # simple one
-                                    sound = ''
-                                    volume = None
-                                else:
-                                    # might be a customized one?
-                                    if val[-1:] == '}' and val[alert_len-1:alert_len] == ':':
-                                        sound = val[alert_len:-1]
-                                        
-                                        volPos = sound.find('!')
-                                        
-                                        if volPos > 0:
-                                            sound = sound[:volPos]
-                                            volume = sound[volPos+1:]
-                                        else:
-                                            volume = None
-                                        print(sound, volume)
-                                '''
-                                        
                             if sound is not None and not self.alerted:
                                 self.alerted = True
                                 
