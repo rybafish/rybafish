@@ -173,7 +173,7 @@ class dataProvider(QObject):
                     self.timer.stop()
                     self.connection = None
                     self.disconnected.emit()
-            except:
+            except dbException as e:
                 log('Connection lost, give up')
 
                 self.timer.stop()

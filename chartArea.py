@@ -3033,12 +3033,16 @@ class chartArea(QFrame):
         self.widget.update()
         
         
-    def connectionLost(self, dp, err_str = ''):
+    def connectionLost(self, dp, err_str='', nodialog=False):
         '''
             very synchronous call, it holds controll until connection status resolved
         '''
         self.statusMessage('Connection error (%s)' % err_str, True)
-        
+
+        if nodialog:
+            log('connection lost, but we cannot block UI thread, so silently exit', 2)
+            return False
+
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Charts connection lost')
         msgBox.setText('Connection failed, reconnect?')
@@ -3318,7 +3322,7 @@ class chartArea(QFrame):
         #print('also stop keep-alive timer here ((it will be kinda refreshed in get_data renewKeepAlive))')
         
         log('trigger auto refresh...')
-        self.reloadChart()
+        self.reloadChart(autorefresh=True)
         
         if self.timer: # need to check as it might be disabled inside reloadChart()
             self.timer.start(1000 * self.refreshTime)
@@ -3679,7 +3683,7 @@ class chartArea(QFrame):
                 
         return True
                 
-    def reloadChart(self):
+    def reloadChart(self, autorefresh=False):
     
         dp = None
         
@@ -3746,14 +3750,20 @@ class chartArea(QFrame):
 
             except utils.dbException as e:
                 self.setStatus('error', True)
-                reconnected = self.connectionLost(dp, str(e))
-                
+
+                # modal dialog only possible if autorefresh consoles do not need reconnect themselves
+                if autorefresh and cfg('reconnectTimer'):
+                    reconnected = self.connectionLost(dp, str(e), nodialog=True)
+                else:
+                    reconnected = self.connectionLost(dp, str(e), nodialog=False)
+
                 if reconnected == False:
                     log('reconnected == False')
-                    self.setStatus('sync', True)
                     allOk = False
                     timerF = False
                     self.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+                    self.setStatus('disconnected', True)
+                    self.statusMessage(f'Chart Disconnected: {e}...')
 
         self.renewMaxValues()
         
@@ -3788,13 +3798,15 @@ class chartArea(QFrame):
                 timerF = False
                 
         else:
-            self.statusMessage('Ready')
+            if allOk:
+                self.statusMessage('Ready')
         
         if timerF == True and self.timer is not None:
             self.timer.start(1000 * self.refreshTime)
             self.setStatus('autorefresh', True)
         else:
-            self.setStatus('idle', True)
+            if allOk:
+                self.setStatus('idle', True)
 
         self.reloadLock = False
 
