@@ -529,11 +529,11 @@ class myWidget(QWidget):
         if self.legend:
             cmenu.addSeparator()
             copyLegend = cmenu.addAction('Copy Legend to clipboard')
-            putLegend = cmenu.addAction('Hide Legend')
+            putLegend = cmenu.addAction('Hide Legend\tCtrl+L')
 
         else:
             cmenu.addSeparator()
-            putLegend = cmenu.addAction('Show Legend')
+            putLegend = cmenu.addAction('Show Legend\tCtrl+L')
         
         if self.gotGantt:
             cmenu.addSeparator()
@@ -604,8 +604,6 @@ class myWidget(QWidget):
             self.statusMessage('Legend bitmap copied to the clipboard')
         
         if action == putLegend:
-            #self.legend = not self.legend
-            
             if self.legend is None:
                 self.legend = 'hosts'
             else:
@@ -2752,7 +2750,13 @@ class chartArea(QFrame):
         elif event.key() == Qt.Key_End:
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
             
-        else: 
+        elif event.key() == Qt.Key_L and modifiers == Qt.ControlModifier:
+            if self.widget.legend is None:
+                self.widget.legend = 'hosts'
+            else:
+                self.widget.legend = None
+            self.widget.repaint()
+        else:
             super().keyPressEvent(event)
 
     def cleanup(self):
