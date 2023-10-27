@@ -1148,14 +1148,14 @@ class myWidget(QWidget):
             kpiStylesNNN = self.hostKPIsStyles[h]
             
             dbinfo = ''
-            
+
             if 'db' in self.hosts[h] and 'service' in self.hosts[h] and hostType == 'service':
 
-                if cfg('legendTenantName'):
-                    dbinfo += self.hosts[h]['db'] + ' '
+                if cfg('legendTenantName') and self.hosts[h].get('db'):
+                    dbinfo += self.hosts[h].get('db', '') + ' '
 
-                if cfg('legendServiceName'):
-                    dbinfo += self.hosts[h]['service']
+                if cfg('legendServiceName') and self.hosts[h].get('service'):
+                    dbinfo += self.hosts[h].get('service', '')
                     
             if dbinfo != '':
                 dbinfo = ', ' + dbinfo
