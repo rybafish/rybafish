@@ -1692,6 +1692,11 @@ class sqlConsole(QWidget):
         basename = os.path.basename(filename)
         self.tabname = basename.split('.')[0]
         
+        if basename.find('.') == -1:
+            log(f'Filename without extention? [{basename}]', 1)
+            self.log(f'Filename without extention? {basename}', True)
+            return
+
         ext = basename.split('.')[1]
         
         self.cons.setPlainText(data)
