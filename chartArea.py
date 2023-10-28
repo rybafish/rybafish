@@ -2128,6 +2128,14 @@ class myWidget(QWidget):
         self.drawChart(qp, startX, stopX)
         
         qp.end()
+
+
+    def toggleLegend(self):
+        if self.legend is None:
+            self.legend = 'hosts'
+        else:
+            self.legend = None
+        self.repaint()
         
 
 def moveAsync(direction, d, i):
@@ -2147,6 +2155,8 @@ def moveAsync(direction, d, i):
             return i
 
     return None
+
+
 
 class chartArea(QFrame):
     
@@ -2751,11 +2761,7 @@ class chartArea(QFrame):
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
             
         elif event.key() == Qt.Key_L and modifiers == Qt.ControlModifier:
-            if self.widget.legend is None:
-                self.widget.legend = 'hosts'
-            else:
-                self.widget.legend = None
-            self.widget.repaint()
+            self.widget.toggleLegend()
         else:
             super().keyPressEvent(event)
 
