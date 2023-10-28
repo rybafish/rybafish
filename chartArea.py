@@ -1039,7 +1039,10 @@ class myWidget(QWidget):
                 if pos.y() <= ymin + tolerance and pos.y() >= ymax - tolerance: #it's reversed in Y calculation...
                     if (self.highlightedKpi):
                     
-                        if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
+                        # if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
+                        if kpiStylesNNN[kpi]['group'] == kpiStylesNNN[self.highlightedKpi]['group']:
+                            # print(kpi, kpiStylesNNN[kpi])
+                            # print(kpi, kpiStylesNNN[self.highlightedKpi])
                             reportDelta = True
                             
                         self.highlightedKpi = None
