@@ -648,6 +648,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
         dUnit = kpi['dUnit'].split('/')
         
         if len(sUnit) > 1 and len(dUnit) > 1 and sUnit[1] == 'sample' and dUnit[1] == 'sec':
+            # deb(f'{kpi["name"]}: {sUnit=}, {dUnit=}')
             style['sUnit'] = sUnit[0]
             style['dUnit'] = dUnit[0]
             style['perSample'] = True

@@ -452,7 +452,15 @@ class myWidget(QWidget):
                     dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
 
                     if max_value_n == max_value:
-                        dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
+                        deb(f'{kpi} dUnit = sUnit due to max_value_n == max_value: {max_value_n} == {max_value}')
+                        deb(f'{kpi}, {manualScale=}')
+
+                        if manualScale:
+                            deb('dUnit due to manualScale')
+                            dUnit = kpiStylesNNN[kpi]['dUnit']
+                        else:
+                            deb('sUnit as no manualScale')
+                            dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
                     else:
                         max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
                         dUnit = kpiStylesNNN[kpi]['dUnit'] # converted
