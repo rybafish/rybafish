@@ -1048,6 +1048,11 @@ class myWidget(QWidget):
                     if (self.highlightedKpi):
                     
                         # if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
+                        deb(f'{kpi=}')
+                        deb(kpiStylesNNN[kpi])
+                        deb(f'{self.highlightedKpi=}')
+                        deb(kpiStylesNNN[self.highlightedKpi])
+
                         if kpiStylesNNN[kpi]['group'] == kpiStylesNNN[self.highlightedKpi]['group']:
                             # print(kpi, kpiStylesNNN[kpi])
                             # print(kpi, kpiStylesNNN[self.highlightedKpi])
@@ -2331,6 +2336,9 @@ class chartArea(QFrame):
                 return i
 
             idx = None
+
+            if kpi not in data:
+                return None, None
 
             if gbi is None:
                 dataArray = data[kpi]
