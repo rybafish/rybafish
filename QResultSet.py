@@ -6,7 +6,7 @@ from PyQt5.QtCore import pyqtSignal, Qt, QSize, QTimer
 from PyQt5.QtGui import QFont, QFontMetricsF, QColor, QPixmap, QBrush
 
 import utils
-from utils import cfg, log, normalize_header
+from utils import cfg, log, normalize_header, deb
 
 import lobDialog, searchDialog
 import customSQLs
@@ -471,6 +471,13 @@ class QResultSet(QTableWidget):
             widths = [0]*len(colList)
             types = [0]*len(colList)
             
+            deb(f'{widths=}')
+            deb(f'len(colList) = {len(colList)}')
+            deb(f'len(copypaste) = {len(copypaste)}')
+
+            for l in copypaste:
+                deb(l)
+
             for c in range(len(colList)):
             
                 types[c] = self.cols[colList[c]][1]
