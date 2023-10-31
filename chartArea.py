@@ -1051,9 +1051,11 @@ class myWidget(QWidget):
                         deb(f'{kpi=}')
                         deb(kpiStylesNNN[kpi])
                         deb(f'{self.highlightedKpi=}')
-                        deb(kpiStylesNNN[self.highlightedKpi])
 
-                        if kpiStylesNNN[kpi]['group'] == kpiStylesNNN[self.highlightedKpi]['group']:
+                        hlStyle = self.hostKPIsStyles[self.highlightedKpiHost][self.highlightedKpi]
+                        deb(hlStyle)
+
+                        if kpiStylesNNN[kpi]['group'] == hlStyle['group']:
                             # print(kpi, kpiStylesNNN[kpi])
                             # print(kpi, kpiStylesNNN[self.highlightedKpi])
                             reportDelta = True
