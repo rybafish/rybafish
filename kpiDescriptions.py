@@ -945,10 +945,18 @@ def groups(hostKPIsStyles):
     return groups
 
 def normalize (kpi, value, d = 0):
+    '''
+    convert value for display purpose based on sUnit/dUnit
+    used to calculate min/max for labels, etc in alignScales (once per getData)
+
+    1048576 MB/Byte --> 1.0
+    '''
+
 
     if 'sUnit' in kpi and 'dUnit' in kpi:
         sUnit, dUnit = kpi['sUnit'], kpi['dUnit']
     else:
+        log(f'norm: {kpi}, no sunit/dunit, no normalization', 5)
         return value
 
     nValue = None
@@ -961,7 +969,7 @@ def normalize (kpi, value, d = 0):
     elif sUnit == 'usec' and dUnit == 'sec':
         nValue = round(value/1000000, d)
 
-    # ('[N] %s: %s -> %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
+    # deb('[Norm] %s/%s: %s %i -> %s ' % (kpi['name'], kpi['sUnit'], kpi['dUnit'], value, str(nValue)))
     
     if nValue is not None:
         return nValue

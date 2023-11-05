@@ -400,7 +400,7 @@ class myWidget(QWidget):
                             yScaleLow = min_value             # 2022-01-19  #562
                             yScale = max_value                # 2021-07-15, #429 
                             max_value_n = kpiDescriptions.normalize(kpiStylesNNN[kpi], max_value) #429
-                            
+
                             manualScale = True
                         else:
                             max_value = groupMax[groupName]
@@ -453,6 +453,7 @@ class myWidget(QWidget):
 
                     # whole sUnit/dUnit logic lost here...
                     if max_value_n == max_value:
+                        # normalized same as not normalized... 0?
                         deb(f'{kpi} dUnit = sUnit due to max_value_n == max_value: {max_value_n} == {max_value}')
                         deb(f'{kpi}, {manualScale=}')
 
@@ -461,14 +462,15 @@ class myWidget(QWidget):
                             dUnit = kpiStylesNNN[kpi]['dUnit']
                         else:
 
-                            if cfg('sunit_debug', False):
-                                deb('should be sUnit as no manualScale, but set to dUnit for test purpose')
+                            if max_value_n == 0: #cfg('sunit_debug', False):
+                                deb('set to dUnit as max_value = 0')
                                 dUnit = kpiStylesNNN[kpi]['dUnit'] # not converted
                             else:
+                                deb('set to sUnit as not zero and manual scale')
                                 dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
 
                     else:
-                        max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
+                        # max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
                         dUnit = kpiStylesNNN[kpi]['dUnit'] # converted
                     
                     scaleKpi['yScale'] = yScale
