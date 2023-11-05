@@ -84,3 +84,6 @@ design_thoughts.txt
 
 # pyenv stuff
 .python-version
+
+# highlights details
+.highlight

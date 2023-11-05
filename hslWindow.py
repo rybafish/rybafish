@@ -39,19 +39,16 @@ from utils import dbException, msgDialog
 from SQLBrowserDialog import SQLBrowserDialog
 
 import utils
-
 import customSQLs
-
 import kpiDescriptions
-
 import sys, os
-
 import time
 
 from _constants import build_date, version
 
 from updatesCheck import checkUpdates
 from csvImportDialog import csvImportDialog
+import highlight
 
 from profiler import profiler
 
@@ -79,6 +76,7 @@ class hslWindow(QMainWindow):
         log(f'[thread] main window thread: {self.threadID}', 5)
         
         self.initUI()
+        highlight.loadHighlights()
         
         if cfg('updatesCheckInterval', '7'):
             if self.layout is not None:

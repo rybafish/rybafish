@@ -10,6 +10,7 @@ from utils import cfg, log, normalize_header, deb
 
 import lobDialog, searchDialog
 import customSQLs
+import highlight
 
 from profiler import profiler
 
@@ -109,9 +110,16 @@ class QResultSet(QTableWidget):
     def checkHighlight(self, col, value):
         '''check for additional highlighters'''
 
-        if self.headers[col] == 'STATEMENT_HASH':
-            if value in utils.statement_hints:
-                return True
+        column = self.headers[col].lower()
+        hl = highlight.hll.get(column)
+
+        if hl is not None:
+            if value in hl:
+                return hl[value]
+
+        # if self.headers[col] == 'STATEMENT_HASH':
+        #     if value in utils.statement_hints:
+        #         return 'Random hint here'
 
     def highlightRefresh(self):
         rows = self.rowCount()
@@ -930,10 +938,12 @@ class QResultSet(QTableWidget):
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
+
+                    hl = self.checkHighlight(c, val)
                         
-                    if self.checkHighlight(c, val):
+                    if hl:
                         item.setBackground(QBrush(QColor('#dfe')))
-                        item.setToolTip('Some useful info... but not yet...')
+                        item.setToolTip(hl)
 
                     if alert_str:
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
