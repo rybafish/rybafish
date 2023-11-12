@@ -1,7 +1,7 @@
 '''
     QTableWidget extention for result set table + csv preview table
 '''
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView, QApplication, QMenu, QInputDialog
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView, QApplication, QMenu, QInputDialog, QStyledItemDelegate
 from PyQt5.QtCore import pyqtSignal, Qt, QSize, QTimer
 from PyQt5.QtGui import QFont, QFontMetricsF, QColor, QPixmap, QBrush
 
@@ -13,6 +13,38 @@ import customSQLs
 import highlight
 
 from profiler import profiler
+
+class delegatedStyle(QStyledItemDelegate):
+
+    def __init__(self, cols):
+        super().__init__()
+        self.cols = cols
+
+    @profiler
+    def paint(self, qp, style, item):
+
+        c = item.column()
+
+        if c in self.cols:
+            qp.setPen(QColor('#abc'))
+            qp.setBrush(QColor('#bde'))
+
+            d = item.data(Qt.UserRole+1)
+
+            if d is None:
+                d = 0
+
+            r = style.rect
+
+            x = r.x()
+            y = r.y()
+            h = int(round(r.height() - 1))
+            w = int(round(r.width() - 1)*d)
+
+            qp.drawRect(x, y, w, h)
+
+        super().paint(qp, style, item)
+
 
 class QResultSet(QTableWidget):
     '''
@@ -54,6 +86,8 @@ class QResultSet(QTableWidget):
         
         self.timer = None
         self.timerDelay = None
+        self.databar = None     # true when any databars added
+        self.databarCols = []   # list of columns for databar
         
         #self.timerSet = None        # autorefresh menu switch flag
         
@@ -120,6 +154,53 @@ class QResultSet(QTableWidget):
         # if self.headers[col] == 'STATEMENT_HASH':
         #     if value in utils.statement_hints:
         #         return 'Random hint here'
+
+    def databarEnable(self):
+        if self.databar:
+            return
+        else:
+            ds = delegatedStyle(self.databarCols)
+            self.setItemDelegate(ds)
+            self.databar = True
+
+    def databarAdd(self, i):
+        '''enable dynamic highlighting for the column
+
+        i - column number
+
+        '''
+
+        if i not in self.databarCols:
+            self.databarCols.append(i)
+
+        if self.dataBarNormalize(i):
+            self.databarEnable()
+
+    def dataBarNormalize(self, c):
+        '''normalize column values and save normilized to item.data'''
+
+        rows = self.rowCount()
+
+        maxval = 0
+
+        try:
+            for i in range(rows):
+                v = self.rows[i][c]
+
+                if v > maxval:
+                    maxval = v
+
+        except TypeError as e:
+            log(f'Column not valid for databar formatting: {e}', 2)
+            return None
+
+        for i in range(rows):
+            d = self.rows[i][c]/maxval
+
+            self.item(i, c).setData(Qt.UserRole + 1, d)
+
+        return True
+
 
     def highlightRefresh(self):
         rows = self.rowCount()
@@ -232,6 +313,9 @@ class QResultSet(QTableWidget):
     
         highlightColCh = cmenu.addAction('Highlight changes')
         highlightColVal = cmenu.addAction('Highlight this value')
+
+        if cfg('experimental'):
+            showDatabar = cmenu.addAction('Show data bar')
             
         cmenu.addSeparator()
         
@@ -271,6 +355,9 @@ class QResultSet(QTableWidget):
             self.highlightValue = self.item(self.currentRow(), i).text()
             self.highlightRefresh()
         
+        if cfg('experimental') and action == showDatabar:
+            self.databarAdd(i)
+
         if action == insertColumnName:
             headers_norm = prepareColumns()
                 
