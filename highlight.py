@@ -11,8 +11,10 @@ hll = {}                        # highlight list, key = column name
 def loadSingleYaml(column, filename):
     '''load a single file with highlights
 
-    return ??
+    return number of new entries
     '''
+
+    c = 0
     try:
         log(f'loading {filename}', 4)
         f = open(filename, 'r')
@@ -25,7 +27,10 @@ def loadSingleYaml(column, filename):
     if not column in hll:
         hll[column] = {}
 
+    c += len(highlights)
     hll[column].update(highlights)
+
+    return c
 
 def loadFolder(column, folder):
     '''scan for yaml files in folder and load them'''
@@ -33,15 +38,18 @@ def loadFolder(column, folder):
     log(f'loading {folder}...')
     files = os.listdir(folder)
 
+    c = 0
     for f in files:
         fname = os.path.join(folder, f)
         if os.path.isfile(fname) and f.endswith('.yaml'):
-            loadSingleYaml(column, fname)
+            c += loadSingleYaml(column, fname)
+
+    return c
 
 def loadHighlights():
     '''browse through highlight directory and compose highlighting structure
 
-    returns nothing'''
+    returns number of entries added'''
 
     hll.clear()
 
@@ -52,13 +60,17 @@ def loadHighlights():
 
     if not os.path.isdir(folder):
         log(f'folder {folder} is not a valid folder or does not exist, no highlighting possible', 2)
+        return
 
     files = os.listdir(folder)
 
+    c = 0
     for f in files:
         path = os.path.join(folder, f)
         if os.path.isdir(path):
-            loadFolder(f.lower(), path)
+            c += loadFolder(f.lower(), path)
+
+    return c
 
 
 def dumpHighlights():

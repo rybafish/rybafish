@@ -430,6 +430,15 @@ class hslWindow(QMainWindow):
     def menuReloadCustomSQLs(self):
         customSQLs.loadSQLs()
     
+
+    def menuHighlights(self):
+        c = highlight.loadHighlights()
+
+        if c is not None:
+            self.statusMessage(f'Highlights definition updated, {c} records loaded', True)
+        else:
+            self.statusMessage('Seems an error, check logs for details', True)
+
     def menuReloadCustomKPIs(self):
         '''
             delete and rebuild custom kpis
@@ -1769,6 +1778,14 @@ class hslWindow(QMainWindow):
         self.tzAct.triggered.connect(self.menuTZ)
 
         actionsMenu.addAction(self.tzAct)
+
+
+        if cfg('experimental') or True:
+            hlAct = QAction('Reload highlights', self)
+            hlAct.setStatusTip('Reload highlights definition from highlight folder')
+            hlAct.triggered.connect(self.menuHighlights)
+
+            actionsMenu.addAction(hlAct)
 
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')
