@@ -16,34 +16,87 @@ from profiler import profiler
 
 class delegatedStyle(QStyledItemDelegate):
 
-    def __init__(self, cols):
+    def __init__(self, table, cols):
         super().__init__()
         self.cols = cols
+        self.table = table
 
     @profiler
-    def paint(self, qp, style, item):
+    def paint(self, qp, style, idx):
 
-        c = item.column()
+        c = idx.column()
+        # hlColor = QColor('#8de')
+        hlColor = QColor('#8cf')
+
+
+        manual = False
 
         if c in self.cols:
-            qp.setPen(QColor('#abc'))
-            qp.setBrush(QColor('#bde'))
+            dColor = hlColor    # actually to be used for bar itself
 
-            d = item.data(Qt.UserRole+1)
+            d = idx.data(Qt.UserRole+1)
 
             if d is None:
                 d = 0
+
+            row = idx.row()
+            col = idx.column()
+
+            manual = False
+
+            if self.table:
+                item = self.table.item(row, col)
+                bg = item.background()
+                cl = bg.color()
+                (r, g, b) = (cl.red(), cl.green(), cl.blue()) # bg color
+
+                if not(r == g == b == 0): # this seems to be a default table bg, don't know better way to check
+                    manual = True
+
+                if manual:
+                    # f = item.font() # somehow it does not translated to items level
+                    f = self.table.font()
+                    alRight = False
+
+                    if item.textAlignment() & Qt.AlignRight:
+                        alRight = True
+
+                    fm = QFontMetricsF(f)
+                    fh = fm.height()
+
+                    text = item.text()
 
             r = style.rect
 
             x = r.x()
             y = r.y()
             h = int(round(r.height() - 1))
-            w = int(round(r.width() - 1)*d)
+            w = int(round(r.width() - 1))
+            wd = int(round(r.width() - 1)*d)
 
-            qp.drawRect(x, y, w, h)
+            if manual:
+                qp.setPen(bg.color())
+                qp.setBrush(bg)
+                qp.drawRect(x, y, w-1, h)
 
-        super().paint(qp, style, item)
+                dColor = utils.colorMix(hlColor, bg.color())
+
+            qp.setPen(utils.colorDarken(dColor, 0.8))
+            qp.setBrush(dColor)
+            qp.drawRect(x, y, wd, h)
+
+            if manual:
+                if alRight:
+                    # offset = int(w - fm.width(text)) - 1 - 4
+                    offset = int(w - fm.width(text)) - 2
+                else:
+                    offset = 4
+
+                qp.setPen(QColor('#000')) # text color
+                qp.drawText(x + offset, y + int(fh/2 + h/2)- 2, text)
+
+        if not manual:
+            super().paint(qp, style, idx)
 
 
 class QResultSet(QTableWidget):
@@ -159,7 +212,7 @@ class QResultSet(QTableWidget):
         if self.databar:
             return
         else:
-            ds = delegatedStyle(self.databarCols)
+            ds = delegatedStyle(self, self.databarCols)
             self.setItemDelegate(ds)
             self.databar = True
 
@@ -176,6 +229,11 @@ class QResultSet(QTableWidget):
         if self.dataBarNormalize(i):
             self.databarEnable()
 
+    def dataBarRenew(self):
+        for i in self.databarCols:
+            self.dataBarNormalize(i)
+
+
     def dataBarNormalize(self, c):
         '''normalize column values and save normilized to item.data'''
 
@@ -187,6 +245,9 @@ class QResultSet(QTableWidget):
             for i in range(rows):
                 v = self.rows[i][c]
 
+                if v is None:
+                    continue
+
                 if v > maxval:
                     maxval = v
 
@@ -195,7 +256,12 @@ class QResultSet(QTableWidget):
             return None
 
         for i in range(rows):
-            d = self.rows[i][c]/maxval
+            v = self.rows[i][c]
+
+            if v is None:
+                d = None
+            else:
+                d = v/maxval
 
             self.item(i, c).setData(Qt.UserRole + 1, d)
 
@@ -222,7 +288,8 @@ class QResultSet(QTableWidget):
         
         hl2Brush = QBrush(QColor('#dfe'))
 
-        wBrush = QBrush(QColor('#ffffff'))
+        # wBrush = QBrush(QColor('#ffffff'))
+        wBrush = QBrush(Qt.NoBrush)
         wBrushLOB = QBrush(QColor('#f4f4f4'))
         
         if value is None:
@@ -1079,6 +1146,10 @@ class QResultSet(QTableWidget):
                 for i in range(len(row0)):
                     if self.columnWidth(i) >= 512:
                         self.setColumnWidth(i, 512)
+
+        if self.databarCols:
+            self.dataBarRenew()
+
                         
     def dblClick(self, i, j):
     

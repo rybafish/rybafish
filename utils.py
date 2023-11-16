@@ -3,7 +3,7 @@
 '''
 import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QColor
 
 from PyQt5.QtCore import QMutex
 
@@ -1552,3 +1552,21 @@ def timeToSeconds(s):
     else:
         return sec
 
+def colorMix(c1, c2):
+    (r1, g1, b1) = (c1.red(), c1.green(), c1.blue())
+    (r2, g2, b2) = (c2.red(), c2.green(), c2.blue())
+
+    r = int((r1 + r2)/2)
+    g = int((g1 + g2)/2)
+    b = int((g1 + g2)/2)
+
+    return QColor(r, g, b)
+
+def colorDarken(c, d):
+    (r, g, b) = (c.red(), c.green(), c.blue())
+
+    r = int(r * d)
+    g = int(g * d)
+    b = int(b * d)
+
+    return QColor(r, g, b)
