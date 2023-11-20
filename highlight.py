@@ -8,6 +8,11 @@ from yaml import safe_load, YAMLError
 hll = {}                        # highlight list, key = column name
                                 # value - dict of highlights: key / desc
 
+hlc = {}                        # hl colors
+
+def color(column):
+    return hlc.get(column, '')
+
 def loadSingleYaml(column, filename):
     '''load a single file with highlights
 

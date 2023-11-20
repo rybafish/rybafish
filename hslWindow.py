@@ -439,6 +439,8 @@ class hslWindow(QMainWindow):
         else:
             self.statusMessage('Seems an error, check logs for details', True)
 
+        highlight.dumpHighlights()
+
     def menuReloadCustomKPIs(self):
         '''
             delete and rebuild custom kpis

@@ -1558,7 +1558,7 @@ def colorMix(c1, c2):
 
     r = int((r1 + r2)/2)
     g = int((g1 + g2)/2)
-    b = int((g1 + g2)/2)
+    b = int((b1 + b2)/2)
 
     return QColor(r, g, b)
 

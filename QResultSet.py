@@ -43,6 +43,7 @@ class delegatedStyle(QStyledItemDelegate):
             col = idx.column()
 
             manual = False
+            whiteBG = False
 
             if self.table:
                 item = self.table.item(row, col)
@@ -66,6 +67,9 @@ class delegatedStyle(QStyledItemDelegate):
 
                     text = item.text()
 
+                    if (r == g == b == 255):
+                        whiteBG = True
+
             r = style.rect
 
             x = r.x()
@@ -79,7 +83,10 @@ class delegatedStyle(QStyledItemDelegate):
                 qp.setBrush(bg)
                 qp.drawRect(x, y, w-1, h)
 
-                dColor = utils.colorMix(hlColor, bg.color())
+                if whiteBG:
+                    dColor = hlColor
+                else:
+                    dColor = utils.colorMix(hlColor, bg.color())
 
             qp.setPen(utils.colorDarken(dColor, 0.8))
             qp.setBrush(dColor)
@@ -195,7 +202,7 @@ class QResultSet(QTableWidget):
         
     @profiler
     def checkHighlight(self, col, value):
-        '''check for additional highlighters'''
+        '''check for additional highlighters based on cell value'''
 
         column = self.headers[col].lower()
         hl = highlight.hll.get(column)
@@ -203,10 +210,6 @@ class QResultSet(QTableWidget):
         if hl is not None:
             if value in hl:
                 return hl[value]
-
-        # if self.headers[col] == 'STATEMENT_HASH':
-        #     if value in utils.statement_hints:
-        #         return 'Random hint here'
 
     def databarEnable(self):
         if self.databar:
@@ -268,12 +271,35 @@ class QResultSet(QTableWidget):
         return True
 
 
+    @profiler
     def highlightRefresh(self):
+        '''
+            highlight resultset based on RMC "highlight this value" or "highlight changes"
+
+            initial execution is case 1
+
+            same called on F8/F9 to re-highlight results (case 2)
+
+            case 1 might be called on top of already highlighted resutset
+            this is why white BG have to be mandatory re-set for the non-highlighted stuff
+
+            _and_ this method cannot rely on any cells BG, because of this 'case 1' -> 'case 1' sequential call
+
+
+            all the dataBar stuff to be called later as it relies on already defined BG color
+        '''
+        def combineBrush(noBg, brush, color):
+            if noBg:
+                return brush
+            else:
+                return QBrush(utils.colorMix(brush.color(), color))
+
         rows = self.rowCount()
         cols = self.columnCount()
         
         col = self.highlightColumn
         value = self.highlightValue
+        deb(f'do the highlight: column:{col}, value:{value}', comp='highlight')
 
         if col == -1 or rows == 0:
             return
@@ -288,8 +314,8 @@ class QResultSet(QTableWidget):
         
         hl2Brush = QBrush(QColor('#dfe'))
 
-        # wBrush = QBrush(QColor('#ffffff'))
-        wBrush = QBrush(Qt.NoBrush)
+        wBrush = QBrush(QColor('#ffffff'))
+        # wBrush = QBrush(Qt.NoBrush) - seems here real reset needed, to fix previous stuff on refresh
         wBrushLOB = QBrush(QColor('#f4f4f4'))
         
         if value is None:
@@ -304,7 +330,6 @@ class QResultSet(QTableWidget):
                 lobCols.append(i)
             
         for i in range(rows):
-        
             if value is None:
                 if val != self.item(i, col).text():
                     hl = not hl
@@ -314,26 +339,65 @@ class QResultSet(QTableWidget):
                 else:
                     hl = False
 
-            if hl:
-                for j in range(cols):
+            for j in range(cols):
+                deb(f'row: {i}, col: {j}', comp='highlight')
+                bg = self.item(i, j).background()
+
+                # okay I am lost now, what this can be not white?
+
+                deb(f'check: column {j}, value: {self.item(i, j).text()}', comp='highlight')
+                if self.checkHighlight(j, self.item(i, j).text()):
+                    deb('some color...', comp='highlight')
+                    cl = hl2Brush.color()
+                else:
+                    deb('nope...', comp='highlight')
+                    cl = QBrush(Qt.NoBrush).color()
+
+                (r, g, b) = (cl.red(), cl.green(), cl.blue()) # bg color
+
+                noBg = (r == g == b == 0) # true if the bg is default
+
+                # the bG is not default normally in just a single case - cell is highlighted (based on value)
+
+                if not noBg:
+                    deb(f'>>> row: {i}, col:{j}: not a default bg', comp='highlight')
+                else:
+                    deb(f'row: {i}, col:{j} default white', comp='highlight')
+
+                if hl:          # the row is highlighted
                     if j in lobCols:
-                        self.item(i, j).setBackground(hlBrushLOB)
+                        useBrush = combineBrush(noBg, hlBrushLOB, cl)
                     else:
-                        self.item(i, j).setBackground(hlBrush)
-            else:
-                for j in range(cols):
+                        useBrush = combineBrush(noBg, hlBrush, cl)
+                    self.item(i, j).setBackground(useBrush)
+                else:           # the row is not highlighted
                     if j in lobCols:
-                        self.item(i, j).setBackground(wBrushLOB)
+                        # self.item(i, j).setBackground(wBrushLOB)
+                        useBrush = combineBrush(noBg, wBrushLOB, cl)
                     else:
+                        # the row is not highlighted and not LOB... but there can be some BG still...
+                        # but what is the point setting it to itself?
+                        # the point setting white is clear - there might be a leftover from smth?
                         # self.item(i, j).setBackground(wBrush)
-                        if self.checkHighlight(j, self.item(i, col).text()):
-                            hl2 = True
+                        # useBrush = QBrush(cl)
+
+                        # useBrush = QBrush(wBrush)
+                        # useBrush = combineBrush(noBg, wBrush, cl)
+                        if noBg:
+                            useBrush = wBrush
                         else:
-                            hl2 = False
-                        if hl2 == False:
-                            self.item(i, j).setBackground(wBrush)
-                        else:
-                            self.item(i, j).setBackground(hl2Brush)
+                            useBrush = hl2Brush
+
+                    self.item(i, j).setBackground(useBrush)
+
+                        # if self.checkHighlight(j, self.item(i, col).text()):
+                        #     hl2 = True
+                        # else:
+                        #     hl2 = False
+                        # if hl2 == False:
+                        #     self.item(i, j).setBackground(wBrush)
+                        # else:
+                        #     self.item(i, j).setBackground(hl2Brush)
 
             if value is None:
                 val = self.item(i, col).text()

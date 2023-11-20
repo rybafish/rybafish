@@ -3445,7 +3445,7 @@ class sqlConsole(QWidget):
 
             result.populate(refreshMode)
             
-            if result.highlightColumn:
+            if result.highlightColumn is not None:
                 result.highlightRefresh()
 
         if not self.timerAutorefresh:
