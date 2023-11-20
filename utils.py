@@ -533,7 +533,7 @@ def log(s, loglevel=3, nots=False, nonl=False, component=None,):
     pfx = ''
 
     if component:
-        if cfg_logcomp and component in cfg_logcomp:
+        if cfg_logcomp and (component in cfg_logcomp or '*' in cfg_logcomp):
             pfx = f'[{component}] '
         else:
             return
