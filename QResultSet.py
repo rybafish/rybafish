@@ -1,17 +1,110 @@
 '''
     QTableWidget extention for result set table + csv preview table
 '''
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView, QApplication, QMenu, QInputDialog
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView, QApplication, QMenu, QInputDialog, QStyledItemDelegate
 from PyQt5.QtCore import pyqtSignal, Qt, QSize, QTimer
 from PyQt5.QtGui import QFont, QFontMetricsF, QColor, QPixmap, QBrush
 
 import utils
-from utils import cfg, log, normalize_header
+from utils import cfg, log, normalize_header, deb
 
 import lobDialog, searchDialog
 import customSQLs
+import highlight
 
 from profiler import profiler
+
+class delegatedStyle(QStyledItemDelegate):
+
+    def __init__(self, table, cols):
+        super().__init__()
+        self.cols = cols
+        self.table = table
+
+    @profiler
+    def paint(self, qp, style, idx):
+
+        c = idx.column()
+        # hlColor = QColor('#8de')
+        hlColor = QColor('#8cf')
+
+
+        manual = False
+
+        if c in self.cols:
+            dColor = hlColor    # actually to be used for bar itself
+
+            d = idx.data(Qt.UserRole+1)
+
+            if d is None:
+                d = 0
+
+            row = idx.row()
+            col = idx.column()
+
+            manual = False
+            whiteBG = False
+
+            if self.table:
+                item = self.table.item(row, col)
+                bg = item.background()
+                cl = bg.color()
+                (r, g, b) = (cl.red(), cl.green(), cl.blue()) # bg color
+
+                if not(r == g == b == 0): # this seems to be a default table bg, don't know better way to check
+                    manual = True
+
+                if manual:
+                    # f = item.font() # somehow it does not translated to items level
+                    f = self.table.font()
+                    alRight = False
+
+                    if item.textAlignment() & Qt.AlignRight:
+                        alRight = True
+
+                    fm = QFontMetricsF(f)
+                    fh = fm.height()
+
+                    text = item.text()
+
+                    if (r == g == b == 255):
+                        whiteBG = True
+
+            r = style.rect
+
+            x = r.x()
+            y = r.y()
+            h = int(round(r.height() - 1))
+            w = int(round(r.width() - 1))
+            wd = int(round(r.width() - 1)*d)
+
+            if manual:
+                qp.setPen(bg.color())
+                qp.setBrush(bg)
+                qp.drawRect(x, y, w-1, h)
+
+                if whiteBG:
+                    dColor = hlColor
+                else:
+                    dColor = utils.colorMix(hlColor, bg.color())
+
+            qp.setPen(utils.colorDarken(dColor, 0.8))
+            qp.setBrush(dColor)
+            qp.drawRect(x, y, wd, h)
+
+            if manual:
+                if alRight:
+                    # offset = int(w - fm.width(text)) - 1 - 4
+                    offset = int(w - fm.width(text)) - 2
+                else:
+                    offset = 4
+
+                qp.setPen(QColor('#000')) # text color
+                qp.drawText(x + offset, y + int(fh/2 + h/2)- 2, text)
+
+        if not manual:
+            super().paint(qp, style, idx)
+
 
 class QResultSet(QTableWidget):
     '''
@@ -27,8 +120,7 @@ class QResultSet(QTableWidget):
     triggerAutorefresh = pyqtSignal([int])
     detachSignal = pyqtSignal()
     fontUpdateSignal = pyqtSignal()
-    closeRequestSignal = pyqtSignal()
-    
+
     def __init__(self, conn):
     
         self._resultset_id = None    # filled manually right after execute_query
@@ -54,6 +146,8 @@ class QResultSet(QTableWidget):
         
         self.timer = None
         self.timerDelay = None
+        self.databar = None     # true when any databars added
+        self.databarCols = []   # list of columns for databar
         
         #self.timerSet = None        # autorefresh menu switch flag
         
@@ -106,12 +200,106 @@ class QResultSet(QTableWidget):
         self.abapCopyFlag = [False]
 
         
+    @profiler
+    def checkHighlight(self, col, value):
+        '''check for additional highlighters based on cell value'''
+
+        column = self.headers[col].lower()
+        hl = highlight.hll.get(column)
+
+        if hl is not None:
+            if value in hl:
+                return hl[value]
+
+    def databarEnable(self):
+        if self.databar:
+            return
+        else:
+            ds = delegatedStyle(self, self.databarCols)
+            self.setItemDelegate(ds)
+            self.databar = True
+
+    def databarAdd(self, i):
+        '''enable dynamic highlighting for the column
+
+        i - column number
+
+        '''
+
+        if i not in self.databarCols:
+            self.databarCols.append(i)
+
+        if self.dataBarNormalize(i):
+            self.databarEnable()
+
+    def dataBarRenew(self):
+        for i in self.databarCols:
+            self.dataBarNormalize(i)
+
+
+    def dataBarNormalize(self, c):
+        '''normalize column values and save normilized to item.data'''
+
+        rows = self.rowCount()
+
+        maxval = 0
+
+        try:
+            for i in range(rows):
+                v = self.rows[i][c]
+
+                if v is None:
+                    continue
+
+                if v > maxval:
+                    maxval = v
+
+        except TypeError as e:
+            log(f'Column not valid for databar formatting: {e}', 2)
+            return None
+
+        for i in range(rows):
+            v = self.rows[i][c]
+
+            if v is None:
+                d = None
+            else:
+                d = v/maxval
+
+            self.item(i, c).setData(Qt.UserRole + 1, d)
+
+        return True
+
+
+    @profiler
     def highlightRefresh(self):
+        '''
+            highlight resultset based on RMC "highlight this value" or "highlight changes"
+
+            initial execution is case 1
+
+            same called on F8/F9 to re-highlight results (case 2)
+
+            case 1 might be called on top of already highlighted resutset
+            this is why white BG have to be mandatory re-set for the non-highlighted stuff
+
+            _and_ this method cannot rely on any cells BG, because of this 'case 1' -> 'case 1' sequential call
+
+
+            all the dataBar stuff to be called later as it relies on already defined BG color
+        '''
+        def combineBrush(noBg, brush, color):
+            if noBg:
+                return brush
+            else:
+                return QBrush(utils.colorMix(brush.color(), color))
+
         rows = self.rowCount()
         cols = self.columnCount()
         
         col = self.highlightColumn
         value = self.highlightValue
+        deb(f'do the highlight: column:{col}, value:{value}', comp='highlight')
 
         if col == -1 or rows == 0:
             return
@@ -124,7 +312,10 @@ class QResultSet(QTableWidget):
         clr = QColor(int(clr.red()*0.9), int(clr.green()*0.9), int(clr.blue()*0.95))
         hlBrushLOB = QBrush(clr)
         
+        hl2Brush = QBrush(QColor('#dfe'))
+
         wBrush = QBrush(QColor('#ffffff'))
+        # wBrush = QBrush(Qt.NoBrush) - seems here real reset needed, to fix previous stuff on refresh
         wBrushLOB = QBrush(QColor('#f4f4f4'))
         
         if value is None:
@@ -139,7 +330,6 @@ class QResultSet(QTableWidget):
                 lobCols.append(i)
             
         for i in range(rows):
-        
             if value is None:
                 if val != self.item(i, col).text():
                     hl = not hl
@@ -148,20 +338,67 @@ class QResultSet(QTableWidget):
                     hl = True
                 else:
                     hl = False
-            
-            if hl:
-                for j in range(cols):
+
+            for j in range(cols):
+                deb(f'row: {i}, col: {j}', comp='highlight')
+                bg = self.item(i, j).background()
+
+                # okay I am lost now, what this can be not white?
+
+                deb(f'check: column {j}, value: {self.item(i, j).text()}', comp='highlight')
+                if self.checkHighlight(j, self.item(i, j).text()):
+                    deb('some color...', comp='highlight')
+                    cl = hl2Brush.color()
+                else:
+                    deb('nope...', comp='highlight')
+                    cl = QBrush(Qt.NoBrush).color()
+
+                (r, g, b) = (cl.red(), cl.green(), cl.blue()) # bg color
+
+                noBg = (r == g == b == 0) # true if the bg is default
+
+                # the bG is not default normally in just a single case - cell is highlighted (based on value)
+
+                if not noBg:
+                    deb(f'>>> row: {i}, col:{j}: not a default bg', comp='highlight')
+                else:
+                    deb(f'row: {i}, col:{j} default white', comp='highlight')
+
+                if hl:          # the row is highlighted
                     if j in lobCols:
-                        self.item(i, j).setBackground(hlBrushLOB)
+                        useBrush = combineBrush(noBg, hlBrushLOB, cl)
                     else:
-                        self.item(i, j).setBackground(hlBrush)
-            else:
-                for j in range(cols):
+                        useBrush = combineBrush(noBg, hlBrush, cl)
+                    self.item(i, j).setBackground(useBrush)
+                else:           # the row is not highlighted
                     if j in lobCols:
-                        self.item(i, j).setBackground(wBrushLOB)
+                        # self.item(i, j).setBackground(wBrushLOB)
+                        useBrush = combineBrush(noBg, wBrushLOB, cl)
                     else:
-                        self.item(i, j).setBackground(wBrush)
-                    
+                        # the row is not highlighted and not LOB... but there can be some BG still...
+                        # but what is the point setting it to itself?
+                        # the point setting white is clear - there might be a leftover from smth?
+                        # self.item(i, j).setBackground(wBrush)
+                        # useBrush = QBrush(cl)
+
+                        # useBrush = QBrush(wBrush)
+                        # useBrush = combineBrush(noBg, wBrush, cl)
+                        if noBg:
+                            useBrush = wBrush
+                        else:
+                            useBrush = hl2Brush
+
+                    self.item(i, j).setBackground(useBrush)
+
+                        # if self.checkHighlight(j, self.item(i, col).text()):
+                        #     hl2 = True
+                        # else:
+                        #     hl2 = False
+                        # if hl2 == False:
+                        #     self.item(i, j).setBackground(wBrush)
+                        # else:
+                        #     self.item(i, j).setBackground(hl2Brush)
+
             if value is None:
                 val = self.item(i, col).text()
     
@@ -207,6 +444,9 @@ class QResultSet(QTableWidget):
     
         highlightColCh = cmenu.addAction('Highlight changes')
         highlightColVal = cmenu.addAction('Highlight this value')
+
+        if cfg('experimental'):
+            showDatabar = cmenu.addAction('Show data bar')
             
         cmenu.addSeparator()
         
@@ -246,6 +486,9 @@ class QResultSet(QTableWidget):
             self.highlightValue = self.item(self.currentRow(), i).text()
             self.highlightRefresh()
         
+        if cfg('experimental') and action == showDatabar:
+            self.databarAdd(i)
+
         if action == insertColumnName:
             headers_norm = prepareColumns()
                 
@@ -454,6 +697,13 @@ class QResultSet(QTableWidget):
             widths = [0]*len(colList)
             types = [0]*len(colList)
             
+            deb(f'{widths=}')
+            deb(f'len(colList) = {len(colList)}')
+            deb(f'len(copypaste) = {len(copypaste)}')
+
+            for l in copypaste:
+                deb(l)
+
             for c in range(len(colList)):
             
                 types[c] = self.cols[colList[c]][1]
@@ -786,7 +1036,7 @@ class QResultSet(QTableWidget):
                 self.copyCells(abapMode=self.abapCopyFlag[0])
 
             if event.key() == Qt.Key_W:
-                self.closeRequestSignal.emit()
+                super().keyPressEvent(event)
         
         else:
             super().keyPressEvent(event)
@@ -906,7 +1156,13 @@ class QResultSet(QTableWidget):
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop);
                     else:
                         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter);
+
+                    hl = self.checkHighlight(c, val)
                         
+                    if hl:
+                        item.setBackground(QBrush(QColor('#dfe')))
+                        item.setToolTip(hl)
+
                     if alert_str:
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
@@ -926,29 +1182,6 @@ class QResultSet(QTableWidget):
                                 
                                 sound, volume = utils.parseAlertString(val)
                                 
-                                '''
-                                
-                                old style messy approach...
-                                
-                                if val == alert_str: 
-                                    # simple one
-                                    sound = ''
-                                    volume = None
-                                else:
-                                    # might be a customized one?
-                                    if val[-1:] == '}' and val[alert_len-1:alert_len] == ':':
-                                        sound = val[alert_len:-1]
-                                        
-                                        volPos = sound.find('!')
-                                        
-                                        if volPos > 0:
-                                            sound = sound[:volPos]
-                                            volume = sound[volPos+1:]
-                                        else:
-                                            volume = None
-                                        print(sound, volume)
-                                '''
-                                        
                             if sound is not None and not self.alerted:
                                 self.alerted = True
                                 
@@ -977,6 +1210,10 @@ class QResultSet(QTableWidget):
                 for i in range(len(row0)):
                     if self.columnWidth(i) >= 512:
                         self.setColumnWidth(i, 512)
+
+        if self.databarCols:
+            self.dataBarRenew()
+
                         
     def dblClick(self, i, j):
     

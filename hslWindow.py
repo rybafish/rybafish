@@ -39,19 +39,16 @@ from utils import dbException, msgDialog
 from SQLBrowserDialog import SQLBrowserDialog
 
 import utils
-
 import customSQLs
-
 import kpiDescriptions
-
 import sys, os
-
 import time
 
 from _constants import build_date, version
 
 from updatesCheck import checkUpdates
 from csvImportDialog import csvImportDialog
+import highlight
 
 from profiler import profiler
 
@@ -79,6 +76,7 @@ class hslWindow(QMainWindow):
         log(f'[thread] main window thread: {self.threadID}', 5)
         
         self.initUI()
+        highlight.loadHighlights()
         
         if cfg('updatesCheckInterval', '7'):
             if self.layout is not None:
@@ -169,6 +167,8 @@ class hslWindow(QMainWindow):
             
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_W:
             self.closeTab()
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_L:
+            self.chartArea.widget.toggleLegend()
         else:
             super().keyPressEvent(event)
             
@@ -430,6 +430,17 @@ class hslWindow(QMainWindow):
     def menuReloadCustomSQLs(self):
         customSQLs.loadSQLs()
     
+
+    def menuHighlights(self):
+        c = highlight.loadHighlights()
+
+        if c is not None:
+            self.statusMessage(f'Highlights definition updated, {c} records loaded', True)
+        else:
+            self.statusMessage('Seems an error, check logs for details', True)
+
+        highlight.dumpHighlights()
+
     def menuReloadCustomKPIs(self):
         '''
             delete and rebuild custom kpis
@@ -828,24 +839,29 @@ class hslWindow(QMainWindow):
 
                         w = self.tabs.widget(i)
 
-                        if isinstance(w, sqlConsole.sqlConsole) and w.conn is not None:
+                        if isinstance(w, sqlConsole.sqlConsole):
                             tabname = w.tabname.rstrip(' *')
-                            '''
-                            if abandon:
-                                log(f'ignoring close for {tabname} due to abandone = True', 4) # bug #781
-                                w.dbi = None
-                                w.conn = None
-                                w.connection_id = None
-                                w.sqlRunning = False
-                            else:
+                            if w.timerReconnect is not None:
+                                w.timerReconnect.stop()
+                                w.timerReconnect = None
+                                log(f'{tabname} timerReconnect disabled due to explicit re-connect')
+                            if w.conn is not None:
+                                '''
+                                if abandon:
+                                    log(f'ignoring close for {tabname} due to abandone = True', 4) # bug #781
+                                    w.dbi = None
+                                    w.conn = None
+                                    w.connection_id = None
+                                    w.sqlRunning = False
+                                else:
+                                    log(f'closing connection of {tabname}...')
+                                    w.disconnectDB()
+                                '''
                                 log(f'closing connection of {tabname}...')
                                 w.disconnectDB()
-                            '''
-                            log(f'closing connection of {tabname}...')
-                            w.disconnectDB()
-                            w.indicator.status = 'disconnected'
-                            w.indicator.repaint()
-                            log('disconnected...')
+                                w.indicator.status = 'disconnected'
+                                w.indicator.repaint()
+                                log('disconnected...')
 
                 # close damn chart console
                 
@@ -1764,6 +1780,14 @@ class hslWindow(QMainWindow):
         self.tzAct.triggered.connect(self.menuTZ)
 
         actionsMenu.addAction(self.tzAct)
+
+
+        if cfg('experimental') or True:
+            hlAct = QAction('Reload highlights', self)
+            hlAct.setStatusTip('Reload highlights definition from highlight folder')
+            hlAct.triggered.connect(self.menuHighlights)
+
+            actionsMenu.addAction(hlAct)
 
         self.essAct = QAction('Switch to ESS load history', self)
         self.essAct.setStatusTip('Switches from online m_load_history views to ESS tables')

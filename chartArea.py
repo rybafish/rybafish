@@ -400,7 +400,7 @@ class myWidget(QWidget):
                             yScaleLow = min_value             # 2022-01-19  #562
                             yScale = max_value                # 2021-07-15, #429 
                             max_value_n = kpiDescriptions.normalize(kpiStylesNNN[kpi], max_value) #429
-                            
+
                             manualScale = True
                         else:
                             max_value = groupMax[groupName]
@@ -451,10 +451,26 @@ class myWidget(QWidget):
                     
                     dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
 
+                    # whole sUnit/dUnit logic lost here...
                     if max_value_n == max_value:
-                        dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
+                        # normalized same as not normalized... 0?
+                        deb(f'{kpi} dUnit = sUnit due to max_value_n == max_value: {max_value_n} == {max_value}')
+                        deb(f'{kpi}, {manualScale=}')
+
+                        if manualScale:
+                            deb('dUnit due to manualScale')
+                            dUnit = kpiStylesNNN[kpi]['dUnit']
+                        else:
+
+                            if max_value_n == 0: #cfg('sunit_debug', False):
+                                deb('set to dUnit as max_value = 0')
+                                dUnit = kpiStylesNNN[kpi]['dUnit'] # not converted
+                            else:
+                                deb('set to sUnit as not zero and manual scale')
+                                dUnit = kpiStylesNNN[kpi]['sUnit'] # not converted
+
                     else:
-                        max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
+                        # max_value_n = self.ceiling(max_value_n) # normally it's already aligned inside getMaxSmth
                         dUnit = kpiStylesNNN[kpi]['dUnit'] # converted
                     
                     scaleKpi['yScale'] = yScale
@@ -529,11 +545,11 @@ class myWidget(QWidget):
         if self.legend:
             cmenu.addSeparator()
             copyLegend = cmenu.addAction('Copy Legend to clipboard')
-            putLegend = cmenu.addAction('Hide Legend')
+            putLegend = cmenu.addAction('Hide Legend\tCtrl+L')
 
         else:
             cmenu.addSeparator()
-            putLegend = cmenu.addAction('Show Legend')
+            putLegend = cmenu.addAction('Show Legend\tCtrl+L')
         
         if self.gotGantt:
             cmenu.addSeparator()
@@ -604,8 +620,6 @@ class myWidget(QWidget):
             self.statusMessage('Legend bitmap copied to the clipboard')
         
         if action == putLegend:
-            #self.legend = not self.legend
-            
             if self.legend is None:
                 self.legend = 'hosts'
             else:
@@ -1041,7 +1055,17 @@ class myWidget(QWidget):
                 if pos.y() <= ymin + tolerance and pos.y() >= ymax - tolerance: #it's reversed in Y calculation...
                     if (self.highlightedKpi):
                     
-                        if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
+                        # if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
+                        deb(f'{kpi=}')
+                        deb(kpiStylesNNN[kpi])
+                        deb(f'{self.highlightedKpi=}')
+
+                        hlStyle = self.hostKPIsStyles[self.highlightedKpiHost][self.highlightedKpi]
+                        deb(hlStyle)
+
+                        if kpiStylesNNN[kpi]['group'] == hlStyle['group']:
+                            # print(kpi, kpiStylesNNN[kpi])
+                            # print(kpi, kpiStylesNNN[self.highlightedKpi])
                             reportDelta = True
                             
                         self.highlightedKpi = None
@@ -1150,14 +1174,14 @@ class myWidget(QWidget):
             kpiStylesNNN = self.hostKPIsStyles[h]
             
             dbinfo = ''
-            
+
             if 'db' in self.hosts[h] and 'service' in self.hosts[h] and hostType == 'service':
 
-                if cfg('legendTenantName'):
-                    dbinfo += self.hosts[h]['db'] + ' '
+                if cfg('legendTenantName') and self.hosts[h].get('db'):
+                    dbinfo += self.hosts[h].get('db', '') + ' '
 
-                if cfg('legendServiceName'):
-                    dbinfo += self.hosts[h]['service']
+                if cfg('legendServiceName') and self.hosts[h].get('service'):
+                    dbinfo += self.hosts[h].get('service', '')
                     
             if dbinfo != '':
                 dbinfo = ', ' + dbinfo
@@ -2058,8 +2082,11 @@ class myWidget(QWidget):
                 hrs_scale = 60*4*3 # god damit, 3, really?
             elif t_scale == 4*3600:
                 min_scale = 60*24
+                hrs_scale = 60*24*2
+            elif t_scale == 8*3600:
+                min_scale = 3600*24*2
                 hrs_scale = 60*24*4
-                
+
             # number of minutes since the grid start
             min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
 
@@ -2072,9 +2099,15 @@ class myWidget(QWidget):
             elif min % min_scale == 0:
                 major_line = True
                 
-                if min % hrs_scale == 0:
-                    date_mark = True
-                    
+                if hrs_scale <= 60*24:
+                    if min % hrs_scale == 0:
+                        date_mark = True
+                else:
+                    if min == 0:
+                        day = int(c_time.strftime("%d"))
+                        if day % (hrs_scale/60/24) == 1:
+                            date_mark = True
+
             ct = c_time.strftime('%Y-%m-%d %H:%M:%S')
             log(f'{ct=}, {min=}, {major_line=}', component='grid_tz')
 
@@ -2121,6 +2154,14 @@ class myWidget(QWidget):
         self.drawChart(qp, startX, stopX)
         
         qp.end()
+
+
+    def toggleLegend(self):
+        if self.legend is None:
+            self.legend = 'hosts'
+        else:
+            self.legend = None
+        self.repaint()
         
 
 def moveAsync(direction, d, i):
@@ -2140,6 +2181,8 @@ def moveAsync(direction, d, i):
             return i
 
     return None
+
+
 
 class chartArea(QFrame):
     
@@ -2303,6 +2346,9 @@ class chartArea(QFrame):
                 return i
 
             idx = None
+
+            if kpi not in data:
+                return None, None
 
             if gbi is None:
                 dataArray = data[kpi]
@@ -2743,7 +2789,9 @@ class chartArea(QFrame):
         elif event.key() == Qt.Key_End:
             self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22) # this includes scrollArea margins etc, so hardcoded...
             
-        else: 
+        elif event.key() == Qt.Key_L and modifiers == Qt.ControlModifier:
+            self.widget.toggleLegend()
+        else:
             super().keyPressEvent(event)
 
     def cleanup(self):
@@ -3024,12 +3072,16 @@ class chartArea(QFrame):
         self.widget.update()
         
         
-    def connectionLost(self, dp, err_str = ''):
+    def connectionLost(self, dp, err_str='', nodialog=False):
         '''
             very synchronous call, it holds controll until connection status resolved
         '''
         self.statusMessage('Connection error (%s)' % err_str, True)
-        
+
+        if nodialog:
+            log('connection lost, but we cannot block UI thread, so silently exit', 2)
+            return False
+
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Charts connection lost')
         msgBox.setText('Connection failed, reconnect?')
@@ -3309,7 +3361,7 @@ class chartArea(QFrame):
         #print('also stop keep-alive timer here ((it will be kinda refreshed in get_data renewKeepAlive))')
         
         log('trigger auto refresh...')
-        self.reloadChart()
+        self.reloadChart(autorefresh=True)
         
         if self.timer: # need to check as it might be disabled inside reloadChart()
             self.timer.start(1000 * self.refreshTime)
@@ -3670,7 +3722,7 @@ class chartArea(QFrame):
                 
         return True
                 
-    def reloadChart(self):
+    def reloadChart(self, autorefresh=False):
     
         dp = None
         
@@ -3737,14 +3789,20 @@ class chartArea(QFrame):
 
             except utils.dbException as e:
                 self.setStatus('error', True)
-                reconnected = self.connectionLost(dp, str(e))
-                
+
+                # modal dialog only possible if autorefresh consoles do not need reconnect themselves
+                if autorefresh and cfg('reconnectTimer'):
+                    reconnected = self.connectionLost(dp, str(e), nodialog=True)
+                else:
+                    reconnected = self.connectionLost(dp, str(e), nodialog=False)
+
                 if reconnected == False:
                     log('reconnected == False')
-                    self.setStatus('sync', True)
                     allOk = False
                     timerF = False
                     self.refreshCB.setCurrentIndex(0) # will disable the timer on this change
+                    self.setStatus('disconnected', True)
+                    self.statusMessage(f'Chart Disconnected: {e}...')
 
         self.renewMaxValues()
         
@@ -3779,13 +3837,15 @@ class chartArea(QFrame):
                 timerF = False
                 
         else:
-            self.statusMessage('Ready')
+            if allOk:
+                self.statusMessage('Ready')
         
         if timerF == True and self.timer is not None:
             self.timer.start(1000 * self.refreshTime)
             self.setStatus('autorefresh', True)
         else:
-            self.setStatus('idle', True)
+            if allOk:
+                self.setStatus('idle', True)
 
         self.reloadLock = False
 
@@ -3915,7 +3975,10 @@ class chartArea(QFrame):
         self.scaleCB.addItem('30 minutes')
         self.scaleCB.addItem('1 hour')
         self.scaleCB.addItem('4 hours')
-        
+
+        if cfg('experimental'):
+            self.scaleCB.addItem('8 hours')
+
         self.scaleCB.setFocusPolicy(Qt.ClickFocus)
         
         self.scaleCB.setCurrentIndex(4)

@@ -50,6 +50,7 @@ layout.yaml
 # log file 
 .log
 rybafish.log
+*.log
 
 # custom sql folder
 sql/
@@ -83,3 +84,6 @@ design_thoughts.txt
 
 # pyenv stuff
 .python-version
+
+# highlights details
+.highlight

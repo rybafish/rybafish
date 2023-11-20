@@ -3,7 +3,7 @@
 '''
 import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QColor
 
 from PyQt5.QtCore import QMutex
 
@@ -26,6 +26,7 @@ from io import StringIO
 import csv
 
 config = {}
+statement_hints = None
 
 global utils_alertReg
 __alertReg__ = None
@@ -510,6 +511,15 @@ else:
     mtx = fakeMutex()
 
 @profiler
+def loadHints():
+    global statement_hints
+
+    if statement_hints is None:
+        statement_hints = cfg('knownStatements', [])
+
+loadHints()
+
+@profiler
 def log(s, loglevel=3, nots=False, nonl=False, component=None,):
     '''
         log the stuff one way or another...
@@ -523,7 +533,7 @@ def log(s, loglevel=3, nots=False, nonl=False, component=None,):
     pfx = ''
 
     if component:
-        if cfg_logcomp and component in cfg_logcomp:
+        if cfg_logcomp and (component in cfg_logcomp or '*' in cfg_logcomp):
             pfx = f'[{component}] '
         else:
             return
@@ -1541,3 +1551,22 @@ def timeToSeconds(s):
         return -sec
     else:
         return sec
+
+def colorMix(c1, c2):
+    (r1, g1, b1) = (c1.red(), c1.green(), c1.blue())
+    (r2, g2, b2) = (c2.red(), c2.green(), c2.blue())
+
+    r = int((r1 + r2)/2)
+    g = int((g1 + g2)/2)
+    b = int((b1 + b2)/2)
+
+    return QColor(r, g, b)
+
+def colorDarken(c, d):
+    (r, g, b) = (c.red(), c.green(), c.blue())
+
+    r = int(r * d)
+    g = int(g * d)
+    b = int(b * d)
+
+    return QColor(r, g, b)
