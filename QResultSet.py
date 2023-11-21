@@ -242,6 +242,10 @@ class QResultSet(QTableWidget):
 
         rows = self.rowCount()
 
+        if c >= len(self.cols):
+            log('dataBarNormalize column does not exit', 5)
+            return
+
         maxval = 0
 
         try:
