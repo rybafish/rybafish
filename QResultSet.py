@@ -78,6 +78,8 @@ class delegatedStyle(QStyledItemDelegate):
             w = int(round(r.width() - 1))
             wd = int(round(r.width() - 1)*d)
 
+            ident = 3           # horisontal text ident
+
             if manual:
                 qp.setPen(bg.color())
                 qp.setBrush(bg)
@@ -93,14 +95,36 @@ class delegatedStyle(QStyledItemDelegate):
             qp.drawRect(x, y, wd, h)
 
             if manual:
+                tw = fm.width(text)
+                # print(f'rect {h}:{w}')
+                # print(f'text width: {tw}')
+
+                if tw + ident*2 > w+1: # if text does not fit...
+
+                    i = len(text) - 1
+
+                    # cut it until no characters left at all
+                    while tw + ident*2 > w+1 and i >=0:
+                        i -= 1
+                        txt = text[:i] + '\u2026'
+                        tw = fm.width(txt)
+
+                    if i <= 0:
+                        txt = ''
+
+                else:
+                    txt = text
+
                 if alRight:
                     # offset = int(w - fm.width(text)) - 1 - 4
-                    offset = int(w - fm.width(text)) - 2
+                    offset = int(w - fm.width(txt)) - 2
                 else:
                     offset = 4
 
+                # print(f'offset: {offset}, {txt=}')
+
                 qp.setPen(QColor('#000')) # text color
-                qp.drawText(x + offset, y + int(fh/2 + h/2)- 2, text)
+                qp.drawText(x + offset, y + int(fh/2 + h/2)- 2, txt)
 
         if not manual:
             super().paint(qp, style, idx)
