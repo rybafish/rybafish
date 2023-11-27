@@ -2016,14 +2016,20 @@ class myWidget(QWidget):
         log(f'{t_scale=}', component='grid_tz')
         self.delta = self.t_from.timestamp() % t_scale
 
+
+        log(f'from: {self.t_from.timestamp()}', component='grid_tz')
         if not cfg('bug795', False):        # lol, seems a bug indeed, #866
             if t_scale == 60*60*4 or True:
-                tzCalc = datetime.datetime.strptime('2023-09-03 00:00:00', '%Y-%m-%d %H:%M:%S')
+                # tzCalc = datetime.datetime.strptime('2023-09-03 00:00:00', '%Y-%m-%d %H:%M:%S')
+                # tzCalc = datetime.datetime.combine(datetime.date.today(), datetime.time(0,0,0))
+                tzCalc = datetime.datetime.combine(self.t_from.date(), datetime.time(0,0,0))
                 tzGridCompensation = tzCalc.timestamp() % (24*3600) % t_scale
+                log(f'timestamp: {tzCalc=}', component='grid_tz')
+                log(f'timestamp: {tzCalc.timestamp()}', component='grid_tz')
                 log(f'{tzGridCompensation=}', component='grid_tz')
                 self.delta -= tzGridCompensation    # not sure, could be a bug (what if negative?)
                 log(f'{self.delta=}', component='grid_tz')
-        
+
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
         delta = self.delta
@@ -4007,7 +4013,10 @@ class chartArea(QFrame):
         fromLabel = QLabel('from:')
         toLabel = QLabel('to:')
 
-        starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
+        if cfg('dev'):
+            starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600*2*30)
+        else:
+            starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
         starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                 
         self.fromEdit = QLineEdit(starttime.strftime('%Y-%m-%d %H:%M:%S'))

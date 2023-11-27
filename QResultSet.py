@@ -80,10 +80,10 @@ class delegatedStyle(QStyledItemDelegate):
 
             ident = 3           # horisontal text ident
 
-            if manual:
+            if manual:          # 100% manual render of the cell
                 qp.setPen(bg.color())
                 qp.setBrush(bg)
-                qp.drawRect(x, y, w-1, h)
+                qp.drawRect(x, y, w, h)
 
                 if whiteBG:
                     dColor = hlColor
@@ -284,6 +284,9 @@ class QResultSet(QTableWidget):
 
         except TypeError as e:
             log(f'Column not valid for databar formatting: {e}', 2)
+            return None
+
+        if maxval == 0:
             return None
 
         for i in range(rows):
