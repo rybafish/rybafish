@@ -127,6 +127,7 @@ class myWidget(QWidget):
     gotGantt = False # True if there is any gantt on the chart (screen window only)
     
     timeScale = ''
+    tzChangeWarning = False
         
     def __init__(self):
         super().__init__()
@@ -2169,6 +2170,41 @@ class myWidget(QWidget):
             self.legend = None
         self.repaint()
         
+    def checkDayLightSaving(self):
+        '''
+        Checks if there is a DL saving occured during the from-to period
+        Displays a stupid warning if yes
+
+        '''
+        log(f'okay, check daylight, {self.tzChangeWarning=}, bug920={cfg("bug920")}', component='daylight')
+        if self.tzChangeWarning == False and cfg('bug920', False) == False:
+            date_from = self.t_from.date()
+            date_to = self.t_to.date()
+            tzCalc = datetime.datetime.combine(date_from, datetime.time(0,0,0))
+            tzCalcTo = datetime.datetime.combine(date_to, datetime.time(0,0,0))
+            tzGridCompensation = tzCalc.timestamp() % (24*3600)
+            tzGridCompensationTo = tzCalcTo.timestamp() % (24*3600)
+            log(f'real check: {tzCalc}, {tzCalcTo}', component='daylight')
+
+            if tzGridCompensation != tzGridCompensationTo and self.tzChangeWarning == False:
+                log('yes, daylight saving change detected...', component='daylight')
+                log('Daylight change detected, display a warning. You can disable this check by setting bug920: True.', 2)
+                title = 'Time zone change warning'
+                message = f'A daylight saving adjustment took place during the period:\n from: {date_from} to: {date_to}\n\nPlease be informed that the data shown on the chart does not factor in this change; it is based on the time zone in the beggining of the period.\n\nAs a result, the data at the end of the period is one hour off.\n\nWe apologize for any confusion and kindly request your support in calling for the discontinuation of daylight saving adjustments as it does not make any sense in 21st Century.'
+
+                msgBox = QMessageBox(self)
+                msgBox.setWindowTitle(title)
+                msgBox.setText(message)
+                msgBox.setStandardButtons(QMessageBox.Ok)
+
+                iconPath = resourcePath('ico', 'favicon.png')
+                msgBox.setWindowIcon(QIcon(iconPath))
+                msgBox.setIcon(QMessageBox.Warning)
+
+                reply = msgBox.exec_()
+
+                self.tzChangeWarning = True
+
 
 def moveAsync(direction, d, i):
     '''this one to skip -1s in multiline async'''
@@ -3734,6 +3770,8 @@ class chartArea(QFrame):
         
         if self.understandTimes() == False:
             return
+
+        self.widget.checkDayLightSaving()
 
         if not self.ndp:
             self.statusMessage('Not connected to the DB', True)
