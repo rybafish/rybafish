@@ -2035,7 +2035,6 @@ class myWidget(QWidget):
         log(f'{t_scale=}', component='grid_tz')
         self.delta = self.t_from.timestamp() % t_scale
 
-
         log(f'from: {self.t_from.timestamp()}', component='grid_tz')
         if not cfg('bug795', False):        # lol, seems a bug indeed, #866
             if t_scale == 60*60*4 or True:
@@ -3734,14 +3733,6 @@ class chartArea(QFrame):
                 return False
         else:
             try:
-                
-                '''
-                if len(fromTime) == 10:
-                    self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d')
-                    
-                    fromTime += ' 00:00:00'
-                    self.fromEdit.setText(fromTime)
-                '''
                 if len(fromTime) >= 10:
                     lt = 19 - len(fromTime)
                     fromTime += ' 00:00:00'[9 - lt:]
@@ -4070,7 +4061,7 @@ class chartArea(QFrame):
         toLabel = QLabel('to:')
 
         if cfg('dev'):
-            starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600*2*30)
+            starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600*2)
         else:
             starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
         starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
