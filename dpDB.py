@@ -35,7 +35,7 @@ import sql
 from dbi import dbi
 
 from utils import cfg, log, yesNoDialog, formatTime, safeBool, safeInt
-from utils import dbException, customKPIException
+from utils import dbException, customKPIException, deb
 
 import traceback
 from os import getcwd
@@ -577,7 +577,10 @@ class dataProvider(QObject):
                         
                     if kpiStylesNNN[kpi].get('gradient') == True:
                         title += ', gradient'
-                      
+
+                    if kpiStylesNNN[kpi].get('manual_color') == True:
+                        title += ', color'
+
                     sql = 'select entity, "START", "STOP", details%s %s %s%s order by entity desc, "START"' % (title, fromTable, hfilter_now, gtfilter_now)
                     gantt = True                    
 
@@ -699,6 +702,7 @@ class dataProvider(QObject):
 
         tIndex = None
         brIndex = None
+        cIndex = None
         
         rows = rows_list[0]
         
@@ -731,6 +735,9 @@ class dataProvider(QObject):
 
             if col[0] == 'TITLE':
                 tIndex = i
+
+            if col[0] == 'COLOR':
+                cIndex = i
 
         data[kpi] = {}
         
@@ -765,6 +772,9 @@ class dataProvider(QObject):
 
                 if brValue < brMin:
                     brMin = brValue
+            else:
+                if cIndex:
+                    brValue = r[cIndex]
             
             # go through entities
             t1 = time.time()

@@ -1651,6 +1651,12 @@ class myWidget(QWidget):
                         gradient = True
                     else:
                         gradient = False
+
+                    if kpiStylesNNN[kpi].get('manual_color'):
+                        manual_color = True
+                    else:
+                        manual_color = False
+
                 else:
                     gantt = False
                 
@@ -1777,6 +1783,18 @@ class myWidget(QWidget):
                                         rgb = adjustGradient(ganttBaseColor, ganttFadeColor, bv)
                                         qp.setBrush(rgb)
                                     
+                                if manual_color:
+                                    clr = t[5]
+
+                                    if clr:
+                                        rgb = QColor(clr)
+                                    else:
+                                        rgb = ganttBaseColor
+
+
+                                    qp.setBrush(rgb)
+
+
                                     #rgb = QColor(clr.red()*0.75, clr.green()*0.75, clr.blue()*0.75)
                                     #qp.setPen(QPen(rgb))
 

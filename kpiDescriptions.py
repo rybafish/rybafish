@@ -704,7 +704,13 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['shift'] = kpi.get('shift', 2)
             style['title'] = kpi.get('title')
             style['gradient'] = kpi.get('gradient')
-            
+            style['manual_color'] = kpi.get('manual_color')
+
+            if style['manual_color'] and style['gradient']:
+                log('[W] Gantt style cannot have both manual_color and gradient enabled', 1)
+                style['gradient'] = None
+                raise utils.customKPIException(f"[W] Gantt style cannot have both manual_color and gradient enable KPI: {kpi['name']}")
+
             style['style'] = kpi.get('style', 'bar')
             
             if style['style'] not in ('bar', 'candle'):
