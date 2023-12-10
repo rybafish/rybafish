@@ -195,9 +195,8 @@ class myWidget(QWidget):
         myFont = QFont ('SansSerif', self.conf_fontSize)
         fm = QFontMetrics(myFont)
         
-        self.font_height = scale * fm.height() - 2 # too much space otherwise
-        
-        self.bottom_margin = self.font_height*2 + 2 + 2
+        self.font_height = int(scale * fm.height()) - 2 # too much space otherwise
+        self.bottom_margin = int(self.font_height*2) + 2 + 2
         
         log('font_height: %i' %(self.font_height))
         log('bottom_margin: %i' %(self.bottom_margin))
@@ -2513,7 +2512,7 @@ class chartArea(QFrame):
             return
 
         pointTime = data[timeKey][point]
-        pointTS = datetime.datetime.fromtimestamp(pointTime)
+        # pointTS = datetime.datetime.fromtimestamp(pointTime)
                 
         # this will be required in messy getY implementation
         wsize = self.widget.size()
@@ -3563,9 +3562,6 @@ class chartArea(QFrame):
         
         self.widget.resizeWidget()
         
-        # force move it to the end
-        # self.scrollarea.horizontalScrollBar().setValue(self.widget.width() - self.width() + 22)
-        
         self.widget.update()
         
         
@@ -3782,6 +3778,7 @@ class chartArea(QFrame):
                 log('timeZoneDelta: %i' % self.widget.timeZoneDelta, 4)
                 starttime = datetime.datetime.now() - datetime.timedelta(seconds= hours*3600 - self.widget.timeZoneDelta)
                 starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
+
                 self.widget.t_from = starttime
                 self.fromEdit.setStyleSheet("color: black;")
             except:
@@ -3989,7 +3986,7 @@ class chartArea(QFrame):
     def adjustScale(self, scale = 1):
         font = self.fromEdit.font()
         fm = QFontMetrics(font)
-        fromtoWidth = scale * fm.width(' 2019-06-17 22:59:00 ') #have no idea why spaces required...
+        fromtoWidth = int(scale * fm.width(' 2019-06-17 22:59:00 ')) #have no idea why spaces required...
 
         self.fromEdit.setFixedWidth(fromtoWidth);
         self.toEdit.setFixedWidth(fromtoWidth);
@@ -4127,15 +4124,15 @@ class chartArea(QFrame):
         fromLabel = QLabel('from:')
         toLabel = QLabel('to:')
 
-        if cfg('dev'):
-            starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600*2)
-        else:
-            starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
+        starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
         starttime -= datetime.timedelta(seconds= starttime.timestamp() % 3600)
                 
         self.fromEdit = QLineEdit(starttime.strftime('%Y-%m-%d %H:%M:%S'))
-        
         self.toEdit = QLineEdit()
+
+        if cfg('dev'):
+            self.fromEdit.setText('2023-10-29 20:00:00')
+            self.toEdit.setText('2023-10-30 12:00:00')
 
         # set from/to editboxes width
         self.adjustScale()
@@ -4187,6 +4184,8 @@ class chartArea(QFrame):
         lo.addWidget(self.scrollarea)
         
         self.widget = myWidget()
+
+        # self.widget.ndp = self.ndp
         
         self.widget._parent = self
         self.widget.hostKPIsStyles = self.hostKPIsStyles        # need to link as used widely in drawChart called from paint event

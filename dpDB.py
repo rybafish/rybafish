@@ -1009,8 +1009,6 @@ class dataProvider(QObject):
 
         kpis_ = [timeKey] + kpis # need a copy of kpis list (+time entry)
         
-        #print('------------>', len(rows))
-        
         multiline = False
         
         if subtype == 'multiline':
@@ -1292,3 +1290,4 @@ class dataProvider(QObject):
         t2 = time.time()
 
         log('%i rows, get time: %s, get/parse time %s' % (trace_lines, str(round(t1-t0, 3)), str(round(t2-t1, 3))))
+        # printDump(data)
