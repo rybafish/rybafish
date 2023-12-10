@@ -37,6 +37,7 @@ def getDBProperties(connection, queryFunction, log, dbProperties):
                 hostUTCDelta = (datetime.fromtimestamp(hostNow) - datetime.utcfromtimestamp(hostNow)).total_seconds()
 
                 dbProperties['timeZoneDelta'] = int(dbUTCDelta) - int(hostUTCDelta)
+                dbProperties['utcOffset'] = int(dbUTCDelta)
             elif row[0] == 'sid':
                 if cfg('mapsid'):
                     sm = cfg('mapsid')

@@ -138,3 +138,6 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 # reconnect time in seconds for autorefresh consoles
 # use it wisely as might lock your user due to number of reconnects, etc.
 # reconnectTimer: 60
+
+# 096 has major change in timezones support, but you can return old behaviour in case of issues:
+# serverTZ: False

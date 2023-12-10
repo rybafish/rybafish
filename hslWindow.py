@@ -1398,6 +1398,12 @@ class hslWindow(QMainWindow):
             
             self.chartArea.reloadChart()
 
+    def menuDevFromto(self):
+        self.chartArea.fromEdit.setText('2023-10-28 22:00:00')
+        self.chartArea.toEdit.setText('2023-10-29 08:10:00')
+
+        self.chartArea.reloadChart()
+
     def menuSQLToolbar(self):
         state = self.tbAct.isChecked()
         if state:
@@ -1757,6 +1763,14 @@ class hslWindow(QMainWindow):
         reloadCustomKPIsAct.triggered.connect(self.menuReloadCustomKPIs)
 
         actionsMenu.addAction(reloadCustomKPIsAct)
+
+        if cfg('dev'):
+            devMenu = menubar.addMenu('DEV')
+            fromtoAct = QAction('set TZ test timestamps', self)
+            fromtoAct.setShortcut('Ctrl+Shift+T')
+            fromtoAct.triggered.connect(self.menuDevFromto)
+            devMenu.addAction(fromtoAct)
+
 
         self.colorizeAct = QAction('Colorize KPIs', self)
         self.colorizeAct.setStatusTip('Ignore standard KPI styles and use raduga colors instead')

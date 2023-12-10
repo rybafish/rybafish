@@ -78,10 +78,12 @@ class delegatedStyle(QStyledItemDelegate):
             w = int(round(r.width() - 1))
             wd = int(round(r.width() - 1)*d)
 
-            if manual:
+            ident = 3           # horisontal text ident
+
+            if manual:          # 100% manual render of the cell
                 qp.setPen(bg.color())
                 qp.setBrush(bg)
-                qp.drawRect(x, y, w-1, h)
+                qp.drawRect(x, y, w, h)
 
                 if whiteBG:
                     dColor = hlColor
@@ -93,14 +95,36 @@ class delegatedStyle(QStyledItemDelegate):
             qp.drawRect(x, y, wd, h)
 
             if manual:
+                tw = fm.width(text)
+                # print(f'rect {h}:{w}')
+                # print(f'text width: {tw}')
+
+                if tw + ident*2 > w+1: # if text does not fit...
+
+                    i = len(text) - 1
+
+                    # cut it until no characters left at all
+                    while tw + ident*2 > w+1 and i >=0:
+                        i -= 1
+                        txt = text[:i] + '\u2026'
+                        tw = fm.width(txt)
+
+                    if i <= 0:
+                        txt = ''
+
+                else:
+                    txt = text
+
                 if alRight:
                     # offset = int(w - fm.width(text)) - 1 - 4
-                    offset = int(w - fm.width(text)) - 2
+                    offset = int(w - fm.width(txt)) - 2
                 else:
                     offset = 4
 
+                # print(f'offset: {offset}, {txt=}')
+
                 qp.setPen(QColor('#000')) # text color
-                qp.drawText(x + offset, y + int(fh/2 + h/2)- 2, text)
+                qp.drawText(x + offset, y + int(fh/2 + h/2)- 2, txt)
 
         if not manual:
             super().paint(qp, style, idx)
@@ -242,6 +266,10 @@ class QResultSet(QTableWidget):
 
         rows = self.rowCount()
 
+        if c >= len(self.cols):
+            log('dataBarNormalize column does not exit', 5)
+            return
+
         maxval = 0
 
         try:
@@ -256,6 +284,9 @@ class QResultSet(QTableWidget):
 
         except TypeError as e:
             log(f'Column not valid for databar formatting: {e}', 2)
+            return None
+
+        if maxval == 0:
             return None
 
         for i in range(rows):

@@ -11,6 +11,7 @@ import math, time, random
 import dpDBCustom, kpiDescriptions
 
 from utils import log, cfg, msgDialog
+import utils
 
 class dataProvider:
 
@@ -88,7 +89,11 @@ class dataProvider:
         stime -= datetime.timedelta(seconds = stime.timestamp() % 3600)
                 
         etime = datetime.datetime.now()
-        
+
+        if cfg('dev'):
+            stime = datetime.datetime.strptime('2023-10-30 00:00:00', '%Y-%m-%d %H:%M:%S')
+            etime = datetime.datetime.strptime('2023-10-30 02:00:00', '%Y-%m-%d %H:%M:%S')
+
         hosts.append({
                     'host':'dummy1',
                     'port':'',
@@ -144,19 +149,26 @@ class dataProvider:
     def getData(self, host, fromto, kpis, data, kpiStylesNN, wnd=None):
         
         #time.sleep(0.1)
-        
+
         ctime = datetime.datetime.now() - datetime.timedelta(seconds= 18 * 3600)
         ctime -= datetime.timedelta(seconds= ctime.timestamp() % 3600)
 
+        if cfg('dev'):
+            # ctime = datetime.datetime.strptime('2023-10-30 00:00:00', '%Y-%m-%d %H:%M:%S')
+            ctime = datetime.datetime.strptime(fromto['from'], '%Y-%m-%d %H:%M:%S')
+
         if 'cs-exp_st' in kpis:
             t0 = ctime + datetime.timedelta(seconds=(3600*8))
-            t1 = t0 + datetime.timedelta(seconds=(3600*2))
+            t0 = datetime.datetime.strptime('2023-10-30 00:00:00', '%Y-%m-%d %H:%M:%S')
+            t1 = t0 + datetime.timedelta(seconds=(3600*1))
 
-            t2 = t1 + datetime.timedelta(seconds=(-900))
-            t3 = t2 + datetime.timedelta(seconds=(3600*3))
+            t2 = t1 + datetime.timedelta(seconds=(3600*0.5))
+            t3 = t2 + datetime.timedelta(seconds=(3600*2))
 
             t4 = t0 + datetime.timedelta(seconds=(3600*1))
             t5 = t4 + datetime.timedelta(seconds=(3600*6))
+            # t4 = datetime.datetime.strptime('2023-10-30 01:00:00', '%Y-%m-%d %H:%M:%S')
+            # t5 = datetime.datetime.strptime('2023-10-30 01:30:00', '%Y-%m-%d %H:%M:%S')
 
             t6 = t5 + datetime.timedelta(seconds=(-1600))
             t7 = t6 + datetime.timedelta(seconds=(3600*1))
@@ -172,13 +184,15 @@ class dataProvider:
             data['cs-exp_st'] = {}
             
             if host['port'] == '30040' and host['host'] == 'dummy1':
-                data['cs-exp_st']['Entity number one'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0, '4gb'], [t2, t3, 'asdf', 1, 'x gb']]
-                data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0, ''], [t6, t7, 'asdf', 0, ''], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0, '']]
-            if host['port'] == '30040' and host['host'] == 'dummy1':
+                data['cs-exp_st']['Stacy'] = [[t0, t1, '0:00 - 1:00', 0, '4gb'], [t2, t3, '1:30 - 3:30', 0, 'x gb']]
+                # data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0, ''], [t6, t7, 'asdf', 0, ''], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0, '']]
+
+            if host['port'] == '30040' and host['host'] == 'dummy1-':
                 data['cs-exp_st']['SASCHA'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0, ''], [t2, t3, 'asdf', 1, 'x gb']]
                 data['cs-exp_st']['LUCIA'] = [[t4, t5, 'select...', 0, ''], [t6, t7, 'asdf', 0, ''], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0, '']]
             else:
-                data['cs-exp_st']['RAYMOND'] = [[t10, t11, 'select * from ExpensiveView', 0, '']]
+                pass
+                # data['cs-exp_st']['RAYMOND'] = [[t10, t11, 'select * from ExpensiveView', 0, '']]
             
             for e in data['cs-exp_st']:
                 print('%s:'% e)
@@ -189,7 +203,10 @@ class dataProvider:
         if False:
             data_size = round(18*3600/10)
         else:
-            seconds = (datetime.datetime.now() - ctime).total_seconds()
+            if fromto['to']:
+                seconds = (datetime.datetime.strptime(fromto['to'], '%Y-%m-%d %H:%M:%S') - ctime).total_seconds()
+            else:
+                seconds = (datetime.datetime.now() - ctime).total_seconds()
             data_size = int(seconds/10)
 
         #data_size = round(1000)
@@ -212,6 +229,7 @@ class dataProvider:
     
     
         for i in range(0,len(timeline)):
+            # ctime = utils.setTZ(ctime, 0)
             data['time'][i] = ctime.timestamp()
 
             if host['port'] == '':
