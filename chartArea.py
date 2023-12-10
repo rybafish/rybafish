@@ -108,7 +108,7 @@ class myWidget(QWidget):
     
     y_delta = 0 # to make drawing space even to 10 parts (calculated in drawGrid)
     
-    delta = 0 # offset for uneven time_from values
+    delta = 0 # offset for uneven time_from values: gap from start of the grid to time_from
     
     zoomLock = False # also used in scrollRangeChanged
     paintLock = False
@@ -128,7 +128,8 @@ class myWidget(QWidget):
     
     timeScale = ''
     tzChangeWarning = False
-        
+
+
     def __init__(self):
         super().__init__()
         
@@ -138,6 +139,8 @@ class myWidget(QWidget):
         if cfg('fontSize') is not None:
             self.conf_fontSize = cfg('fontSize')
             
+        self.tzInfo = None
+
         self.calculateMargins()
         
         self.initPens()
@@ -1057,12 +1060,12 @@ class myWidget(QWidget):
                     if (self.highlightedKpi):
                     
                         # if self.highlightedKpi == kpi and self.highlightedKpiHost == host:
-                        deb(f'{kpi=}')
-                        deb(kpiStylesNNN[kpi])
-                        deb(f'{self.highlightedKpi=}')
+                        # deb(f'{kpi=}')
+                        # deb(kpiStylesNNN[kpi])
+                        # deb(f'{self.highlightedKpi=}')
 
                         hlStyle = self.hostKPIsStyles[self.highlightedKpiHost][self.highlightedKpi]
-                        deb(hlStyle)
+                        # deb(hlStyle)
 
                         if kpiStylesNNN[kpi]['group'] == hlStyle['group']:
                             # print(kpi, kpiStylesNNN[kpi])
@@ -1104,7 +1107,15 @@ class myWidget(QWidget):
 
                     self.highlightedNormVal = normVal
                         
-                    tm = datetime.datetime.fromtimestamp(data[timeKey][j]).strftime('%Y-%m-%d %H:%M:%S')
+                    if utils.cfg_servertz:
+                        # dpidx = self.hosts[host]['dpi']
+                        # utcOff = self.ndp[dpidx].dbProperties.get('utcOffset', 0)
+                        # ts = datetime.datetime.fromtimestamp(data[timeKey][j], utils.getTZ(utcOff))
+                        ts = datetime.datetime.fromtimestamp(data[timeKey][j], self.tzInfo)
+                    else:
+                        ts = datetime.datetime.fromtimestamp(data[timeKey][j])
+
+                    tm = ts.strftime('%Y-%m-%d %H:%M:%S')
                     
                     self.statusMessage('%s, %s%s = %s %s at %s%s' % (hst, kpi, ml, scaled_value, scales[kpi]['unit'], tm, deltaVal))
                     
@@ -1490,7 +1501,7 @@ class myWidget(QWidget):
             drawStep = timeStep*x_scale + 2
             
             i = -1
-            
+
             while i < array_size-1:
                 i+=1
                 #log(self.data['time'][i])
@@ -1501,7 +1512,10 @@ class myWidget(QWidget):
                     continue
                     
                 x = (time_array[i] - from_ts) # number of seconds
-                x = self.side_margin + self.left_margin +  x * x_scale
+                x = self.side_margin + self.left_margin + x * x_scale
+
+                # if i > 0:
+                #     deb(f'calculated x value is: ({(time_array[i] - from_ts) - (time_array[i-1] - from_ts)}): {x}')
 
                 if x < startX - drawStep or x > stopX + drawStep:
                     
@@ -1903,6 +1917,11 @@ class myWidget(QWidget):
                 array_size = len(self.ndata[h][timeKey])
                 time_array = self.ndata[h][timeKey]
 
+                if cfg('dev__'):
+                    for i in range(len(time_array)):
+                        if i > 0:
+                            deb(f'{i:3} time delta: {time_array[i] - time_array[i-1]}')
+
                 if utils.cfg('colorize'):
                     radugaSize = len(kpiDescriptions.radugaPens)
                     kpiPen = kpiDescriptions.radugaPens[raduga_i % radugaSize]
@@ -2014,13 +2033,12 @@ class myWidget(QWidget):
         
         qp.setPen(self.gridColor)
 
-        # vertical scale
-        
+        # vertical scale lines
         for j in range(1,10):
             y = top_margin + j * y_step
             
             if j == 5:
-                qp.setPen(self.gridColorMj) #50% CPU line
+                qp.setPen(self.gridColorMj) #50% line
             
             qp.drawLine(self.side_margin + self.left_margin + 1, y, wsize.width()-self.side_margin - 1, y)
             
@@ -2028,25 +2046,32 @@ class myWidget(QWidget):
                 qp.setPen(self.gridColor)
         
         #x is in pixels
-        x = self.side_margin + self.left_margin +self.step_size
+        x = self.side_margin + self.left_margin + self.step_size
 
-        #have to align this to have proper marks
+        # now have to align this to have proper marks
+
+        # this is where the confusion is coming from t_from is in local timestamp
+        # but we hope it to be in system TZ...
         
-        log(f'{t_scale=}', component='grid_tz')
-        self.delta = self.t_from.timestamp() % t_scale
+        tsfix = self.t_from.replace(tzinfo=self.tzInfo)
+        self.delta = tsfix.timestamp() % t_scale # delta from start of the grid to time_from
 
-        log(f'from: {self.t_from.timestamp()}', component='grid_tz')
-        if not cfg('bug795', False):        # lol, seems a bug indeed, #866
+        log(f'{t_scale=}', component='tz')
+        log(f'delta calculation, {self.t_from.timestamp()}%{t_scale} = {self.delta}', component='tz')
+        log(f'from: {self.t_from.timestamp()}', component='tz')
+
+        if not cfg('bug795', False) and False:        # lol, seems a bug indeed, #866
             if t_scale == 60*60*4 or True:
                 # tzCalc = datetime.datetime.strptime('2023-09-03 00:00:00', '%Y-%m-%d %H:%M:%S')
                 # tzCalc = datetime.datetime.combine(datetime.date.today(), datetime.time(0,0,0))
                 tzCalc = datetime.datetime.combine(self.t_from.date(), datetime.time(0,0,0))
                 tzGridCompensation = tzCalc.timestamp() % (24*3600) % t_scale
-                log(f'timestamp: {tzCalc=}', component='grid_tz')
-                log(f'timestamp: {tzCalc.timestamp()}', component='grid_tz')
-                log(f'{tzGridCompensation=}', component='grid_tz')
+                log(f'timestamp: {tzCalc=}', component='tz')
+                log(f'timestamp: {tzCalc.timestamp()}', component='tz')
+                log(f'{self.delta=}', component='tz')
+                log(f'{tzGridCompensation=}', component='tz')
                 self.delta -= tzGridCompensation    # not sure, could be a bug (what if negative?)
-                log(f'{self.delta=}', component='grid_tz')
+                log(f'{self.delta=}', component='tz')
 
         bottom_margin = self.bottom_margin
         side_margin = self.side_margin
@@ -2065,8 +2090,19 @@ class myWidget(QWidget):
                 
             qp.drawLine(x, top_margin + 1, x, wsize.height() - bottom_margin - 2)
             
+            # c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin - self.left_margin)/self.step_size*t_scale - delta)
             c_time = self.t_from + datetime.timedelta(seconds=(x - side_margin - self.left_margin)/self.step_size*t_scale - delta)
-            
+
+            if False:
+                log(f'grid time: {c_time}', component='tz')
+                # tzCalc = datetime.datetime.combine(self.t_from.date(), datetime.time(0,0,0))
+                # tzGridCompensation = tzCalc.timestamp() % (24*3600) % t_scale
+                # log(f'timestamp: {tzCalc=}', component='tz')
+                # log(f'timestamp: {tzCalc.timestamp()}', component='tz')
+                # log(f'{tzGridCompensation=}', component='tz')
+                # self.delta -= tzGridCompensation    # not sure, could be a bug (what if negative?)
+                # log(f'{self.delta=}', component='tz')
+
             major_line = False
             date_mark = False
             
@@ -2110,6 +2146,9 @@ class myWidget(QWidget):
             elif t_scale == 8*3600:
                 min_scale = 3600*24*2
                 hrs_scale = 60*24*4
+            elif t_scale == 12*3600:
+                min_scale = 3600*24*2
+                hrs_scale = 60*24*4
 
             # number of minutes since the grid start
             min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
@@ -2133,7 +2172,7 @@ class myWidget(QWidget):
                             date_mark = True
 
             ct = c_time.strftime('%Y-%m-%d %H:%M:%S')
-            log(f'{ct=}, {min=}, {major_line=}', component='grid_tz')
+            # log(f'{ct=}, {min=}, {major_line=}', component='tz')
 
             if major_line:
             
@@ -2149,8 +2188,10 @@ class myWidget(QWidget):
                  
                 # #587
                                 
-                qp.drawText(int(x-label_width), wsize.height() - bottom_margin + self.font_height, label)
-                
+                if t_scale < 8*3600 or date_mark:
+                    print(wsize.height(), bottom_margin, self.font_height, label)
+                    qp.drawText(int(x-label_width), wsize.height() - bottom_margin + self.font_height, label)
+
                 if date_mark:
                     label = c_time.strftime('%Y-%m-%d')
                     qp.drawText(int(x-self.font_width3), int(wsize.height() - bottom_margin + self.font_height*2), label)
@@ -2207,7 +2248,7 @@ class myWidget(QWidget):
                 log('yes, daylight saving change detected...', component='daylight')
                 log('Daylight change detected, display a warning. You can disable this check by setting bug920: True.', 2)
                 title = 'Time zone change warning'
-                message = f'A daylight saving adjustment took place during the period:\n from: {date_from} to: {date_to}\n\nPlease be informed that the data shown on the chart does not factor in this change; it is based on the time zone in the beggining of the period.\n\nAs a result, the data at the end of the period is one hour off.\n\nWe apologize for any confusion and kindly request your support in calling for the discontinuation of daylight saving adjustments as it does not make any sense in 21st Century.'
+                message = f'A daylight saving adjustment took place during the period:\n from: {date_from} to: {date_to}\n\nPlease be informed that the data shown on the chart does not factor in this change; it is based on the time zone in the beggining of the period.\n\nAs a result, the data at the end of the period is one hour off.\n\nWe apologize for any confusion and kindly request your support in calling for the discontinuation of daylight saving adjustments as it does not make any sense in 21st Century.\n\nSorry for that, permanent fix is on the way.'
 
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle(title)
@@ -2686,7 +2727,17 @@ class chartArea(QFrame):
         self.widget.highlightedNormVal = normVal
 
         scaled_value = utils.numberToStr(normVal, d)
-        tm = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point]).strftime('%Y-%m-%d %H:%M:%S')
+
+        # host = self.widget.highlightedKpiHost
+
+        if utils.cfg_servertz:
+            dpidx = self.widget.hosts[host]['dpi']
+            utcOff = self.ndp[dpidx].dbProperties.get('utcOffset', 0)
+            ts = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point], utils.getTZ(utcOff))
+        else:
+            ts = datetime.datetime.fromtimestamp(self.widget.ndata[host][timeKey][point])
+
+        tm = ts.strftime('%Y-%m-%d %H:%M:%S')
         
         unit = self.widget.nscales[host][kpi]['unit']
 
@@ -3046,6 +3097,12 @@ class chartArea(QFrame):
         
         else:
             self.widget.timeZoneDelta = 0
+
+        if utils.cfg_servertz:
+            utcOffset = dp.dbProperties.get('utcOffset', 0)
+            self.widget.tzInfo = utils.getTZ(utcOffset)
+
+            log(f'Chart tzInfo set to UTC +{utcOffset}', 2)
             
         self.hostsUpdated.emit()
         
@@ -3738,7 +3795,9 @@ class chartArea(QFrame):
                     fromTime += ' 00:00:00'[9 - lt:]
                     self.fromEdit.setText(fromTime)
 
-                self.widget.t_from = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
+                tfrom = datetime.datetime.strptime(fromTime, '%Y-%m-%d %H:%M:%S')
+
+                self.widget.t_from = tfrom
                     
                 self.fromEdit.setStyleSheet("color: black;")
                 
@@ -3755,10 +3814,10 @@ class chartArea(QFrame):
             try:
                 if len(toTime) == 10:
                     self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d')
-                    
+
                     toTime += ' 23:59:59'
                     self.toEdit.setText(toTime)
-                    #self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
+
                 elif len(toTime) > 11 and len(toTime) <19:
                     lt = 19 - len(toTime)
                     toTime += ' 00:00:00'[9 - lt:]
@@ -3771,7 +3830,13 @@ class chartArea(QFrame):
                 self.statusMessage('datetime syntax error')
                 return False
                 
+        if utils.cfg_servertz:
+            log(f'tzinfo update: {self.widget.tzInfo}', component='tz')
+            self.widget.t_from = self.widget.t_from.replace(tzinfo=self.widget.tzInfo)
+            self.widget.t_to = self.widget.t_to.replace(tzinfo=self.widget.tzInfo)
+
         return True
+
                 
     def reloadChart(self, autorefresh=False):
     
@@ -3780,7 +3845,7 @@ class chartArea(QFrame):
         if self.understandTimes() == False:
             return
 
-        self.widget.checkDayLightSaving()
+        # self.widget.checkDayLightSaving()
 
         if not self.ndp:
             self.statusMessage('Not connected to the DB', True)
@@ -3968,11 +4033,11 @@ class chartArea(QFrame):
         self.widget.timeZoneDelta = mintz
 
     def adjustTimeZones(self, dpidx):
-        print(f'Got TZ change request: {dpidx}')
+        log(f'Got TZ change request: {dpidx}', 4)
         dp = self.ndp[dpidx]
 
         if hasattr(dp, 'dbProperties'):
-            print(dp.dbProperties)
+            log(dp.dbProperties, 4)
 
         tzd = tzDialog(self, self.ndp)
         res = tzd.exec_()
@@ -4031,13 +4096,15 @@ class chartArea(QFrame):
 
         if cfg('experimental'):
             self.scaleCB.addItem('8 hours')
+            self.scaleCB.addItem('12 hours')
 
         self.scaleCB.setFocusPolicy(Qt.ClickFocus)
         
+
         self.scaleCB.setCurrentIndex(4)
-        
+
         self.scaleCB.currentIndexChanged.connect(self.scaleChanged)
-        
+
         self.refreshCB = QComboBox()
         
         self.refreshCB.addItem('none')

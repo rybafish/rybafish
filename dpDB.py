@@ -34,6 +34,7 @@ import sql
 #import db
 from dbi import dbi
 
+import utils
 from utils import cfg, log, yesNoDialog, formatTime, safeBool, safeInt
 from utils import dbException, customKPIException, deb
 
@@ -395,6 +396,7 @@ class dataProvider(QObject):
         # log(f'[GET DATA]: dbi: {self.dbi}')
         # log(f'[GET DATA]: prop: {self.dbProperties}')
         tzShift = self.dbProperties.get('timestampShift', 0)
+        tzUTC = self.dbProperties.get('utcOffset', 0)
 
         if tzShift:
             if fromto['from'] != '' and fromto['from'][0] != '-': # regular time
@@ -586,9 +588,9 @@ class dataProvider(QObject):
 
             try:
                 if not gantt:
-                        self.getHostKpis(kpiStylesNNN, kpis, data, sql, params_now, kpiSrc, tzShift)
+                        self.getHostKpis(kpiStylesNNN, kpis, data, sql, params_now, kpiSrc, tzShift, tzUTC)
                 else:
-                    self.getGanttData(kpiStylesNNN, kpis[0], data, sql, params_now, kpiSrc, tzShift)
+                    self.getGanttData(kpiStylesNNN, kpis[0], data, sql, params_now, kpiSrc, tzShift, tzUTC)
                     
             except dbException as e:
             
@@ -663,7 +665,7 @@ class dataProvider(QObject):
         
         return 
 
-    def getGanttData(self, kpiStylesNNN, kpi, data, sql, params, kpiSrc, tzShift):
+    def getGanttData(self, kpiStylesNNN, kpi, data, sql, params, kpiSrc, tzShift, tzUTC):
         
         @profiler
         def normalizeGradient(brMin, brMax, fromTo = (0, 100)):
@@ -755,8 +757,16 @@ class dataProvider(QObject):
 
         for r in rows:
             entity = str(r[0])
-            start = r[1] + datetime.timedelta(seconds=tzShift)
-            stop = r[2] + datetime.timedelta(seconds=tzShift)
+
+            start = r[1]
+            stop = r[2]
+
+            if utils.cfg_servertz:
+                start = utils.setTZ(start, tzUTC)
+                stop = utils.setTZ(stop, tzUTC)
+
+            start = start + datetime.timedelta(seconds=tzShift)
+            stop = stop + datetime.timedelta(seconds=tzShift)
 
             dur = formatTime((stop - start).total_seconds(), skipSeconds=True, skipMs=True)
             desc = str(r[3]).replace('$duration', dur)
@@ -886,7 +896,7 @@ class dataProvider(QObject):
         '''
     
     @profiler
-    def getHostKpis(self, kpiStylesNNN, kpis, data, sql, params, kpiSrc, tzShift):
+    def getHostKpis(self, kpiStylesNNN, kpis, data, sql, params, kpiSrc, tzShift, tzUTC):
         '''
             performs query to a data source for specific host.port
             also for custom metrics
@@ -902,8 +912,13 @@ class dataProvider(QObject):
                     print('\t', data[k])
                 else:
                     i = 0
-                    for r in data[k]:
-                        print('\t%i -'%(i), r)
+                    print('type: ', type(data[k][0]))
+                    for x in range(len(data[k])):
+                        # print('\t%i -'%(i), r)
+                        if x > 0:
+                            print(f'{i:3}, {x=} {data[k][x]}, delta = {data[k][x]-data[k][x-1]}')
+                        else:
+                            print(f'{i:3}, {x=} {data[k][x]}')
                         i += 1
             
         @profiler
@@ -1124,7 +1139,15 @@ class dataProvider(QObject):
                     
                 for j in range(0, len(kpis_)):
                     if j == 0: #time column always 1st
-                        data[timeKey][ii] = row[j].timestamp() + tzShift
+                        ts = row[j]
+
+                        if utils.cfg_servertz:
+                            ts = utils.setTZ(ts, tzUTC) # set explicit timezone
+
+                        tzdelta = self.dbProperties.get('utcOffset', 0)
+
+                        tsi = ts.timestamp()
+                        data[timeKey][ii] = tsi + tzShift
                         
                     else:
 

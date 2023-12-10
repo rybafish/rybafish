@@ -43,8 +43,21 @@ decimal_digits = 6
 cfg_logmode = 'file'
 cfg_loglevel = 3
 cfg_logcomp = []
+cfg_servertz = None
 
 configStats = {}
+
+@profiler
+def setTZ(ts, s):
+    '''set explicit tzinfo to datetime object'''
+    import datetime as dt
+    tz = dt.timezone(dt.timedelta(seconds=s))
+    return ts.replace(tzinfo=tz)
+
+def getTZ(s):
+    import datetime as dt
+    return dt.timezone(dt.timedelta(seconds=s))
+
 
 def pwdunhash(pwdhsh):
     pwd = pwdhsh[5:]
@@ -747,6 +760,7 @@ def initGlobalSettings():
     global cfg_logmode
     global cfg_loglevel
     global cfg_logcomp
+    global cfg_servertz
     
     if cfg('dev'):
         configStats['dummy'] = 0
@@ -754,6 +768,7 @@ def initGlobalSettings():
     cfg_logmode = cfg('logmode')
     cfg_loglevel = cfg('loglevel', 3)
     cfg_logcomp = cfg('log_components', [])
+    cfg_servertz = cfg('serverTZ', True)
 
     if type(cfg_logcomp) != list:
         cfg_comp = []
