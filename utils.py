@@ -968,6 +968,8 @@ def formatTimeShort(t):
 
 def formatTimeus(us):
     '''return formatted time in microsec'''
+    if us is None:
+        return ''
 
     s = numberToStr(us) + ' ' + chr(181) + 's'
     return s
