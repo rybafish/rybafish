@@ -63,11 +63,14 @@ from utils import log, cfg
 
 dbidict = {'HANA DB': 'HDB'}
 
+if cfg('experimental'):
+    dbidict['HANA Cloud'] = 'HDB'
+
 if cfg('S2J', False):
     dbidict['ABAP Proxy'] = 'S2J'
     
+
 dbidict['SQLite DB'] = 'SLT'
-    
 dbidictRev = {} # reverse dict
 
 for k in dbidict:
