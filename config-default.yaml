@@ -1,3 +1,7 @@
+##
+## Configuration details: https://www.rybafish.net/config
+##
+
 server: {'host': 'localhost', 'port': 30015, 'user': 'system', password: ''}
 
 ##

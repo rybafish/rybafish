@@ -2188,7 +2188,7 @@ class myWidget(QWidget):
                 # #587
                                 
                 if t_scale < 8*3600 or date_mark:
-                    print(wsize.height(), bottom_margin, self.font_height, label)
+                    # print(wsize.height(), bottom_margin, self.font_height, label)
                     qp.drawText(int(x-label_width), wsize.height() - bottom_margin + self.font_height, label)
 
                 if date_mark:
