@@ -10,7 +10,7 @@ from PyQt5.QtCore import pyqtSignal
 
 import kpiDescriptions
 
-from utils import log
+from utils import log, deb
 from utils import cfg
 from utils import vrsException
 
@@ -201,7 +201,8 @@ class kpiTable(QTableWidget):
                 
                 if 'brush' in kpiStyles[kpi]:
                     # gantt chart have brush color, and pen is derivative
-                    initColor = kpiStyles[kpi]['brush']
+                    pen = kpiDescriptions.customPen(kpiKey, kpiStyles[kpi]['pen'])
+                    initColor = pen.color()
                 else:
                     pen = kpiDescriptions.customPen(kpiKey, kpiStyles[kpi]['pen'])
                     initColor = pen.color()
