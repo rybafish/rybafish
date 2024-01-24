@@ -3358,7 +3358,7 @@ class sqlConsole(QWidget):
             sptStr = ' (' + utils.formatTimeus(spt) + ')'
 
         # logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
-        timeStr = utils.formatTime(t1-t0, skipSeconds = True)
+        timeStr = utils.formatTime(t1-t0, skipSeconds=True)
         logText = f'Query execution time: {timeStr}{sptStr}'
 
         rows_list = self.sqlWorker.rows_list

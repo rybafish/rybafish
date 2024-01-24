@@ -975,7 +975,7 @@ def formatTimeus(us):
     return s
 
 @profiler
-def formatTime(t, skipSeconds = False, skipMs = False):
+def formatTime(t, skipSeconds=False, skipMs=False):
     
     (ti, ms) = divmod(t, 1)
     
