@@ -1217,6 +1217,15 @@ def extended_fromisoformat(v):
         if v.find('.') == -1:
             v += '.000'
 
+        else:
+            decimals = v.split('.')[1]
+            dec_len = len(decimals)
+
+            if dec_len > 6:
+                truncate = dec_len - 6
+                v = v[:-truncate] # truncate everything after 6 digit
+
+
         return datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
 
         raise ValueError
