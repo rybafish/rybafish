@@ -1001,8 +1001,9 @@ def formatTime(t, skipSeconds=False, skipMs=False):
         format = '%H:%M:%S'
         s = ''
         msStr = '.%s' % ms if not skipMs else ''
-        if ti > 3600*24:
+        if ti >= 3600*24:
             days, ti = divmod(ti, 3600*24)
+            days = int(days)
             s = f'{days}D '
 
         s += time.strftime(format, time.gmtime(ti)) + msStr
