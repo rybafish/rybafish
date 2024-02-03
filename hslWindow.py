@@ -57,9 +57,8 @@ class hslWindow(QMainWindow):
     statusbar = None
     primaryConf = None # primary connection dictionary, keys: host, port, name, dbi, user, pwd, etc
     configurations = {}
-    
+
     kpisTable = None
-    
     threadID = None
 
     def __init__(self):
@@ -69,6 +68,7 @@ class hslWindow(QMainWindow):
         self.sqlTabCounter = 0 #static tab counter
 
         self.tabs = None
+        self.kpisSave = {}      # list of kpis for quick save/restore
     
         super().__init__()
         
@@ -536,7 +536,38 @@ class hslWindow(QMainWindow):
             self.resize(size[0], size[1])
             self.mainSplitter.setSizes(spl)
         
-        
+
+    def menuKPIsRestore(self):
+        '''Restore enabled kpis from local quick list stored before '''
+
+        if len(self.kpisSave) == 0:
+            self.statusMessage('There are no KPIs saved, use Layout -> Save KPIs first', True)
+
+        for hi in range(len(self.chartArea.widget.hosts)):
+
+            host = self.chartArea.widget.hosts[hi]
+            hname = f"{host['host']}:{host['port']}"
+
+            if hname in self.kpisSave:
+                log(f'Restoring: {hname} --> {self.kpisSave[hname]}', 5)
+                self.chartArea.widget.nkpis[hi] = self.kpisSave[hname]
+
+            else:
+                log(f'Restoring: {hname} --> []', 5)
+                self.chartArea.widget.nkpis[hi].clear()
+
+
+    def menuKPIsSave(self):
+        self.kpisSave = {}
+        for host, kpis in zip(self.chartArea.widget.hosts, self.chartArea.widget.nkpis):
+            if not kpis:
+                continue
+
+            hname = f"{host['host']}:{host['port']}"
+
+            log(f'Storing: {hname} <-- {kpis}')
+            self.kpisSave[hname] = kpis.copy()
+
     def menuLayout(self):
         self.layout['save_size'] = [self.size().width(), self.size().height()]
         self.layout['save_pos'] = [self.pos().x(), self.pos().y()]
@@ -1744,9 +1775,20 @@ class hslWindow(QMainWindow):
         layoutAct.triggered.connect(self.menuLayoutRestore)
         
         layoutMenu.addAction(layoutAct)
+        layoutMenu.addSeparator()
             
-        # issue #255
+        kpisSave = QAction('Save selected KPIs', self)
+        kpisSave.setStatusTip('Save currently enabled KPIs')
+        kpisSave.triggered.connect(self.menuKPIsSave)
+        layoutMenu.addAction(kpisSave)
+
+        kpisRestore = QAction('Restore KPIs', self)
+        kpisRestore.setStatusTip('Restores KPIs saved with "Save selected KPIs" option')
+        kpisRestore.triggered.connect(self.menuKPIsRestore)
+        layoutMenu.addAction(kpisRestore)
+
         reloadConfigAct = QAction('Reload &Config', self)
+        # issue #255
         reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions (restart required).')
         reloadConfigAct.triggered.connect(self.menuReloadConfig)
         actionsMenu.addAction(reloadConfigAct)
