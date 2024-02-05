@@ -1245,7 +1245,7 @@ def extended_fromisoformat(v):
         raise ValueError
         '''
 
-def parseCSV(txt, delimiter=','):
+def parseCSV(txt, delimiter=',', trim=False):
     '''
         it takes all the values = strings as input and tries to detect
         if the column might be an integer or a timestamp
@@ -1307,21 +1307,21 @@ def parseCSV(txt, delimiter=','):
     
     @profiler
     def check_integer(j):
-        log('check column %i for int' % (j), 5)
+        log(f'check column #{j} ({header[j]}) for int, {trim=}', 5)
         
         reInt = re.compile(r'^-?\d+$')
         
         for ii in range(len(rows)):
             if not reInt.match(rows[ii][j]):
-                log(f'not a digit: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
-                log(f'not a digit, row for the reference: {str(rows[ii])}', 5)
+                log(f'not a number: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
+                log(f'not a number, row for the reference: {str(rows[ii])}', 5)
                 return False
                 
         return True
         
     def check_timestamp(j):
             
-        log('check column %i for timestamp' % (j), 5)
+        log(f'check column {j} for timestamp, {trim=}', 5)
         
         for ii in range(len(rows)):
             try:
@@ -1351,8 +1351,12 @@ def parseCSV(txt, delimiter=','):
         i+=1
         if len(row) != numCols:
             raise csvException(f'Unexpected number of values in row #{i}: {len(row)} != {numCols}')
-        rows.append(row)
-        
+
+        if trim:
+            rows.append([x.strip() for x in row ])
+        else:
+            rows.append(row)
+
     types = ['']*numCols
     
     #detect types

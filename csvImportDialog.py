@@ -1,8 +1,8 @@
 import re
 import os.path
 
-from PyQt5.QtWidgets import (QPushButton, QDialog, QWidget, QLineEdit, QAction, QStyle,
-    QHBoxLayout, QVBoxLayout, QApplication, QLabel, QStatusBar, QPlainTextEdit, QTableWidget, QSplitter, QFileDialog, QComboBox)
+from PyQt5.QtWidgets import (QPushButton, QDialog, QWidget, QLineEdit, QAction, QStyle, QCheckBox,
+                             QHBoxLayout, QVBoxLayout, QApplication, QLabel, QStatusBar, QPlainTextEdit, QTableWidget, QSplitter, QFileDialog, QComboBox)
 
 from QPlainTextEditLN import QPlainTextEditLN
     
@@ -327,8 +327,10 @@ class csvImportDialog(QDialog):
     
         txt = self.csvText.toPlainText()
         
+        trim = self.trimCB.isChecked()
+
         try:
-            self.cols, self.rows = utils.parseCSV(txt, delimiter=';')
+            self.cols, self.rows = utils.parseCSV(txt, delimiter=';', trim=trim)
         except utils.csvException as e:
             self.log(f'CSV parsing error: {e}', True)
             return
@@ -429,6 +431,9 @@ class csvImportDialog(QDialog):
         self.previewTable = QResultSet(None)
         
         self.dpCB = QComboBox()
+        self.trimCB = QCheckBox('Trim spaces around values')
+
+        self.trimCB.setChecked(cfg('importTrim', True))
         
         fontSize = utils.cfg('console-fontSize', 10)
         
@@ -478,6 +483,7 @@ class csvImportDialog(QDialog):
         loCreateInternal.addWidget(parseBtn)
         loCreateInternal.addWidget(QLabel('Parse the CSV input and prepare the import.'))
         loCreateInternal.addStretch(1)
+        loCreateInternal.addWidget(self.trimCB)
         loCreate.addLayout(loCreateInternal)
         loCreate.addWidget(self.createText)
         wrapperCreate.setLayout(loCreate)
