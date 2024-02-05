@@ -3064,7 +3064,8 @@ class chartArea(QFrame):
                     msgHeader = 'initHosts Error'
                     msgText = errStr
 
-                utils.msgDialog(msgHeader, msgText)
+                if eType:
+                    utils.msgDialog(msgHeader, msgText)
 
         except utils.vrsException as e:
             log('[!] variables processing exception: %s' % (str(e)), 1)
