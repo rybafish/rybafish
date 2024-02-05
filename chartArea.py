@@ -3034,7 +3034,7 @@ class chartArea(QFrame):
         self.repaint()
         
         try:
-            newHosts, newKPIs, newStyles, errStr = dp.initHosts(dpidx)
+            newHosts, newKPIs, newStyles, err = dp.initHosts(dpidx)
 
             # append hosts, not replace if that would be requred, hosts would be cleared above
             for h in newHosts:
@@ -3046,11 +3046,26 @@ class chartArea(QFrame):
             for styles in newStyles:
                 self.hostKPIsStyles.append(styles.copy())      # create a corresponding list of KPIs
 
-            if errStr:
+            if err is not None:
+
+                if type(err) == tuple: # modern error provider
+                    eType = err[0]
+                    errStr = err[1]
+                else:
+                    eType = 'customKPI'
+                    errStr = err
+
                 log('[!] initHosts customKPIException: %s' %  errStr, 2)
-                utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n'
-                                + errStr
-                                + '\n\nSee more details in rybafish.log file')
+
+                if eType == 'customKPI':
+                    msgHeader = 'Custom KPI Error'
+                    msgText = 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + errStr + '\n\nSee more details in rybafish.log file'
+                else:
+                    msgHeader = 'initHosts Error'
+                    msgText = errStr
+
+                utils.msgDialog(msgHeader, msgText)
+
         except utils.vrsException as e:
             log('[!] variables processing exception: %s' % (str(e)), 1)
             utils.msgDialog('Initialization Error', 'Variables processing error. Check the variables definition, if the message persists, consider deleting layout.yaml\n\n%s' % (str(e)))
