@@ -11,7 +11,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont
 
 import utils
-from utils import cfg
+from utils import cfg, deb
 
 from QResultSet import QResultSet
 
@@ -314,6 +314,50 @@ class csvImportDialog(QDialog):
             
         return True
 
+    def m_load_check(self):
+        '''check if the table is m_load_hostory and do a simple structure verification'''
+
+        def find(name):
+            for col in self.cols:
+                if col[0].lower().strip() == name:
+                    return col
+
+        target = self.targetObject.text().lower().strip()
+
+        if target in ('m_load_history_host', 'm_load_history_service'):
+
+            errors = []
+
+            host = find('host')
+            time = find('time')
+            port = find('port')
+
+            if not host:
+                errors.append('There is no mandatory HOST column')
+            elif host[1] != 'varchar':
+                errors.append('HOST column must be type VARCHAR or NVARCHAR')
+
+            if not time:
+                errors.append('There is no mandatory TIME column')
+            elif time[1] != 'timestamp':
+                errors.append('TIME column must be type TIMESTAMP')
+
+            if target == 'm_load_history_service':
+                if not port:
+                    errors.append('There is no mandatory PORT column')
+                elif port[1] not in ('int', 'integer', 'bigint'):
+                    errors.append('PORT column must have integer type')
+
+            for col in self.cols:
+                if not col[0].strip().lower() in ('time', 'port', 'host'):
+                    if col[1] not in ('integer', 'bigint', 'int'):
+                        errors.append(f'{col[0].strip()} seems not an integer type...')
+
+            return errors
+        else:
+            return None
+
+
     @profiler
     def doParse(self, dummy=None):
     
@@ -339,6 +383,16 @@ class csvImportDialog(QDialog):
             self.previewTable.rows = self.rows
             self.previewTable.cols = self.cols
             self.previewTable.populate()
+
+
+            if cfg('importCheckM_LOAD', True):
+                errors = self.m_load_check()
+
+                if errors:
+                    self.logText.appendHtml('Standard <font color="red">table structure warning:</font>');
+                    for e in errors:
+                        self.log(e)
+                    self.log('-')
         else:
             return
         

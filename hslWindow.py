@@ -1806,7 +1806,7 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
-        if cfg('dev'):
+        if cfg('dev') and False:
             devMenu = menubar.addMenu('DEV')
             fromtoAct = QAction('set TZ test timestamps', self)
             fromtoAct.setShortcut('Ctrl+Shift+T')

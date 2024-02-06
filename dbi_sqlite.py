@@ -275,16 +275,18 @@ class sqlite():
             if not eMsg and hostRows:
                 deb(f'hostRows: {hostRows=}') #
 
-                for r in srvcRows:
-                    if type(r[2]) != datetime.timestamp or type(r[3]) != datetime.timestamp:
-                        log(f'[w] TIME column type: {type(r[2])}/{type(r[3])}: [{r[2]}]/[{r[3]}]', 2)
+                for r in hostRows:
+                    if type(r[2]) != datetime or type(r[3]) != datetime:
+                        details = f'TIME column type: {type(r[2])}/{type(r[3])}: [{r[2]}]/[{r[3]}]'
+                        log(f'[w] {details}', 2)
                         eMsg = 'TIME column is not timestamp, verify timestamp format: YYYY-MM-DD HH24:MI:SS.ff'
+                        eMsg += '\n\n' + details
 
                 if eMsg is not None:
                     eType = 'm_load_history'
                     eMsg = 'Unexpected m_load_history_host structure:\n\n' + eMsg
                 else:
-                    rows = rows + list(srvcRows)
+                    rows = rows + list(hostRows)
                 
         if service_load_history:
 
@@ -301,9 +303,11 @@ class sqlite():
                     if type(r[1]) != int:
                         log(f'[w] PORT column type: {type(r[1])}: [{r[1]}]', 2)
                         eMsg = 'PORT column is not integer'
-                    elif type(r[2]) != datetime.timestamp or type(r[3]) != datetime.timestamp:
-                        log(f'[w] TIME column type: {type(r[2])}/{type(r[3])}: [{r[2]}]/[{r[3]}]', 2)
+                    elif type(r[2]) != datetime or type(r[3]) != datetime:
+                        details = f'TIME column type: {type(r[2])}/{type(r[3])}: [{r[2]}]/[{r[3]}]'
+                        log(f'[w] {details}', 2)
                         eMsg = 'TIME column is not timestamp, verify timestamp format: YYYY-MM-DD HH24:MI:SS.ff'
+                        eMsg += '\n\n' + details
 
                 if eMsg is not None:
                     eType = 'm_load_history'

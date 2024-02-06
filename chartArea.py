@@ -4146,7 +4146,7 @@ class chartArea(QFrame):
         self.fromEdit = QLineEdit(starttime.strftime('%Y-%m-%d %H:%M:%S'))
         self.toEdit = QLineEdit()
 
-        if cfg('dev'):
+        if cfg('dev') and False:
             self.fromEdit.setText('2023-10-29 20:00:00')
             self.toEdit.setText('2023-10-30 12:00:00')
 
