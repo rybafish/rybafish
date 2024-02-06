@@ -50,6 +50,11 @@ configStats = {}
 @profiler
 def setTZ(ts, s):
     '''set explicit tzinfo to datetime object'''
+
+    if type(ts) != datetime:
+        log(f'[w] setTZ not a datetime object: {ts}, type: {type(ts)}', 1)
+        return ts
+
     import datetime as dt
     tz = dt.timezone(dt.timedelta(seconds=s))
     return ts.replace(tzinfo=tz)
