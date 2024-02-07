@@ -1057,7 +1057,7 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNN):
                     'hierarchy':    kpi[0],
                     'type':         hType,
                     'name':         kpiName,
-                    'group':        kpi[3],
+                    'group':        utils.safeInt(kpi[3]),
                     'label':        kpi[4],
                     'description':  kpi[5],
                     'sUnit':        kpi[6],
