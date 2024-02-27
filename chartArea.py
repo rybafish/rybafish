@@ -558,9 +558,9 @@ class myWidget(QWidget):
             cmenu.addSeparator()
             
             if self.hideGanttLabels:
-                toggleGanttLabels = cmenu.addAction('Show Gantt Labels')
+                toggleGanttLabels = cmenu.addAction('Show Gantt Labels\tCtrl+Shift+L')
             else:
-                toggleGanttLabels = cmenu.addAction('Hide Gantt Labels')
+                toggleGanttLabels = cmenu.addAction('Hide Gantt Labels\tCtrl+Shift+L')
         
         if self.highlightedEntity is not None:
             copyGanttEntity = cmenu.addAction('Copy highlighted gantt entity')
@@ -2220,6 +2220,14 @@ class myWidget(QWidget):
         qp.end()
 
 
+    def toggleGanttLabels(self):
+        if self.hideGanttLabels:
+            self.hideGanttLabels = False
+        else:
+            self.hideGanttLabels = True
+
+        self.repaint()
+        
     def toggleLegend(self):
         if self.legend is None:
             self.legend = 'hosts'
@@ -2900,6 +2908,8 @@ class chartArea(QFrame):
             
         elif event.key() == Qt.Key_L and modifiers == Qt.ControlModifier:
             self.widget.toggleLegend()
+        elif event.key() == Qt.Key_L and modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier:
+            self.widget.toggleGanttLabels()
         else:
             super().keyPressEvent(event)
 
