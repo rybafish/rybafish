@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
     QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog, 
-    QApplication
+                             QApplication
     )
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
@@ -1569,7 +1569,6 @@ class hslWindow(QMainWindow):
         # bottom right frame (KPIs)
         self.kpisTable = kpiTable.kpiTable()
         kpisTable = self.kpisTable
-
 
         # top (main chart area)
         self.chartArea = chartArea.chartArea()
