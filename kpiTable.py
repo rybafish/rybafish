@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QHBoxLayout,
                              QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QItemDelegate, QColorDialog, QApplication, QLabel)
     
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter
+from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter, QFontMetrics
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -153,8 +153,13 @@ class kpiTable(QTableWidget):
         self.filterWidget.setMargin(2)
         self.filterWidget.setStyleSheet("QLabel { background-color : #acf; color :black; }");
         # f = self.filterWidget.font()
+
+        f = self.font()
         # f.setPixelSize(16)
-        # self.filterWidget.setFont(f)
+        fm = QFontMetrics(f)
+        deb(f'font heifgh: {fm.height()}')
+
+        self.filterWidget.setFont(f)
 
         self.filterWidget.hide()
         self.filterWidget.move(21+1, 1)
@@ -737,7 +742,6 @@ class kpiTable(QTableWidget):
         w = self.columnWidth(1) - 1
         # h = self.rowHeight(0)
         h = self.horizontalHeader().height()
-        deb(h)
         self.filterWidget.resize(w, h)
 
     def columnResized(self, idx, oldSize, newSize):

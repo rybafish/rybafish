@@ -212,6 +212,11 @@ class cfgManager():
         except Exception as e:
             log('layout dump issue:' + str(e))
 
+class Preset():
+    '''KPIs preset class with it's own persistence but no dialog yet...'''
+    pass
+
+
 class Layout():
     
     lo = {}

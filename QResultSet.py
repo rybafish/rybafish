@@ -225,6 +225,19 @@ class QResultSet(QTableWidget):
 
         
     @profiler
+    def checkHighlightClr(self, col, value):
+        '''detect color for highlighter, returns brush'''
+
+        column = self.headers[col].lower()
+        hlc = highlight.hlc.get(column)
+
+        if hlc:
+            if value in hlc:
+                return hlc[value]
+
+        return QBrush(QColor('#dfe'))
+
+    @profiler
     def checkHighlight(self, col, value):
         '''check for additional highlighters based on cell value'''
 
@@ -1191,7 +1204,8 @@ class QResultSet(QTableWidget):
                     hl = self.checkHighlight(c, val)
                         
                     if hl:
-                        item.setBackground(QBrush(QColor('#dfe')))
+                        hlclr = self.checkHighlightClr(c, val)
+                        item.setBackground(hlclr)
                         item.setToolTip(hl)
 
                     if alert_str:
