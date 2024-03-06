@@ -704,6 +704,13 @@ class myWidget(QWidget):
             host = self.highlightedKpiHost
             gb = self.highlightedGBI
             
+            kpiStylesNNN = self.hostKPIsStyles[host]
+            subtype =  kpiStylesNNN[kpi].get('subtype')
+
+            if subtype != 'multiline':
+                log('[W] unexpected multiline call while not multiline?', 1)
+                return
+
             gbv = self.ndata[host][kpi][gb][0]
             
             clipboard = QApplication.clipboard()
