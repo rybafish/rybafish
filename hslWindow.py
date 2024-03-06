@@ -169,6 +169,10 @@ class hslWindow(QMainWindow):
             self.closeTab()
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_L:
             self.chartArea.widget.toggleLegend()
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_L:
+            self.chartArea.widget.toggleLegend()
+        elif event.key() == Qt.Key_L and modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier:
+            self.chartArea.widget.toggleGanttLabels()
         else:
             super().keyPressEvent(event)
             

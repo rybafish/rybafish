@@ -345,7 +345,7 @@ class console(QPlainTextEditLN):
         self.manualStylesRB = [] # rollback styles
 
         self.lastSearch = ''    #for searchDialog
-        
+
         super().__init__(parent)
 
         fontSize = utils.cfg('console-fontSize', 10)
@@ -1352,6 +1352,8 @@ class sqlConsole(QWidget):
         self.prod = None                # True for production connections
 
         self.dpid = dpid
+
+        self.finishNotification = False
 
         super().__init__()
         self.initUI()
@@ -3190,6 +3192,11 @@ class sqlConsole(QWidget):
             #self.thread.quit()
             #self.sqlRunning = False
 
+            if self.finishNotification:
+                log('okay, play the fail.wav sound...', 3)
+                self.alertProcessing('fail.wav', 30, manual=True)
+                self.notificationToggle(False)
+
             if self.conn is not None and self.dbi is not None:
                 self.indicator.status = 'error'
                 
@@ -3333,6 +3340,14 @@ class sqlConsole(QWidget):
 
             return
         
+        # normal sql finish processing below
+
+
+        if self.finishNotification:
+            log('okay, play the done.wav sound...', 3)
+            self.alertProcessing('done.wav', 30, manual=True)
+            self.notificationToggle(False)
+
         sql, result, refreshMode = self.sqlWorker.args
         
         dbCursor = self.sqlWorker.dbCursor
@@ -3641,9 +3656,8 @@ class sqlConsole(QWidget):
     '''
 
     def reportRuntime(self):
-            self.selfRaise.emit(self)
-    
-    
+        self.selfRaise.emit(self)
+
     def toolbarExecuteNormal(self):
         self.executeSelection('normal')
 
@@ -3668,6 +3682,15 @@ class sqlConsole(QWidget):
     def toolbarAbort(self):
         self.cancelSession()
         
+    def notificationToggle(self, state):
+        self.tbNotify.setChecked(state)
+
+    def toolbarNotify(self, state):
+        self.finishNotification = state
+
+        tname = self.tabname.rstrip(' *')
+        log(f'console {tname} notification set: {state}')
+
     def toolbarRefresh(self, state):
     
         if self.lockRefreshTB:
@@ -3753,7 +3776,14 @@ class sqlConsole(QWidget):
             self.tbRefresh.setCheckable(True)
             self.tbRefresh.toggled.connect(self.toolbarRefresh)
             self.toolbar.addWidget(self.tbRefresh)
-            
+
+            self.tbNotify = QToolButton()
+            self.tbNotify.setIcon(QIcon(resourcePath('ico', 'notification.png')))
+            self.tbNotify.setToolTip('Sound notification on termination')
+            self.tbNotify.setCheckable(True)
+            self.tbNotify.toggled.connect(self.toolbarNotify)
+            self.toolbar.addWidget(self.tbNotify)
+
             self.toolbar.addSeparator()
             
             self.ABAPCopy = QToolButton()
