@@ -90,7 +90,7 @@ class dataProvider:
                 
         etime = datetime.datetime.now()
 
-        if cfg('dev'):
+        if cfg('dev?'):
             stime = datetime.datetime.strptime('2023-10-30 00:00:00', '%Y-%m-%d %H:%M:%S')
             etime = datetime.datetime.strptime('2023-10-30 02:00:00', '%Y-%m-%d %H:%M:%S')
 
@@ -153,13 +153,13 @@ class dataProvider:
         ctime = datetime.datetime.now() - datetime.timedelta(seconds= 18 * 3600)
         ctime -= datetime.timedelta(seconds= ctime.timestamp() % 3600)
 
-        if cfg('dev'):
+        if cfg('dev?'):
             # ctime = datetime.datetime.strptime('2023-10-30 00:00:00', '%Y-%m-%d %H:%M:%S')
             ctime = datetime.datetime.strptime(fromto['from'], '%Y-%m-%d %H:%M:%S')
 
         if 'cs-exp_st' in kpis:
             t0 = ctime + datetime.timedelta(seconds=(3600*8))
-            t0 = datetime.datetime.strptime('2023-10-30 00:00:00', '%Y-%m-%d %H:%M:%S')
+            # t0 = datetime.datetime.strptime('2023-10-30 00:00:00', '%Y-%m-%d %H:%M:%S')
             t1 = t0 + datetime.timedelta(seconds=(3600*1))
 
             t2 = t1 + datetime.timedelta(seconds=(3600*0.5))
@@ -182,12 +182,26 @@ class dataProvider:
             #data['time'] = None
             
             data['cs-exp_st'] = {}
-            
+
+
+            tzUTC = 0
+            t0 = utils.setTZ(t0, tzUTC)
+            t1 = utils.setTZ(t1, tzUTC)
+            t2 = utils.setTZ(t2, tzUTC)
+            t3 = utils.setTZ(t3, tzUTC)
+            t4 = utils.setTZ(t4, tzUTC)
+            t5 = utils.setTZ(t5, tzUTC)
+            t6 = utils.setTZ(t6, tzUTC)
+            t7 = utils.setTZ(t7, tzUTC)
+            t8 = utils.setTZ(t8, tzUTC)
+            t9 = utils.setTZ(t9, tzUTC)
+            t10 = utils.setTZ(t10, tzUTC)
+            t11 = utils.setTZ(t11, tzUTC)
+
             if host['port'] == '30040' and host['host'] == 'dummy1':
                 data['cs-exp_st']['Stacy'] = [[t0, t1, '0:00 - 1:00', 0, '4gb'], [t2, t3, '1:30 - 3:30', 0, 'x gb']]
-                # data['cs-exp_st']['entitiy2'] = [[t4, t5, 'select...', 0, ''], [t6, t7, 'asdf', 0, ''], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0, '']]
 
-            if host['port'] == '30040' and host['host'] == 'dummy1-':
+            if host['port'] == '30040' and host['host'] == 'dummy1':
                 data['cs-exp_st']['SASCHA'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0, ''], [t2, t3, 'asdf', 1, 'x gb']]
                 data['cs-exp_st']['LUCIA'] = [[t4, t5, 'select...', 0, ''], [t6, t7, 'asdf', 0, ''], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0, '']]
             else:

@@ -711,6 +711,10 @@ class myWidget(QWidget):
                 log('[W] unexpected multiline call while not multiline?', 1)
                 return
 
+            if kpi not in self.ndata[host]:
+                log(f'[w] kpi is not there? ({kpi})', 2)
+                return
+
             gbv = self.ndata[host][kpi][gb][0]
             
             clipboard = QApplication.clipboard()
@@ -723,6 +727,10 @@ class myWidget(QWidget):
             kpi = self.highlightedKpi
             host = self.highlightedKpiHost
             range_i = self.highlightedRange
+
+            if kpi not in self.ndata[host]:
+                log(f'[w] kpi is not there? ({kpi})', 2)
+                return
 
             if entity in self.ndata[host][kpi]:
             
@@ -3370,12 +3378,19 @@ class chartArea(QFrame):
                         if cfg('loglevel', 3) > 3:
                             log('unclick, %s, %s:' % (str(hst), kpi))
                             log('kpis before unclick: %s' % (self.widget.nkpis[hst]))
+
+                        if self.widget.highlightedKpiHost == hst and self.widget.highlightedKpi == kpi:
+                            log('clean up highlightinh #1 (massive)', 4)
+                            self.widget.highlightedKpi = None
+                            self.widget.highlightedKpiHost = None
+                            self.widget.highlightedEntity = None
+
                         if kpi in self.widget.nkpis[hst]:
                             self.widget.nkpis[hst].remove(kpi)
                             
                             if kpi in self.widget.ndata[hst]: #might be empty for alt-added (2019-08-30)
                                 del(self.widget.ndata[hst][kpi])
-                                
+
                         log('kpis after unclick: %s' % (self.widget.nkpis[hst]), 4)
                         log('data keys: %s' % str(self.widget.ndata[hst].keys()), 4)
                         
@@ -3383,7 +3398,13 @@ class chartArea(QFrame):
                 if cfg('loglevel', 3) > 3:
                     log('unclick, %s, %s:' % (str(host), kpi))
                     log('kpis before unclick: %s' % (self.widget.nkpis[host]))
-                
+
+                if self.widget.highlightedKpiHost == host and self.widget.highlightedKpi == kpi:
+                    log('clean up highlightinh #2', 4)
+                    self.widget.highlightedKpi = None
+                    self.widget.highlightedKpiHost = None
+                    self.widget.highlightedEntity = None
+
                 self.widget.nkpis[host].remove(kpi) # kpis is a list
                 if kpi in self.widget.ndata[host]: #might be empty for alt-added
                     del(self.widget.ndata[host][kpi]) # ndata is a dict
@@ -4163,7 +4184,7 @@ class chartArea(QFrame):
         self.fromEdit = QLineEdit(starttime.strftime('%Y-%m-%d %H:%M:%S'))
         self.toEdit = QLineEdit()
 
-        if cfg('dev') and False:
+        if cfg('dev?') and False:
             self.fromEdit.setText('2023-10-29 20:00:00')
             self.toEdit.setText('2023-10-30 12:00:00')
 
