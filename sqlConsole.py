@@ -1354,6 +1354,7 @@ class sqlConsole(QWidget):
         self.dpid = dpid
 
         self.finishNotification = False
+        self.finishNotificationReset = True
 
         super().__init__()
         self.initUI()
@@ -3194,7 +3195,8 @@ class sqlConsole(QWidget):
 
             if self.finishNotification:
                 log('okay, play the fail.wav sound...', 3)
-                self.alertProcessing('fail.wav', 30, manual=True)
+                self.alertProcessing('fail.wav', cfg('notificationVolume', 50), manual=True)
+                print('call toggle fail')
                 self.notificationToggle(False)
 
             if self.conn is not None and self.dbi is not None:
@@ -3345,8 +3347,13 @@ class sqlConsole(QWidget):
 
         if self.finishNotification:
             log('okay, play the done.wav sound...', 3)
-            self.alertProcessing('done.wav', 30, manual=True)
-            self.notificationToggle(False)
+            self.alertProcessing('done.wav', cfg('notificationVolume', 50), manual=True)
+
+
+            if self.finishNotificationReset:
+                print(f'call toggle ok, {self.finishNotificationReset=}')
+                self.notificationToggle(False) # disable the toolbar button
+
 
         sql, result, refreshMode = self.sqlWorker.args
         
@@ -3686,10 +3693,18 @@ class sqlConsole(QWidget):
         self.tbNotify.setChecked(state)
 
     def toolbarNotify(self, state):
-        self.finishNotification = state
+
+        deb('toolbar Notify()')
+        deb(f'{self.finishNotification=}')
+        deb(f'{self.finishNotificationReset=}')
+
+        modifiers = QApplication.keyboardModifiers()
+
+        if modifiers & Qt.ControlModifier:
+            self.finishNotificationReset = not state
 
         tname = self.tabname.rstrip(' *')
-        log(f'console {tname} notification set: {state}')
+        log(f'console {tname} notification set: {state}, just for a single execution? {self.finishNotificationReset}')
 
     def toolbarRefresh(self, state):
     
@@ -3779,7 +3794,7 @@ class sqlConsole(QWidget):
 
             self.tbNotify = QToolButton()
             self.tbNotify.setIcon(QIcon(resourcePath('ico', 'notification.png')))
-            self.tbNotify.setToolTip('Sound notification on termination')
+            self.tbNotify.setToolTip('Play a sound on SQL finish (use Ctrl+click to make permanent)')
             self.tbNotify.setCheckable(True)
             self.tbNotify.toggled.connect(self.toolbarNotify)
             self.toolbar.addWidget(self.tbNotify)

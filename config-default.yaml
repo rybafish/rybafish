@@ -101,6 +101,9 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 ## Play a sound when the autorefresh console is disconnected
 #alertDisconnected: 'disconnected.wav'
 
+## Volume used for the notification sound
+#notificationVolume: 50
+
 ## max value length for ABAP-copy
 #abap-length: 32
 
