@@ -356,7 +356,7 @@ class QResultSet(QTableWidget):
         clr = QColor(int(clr.red()*0.9), int(clr.green()*0.9), int(clr.blue()*0.95))
         hlBrushLOB = QBrush(clr)
         
-        hl2Brush = QBrush(QColor('#dfe'))
+        # hl2Brush = QBrush(QColor('#dfe')) it now comes from checkHighlightClr
 
         wBrush = QBrush(QColor('#ffffff'))
         # wBrush = QBrush(Qt.NoBrush) - seems here real reset needed, to fix previous stuff on refresh
@@ -392,7 +392,8 @@ class QResultSet(QTableWidget):
                 deb(f'check: column {j}, value: {self.item(i, j).text()}', comp='highlight')
                 if self.checkHighlight(j, self.item(i, j).text()):
                     deb('some color...', comp='highlight')
-                    cl = hl2Brush.color()
+                    # cl = hl2Brush.color()
+                    cl = self.checkHighlightClr(j, self.item(i, j).text()).color()
                 else:
                     deb('nope...', comp='highlight')
                     cl = QBrush(Qt.NoBrush).color()
@@ -430,7 +431,8 @@ class QResultSet(QTableWidget):
                         if noBg:
                             useBrush = wBrush
                         else:
-                            useBrush = hl2Brush
+                            # useBrush = hl2Brush
+                            useBrush = self.checkHighlightClr(j, self.item(i, j).text())
 
                     self.item(i, j).setBackground(useBrush)
 
