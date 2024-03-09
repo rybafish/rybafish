@@ -3331,10 +3331,20 @@ class chartArea(QFrame):
                 try:
                     t0 = time.time()
                     
-                    log('need to check here if all the kpis actually exist...')
-                    log(str(host))
-                    log(str(kpis))
+                    log('request kpis: need to check here if all the kpis actually exist...')
+                    log(f'host: {host}')
+                    log(f'kpis: {kpis}')
                     
+                    kpiStylesNNN = self.hostKPIsStyles[host]
+
+                    for k in self.widget.nkpis[host]:
+                        log(f'kpi: {k}')
+                        if k not in kpiStylesNNN:
+                            log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
+                            self.widget.nkpis[host].remove(k)
+                        else:
+                            log('ok')
+
                     dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], self.hostKPIsStyles[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     
@@ -3391,8 +3401,10 @@ class chartArea(QFrame):
 
                         if kpi in self.widget.nkpis[hst]:
                             self.widget.nkpis[hst].remove(kpi)
-                            
+                            log(f'delete {kpi} from nkpis list for {hst}', 4)
+
                             if kpi in self.widget.ndata[hst]: #might be empty for alt-added (2019-08-30)
+                                log(f'delete {kpi} data from {hst}', 4)
                                 del(self.widget.ndata[hst][kpi])
 
                         log('kpis after unclick: %s' % (self.widget.nkpis[hst]), 4)
@@ -3668,6 +3680,7 @@ class chartArea(QFrame):
             for kpi in data.keys():
                 scales[kpi] = {}
                 
+            log(f'scales keys: {scales.keys()}', 4)
             #init zero max
             
             for kpi in data.keys():
@@ -3698,8 +3711,7 @@ class chartArea(QFrame):
                         
                     scales[kpi]['entities'] = eNum
                     scales[kpi]['total'] = total
-                    # print ('%i/%i' % (eNum, total))
-                        
+
                     continue
                     
                 timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
@@ -3943,8 +3955,9 @@ class chartArea(QFrame):
                         
                         kpiStylesNNN = self.hostKPIsStyles[host]
                         
+                        log(f'nkpis for host {host}: {self.widget.nkpis[host]}')
                         for k in self.widget.nkpis[host]:
-                            log(k)
+                            log(f'kpi: {k}')
                             if k not in kpiStylesNNN:
                                 log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
                                 self.widget.nkpis[host].remove(k)
