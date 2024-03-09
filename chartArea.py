@@ -840,8 +840,11 @@ class myWidget(QWidget):
 
         for kpi in kpis:
         
-            #log('', 5)
-            #log('scanForHint kpi: %s' %(kpi), 5)
+            log('scanForHint kpi: %s' %(kpi), 5)
+
+            if not kpi in scales:
+                log(f'[w] kpi {kpi} not in scales, skip', 2)
+                continue
         
             if kpi[:4] == 'time':
                 continue
@@ -1050,7 +1053,6 @@ class myWidget(QWidget):
                 
                 #y = self.nscales[h][kpi]['y_min'] + y*y_scale #562
                 #y = (y - self.nscales[h][kpi]['y_min']) * y_scale #562
-
 
                 ymin = y_min
                 #ymin = scales[kpi]['y_min'] + ymin*y_scale                     #562
