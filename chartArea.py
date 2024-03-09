@@ -75,6 +75,7 @@ class myWidget(QWidget):
     highlightedKpiHost = None # host for currently highlihed kpi
     
     highlightedPoint = None #point currently highlihed (currently just one)
+    highlightedNormVal = None
     
     highlightedGBI = None # multiline groupby index 
     
@@ -1114,8 +1115,11 @@ class myWidget(QWidget):
                         self.highlightedRange = None
                     
                     if reportDelta:
-                        deltaVal = normVal - self.highlightedNormVal
-                        deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
+                        if self.highlightedNormVal is None:
+                            deltaVal = ''
+                        else:
+                            deltaVal = normVal - self.highlightedNormVal
+                            deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
                     else:
                         deltaVal = ''
 
