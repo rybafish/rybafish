@@ -3682,6 +3682,7 @@ class chartArea(QFrame):
             for kpi in data.keys():
                 scales[kpi] = {}
                 
+            log(f'data keys: {data.keys()}', 4)
             log(f'scales keys: {scales.keys()}', 4)
             #init zero max
             
@@ -3753,6 +3754,7 @@ class chartArea(QFrame):
                         
                         
                     anti_crash_len = len(scan)
+                    deb(f'anti crash scan, {kpi} -> {anti_crash_len}')
                 
                     try:
                         for i in range(0, array_size):

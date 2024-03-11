@@ -398,6 +398,19 @@ class dataProvider(QObject):
         tzShift = self.dbProperties.get('timestampShift', 0)
         tzUTC = self.dbProperties.get('utcOffset', 0)
 
+        kpisToDel = []
+        for kpi in data.keys():
+            if kpi in kpiIn or kpi == 'time':
+                pass
+            else:
+                log(f'[w] extra clean-up required as {kpi} exists in data but not appear list of requested kpis', 2)
+                log(f'[w] lenght to be deleted: {len(data[kpi])}', 2)
+                kpisToDel.append(kpi)
+
+        for kpi in kpisToDel:
+            log(f'deleting {kpi}...', 2)
+            del data[kpi]
+
         if tzShift:
             if fromto['from'] != '' and fromto['from'][0] != '-': # regular time
                 ftime = datetime.datetime.strptime(fromto['from'], '%Y-%m-%d %H:%M:%S')
