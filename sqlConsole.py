@@ -2154,15 +2154,9 @@ class sqlConsole(QWidget):
     
         if fileName == '' or fileName is None:
             fileName = cfg('alertSound', 'default')
-        else:
-            pass
-            
-        #print('filename:', fileName)
-            
+
         if fileName.find('.') == -1:
             fileName += '.wav'
-            
-        #print('filename:', fileName)
             
         if '/' in fileName or '\\' in fileName:
             #must be a path to some file...
@@ -2180,10 +2174,6 @@ class sqlConsole(QWidget):
                 
             fileName = fileNamePath
                 
-        #print('filename:', fileName)
-
-        #log('Sound file name: %s' % fileName, 4)
-        
         if not os.path.isfile(fileName):
             log(f'warning: sound file does not exist: {fileName} will use default.wav', 2)
             fileName = os.path.join('snd', 'default.wav')
@@ -2205,13 +2195,13 @@ class sqlConsole(QWidget):
         except ValueError:
             volume = 80
             
+        log(f'Play sound file: {fileName}, volume: {volume}', 5)
+
         volume /= 100
         
         if not manual:
             self.indicator.status = 'alert'
 
-        log(f'sound file: {fileName}', 5)
-        
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
@@ -3196,7 +3186,6 @@ class sqlConsole(QWidget):
             if self.finishNotification:
                 log('okay, play the fail.wav sound...', 3)
                 self.alertProcessing('fail.wav', cfg('notificationVolume', 50), manual=True)
-                print('call toggle fail')
                 self.notificationToggle(False)
 
             if self.conn is not None and self.dbi is not None:
@@ -3351,7 +3340,6 @@ class sqlConsole(QWidget):
 
 
             if self.finishNotificationReset:
-                print(f'call toggle ok, {self.finishNotificationReset=}')
                 self.notificationToggle(False) # disable the toolbar button
 
 
@@ -3702,6 +3690,8 @@ class sqlConsole(QWidget):
 
         if modifiers & Qt.ControlModifier:
             self.finishNotificationReset = not state
+
+        self.finishNotification = state
 
         tname = self.tabname.rstrip(' *')
         log(f'console {tname} notification set: {state}, just for a single execution? {self.finishNotificationReset}')
