@@ -3186,7 +3186,9 @@ class sqlConsole(QWidget):
             if self.finishNotification:
                 log('okay, play the fail.wav sound...', 3)
                 self.alertProcessing('fail.wav', cfg('notificationVolume', 50), manual=True)
-                self.notificationToggle(False)
+                # self.notificationToggle(False)
+                if self.finishNotificationReset:
+                    self.notificationToggle(False) # disable the toolbar button
 
             if self.conn is not None and self.dbi is not None:
                 self.indicator.status = 'error'
@@ -3689,7 +3691,11 @@ class sqlConsole(QWidget):
         modifiers = QApplication.keyboardModifiers()
 
         if modifiers & Qt.ControlModifier:
-            self.finishNotificationReset = not state
+            # self.finishNotificationReset = not state
+            if state:
+                self.finishNotificationReset = False
+        else:
+            self.finishNotificationReset = True
 
         self.finishNotification = state
 
