@@ -775,6 +775,10 @@ class kpiTable(QTableWidget):
         k = event.text()
         kcode = event.key()
 
+        if modifiers & Qt.AltModifier:
+            super().keyPressEvent(event)
+            return
+
         if k.isalnum() or k == '_':
             self.filter += k
 
