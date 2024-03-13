@@ -106,6 +106,7 @@ class PresetsDialog(QDialog):
         rows = []
 
         if not preset:
+            self.presetTab.setRowCount(0)
             return
 
         for host in preset.keys():
@@ -151,6 +152,7 @@ class PresetsDialog(QDialog):
         if preset:
             self.fillPreset(preset)
         else:
+            self.presetTab.setRowCount(0)
             log(f'[w] unknown preset: {name}', 2)
 
     def initUI(self, preset):
@@ -189,7 +191,7 @@ class PresetsDialog(QDialog):
         vbox.addLayout(nameBox)
         vbox.addWidget(self.presetTab)
 
-        okButton = QPushButton('Ok')
+        okButton = QPushButton('Save')
         cButton = QPushButton('Cancel')
 
         okButton.clicked.connect(self.doOk)
@@ -207,6 +209,7 @@ class PresetsDialog(QDialog):
             vbox.addWidget(QLabel('You can actually only delete presets one by one with this dialog.'))
             vbox.addWidget(QLabel('Worst case - edit presets.yaml directly.'))
             vbox.addLayout(ocBox)
+            ocBox.addWidget(cButton)
 
         else:
             # create preset mode

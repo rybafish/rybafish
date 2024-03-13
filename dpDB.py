@@ -399,6 +399,10 @@ class dataProvider(QObject):
         tzUTC = self.dbProperties.get('utcOffset', 0)
 
         kpisToDel = []
+
+        deb(f'getData data keys: {data.keys()}')
+        deb(f'getData requested kpis: {kpiIn}')
+
         for kpi in data.keys():
             if kpi in kpiIn or kpi == 'time':
                 pass

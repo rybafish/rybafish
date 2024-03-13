@@ -585,6 +585,7 @@ class hslWindow(QMainWindow):
             self.presetsSubMenu.addAction(noPresets)
 
     def menuKPIsRestorePreset(self, presetName):
+        '''restore preset based on name'''
         preset = presetsDialog.presets.get(presetName)
 
         log(f'Extracting preset: {presetName}', 4)
@@ -632,15 +633,20 @@ class hslWindow(QMainWindow):
                     log(f'Restoring: {hname} --> {kpis}', 5)
                     self.chartArea.widget.nkpis[hi] = kpis
 
-                    if not hostWithKpis:
+                    if hostWithKpis is None:
                         hostWithKpis = hi # remmember host to switch to after restore
                 else:
-                    log(f'Restoring: {hname} --> []', 5)
+                    log(f'Restoring 1: {hname} --> []', 5)
                     self.chartArea.widget.nkpis[hi].clear()
+            else:
+                log(f'Restoring 2: {hname} --> []', 5)
+                self.chartArea.widget.nkpis[hi].clear()
 
-        if not hostWithKpis:
+
+        if hostWithKpis is None:
             hostWithKpis = self.hostTable.currentRow()
 
+        self.hostTable.setCurrentCell(hostWithKpis, 0)
         self.kpisTable.refill(hostWithKpis)
 
     def menuKPIsRestore(self):
@@ -669,6 +675,9 @@ class hslWindow(QMainWindow):
 
         if rslt == QDialog.Accepted:
             self.menuPresetPopulate()
+        else:
+            log('manage presets cancel, do reload...', 4)
+            presetsDialog.presets = presetsDialog.Presets()
 
     def menuKPIsSave(self):
         self.kpisSave = {}
@@ -702,7 +711,7 @@ class hslWindow(QMainWindow):
                 idx = style.get('sql')
 
                 if idx:
-                    vars = kpiDescriptions.vrsStrDef.get(idx)
+                    vars = kpiDescriptions.vrsStr.get(idx)
 
                 if vars is None:
                     kpisVars.append(kpi)   # no vars - single value
@@ -1928,7 +1937,7 @@ class hslWindow(QMainWindow):
         layoutMenu.addAction(layoutAct)
         layoutMenu.addSeparator()
             
-        kpisSave = QAction('Crate KPIs Preset', self)
+        kpisSave = QAction('Save KPIs Preset', self)
         kpisSave.setStatusTip('Save currently enabled KPIs to quickly restore later')
         kpisSave.setShortcut('Alt+P')
         kpisSave.triggered.connect(self.menuKPIsSave)
