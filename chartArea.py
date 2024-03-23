@@ -3720,6 +3720,10 @@ class chartArea(QFrame):
                 timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
                     
                 # array_size = len(self.widget.ndata[h][timeKey]) # 2020-03-11
+
+                if not timeKey in data:
+                    continue
+
                 array_size = len(data[timeKey])
                 
                 if array_size == 0:
