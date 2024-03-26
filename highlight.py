@@ -4,11 +4,13 @@
 import os
 from utils import cfg, log, deb
 from yaml import safe_load, YAMLError
+from PyQt5.QtGui import QColor, QBrush
 
 hll = {}                        # highlight list, key = column name
                                 # value - dict of highlights: key / desc
 
-hlc = {}                        # hl colors
+hlc = {}                        # hl colors, key = column
+                                # value: dict key / color
 
 def color(column):
     return hlc.get(column, '')
@@ -31,6 +33,24 @@ def loadSingleYaml(column, filename):
 
     if not column in hll:
         hll[column] = {}
+
+
+    if highlights.get('color'):
+        color = highlights.pop('color')
+
+        try:
+            brush = QBrush(QColor(color))
+            deb(f'brush created: {color}')
+        except Exception as ex:
+            brush = QBrush(QColor('blue'))
+            log(f'[w] Cannot create color with "{color}": {ex}, using red', 1)
+            deb(f'brush created: {color}')
+
+        if not column in hlc:
+            hlc[column] = {}
+
+        for item in highlights:
+            hlc[column][item] = brush
 
     c += len(highlights)
     hll[column].update(highlights)

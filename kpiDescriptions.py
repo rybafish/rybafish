@@ -80,10 +80,13 @@ def colorsHTML(colors):
     d = {}
     
     for key, value in colors.items():
-        v = value[0]*256*256 + value[1]*256 + value[2]
-        
-        d[key] = '#' + hex(v)[2:]
-    
+        # v = value[0]*256*256 + value[1]*256 + value[2]
+        # d[key] = '#' + hex(v)[2:]
+
+        r, g, b = value[0], value[1], value[2]
+        d[key] = f'#{r:02x}{g:02x}{b:02x}'
+
+
     return d
     
 
@@ -95,12 +98,16 @@ def colorsHTMLinit(colors):
     for key, value in colors.items():
         
         v = value.lstrip('#')
+
+        if len(v) != 6:
+            log(f'invalid color, cannot be decoded: "{v}"', 2) # #948
+            continue
+
         r = int(v[0:2], 16)
         g = int(v[2:4], 16)
         b = int(v[4:6], 16)
-        
-        customColors[key] = (r, g, b)
 
+        customColors[key] = (r, g, b)
     
 def customPen(kpiKey, defaultPen):
     '''
@@ -1057,7 +1064,7 @@ def initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNN):
                     'hierarchy':    kpi[0],
                     'type':         hType,
                     'name':         kpiName,
-                    'group':        kpi[3],
+                    'group':        utils.safeInt(kpi[3]),
                     'label':        kpi[4],
                     'description':  kpi[5],
                     'sUnit':        kpi[6],

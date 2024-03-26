@@ -345,7 +345,7 @@ class console(QPlainTextEditLN):
         self.manualStylesRB = [] # rollback styles
 
         self.lastSearch = ''    #for searchDialog
-        
+
         super().__init__(parent)
 
         fontSize = utils.cfg('console-fontSize', 10)
@@ -1353,6 +1353,9 @@ class sqlConsole(QWidget):
 
         self.dpid = dpid
 
+        self.finishNotification = False
+        self.finishNotificationReset = True
+
         super().__init__()
         self.initUI()
         
@@ -2151,15 +2154,9 @@ class sqlConsole(QWidget):
     
         if fileName == '' or fileName is None:
             fileName = cfg('alertSound', 'default')
-        else:
-            pass
-            
-        #print('filename:', fileName)
-            
+
         if fileName.find('.') == -1:
             fileName += '.wav'
-            
-        #print('filename:', fileName)
             
         if '/' in fileName or '\\' in fileName:
             #must be a path to some file...
@@ -2177,10 +2174,6 @@ class sqlConsole(QWidget):
                 
             fileName = fileNamePath
                 
-        #print('filename:', fileName)
-
-        #log('Sound file name: %s' % fileName, 4)
-        
         if not os.path.isfile(fileName):
             log(f'warning: sound file does not exist: {fileName} will use default.wav', 2)
             fileName = os.path.join('snd', 'default.wav')
@@ -2202,13 +2195,13 @@ class sqlConsole(QWidget):
         except ValueError:
             volume = 80
             
+        log(f'Play sound file: {fileName}, volume: {volume}', 5)
+
         volume /= 100
         
         if not manual:
             self.indicator.status = 'alert'
 
-        log(f'sound file: {fileName}', 5)
-        
         self.sound = QSoundEffect()
         soundFile = QUrl.fromLocalFile(fileName)
         self.sound.setSource(soundFile)
@@ -3190,6 +3183,13 @@ class sqlConsole(QWidget):
             #self.thread.quit()
             #self.sqlRunning = False
 
+            if self.finishNotification:
+                log('okay, play the fail.wav sound...', 3)
+                self.alertProcessing('fail.wav', cfg('notificationVolume', 50), manual=True)
+                # self.notificationToggle(False)
+                if self.finishNotificationReset:
+                    self.notificationToggle(False) # disable the toolbar button
+
             if self.conn is not None and self.dbi is not None:
                 self.indicator.status = 'error'
                 
@@ -3333,6 +3333,18 @@ class sqlConsole(QWidget):
 
             return
         
+        # normal sql finish processing below
+
+
+        if self.finishNotification:
+            log('okay, play the done.wav sound...', 3)
+            self.alertProcessing('done.wav', cfg('notificationVolume', 50), manual=True)
+
+
+            if self.finishNotificationReset:
+                self.notificationToggle(False) # disable the toolbar button
+
+
         sql, result, refreshMode = self.sqlWorker.args
         
         dbCursor = self.sqlWorker.dbCursor
@@ -3358,7 +3370,7 @@ class sqlConsole(QWidget):
             sptStr = ' (' + utils.formatTimeus(spt) + ')'
 
         # logText = 'Query execution time: %s' % utils.formatTime(t1-t0)
-        timeStr = utils.formatTime(t1-t0, skipSeconds = True)
+        timeStr = utils.formatTime(t1-t0, skipSeconds=True)
         logText = f'Query execution time: {timeStr}{sptStr}'
 
         rows_list = self.sqlWorker.rows_list
@@ -3641,9 +3653,8 @@ class sqlConsole(QWidget):
     '''
 
     def reportRuntime(self):
-            self.selfRaise.emit(self)
-    
-    
+        self.selfRaise.emit(self)
+
     def toolbarExecuteNormal(self):
         self.executeSelection('normal')
 
@@ -3668,6 +3679,29 @@ class sqlConsole(QWidget):
     def toolbarAbort(self):
         self.cancelSession()
         
+    def notificationToggle(self, state):
+        self.tbNotify.setChecked(state)
+
+    def toolbarNotify(self, state):
+
+        deb('toolbar Notify()')
+        deb(f'{self.finishNotification=}')
+        deb(f'{self.finishNotificationReset=}')
+
+        modifiers = QApplication.keyboardModifiers()
+
+        if modifiers & Qt.ControlModifier:
+            # self.finishNotificationReset = not state
+            if state:
+                self.finishNotificationReset = False
+        else:
+            self.finishNotificationReset = True
+
+        self.finishNotification = state
+
+        tname = self.tabname.rstrip(' *')
+        log(f'console {tname} notification set: {state}, just for a single execution? {self.finishNotificationReset}')
+
     def toolbarRefresh(self, state):
     
         if self.lockRefreshTB:
@@ -3753,7 +3787,14 @@ class sqlConsole(QWidget):
             self.tbRefresh.setCheckable(True)
             self.tbRefresh.toggled.connect(self.toolbarRefresh)
             self.toolbar.addWidget(self.tbRefresh)
-            
+
+            self.tbNotify = QToolButton()
+            self.tbNotify.setIcon(QIcon(resourcePath('ico', 'notification.png')))
+            self.tbNotify.setToolTip('Play a sound on SQL finish (use Ctrl+click to make permanent)')
+            self.tbNotify.setCheckable(True)
+            self.tbNotify.toggled.connect(self.toolbarNotify)
+            self.toolbar.addWidget(self.tbNotify)
+
             self.toolbar.addSeparator()
             
             self.ABAPCopy = QToolButton()

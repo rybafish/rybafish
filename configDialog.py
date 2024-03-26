@@ -37,7 +37,17 @@ class Config(QDialog):
                 if dbi:
                     for i in range(self.driverCB.count()):
                         if dbidict[self.driverCB.itemText(i)] == dbi:
-                            self.driverCB.setCurrentIndex(i)
+                            if dbi != 'HDB':
+                                self.driverCB.setCurrentIndex(i)
+                                break
+
+                            if conf.get('auth') and self.driverCB.itemText(i) == 'HANA Cloud':
+                                self.driverCB.setCurrentIndex(i)
+                                break
+
+                            if not conf.get('auth') and self.driverCB.itemText(i) == 'HANA DB':
+                                self.driverCB.setCurrentIndex(i)
+                                break
 
                 if 'readonly' in conf:
                     self.readOnly.setChecked(conf['readonly'])
@@ -55,6 +65,8 @@ class Config(QDialog):
         
         super(Config, self).__init__(parent)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
+
+        self.auth = None
         
         self.cfgManager = cfgManager(cfg('connectionsFile', None))
         self.initUI()
@@ -147,6 +159,8 @@ class Config(QDialog):
         
         cf.config['noreload'] = cf.noReload.isChecked()
         cf.config['ssl'] = cf.sslCB.isChecked()
+
+        cf.config['auth'] = cf.auth
         
         if cf.config['dbi'] == 'SLT':
             cf.config['readonly'] = cf.readOnly.isChecked()
@@ -157,6 +171,8 @@ class Config(QDialog):
     
         drv = self.driverCB.currentText()
         
+        self.auth = cfg('hanaAuth')
+
         if drv == 'ABAP Proxy' or drv == 'SQLite DB':
             self.userEdit.setDisabled(True)
             self.pwdEdit.setDisabled(True)
@@ -165,6 +181,12 @@ class Config(QDialog):
             self.userEdit.setEnabled(True)
             self.pwdEdit.setEnabled(True)
             self.sslCB.setEnabled(True)
+        elif drv == 'HANA Cloud':
+            self.userEdit.setEnabled(True)
+            self.pwdEdit.setEnabled(True)
+            self.sslCB.setEnabled(False)
+            self.sslCB.setChecked(True)
+            self.auth = 'pbkdf2'
             
         if drv == 'SQLite DB':
             self.readOnly.setEnabled(True)
@@ -211,6 +233,7 @@ class Config(QDialog):
             conf['host'] = host
             conf['port'] = port
             conf['ssl'] = c.get('ssl')
+            conf['auth'] = c.get('auth')
             
             if c.get('readonly'):
                 conf['readonly'] = c.get('readonly')
@@ -258,6 +281,11 @@ class Config(QDialog):
         if cfg['dbi'] == 'SLT':
             cfg['readonly'] = self.readOnly.isChecked()
         
+        if self.driverCB.currentText() == 'HANA Cloud':
+            cfg['auth'] = self.auth
+        else:
+            cfg['auth'] = None
+
         items = []
         for i in range(self.confCB.count()):
             items.append(self.confCB.itemText(i))

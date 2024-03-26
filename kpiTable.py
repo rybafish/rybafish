@@ -1,16 +1,16 @@
 import sys
 
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, 
-    QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QItemDelegate, QColorDialog)
+                             QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QItemDelegate, QColorDialog, QApplication, QLabel)
     
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter
+from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter, QFontMetrics
 
 from PyQt5.QtCore import pyqtSignal
 
 import kpiDescriptions
 
-from utils import log
+from utils import log, deb
 from utils import cfg
 from utils import vrsException
 
@@ -143,10 +143,30 @@ class kpiTable(QTableWidget):
         self.rowKpi = [] #list of current kpis
         
         self.vrsLock = False # suppress variables signal on cell update
+
+        self.filter = ''
         
         super().__init__()
 
+        self.filterWidget = QLabel(' Filter: hey')
+        self.filterWidget.setParent(self)
+        self.filterWidget.setMargin(2)
+        self.filterWidget.setStyleSheet("QLabel { background-color : #acf; color :black; }");
+        # f = self.filterWidget.font()
+
+        f = self.font()
+        # f.setPixelSize(16)
+        fm = QFontMetrics(f)
+        deb(f'font heifgh: {fm.height()}')
+
+        self.filterWidget.setFont(f)
+
+        self.filterWidget.hide()
+        self.filterWidget.move(21+1, 1)
+        self.filterWidget.setToolTip('[ESC] to remove the filter')
+
         self.initTable()
+        self.filterResize()
     
     def contextMenuEvent(self, event):
        
@@ -201,7 +221,8 @@ class kpiTable(QTableWidget):
                 
                 if 'brush' in kpiStyles[kpi]:
                     # gantt chart have brush color, and pen is derivative
-                    initColor = kpiStyles[kpi]['brush']
+                    pen = kpiDescriptions.customPen(kpiKey, kpiStyles[kpi]['pen'])
+                    initColor = pen.color()
                 else:
                     pen = kpiDescriptions.customPen(kpiKey, kpiStyles[kpi]['pen'])
                     initColor = pen.color()
@@ -213,9 +234,7 @@ class kpiTable(QTableWidget):
                 targetColor = QColorDialog().getColor(initial=initColor, parent=self)
                 
                 if targetColor.isValid():
-                    #print(targetColor)
                     if targetColor == initColor:
-                        #print('same')
                         pass
                     else:
                         styleKey = self.hosts[cellCheckBox.host]['host'] + ':' + self.hosts[cellCheckBox.host]['port'] + '/' + kpi
@@ -223,14 +242,12 @@ class kpiTable(QTableWidget):
                         
                         self.refill(cellCheckBox.host)
                 else:
-                    #print('cancel')
                     pass
                 
             else:
                 log('Cannot identify KPI host/name', 2)
         
     def edit(self, index, trigger, event):
-        #print('edit', time.time())
 
         if index.column() not in (3, 11):
             # Not Y-Scale
@@ -383,7 +400,7 @@ class kpiTable(QTableWidget):
             to be connected to hostChanged signal (hostsTable)
         '''
         
-        log('refill: %s' % str(host), 5)
+        log(f'refill: {str(host)}, filter: {self.filter}', 5)
         if host == -1:
             log('[W] KPIs refill aborted to avoid confusion', 2)
             log('[W] setting self.host = None', 2)
@@ -409,8 +426,8 @@ class kpiTable(QTableWidget):
         hostKey = self.hosts[host]['host'] + ':' + self.hosts[host]['port']
             
         # go fill the table
-        self.setRowCount(len(kpiList))
-        
+        # self.setRowCount(len(kpiList))
+
         kpis = [] # list of kpi tuples in kpiDescription format (ones to be displayed depending on host/service + checkboxes
         
         #put enabled ones first:
@@ -419,9 +436,60 @@ class kpiTable(QTableWidget):
             
         #log(f'{kpiList=}')
         #populate rest of KPIs (including groups):
+
+
+        grp = False              # pass through group
+
         for kpi in kpiList:
                 if kpi not in kpis:
-                    kpis.append(kpi)
+
+                    style = kpiStyles.get(kpi)
+                    if style:
+                        pass
+                        # print(f"{style['label']}, {self.filter}")
+                        # print(style['label'].find(self.filter))
+
+                    else:
+                        if grp and kpi[0] == '.': # new group started, clear
+                            grp = False
+
+                    if not self.filter:
+                        kpis.append(kpi)
+                    elif (style and style['label'].lower().find(self.filter.lower()) != -1) or grp or not style:
+                        # print(f'add kpi: {style}/{self.filter}')
+                        kpis.append(kpi)
+
+                    if not style and self.filter and kpi.lower().find(self.filter.lower()) != -1:
+                        if kpi[0] == '.':
+                            grp = True # group name matches the filter - enable pass through until next group
+
+
+        # print('list of kpis before cleanup:')
+        # print(kpis)
+
+        kpis_new = []
+        kpilen = len(kpis)
+
+        for i in range(kpilen):
+            kpi = kpis[i]
+            if kpi[0] == '.':
+                if i < kpilen-1 and kpis[i+1][0] == '.': # next one is also a group, skip
+                    # print(f'skip: {kpi}')
+                    continue
+            # print(f'append: {kpi}')
+
+            if i == kpilen-1 and kpi[0] == '.': # the last kpi is group (and it is empy)
+                continue
+
+            kpis_new.append(kpi)
+
+
+        kpis = kpis_new
+        
+        # print('list of kpis after cleanup:')
+        # print(kpis)
+
+        self.setRowCount(len(kpis))
 
         i = 0
         ####################################################################
@@ -670,11 +738,63 @@ class kpiTable(QTableWidget):
         
         self.silentMode = False
         
+    def filterResize(self):
+        w = self.columnWidth(1) - 1
+        # h = self.rowHeight(0)
+        h = self.horizontalHeader().height()
+        self.filterWidget.resize(w, h)
+
     def columnResized(self, idx, oldSize, newSize):
         '''protect checkbox column removed from table at all'''
 
         if idx == 0: # and newSize < 10:
             self.setColumnWidth(0, 21)
+        if idx == 1:
+            self.filterResize()
+
+
+    def updateFilter(self):
+        '''update filter widget and manage it's visibility based solely on self.filter value'''
+
+        prefix = ' KPI filter: '
+
+        if self.filter:
+            self.filterWidget.setText(prefix + self.filter)
+
+            if self.filterWidget.isHidden():
+                self.filterWidget.show()
+
+        else:
+            if not self.filterWidget.isHidden():
+                self.filterWidget.hide()
+
+    def keyPressEvent (self, event):
+        #log keypress
+        modifiers = QApplication.keyboardModifiers()
+
+        k = event.text()
+        kcode = event.key()
+
+        if modifiers & Qt.AltModifier:
+            super().keyPressEvent(event)
+            return
+
+        if k.isalnum() or k == '_':
+            self.filter += k
+
+        elif kcode == Qt.Key_Backspace:
+            if len(self.filter) > 0:
+                self.filter = self.filter[:-1]
+
+        elif kcode == Qt.Key_Escape:
+            self.filter = ''
+        else:
+            super().keyPressEvent(event)
+            return
+
+        self.updateFilter()
+
+        self.refill(self.host)
 
 
     def initTable(self):

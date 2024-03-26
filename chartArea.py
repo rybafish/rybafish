@@ -75,6 +75,7 @@ class myWidget(QWidget):
     highlightedKpiHost = None # host for currently highlihed kpi
     
     highlightedPoint = None #point currently highlihed (currently just one)
+    highlightedNormVal = None
     
     highlightedGBI = None # multiline groupby index 
     
@@ -558,9 +559,9 @@ class myWidget(QWidget):
             cmenu.addSeparator()
             
             if self.hideGanttLabels:
-                toggleGanttLabels = cmenu.addAction('Show Gantt Labels')
+                toggleGanttLabels = cmenu.addAction('Show Gantt Labels\tCtrl+Shift+L')
             else:
-                toggleGanttLabels = cmenu.addAction('Hide Gantt Labels')
+                toggleGanttLabels = cmenu.addAction('Hide Gantt Labels\tCtrl+Shift+L')
         
         if self.highlightedEntity is not None:
             copyGanttEntity = cmenu.addAction('Copy highlighted gantt entity')
@@ -704,6 +705,17 @@ class myWidget(QWidget):
             host = self.highlightedKpiHost
             gb = self.highlightedGBI
             
+            kpiStylesNNN = self.hostKPIsStyles[host]
+            subtype =  kpiStylesNNN[kpi].get('subtype')
+
+            if subtype != 'multiline':
+                log('[W] unexpected multiline call while not multiline?', 1)
+                return
+
+            if kpi not in self.ndata[host]:
+                log(f'[w] kpi is not there? ({kpi})', 2)
+                return
+
             gbv = self.ndata[host][kpi][gb][0]
             
             clipboard = QApplication.clipboard()
@@ -716,6 +728,10 @@ class myWidget(QWidget):
             kpi = self.highlightedKpi
             host = self.highlightedKpiHost
             range_i = self.highlightedRange
+
+            if kpi not in self.ndata[host]:
+                log(f'[w] kpi is not there? ({kpi})', 2)
+                return
 
             if entity in self.ndata[host][kpi]:
             
@@ -824,8 +840,11 @@ class myWidget(QWidget):
 
         for kpi in kpis:
         
-            #log('', 5)
-            #log('scanForHint kpi: %s' %(kpi), 5)
+            log('scanForHint kpi: %s' %(kpi), 5)
+
+            if not kpi in scales:
+                log(f'[w] kpi {kpi} not in scales, skip', 2)
+                continue
         
             if kpi[:4] == 'time':
                 continue
@@ -1035,7 +1054,6 @@ class myWidget(QWidget):
                 #y = self.nscales[h][kpi]['y_min'] + y*y_scale #562
                 #y = (y - self.nscales[h][kpi]['y_min']) * y_scale #562
 
-
                 ymin = y_min
                 #ymin = scales[kpi]['y_min'] + ymin*y_scale                     #562
                 ymin = (ymin - scales[kpi]['y_min']) *y_scale                   #562
@@ -1099,8 +1117,11 @@ class myWidget(QWidget):
                         self.highlightedRange = None
                     
                     if reportDelta:
-                        deltaVal = normVal - self.highlightedNormVal
-                        deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
+                        if self.highlightedNormVal is None:
+                            deltaVal = ''
+                        else:
+                            deltaVal = normVal - self.highlightedNormVal
+                            deltaVal = ', delta: ' + utils.numberToStr(abs(deltaVal), d)
                     else:
                         deltaVal = ''
 
@@ -2188,7 +2209,7 @@ class myWidget(QWidget):
                 # #587
                                 
                 if t_scale < 8*3600 or date_mark:
-                    print(wsize.height(), bottom_margin, self.font_height, label)
+                    # print(wsize.height(), bottom_margin, self.font_height, label)
                     qp.drawText(int(x-label_width), wsize.height() - bottom_margin + self.font_height, label)
 
                 if date_mark:
@@ -2220,6 +2241,14 @@ class myWidget(QWidget):
         qp.end()
 
 
+    def toggleGanttLabels(self):
+        if self.hideGanttLabels:
+            self.hideGanttLabels = False
+        else:
+            self.hideGanttLabels = True
+
+        self.repaint()
+        
     def toggleLegend(self):
         if self.legend is None:
             self.legend = 'hosts'
@@ -2900,6 +2929,8 @@ class chartArea(QFrame):
             
         elif event.key() == Qt.Key_L and modifiers == Qt.ControlModifier:
             self.widget.toggleLegend()
+        elif event.key() == Qt.Key_L and modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier:
+            self.widget.toggleGanttLabels()
         else:
             super().keyPressEvent(event)
 
@@ -3034,7 +3065,7 @@ class chartArea(QFrame):
         self.repaint()
         
         try:
-            newHosts, newKPIs, newStyles, errStr = dp.initHosts(dpidx)
+            newHosts, newKPIs, newStyles, err = dp.initHosts(dpidx)
 
             # append hosts, not replace if that would be requred, hosts would be cleared above
             for h in newHosts:
@@ -3046,11 +3077,27 @@ class chartArea(QFrame):
             for styles in newStyles:
                 self.hostKPIsStyles.append(styles.copy())      # create a corresponding list of KPIs
 
-            if errStr:
+            if err is not None:
+
+                if type(err) == tuple: # modern error provider
+                    eType = err[0]
+                    errStr = err[1]
+                else:
+                    eType = 'customKPI'
+                    errStr = err
+
                 log('[!] initHosts customKPIException: %s' %  errStr, 2)
-                utils.msgDialog('Custom KPI Error', 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n'
-                                + errStr
-                                + '\n\nSee more details in rybafish.log file')
+
+                if eType == 'customKPI':
+                    msgHeader = 'Custom KPI Error'
+                    msgText = 'There were errors during custom KPIs load. Load of the custom KPIs STOPPED because of that.\n\n' + errStr + '\n\nSee more details in rybafish.log file'
+                else:
+                    msgHeader = 'initHosts Error'
+                    msgText = errStr
+
+                if eType:
+                    utils.msgDialog(msgHeader, msgText)
+
         except utils.vrsException as e:
             log('[!] variables processing exception: %s' % (str(e)), 1)
             utils.msgDialog('Initialization Error', 'Variables processing error. Check the variables definition, if the message persists, consider deleting layout.yaml\n\n%s' % (str(e)))
@@ -3286,10 +3333,20 @@ class chartArea(QFrame):
                 try:
                     t0 = time.time()
                     
-                    log('need to check here if all the kpis actually exist...')
-                    log(str(host))
-                    log(str(kpis))
+                    log('request kpis: need to check here if all the kpis actually exist...')
+                    log(f'host: {host}')
+                    log(f'kpis: {kpis}')
                     
+                    kpiStylesNNN = self.hostKPIsStyles[host]
+
+                    for k in self.widget.nkpis[host]:
+                        log(f'kpi: {k}')
+                        if k not in kpiStylesNNN:
+                            log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
+                            self.widget.nkpis[host].remove(k)
+                        else:
+                            log('ok')
+
                     dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], self.hostKPIsStyles[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     
@@ -3337,12 +3394,21 @@ class chartArea(QFrame):
                         if cfg('loglevel', 3) > 3:
                             log('unclick, %s, %s:' % (str(hst), kpi))
                             log('kpis before unclick: %s' % (self.widget.nkpis[hst]))
+
+                        if self.widget.highlightedKpiHost == hst and self.widget.highlightedKpi == kpi:
+                            log('clean up highlightinh #1 (massive)', 4)
+                            self.widget.highlightedKpi = None
+                            self.widget.highlightedKpiHost = None
+                            self.widget.highlightedEntity = None
+
                         if kpi in self.widget.nkpis[hst]:
                             self.widget.nkpis[hst].remove(kpi)
-                            
+                            log(f'delete {kpi} from nkpis list for {hst}', 4)
+
                             if kpi in self.widget.ndata[hst]: #might be empty for alt-added (2019-08-30)
+                                log(f'delete {kpi} data from {hst}', 4)
                                 del(self.widget.ndata[hst][kpi])
-                                
+
                         log('kpis after unclick: %s' % (self.widget.nkpis[hst]), 4)
                         log('data keys: %s' % str(self.widget.ndata[hst].keys()), 4)
                         
@@ -3350,7 +3416,13 @@ class chartArea(QFrame):
                 if cfg('loglevel', 3) > 3:
                     log('unclick, %s, %s:' % (str(host), kpi))
                     log('kpis before unclick: %s' % (self.widget.nkpis[host]))
-                
+
+                if self.widget.highlightedKpiHost == host and self.widget.highlightedKpi == kpi:
+                    log('clean up highlightinh #2', 4)
+                    self.widget.highlightedKpi = None
+                    self.widget.highlightedKpiHost = None
+                    self.widget.highlightedEntity = None
+
                 self.widget.nkpis[host].remove(kpi) # kpis is a list
                 if kpi in self.widget.ndata[host]: #might be empty for alt-added
                     del(self.widget.ndata[host][kpi]) # ndata is a dict
@@ -3610,6 +3682,8 @@ class chartArea(QFrame):
             for kpi in data.keys():
                 scales[kpi] = {}
                 
+            log(f'data keys: {data.keys()}', 4)
+            log(f'scales keys: {scales.keys()}', 4)
             #init zero max
             
             for kpi in data.keys():
@@ -3640,13 +3714,16 @@ class chartArea(QFrame):
                         
                     scales[kpi]['entities'] = eNum
                     scales[kpi]['total'] = total
-                    # print ('%i/%i' % (eNum, total))
-                        
+
                     continue
                     
                 timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
                     
                 # array_size = len(self.widget.ndata[h][timeKey]) # 2020-03-11
+
+                if not timeKey in data:
+                    continue
+
                 array_size = len(data[timeKey])
                 
                 if array_size == 0:
@@ -3681,6 +3758,7 @@ class chartArea(QFrame):
                         
                         
                     anti_crash_len = len(scan)
+                    deb(f'anti crash scan, {kpi} -> {anti_crash_len}')
                 
                     try:
                         for i in range(0, array_size):
@@ -3885,8 +3963,9 @@ class chartArea(QFrame):
                         
                         kpiStylesNNN = self.hostKPIsStyles[host]
                         
+                        log(f'nkpis for host {host}: {self.widget.nkpis[host]}')
                         for k in self.widget.nkpis[host]:
-                            log(k)
+                            log(f'kpi: {k}')
                             if k not in kpiStylesNNN:
                                 log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
                                 self.widget.nkpis[host].remove(k)
@@ -4130,7 +4209,7 @@ class chartArea(QFrame):
         self.fromEdit = QLineEdit(starttime.strftime('%Y-%m-%d %H:%M:%S'))
         self.toEdit = QLineEdit()
 
-        if cfg('dev'):
+        if cfg('dev?') and False:
             self.fromEdit.setText('2023-10-29 20:00:00')
             self.toEdit.setText('2023-10-30 12:00:00')
 

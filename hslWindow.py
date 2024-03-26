@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
     QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog, 
-    QApplication
+                             QApplication, QDialog
     )
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
@@ -50,6 +50,8 @@ from updatesCheck import checkUpdates
 from csvImportDialog import csvImportDialog
 import highlight
 
+import presetsDialog
+
 from profiler import profiler
 
 class hslWindow(QMainWindow):
@@ -57,9 +59,8 @@ class hslWindow(QMainWindow):
     statusbar = None
     primaryConf = None # primary connection dictionary, keys: host, port, name, dbi, user, pwd, etc
     configurations = {}
-    
+
     kpisTable = None
-    
     threadID = None
 
     def __init__(self):
@@ -69,6 +70,7 @@ class hslWindow(QMainWindow):
         self.sqlTabCounter = 0 #static tab counter
 
         self.tabs = None
+        self.kpisSave = {}      # list of kpis for quick save/restore
     
         super().__init__()
         
@@ -169,6 +171,10 @@ class hslWindow(QMainWindow):
             self.closeTab()
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_L:
             self.chartArea.widget.toggleLegend()
+        elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_L:
+            self.chartArea.widget.toggleLegend()
+        elif event.key() == Qt.Key_L and modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier:
+            self.chartArea.widget.toggleGanttLabels()
         else:
             super().keyPressEvent(event)
             
@@ -536,7 +542,192 @@ class hslWindow(QMainWindow):
             self.resize(size[0], size[1])
             self.mainSplitter.setSizes(spl)
         
-        
+
+
+    # def menuPresetRestore(self, preset):
+    #     '''generates function for specific preset restore call'''
+    #     def f(self):
+    #         log(f'Restore preset: {preset}', 3)
+    #         self.menuPresetRestore(preset)
+
+    #     deb(self)
+    #     f.preset = preset
+    #     f.self = self
+    #     return f
+
+    def presetProxy(self, preset):
+        '''preset factory to hardcode preset as menu callback cannot provide any context'''
+        def f():
+            self.menuKPIsRestorePreset(preset)
+
+        return f
+
+
+    def menuPresetPopulate(self):
+        self.presetsSubMenu.clear()
+
+        presetNames = presetsDialog.presets.list()
+
+        if presetNames:
+            for preset in presetNames:
+                presetAct = QAction(preset, self)
+
+                presetAct.triggered.connect(
+                    # lambda p = preset: self.menuKPIsRestorePreset(p)
+                    # lambda p=preset: self.presetProxy(preset)
+                    self.presetProxy(preset)
+                )
+
+                self.presetsSubMenu.addAction(presetAct)
+
+        else:
+            noPresets = QAction('No presets', self)
+            self.presetsSubMenu.addAction(noPresets)
+
+    def menuKPIsRestorePreset(self, presetName):
+        '''restore preset based on name'''
+        preset = presetsDialog.presets.get(presetName)
+
+        log(f'Extracting preset: {presetName}', 4)
+
+        if not preset:
+            log(f'[w] no preset? {presetName} --> {preset}', 2)
+            return
+
+        hostWithKpis = None
+
+        for hi in range(len(self.chartArea.widget.hosts)):
+            host = self.chartArea.widget.hosts[hi]
+            hname = f"{host['host']}:{host['port']}"
+
+            if hname in preset:
+                kpisList = preset[hname]
+
+                kpis = []
+
+                for kpisVar in kpisList:
+                    if type(kpisVar) == list and len(kpisVar) == 2:
+                        kpi, vars = kpisVar[0], kpisVar[1]
+
+
+
+                        kpiStyles = self.chartArea.widget.hostKPIsStyles[hi]
+                        style = kpiStyles.get(kpi)
+
+                        if style:
+                            idx = style.get('sql')
+
+                        if idx:
+                            log(f'set variables: {idx} -> {vars}', 4)
+                            kpiDescriptions.addVars(idx, vars, True) # update variables
+
+                        else:
+                            log(f'[w] no idx for existing variables?', 2)
+                    else:
+                        kpi = kpisVar
+                        vars = None
+
+                    kpis.append(kpi)
+
+                if kpis:
+                    log(f'Restoring: {hname} --> {kpis}', 5)
+                    self.chartArea.widget.nkpis[hi] = kpis
+
+                    if hostWithKpis is None:
+                        hostWithKpis = hi # remmember host to switch to after restore
+                else:
+                    log(f'Restoring 1: {hname} --> []', 5)
+                    self.chartArea.widget.nkpis[hi].clear()
+            else:
+                log(f'Restoring 2: {hname} --> []', 5)
+                self.chartArea.widget.nkpis[hi].clear()
+
+
+        if hostWithKpis is None:
+            hostWithKpis = self.hostTable.currentRow()
+
+        self.hostTable.setCurrentCell(hostWithKpis, 0)
+        self.kpisTable.refill(hostWithKpis)
+
+    def menuKPIsRestore(self):
+        '''Restore enabled kpis from local quick list stored before '''
+
+        if len(self.kpisSave) == 0:
+            self.statusMessage('There are no KPIs saved, use Layout -> Save KPIs first', True)
+
+        for hi in range(len(self.chartArea.widget.hosts)):
+
+            host = self.chartArea.widget.hosts[hi]
+            hname = f"{host['host']}:{host['port']}"
+
+            if hname in self.kpisSave:
+                log(f'Restoring: {hname} --> {self.kpisSave[hname]}', 5)
+                self.chartArea.widget.nkpis[hi] = self.kpisSave[hname]
+
+            else:
+                log(f'Restoring: {hname} --> []', 5)
+                self.chartArea.widget.nkpis[hi].clear()
+
+
+    def menuPresersManage(self):
+        dialog = presetsDialog.PresetsDialog(self, None)
+        rslt = dialog.exec_()
+
+        if rslt == QDialog.Accepted:
+            self.menuPresetPopulate()
+        else:
+            log('manage presets cancel, do reload...', 4)
+            presetsDialog.presets = presetsDialog.Presets()
+
+    def menuKPIsSave(self):
+        self.kpisSave = {}
+
+        hostPreset = {}
+
+        hn = -1
+        for host, kpis in zip(self.chartArea.widget.hosts, self.chartArea.widget.nkpis):
+            hn +=1
+
+            if not kpis:
+                continue
+
+            hname = f"{host['host']}:{host['port']}"
+            print('-->', hname)
+
+            if cfg('presetVariables', True) == False:
+                # old style: no variables
+                self.kpisSave[hname] = kpis.copy()
+                continue
+
+            # build variables
+
+            kpisVars = []
+            for kpi in kpis:
+                kpiStyles = self.chartArea.widget.hostKPIsStyles[hn]
+                style = kpiStyles[kpi]
+
+                vars = None
+
+                idx = style.get('sql')
+
+                if idx:
+                    vars = kpiDescriptions.vrsStr.get(idx)
+
+                if vars is None:
+                    kpisVars.append(kpi)   # no vars - single value
+                else:
+                    kpisVars.append([kpi, vars]) # tuple --> list because of yaml dump()/safe_load issues
+
+            hostPreset[hname] = kpisVars
+
+        preset = presetsDialog.PresetsDialog(self, preset=hostPreset)
+        rslt = preset.exec_()
+
+        if rslt == QDialog.Accepted:
+            self.menuPresetPopulate()
+        else:
+            pass
+
     def menuLayout(self):
         self.layout['save_size'] = [self.size().width(), self.size().height()]
         self.layout['save_pos'] = [self.pos().x(), self.pos().y()]
@@ -1539,7 +1730,6 @@ class hslWindow(QMainWindow):
         self.kpisTable = kpiTable.kpiTable()
         kpisTable = self.kpisTable
 
-
         # top (main chart area)
         self.chartArea = chartArea.chartArea()
 
@@ -1612,6 +1802,7 @@ class hslWindow(QMainWindow):
             self.kpiSplitter.setSizes([200, 380])
             
         
+        presetsDialog.presets = presetsDialog.Presets()
         self.mainSplitter.setAutoFillBackground(True)
 
         # central widget
@@ -1744,9 +1935,29 @@ class hslWindow(QMainWindow):
         layoutAct.triggered.connect(self.menuLayoutRestore)
         
         layoutMenu.addAction(layoutAct)
+        layoutMenu.addSeparator()
             
-        # issue #255
+        kpisSave = QAction('Save KPIs Preset', self)
+        kpisSave.setStatusTip('Save currently enabled KPIs to quickly restore later')
+        kpisSave.setShortcut('Alt+P')
+        kpisSave.triggered.connect(self.menuKPIsSave)
+        layoutMenu.addAction(kpisSave)
+
+        presetsManage = QAction('Manage presets', self)
+        presetsManage.triggered.connect(self.menuPresersManage)
+        layoutMenu.addAction(presetsManage)
+
+        # kpisRestore = QAction('Restore KPIs', self)
+        # kpisRestore.setStatusTip('Restores KPIs saved with "Save selected KPIs" option')
+        # kpisRestore.triggered.connect(self.menuKPIsRestore)
+        # layoutMenu.addAction(kpisRestore)
+
+        self.presetsSubMenu = layoutMenu.addMenu('Presets')
+
+        self.menuPresetPopulate()
+
         reloadConfigAct = QAction('Reload &Config', self)
+        # issue #255
         reloadConfigAct.setStatusTip('Reload configuration file. Note: some values used during the connect or other one-time-actions (restart required).')
         reloadConfigAct.triggered.connect(self.menuReloadConfig)
         actionsMenu.addAction(reloadConfigAct)
@@ -1764,7 +1975,7 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
-        if cfg('dev'):
+        if cfg('dev') and False:
             devMenu = menubar.addMenu('DEV')
             fromtoAct = QAction('set TZ test timestamps', self)
             fromtoAct.setShortcut('Ctrl+Shift+T')

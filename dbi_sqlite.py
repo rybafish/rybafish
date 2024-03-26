@@ -9,7 +9,7 @@ import sqlite3
 from datetime import datetime
 
 import utils
-from utils import cfg, dbException
+from utils import cfg, dbException, deb
 
 from profiler import profiler
 
@@ -252,6 +252,8 @@ class sqlite():
         '''
         
         hosts = []
+        eType = None
+        eMsg = None
         
         # select count(*) from sqlite_master where type in ('table', 'view') and lower(name) = 'm_load_history_host'
         
@@ -264,17 +266,54 @@ class sqlite():
         rows = [] # host, port, from, to
         
         if host_load_history:
-            #hostRows = self.execute_query(conn, "select distinct host, '' from m_load_history_host order by 1", [])
-            hostRows = self.execute_query(conn, "select host, '', min(time), max(time) from m_load_history_host group by host order by 1", [])
-            
-            if hostRows:
-                rows = rows + list(hostRows)
+            try:
+                hostRows = self.execute_query(conn, "select host, '', min(time), max(time) from m_load_history_host group by host order by 1", [])
+            except dbException as e:
+                eType = 'm_load_history'
+                eMsg = 'Cannot init m_load_history_host:\n\n' + str(e)
+
+            if not eMsg and hostRows:
+                deb(f'hostRows: {hostRows=}') #
+
+                for r in hostRows:
+                    if type(r[2]) != datetime or type(r[3]) != datetime:
+                        details = f'TIME column type: {type(r[2])}/{type(r[3])}: [{r[2]}]/[{r[3]}]'
+                        log(f'[w] {details}', 2)
+                        eMsg = 'TIME column is not timestamp, verify timestamp format: YYYY-MM-DD HH24:MI:SS.ff'
+                        eMsg += '\n\n' + details
+
+                if eMsg is not None:
+                    eType = 'm_load_history'
+                    eMsg = 'Unexpected m_load_history_host structure:\n\n' + eMsg
+                else:
+                    rows = rows + list(hostRows)
                 
         if service_load_history:
-            srvcRows = self.execute_query(conn, "select host, port, min(time), max(time) from m_load_history_service group by host, port order by 1, 2", [])
-            
-            if srvcRows:
-                rows = rows + list(srvcRows)
+
+            try:
+                srvcRows = self.execute_query(conn, "select host, port, min(time), max(time) from m_load_history_service group by host, port order by 1, 2", [])
+            except dbException as e:
+                eType = 'm_load_history'
+                eMsg = 'Cannot init m_load_history_service:\n\n' + str(e)
+
+            if not eMsg and srvcRows:
+                deb(f'srvcRows: {srvcRows=}') #
+
+                for r in srvcRows:
+                    if type(r[1]) != int:
+                        log(f'[w] PORT column type: {type(r[1])}: [{r[1]}]', 2)
+                        eMsg = 'PORT column is not integer'
+                    elif type(r[2]) != datetime or type(r[3]) != datetime:
+                        details = f'TIME column type: {type(r[2])}/{type(r[3])}: [{r[2]}]/[{r[3]}]'
+                        log(f'[w] {details}', 2)
+                        eMsg = 'TIME column is not timestamp, verify timestamp format: YYYY-MM-DD HH24:MI:SS.ff'
+                        eMsg += '\n\n' + details
+
+                if eMsg is not None:
+                    eType = 'm_load_history'
+                    eMsg = 'Unexpected m_load_history_service structure:\n\n' + eMsg
+                else:
+                    rows = rows + list(srvcRows)
                 
         # by the way for proper ordering reorder of the rows array woold be good to have here
         
@@ -363,7 +402,7 @@ class sqlite():
         #very similar logic called in default dpDB processing... somehow combine in one call?
         hostKPIs = []
         srvcKPIs = []
-        errorStr = None
+        errorKPI = None
         kpiStylesNNN = {'host':{}, 'service':{}}
 
         kpiDescriptions.initKPIDescriptions(rows, hostKPIs, srvcKPIs, kpiStylesNNN)
@@ -377,7 +416,7 @@ class sqlite():
         except utils.customKPIException as e:
             log('[e] error loading custom kpis')
             log('[e] fix or delete the problemmatic yaml for proper connect')
-            errorStr = str(e)
+            errorKPI = str(e)
             # raise e
 
         hostKPIsList = []
@@ -391,4 +430,8 @@ class sqlite():
                 hostKPIsList.append(srvcKPIs)
                 hostKPIsStyles.append(kpiStylesNNN['service'])
 
-        return hosts, hostKPIsList, hostKPIsStyles, errorStr
+        if errorKPI:
+            eType = 'customKPI'
+            eMsg = errorKPI
+
+        return hosts, hostKPIsList, hostKPIsStyles, (eType, eMsg)

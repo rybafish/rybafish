@@ -50,6 +50,11 @@ configStats = {}
 @profiler
 def setTZ(ts, s):
     '''set explicit tzinfo to datetime object'''
+
+    if type(ts) != datetime:
+        log(f'[w] setTZ not a datetime object: {ts}, type: {type(ts)}', 1)
+        return ts
+
     import datetime as dt
     tz = dt.timezone(dt.timedelta(seconds=s))
     return ts.replace(tzinfo=tz)
@@ -206,6 +211,11 @@ class cfgManager():
             f.close()
         except Exception as e:
             log('layout dump issue:' + str(e))
+
+class Preset():
+    '''KPIs preset class with it's own persistence but no dialog yet...'''
+    pass
+
 
 class Layout():
     
@@ -968,12 +978,14 @@ def formatTimeShort(t):
 
 def formatTimeus(us):
     '''return formatted time in microsec'''
+    if us is None:
+        return ''
 
     s = numberToStr(us) + ' ' + chr(181) + 's'
     return s
 
 @profiler
-def formatTime(t, skipSeconds = False, skipMs = False):
+def formatTime(t, skipSeconds=False, skipMs=False):
     
     (ti, ms) = divmod(t, 1)
     
@@ -997,9 +1009,15 @@ def formatTime(t, skipSeconds = False, skipMs = False):
         s = time.strftime(format, time.gmtime(ti)) + msStr
     else:
         format = '%H:%M:%S'
+        s = ''
         msStr = '.%s' % ms if not skipMs else ''
-        s = time.strftime(format, time.gmtime(ti)) + msStr
-    
+        if ti >= 3600*24:
+            days, ti = divmod(ti, 3600*24)
+            days = int(days)
+            s = f'{days}D '
+
+        s += time.strftime(format, time.gmtime(ti)) + msStr
+
     if not skipSeconds:
         s += '   (' + str(round(t, 3)) + ')'
     
@@ -1210,6 +1228,15 @@ def extended_fromisoformat(v):
         if v.find('.') == -1:
             v += '.000'
 
+        else:
+            decimals = v.split('.')[1]
+            dec_len = len(decimals)
+
+            if dec_len > 6:
+                truncate = dec_len - 6
+                v = v[:-truncate] # truncate everything after 6 digit
+
+
         return datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
 
         raise ValueError
@@ -1228,7 +1255,7 @@ def extended_fromisoformat(v):
         raise ValueError
         '''
 
-def parseCSV(txt, delimiter=','):
+def parseCSV(txt, delimiter=',', trim=False):
     '''
         it takes all the values = strings as input and tries to detect
         if the column might be an integer or a timestamp
@@ -1290,21 +1317,21 @@ def parseCSV(txt, delimiter=','):
     
     @profiler
     def check_integer(j):
-        log('check column %i for int' % (j), 5)
+        log(f'check column #{j} ({header[j]}) for int, {trim=}', 5)
         
         reInt = re.compile(r'^-?\d+$')
         
         for ii in range(len(rows)):
             if not reInt.match(rows[ii][j]):
-                log(f'not a digit: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
-                log(f'not a digit, row for the reference: {str(rows[ii])}', 5)
+                log(f'not a number: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
+                log(f'not a number, row for the reference: {str(rows[ii])}', 5)
                 return False
                 
         return True
         
     def check_timestamp(j):
             
-        log('check column %i for timestamp' % (j), 5)
+        log(f'check column {j} for timestamp, {trim=}', 5)
         
         for ii in range(len(rows)):
             try:
@@ -1334,8 +1361,12 @@ def parseCSV(txt, delimiter=','):
         i+=1
         if len(row) != numCols:
             raise csvException(f'Unexpected number of values in row #{i}: {len(row)} != {numCols}')
-        rows.append(row)
-        
+
+        if trim:
+            rows.append([x.strip() for x in row ])
+        else:
+            rows.append(row)
+
     types = ['']*numCols
     
     #detect types

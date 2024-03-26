@@ -684,9 +684,6 @@ class SQLBrowserDialog(QDialog):
                 r = QRect(x, y, width, height)
                 if not QApplication.desktop().screenGeometry().contains(r) and not cfg('dontAutodetectScreen'):
                     (x, y) = (200, 100)
-                    deb('sql browser out of the screen')
-                else:
-                    deb('sql browser fine')
 
             wnd.resize(width, height)
             wnd.move(x, y)
