@@ -51,6 +51,7 @@ from csvImportDialog import csvImportDialog
 import highlight
 
 import presetsDialog
+from passwordDialog import pwdDialog
 
 from profiler import profiler
 
@@ -1067,8 +1068,65 @@ class hslWindow(QMainWindow):
                 
                 # 2022-11-23
                 #self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
-                dp = dpDB.dataProvider(conf) # db data provider
 
+                dpCreationLoop = True
+                while dpCreationLoop:
+                    dpCreationLoop = False # very regular execution
+                    dp = dpDB.dataProvider(conf) # db data provider
+
+                    if hasattr(dp, 'dbProperties'):
+                        if dp.dbProperties.get('error') == 'password reset':
+                            # surrogate connection, forced to change the password (and reconnect)
+
+                            passwordNotOkay = True
+                            dpCreationLoop = True          # okay, we'll need to reconnect
+
+                            while passwordNotOkay:
+
+                                # id = QInputDialog
+                                # newpwd, ok = id.getText(self, 'Password change', 'You have to change initial password:')
+
+                                user = conf.get('user')
+                                pwd = utils.cfgManager.decode(conf['password'])
+                                pwdDiag = pwdDialog(self, user, pwd, 'Change initial password')
+                                rslt = pwdDiag.exec_()
+
+                                if rslt == QDialog.Accepted:
+                                    newpwd = pwdDiag.pwdEdit.text()
+
+                                    try:
+                                        sql = f'alter user {user} password {newpwd}'
+                                        dp.dbi.execute_query_desc(dp.connection, sql, [], 10, noLogging=True)
+
+                                        passwordNotOkay = False
+
+                                    except dbException as e:
+                                        log(f'[e], alter user exception: {e}')
+                                        msgBox = QMessageBox(self)
+                                        msgBox.setWindowTitle('Password update error')
+                                        msgBox.setText(f'Password update failed: {e} ')
+                                        iconPath = resourcePath('ico', 'favicon.png')
+                                        msgBox.setWindowIcon(QIcon(iconPath))
+                                        msgBox.setIcon(QMessageBox.Warning)
+                                        msgBox.exec_()
+                                else:
+                                    deb('abort pwd reset')
+                                    dpCreationLoop = False
+                                    break # cancel -> abandone changing password dialog
+                            else:
+                                log('Okay, seems pwd reset done okay, now need proper DP init', 2)
+                                conf['password'] = utils.cfgManager.encode(newpwd)
+                                if not secondary:
+                                    self.primaryConf['password'] = conf['password']
+                                msgBox = QMessageBox(self)
+                                msgBox.setWindowTitle('Password update ok')
+                                msgBox.setText(f'Password change went fine, but you need to update it manually in connections for future use.')
+                                iconPath = resourcePath('ico', 'favicon.png')
+                                msgBox.setWindowIcon(QIcon(iconPath))
+                                # msgBox.setIcon(QMessageBox.Warning)
+                                msgBox.exec_()
+
+                deb('out of dp creation loop')
                 if hasattr(dp, 'dbProperties'):
                     if dp.dbProperties.get('usage'):
                         usage = dp.dbProperties.get('usage')
@@ -1206,6 +1264,16 @@ class hslWindow(QMainWindow):
                 else:
                     log(e)
                     
+                # if e.type == dbException.PWD:
+                #     id = QInputDialog
+                #     newpwd, ok = id.getText(self, 'New password', 'You have to change initial password')
+
+                #     print(conf)
+
+                #     if ok:
+                #         sql = f'alter user {2} password {newpwd}'
+                #         rows = self.dbi.execute_query(self.connection, sql, [])
+
                 msgBox = QMessageBox(self)
                 msgBox.setWindowTitle('Connection error')
                 msgBox.setText('Connection failed: %s ' % (str(e)))
@@ -1330,6 +1398,50 @@ class hslWindow(QMainWindow):
         
         return console
         
+    def menuPassword(self):
+
+        conf = self.primaryConf
+
+        if not conf:
+            utils.msgDialog('Not connected', 'It seems you are not connected to the db, no password change possible.', self)
+            return
+
+        if len(self.chartArea.ndp) > 1:
+            utils.msgDialog('Too complex', 'Seems you are using several connections at the moment, password change only supported for a single connection, sorry.', self)
+            return
+
+        dp = self.chartArea.ndp[0]
+
+        user = conf.get('user')
+        pwd = conf.get('password')
+
+        if not user or not pwd:
+            utils.msgDialog('Error', 'Some user/pwd error, sorry.', self)
+            return
+
+        pwd = utils.cfgManager.decode(pwd)
+
+        pwdDiag = pwdDialog(self, user, pwd)
+        rslt = pwdDiag.exec_()
+
+        if rslt != QDialog.Accepted:
+            log('password change aborted', 4)
+            return
+
+        pwd = pwdDiag.pwdEdit.text()
+
+        try:
+            sql = f'alter user {user} password {pwd}'
+            dp.dbi.execute_query_desc(dp.connection, sql, [], 10, noLogging=True)
+        except dbException as e:
+            log(f'[e], pwd change exception: {e}')
+            utils.msgDialog('Password Error', str(e), self)
+        else:
+            log('Pwd change done fine')
+            utils.msgDialog('Password Ok', 'Password accepted, but don\'t forget to update your connections file manually.', self)
+
+            conf['password'] = utils.cfgManager.encode(pwd)
+
     def menuOpen(self):
         '''
             so much duplicate code with menuSqlConsole
@@ -1861,6 +1973,10 @@ class hslWindow(QMainWindow):
         openAct.setStatusTip('Open new console with the file')
         openAct.triggered.connect(self.menuOpen)
 
+        pwdAct = QAction('Change DB password', self)
+        pwdAct.setStatusTip('Change users password')
+        pwdAct.triggered.connect(self.menuPassword)
+
         saveAct = QAction('&Save sql to a file', self)
         saveAct.setShortcut('Ctrl+S')
         saveAct.setStatusTip('Saves sql from current console to a file')
@@ -1877,6 +1993,7 @@ class hslWindow(QMainWindow):
         
         fileMenu.addAction(sqlConsAct)
         fileMenu.addAction(openAct)
+        fileMenu.addAction(pwdAct)
         
         fileMenu.addAction(saveAct)
         
