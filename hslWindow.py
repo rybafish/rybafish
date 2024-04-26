@@ -1095,7 +1095,8 @@ class hslWindow(QMainWindow):
                                     newpwd = pwdDiag.pwdEdit.text()
 
                                     try:
-                                        sql = f'alter user {user} password {newpwd}'
+                                        newpwd = utils.pwd_escape(newpwd)
+                                        sql = f'alter user {user} password "{newpwd}"'
                                         dp.dbi.execute_query_desc(dp.connection, sql, [], 10, noLogging=True)
 
                                         passwordNotOkay = False
@@ -1431,7 +1432,8 @@ class hslWindow(QMainWindow):
         pwd = pwdDiag.pwdEdit.text()
 
         try:
-            sql = f'alter user {user} password {pwd}'
+            pwd = utils.pwd_escape(pwd)
+            sql = f'alter user {user} password "{pwd}"'
             dp.dbi.execute_query_desc(dp.connection, sql, [], 10, noLogging=True)
         except dbException as e:
             log(f'[e], pwd change exception: {e}')

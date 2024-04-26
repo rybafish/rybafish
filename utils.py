@@ -1625,3 +1625,12 @@ def colorDarken(c, d):
     b = int(b * d)
 
     return QColor(r, g, b)
+
+def pwd_escape(value):
+    ESCAPE_REGEX = re.compile(r'["]')
+    ESCAPE_MAP = {'"': '""'}
+
+    return "%s" % ESCAPE_REGEX.sub(
+        lambda match: ESCAPE_MAP.get(match.group(0)),
+        value
+    )
