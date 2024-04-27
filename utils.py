@@ -270,9 +270,18 @@ class dbException(Exception):
 
     CONN = 1
     SQL = 2
+    PWD = 3
 
-    def __init__ (self, message, type=None):
-        self.type = type
+    def __init__ (self, message, type=None, code=None):
+        '''type - internal ryba type, code = pyhdb connection code'''
+        self.code = code
+
+        if code == 414:         # pasword reset error
+            log('[i] pwd reset request detected, type -> PWD', 2)
+            self.type = self.PWD
+        else:
+            self.type = type
+
         self.msg = message
         super().__init__(message, type)
         
@@ -280,8 +289,8 @@ class dbException(Exception):
     
         message = self.msg
         
-        if self.type is not None:
-            message += ', Type ' + str(self.type)
+        if self.code is not None:
+            message += ', code: ' + str(self.code)
     
         return message
 
@@ -1616,3 +1625,12 @@ def colorDarken(c, d):
     b = int(b * d)
 
     return QColor(r, g, b)
+
+def pwd_escape(value):
+    ESCAPE_REGEX = re.compile(r'["]')
+    ESCAPE_MAP = {'"': '""'}
+
+    return "%s" % ESCAPE_REGEX.sub(
+        lambda match: ESCAPE_MAP.get(match.group(0)),
+        value
+    )

@@ -1620,9 +1620,8 @@ class sqlConsole(QWidget):
             fname = QFileDialog.getSaveFileName(self, 'Save as...', '','*.sql')
             
             filename = fname[0]
-            
             if filename == '':
-                return
+                return None
             
             self.fileName = filename
 
@@ -1654,9 +1653,11 @@ class sqlConsole(QWidget):
                         pass
 
                 self.log('File saved')
+                return True
                 
         except Exception as e:
             self.log ('Error: ' + str(e), True)
+            return False
     
     def openFile(self, filename = None, backup = None):
 
@@ -1750,8 +1751,12 @@ class sqlConsole(QWidget):
                     pass
             
             if answer == True:
-                self.saveFile()
-                
+                saved = self.saveFile()
+
+                if not saved:
+                    log(f'file save returned = {saved}, abandone file close', 4)
+                    return
+
         self.closeResults(abandoneExecution)
         
         try: 

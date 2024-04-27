@@ -24,7 +24,7 @@ import sql
 import sys
 
 from utils import cfg, hextostr
-from utils import getlog
+from utils import getlog, deb
 from utils import dbException
 from utils import cfgManager
 
@@ -72,7 +72,7 @@ class hdbi ():
     def __init__(self):
         log('Using HDB as DB driver implementation')
 
-    def create_connection (self, server, dbProperties = None):
+    def create_connection (self, server, dbProperties=None):
 
         t0 = time.time()
         try: 
@@ -111,9 +111,21 @@ class hdbi ():
 
             self.execute_query_desc(connection, setApp, [], 0)
 
+        except dbException as e:
+            log(f'[!]: create_connection exception: type {e.type}: {e}\n', 2)
+
+            if e.type == dbException.PWD:
+                log('[!] Connected, but password change requested', 2)
+                # raise dbException(str(e), type=dbException.PWD)
+
+                dbProperties['error'] = 'password reset'
+                return connection
+
+            connection = None
+            raise dbException(str(e))
         except Exception as e:
     #    except pyhdb.exceptions.DatabaseError as e:
-            log('[!]: connection failed: %s\n' % e)
+            log('[!]: generic exception: connection failed: %s\n' % e)
             connection = None
             raise dbException(str(e))
 
@@ -272,7 +284,7 @@ class hdbi ():
             cursor.execute_prepared(ps, [params])
             
             rows = cursor.fetchall()
-            
+
             self.drop_statement(connection, psid)
             
             #close_result(connection, cursor._resultset_id)
@@ -366,6 +378,9 @@ class hdbi ():
             if len(params) > 0:
                 log('[PRMS]: %s' % str(params), 5)
 
+        else:
+            log('[SQL]: <not logged due to nologging=True>', 5)
+
         try:
             psid = cursor.prepare(sql_string)
         except pyhdb.exceptions.DatabaseError as e:
@@ -373,12 +388,13 @@ class hdbi ():
             log('DatabaseError: ' + str(e.code))
         
             if str(e).startswith('Lost connection to HANA server') or e.code is None:
+                log(f'[w] by the way, code of this exception: {e.code}', 4)
                 raise dbException(str(e), dbException.CONN)
         
             log('[!] SQL Error: %s' % sql_string)
             log('[!] SQL Error: %s' % (e))
             
-            raise dbException(str(e))
+            raise dbException(str(e), code=e.code)
         except Exception as e:
             log("[!] unexpected DB exception, sql: %s" % sql_string)
             log("[!] unexpected DB exception: %s" % str(e))

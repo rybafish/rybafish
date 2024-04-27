@@ -2049,6 +2049,8 @@ class myWidget(QWidget):
         
         t_scale = self.t_scale  # seconds in one grid cell, based on zoom: '4 hours' = 4*3600
 
+        deb(f't_to: {self.t_to}')
+        deb(f't_from: {self.t_from}')
         seconds = (self.t_to - self.t_from).total_seconds()
         
         qp.setPen(self.gridColor)

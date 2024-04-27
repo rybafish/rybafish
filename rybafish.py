@@ -137,13 +137,11 @@ if __name__ == '__main__':
         pass
 
     exceptionHandler = ExceptionHandler()
-    #sys._excepthook = sys.excepthook
     sys.excepthook = exceptionHandler.handler
     
     loadConfig = True
 
     while loadConfig:
-    
         ok = utils.loadConfig()
                 
         if not ok:
@@ -194,5 +192,4 @@ if __name__ == '__main__':
     
     sys.exit(app.exec_())
 
-    # except KeyboardInterrupt:
     app.exec_()
