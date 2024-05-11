@@ -7,7 +7,7 @@ from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
 
 from yaml import safe_load, YAMLError
 from utils import log as ulog
-from utils import resourcePath
+from utils import resourcePath, deb
 from _constants import build_date, version, isbeta, platform
 
 from PyQt5.QtCore import Qt, QUrl
@@ -119,16 +119,6 @@ def gotResponse(QNetworkReply):
         log('Some kind of version check error', 2)
         return
         
-    '''
-    if 'version' in ver and 'date' in ver:
-        verStr = 'Last published version is %s, build %s.' % (ver['version'], ver['date'])
-        log(verStr)
-
-    if 'versionBeta' in ver and 'dateBeta' in ver:
-        verStrBeta = 'Last <i>beta</i> is %s, %s.' % (ver['versionBeta'], ver['dateBeta'])
-        log(verStrBeta)
-    '''
-        
     #upd = updateDialog.Update(self)
     
     try:
@@ -143,6 +133,9 @@ def gotResponse(QNetworkReply):
     for (k) in ver:
         log('ver: %s = %s' % (k, str(ver[k])), 5)
     
+    deb(f"check beta: {cfg('updatesCheckBeta', isbeta)}")
+    deb(f'versionBeta: {ver.get("versionBeta")}')
+
     if cfg('updatesCheckBeta', isbeta) and ver.get('versionBeta'):
         log('There is a beta version available...')
         lastVersion = ver.get('versionBeta')
