@@ -21,7 +21,7 @@ class delegatedStyle(QStyledItemDelegate):
         self.cols = cols
         self.table = table
 
-        if cfg(dataBarSelected, True):
+        if cfg('dataBarSelected', True):
             p = table.palette()
             self.selectedBrush = QBrush(p.color(p.Highlight))
 
@@ -53,7 +53,7 @@ class delegatedStyle(QStyledItemDelegate):
                 item = self.table.item(row, col)
                 bg = item.background()
 
-                if cfg(dataBarSelected, True):
+                if cfg('dataBarSelected', True):
                     if item.isSelected():
                         bg = self.selectedBrush
 
@@ -229,8 +229,12 @@ class QResultSet(QTableWidget):
         
         self.highlightColumn = None     # column index to highlight
         self.highlightValue = None      # value to highlight, when None - changes will be highlighted
+
+        self.highlightRows = []         # explicit rows to be highlighted nmw (alt+click, #974)
         
         self.abapCopyFlag = [False]
+
+        self.cellClicked.connect(self.cellClickedSig)
 
         
     @profiler
@@ -371,10 +375,11 @@ class QResultSet(QTableWidget):
         # wBrush = QBrush(Qt.NoBrush) - seems here real reset needed, to fix previous stuff on refresh
         wBrushLOB = QBrush(QColor('#f4f4f4'))
         
-        if value is None:
-            val = self.item(0, col).text()
-        else:
-            val = value
+        if self.highlightColumn:
+            if value is None:
+                val = self.item(0, col).text()
+            else:
+                val = value
             
         lobCols = []
         
@@ -383,14 +388,22 @@ class QResultSet(QTableWidget):
                 lobCols.append(i)
             
         for i in range(rows):
-            if value is None:
-                if val != self.item(i, col).text():
-                    hl = not hl
-            else:
-                if val == self.item(i, col).text():
-                    hl = True
+            if self.highlightColumn:
+                if value is None:
+                    if val != self.item(i, col).text():
+                        hl = not hl
                 else:
-                    hl = False
+                    if val == self.item(i, col).text():
+                        hl = True
+                    else:
+                        hl = False
+            else:
+                hl = False
+
+            if i in self.highlightRows:
+                hlExplicit = True
+            else:
+                hlExplicit = False
 
             for j in range(cols):
                 deb(f'row: {i}, col: {j}', comp='highlight')
@@ -418,7 +431,7 @@ class QResultSet(QTableWidget):
                 else:
                     deb(f'row: {i}, col:{j} default white', comp='highlight')
 
-                if hl:          # the row is highlighted
+                if hl or hlExplicit:          # the row is highlighted
                     if j in lobCols:
                         useBrush = combineBrush(noBg, hlBrushLOB, cl)
                     else:
@@ -454,8 +467,9 @@ class QResultSet(QTableWidget):
                         # else:
                         #     self.item(i, j).setBackground(hl2Brush)
 
-            if value is None:
-                val = self.item(i, col).text()
+            if self.highlightColumn:
+                if value is None:
+                    val = self.item(i, col).text()
     
     def contextMenuEvent(self, event):
         def prepareColumns():
@@ -1105,6 +1119,7 @@ class QResultSet(QTableWidget):
     
         self.clear()
         
+        self.highlightRows.clear()
         cols = self.cols
         rows = self.rows
     
@@ -1329,6 +1344,17 @@ class QResultSet(QTableWidget):
             fnt.setPointSizeF(toSize)
             self.setFont(fnt)
             self.horizontalHeader().setFont(fnt);
+
+    def cellClickedSig(self, row, column):
+        modifiers = QApplication.keyboardModifiers()
+
+        if modifiers == Qt.AltModifier:
+            if row in self.highlightRows:
+                self.highlightRows.remove(row)
+            else:
+                self.highlightRows.append(row)
+
+        self.highlightRefresh()
 
     def wheelEvent (self, event):
     
