@@ -21,6 +21,10 @@ class delegatedStyle(QStyledItemDelegate):
         self.cols = cols
         self.table = table
 
+        if cfg(dataBarSelected, True):
+            p = table.palette()
+            self.selectedBrush = QBrush(p.color(p.Highlight))
+
     @profiler
     def paint(self, qp, style, idx):
 
@@ -48,6 +52,11 @@ class delegatedStyle(QStyledItemDelegate):
             if self.table:
                 item = self.table.item(row, col)
                 bg = item.background()
+
+                if cfg(dataBarSelected, True):
+                    if item.isSelected():
+                        bg = self.selectedBrush
+
                 cl = bg.color()
                 (r, g, b) = (cl.red(), cl.green(), cl.blue()) # bg color
 
