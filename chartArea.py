@@ -2049,8 +2049,8 @@ class myWidget(QWidget):
         
         t_scale = self.t_scale  # seconds in one grid cell, based on zoom: '4 hours' = 4*3600
 
-        deb(f't_to: {self.t_to}')
-        deb(f't_from: {self.t_from}')
+        deb(f'drawGrid t_from: {self.t_from}', comp='tz')
+        deb(f'drawGrid t_to: {self.t_to}', comp='tz')
         seconds = (self.t_to - self.t_from).total_seconds()
         
         qp.setPen(self.gridColor)
@@ -2221,7 +2221,7 @@ class myWidget(QWidget):
                 qp.setPen(self.gridColor)
         
             x += self.step_size
-        
+
     def paintEvent(self, QPaintEvent):
 
         if self.paintLock:
@@ -3844,6 +3844,7 @@ class chartArea(QFrame):
 
     def understandTimes(self):
         #time.sleep(2)
+        deb('understandTimes')
         fromTime = self.fromEdit.text().strip()
         toTime = self.toEdit.text().strip()
 
@@ -3881,14 +3882,21 @@ class chartArea(QFrame):
                 if self.fromEdit.hasFocus() or self.toEdit.hasFocus():
                     self.setFocus()
             except:
+                log(f'time from parsing issue: {fromTime}', 5)
                 self.fromEdit.setStyleSheet("color: red;")
                 self.statusMessage('datetime syntax error')
                 return False
             
+        if utils.cfg_servertz:
+            log(f'tzinfo update for time from: {self.widget.tzInfo}', component='tz')
+            self.widget.t_from = self.widget.t_from.replace(tzinfo=self.widget.tzInfo)
+            deb(f'understandTimes t_from: {self.widget.t_from}')
+
         if toTime == '':
             self.widget.t_to = datetime.datetime.now() + datetime.timedelta(seconds= self.widget.timeZoneDelta)
         else:
             try:
+                deb(f'time to parsing: {toTime}, len={len(toTime)}')
                 if len(toTime) == 10:
                     self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d')
 
@@ -3900,17 +3908,20 @@ class chartArea(QFrame):
                     toTime += ' 00:00:00'[9 - lt:]
                     self.toEdit.setText(toTime)
 
+                deb(f'try t_to... {toTime}')
                 self.widget.t_to = datetime.datetime.strptime(toTime, '%Y-%m-%d %H:%M:%S')
                     
                 self.toEdit.setStyleSheet("color: black;")
             except:
+                log(f'time to parsing issue: {toTime}, widget.t_to = {self.widget.t_to}', 5)
+                self.toEdit.setStyleSheet("color: red;")
                 self.statusMessage('datetime syntax error')
                 return False
                 
         if utils.cfg_servertz:
-            log(f'tzinfo update: {self.widget.tzInfo}', component='tz')
-            self.widget.t_from = self.widget.t_from.replace(tzinfo=self.widget.tzInfo)
+            log(f'tzinfo update for time to: {self.widget.tzInfo}', component='tz')
             self.widget.t_to = self.widget.t_to.replace(tzinfo=self.widget.tzInfo)
+            deb(f'understandTimes t_to: {self.widget.t_to}')
 
         return True
 
@@ -3920,6 +3931,7 @@ class chartArea(QFrame):
         dp = None
         
         if self.understandTimes() == False:
+            log('[w] understandTimes --> False, chart reload stopped', 2)
             return
 
         # self.widget.checkDayLightSaving()
