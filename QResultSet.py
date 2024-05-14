@@ -351,6 +351,7 @@ class QResultSet(QTableWidget):
             else:
                 return QBrush(utils.colorMix(brush.color(), color))
 
+        deb('HL refresh')
         rows = self.rowCount()
         cols = self.columnCount()
         
@@ -375,7 +376,7 @@ class QResultSet(QTableWidget):
         # wBrush = QBrush(Qt.NoBrush) - seems here real reset needed, to fix previous stuff on refresh
         wBrushLOB = QBrush(QColor('#f4f4f4'))
         
-        if self.highlightColumn:
+        if self.highlightColumn is not None:
             if value is None:
                 val = self.item(0, col).text()
             else:
@@ -388,7 +389,7 @@ class QResultSet(QTableWidget):
                 lobCols.append(i)
             
         for i in range(rows):
-            if self.highlightColumn:
+            if self.highlightColumn is not None:
                 if value is None:
                     if val != self.item(i, col).text():
                         hl = not hl
@@ -467,7 +468,7 @@ class QResultSet(QTableWidget):
                         # else:
                         #     self.item(i, j).setBackground(hl2Brush)
 
-            if self.highlightColumn:
+            if self.highlightColumn is not None:
                 if value is None:
                     val = self.item(i, col).text()
     
