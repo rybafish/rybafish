@@ -267,6 +267,9 @@ class kpiTable(QTableWidget):
                     
             kpiStyles = self.hostKPIsStyles[self.host]
                 
+            if kpiName not in kpiStyles:
+                return False
+
             style = kpiStyles[kpiName]
             
             idx = style['sql']
