@@ -217,6 +217,8 @@ class sqlWorker(QObject):
 
             self.dbCursor = dbCursor
             self.psid = psid
+
+            log(f'statement started, psid: {utils.hextostr(psid)}, thread: {int(QThread.currentThreadId())}', 5)
             
         except dbException as e:
             err = str(e)
@@ -262,6 +264,7 @@ class sqlWorker(QObject):
             log(details)
             cons.wrkException = details
             
+        log(f'statement finished, psid: {utils.hextostr(psid)}, thread: {int(QThread.currentThreadId())}', 5)
         self.finished.emit()
         #time.sleep(0.5)
         
