@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 
 from utils import resourcePath
 
-from utils import log
+from utils import log, deb
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -16,9 +16,8 @@ class searchDialog(QDialog):
 
     findSignal = pyqtSignal(['QString'])
     
-    def __init__(self, lastSearch = None):
-    
-        super().__init__()
+    def __init__(self, lastSearch=None, parent=None):
+        super().__init__(parent)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
         
         self.initUI(lastSearch)

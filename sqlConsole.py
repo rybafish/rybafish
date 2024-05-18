@@ -935,7 +935,7 @@ class console(QPlainTextEditLN):
                 cursor.insertText(txt.lower())
             '''
         elif modifiers == Qt.ControlModifier and event.key() == Qt.Key_F:
-                search = searchDialog.searchDialog(self.lastSearch)
+                search = searchDialog.searchDialog(self.lastSearch, parent=self)
                 
                 search.findSignal.connect(self.findString)
                 

@@ -105,7 +105,7 @@ class Config(QDialog):
         return False
     
     @staticmethod
-    def getConfig(config, parent = None):
+    def getConfig(config, parent=None):
     
         cf = Config(config, parent)
         result = cf.exec_()
