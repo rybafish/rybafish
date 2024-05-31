@@ -954,7 +954,10 @@ class myWidget(QWidget):
                 # this kpi timeset is empty
                 # or data[key] is empty, alt-enabled stuff
                 
-                return
+                deb('changed return to continue here, for #979')
+                deb(f'kpi: {kpi}, {timeKey=}')
+                # return
+                continue
                 
             timeline = data[timeKey]
             array_size = len(timeline)
