@@ -1112,7 +1112,7 @@ class QResultSet(QTableWidget):
             super().keyPressEvent(event)
             
     @profiler
-    def populate(self, refreshMode = False):
+    def populate(self, refreshMode=False):
         '''
             populates the result set based on
             self.rows, self.cols

@@ -54,6 +54,7 @@ from PyQt5.QtCore import pyqtSignal
 from profiler import profiler
 
 reExpPlan = re.compile('explain\s+plan\s+for\s+sql\s+plan\s+cache\s+entry\s+(\d+)\s*$', re.I)
+reAutoRefresh = re.compile('--\s+autorefresh\s+(\d+)$', re.I)
 
 class sqlWorker(QObject):
     finished = pyqtSignal()
@@ -190,12 +191,12 @@ class sqlWorker(QObject):
             
             m = re.search('^sleep\s?\(\s*(\d+)\s*\)$', txtSub)
             
+            psid = None
             if m is not None:
                 time.sleep(int(m.group(1)))
                 self.rows_list = None
                 self.cols_list = None
                 dbCursor = None
-                psid = None
                 self.resultset_id_list = None
             else:
                 deb('thread sql execution just before sql')
@@ -313,6 +314,7 @@ class console(QPlainTextEditLN):
     explainSignal = pyqtSignal(['QString'])
     
     autocompleteSignal = pyqtSignal()
+    # autorefreshSignal = pyqtSignal([int])
 
     def insertTextS(self, str):
         cursor = self.textCursor()
@@ -1395,6 +1397,8 @@ class sqlConsole(QWidget):
         
         self.cons.explainSignal.connect(self.explainPlan)
 
+        # self.cons.autorefreshSignal.connect(self.setupAutorefresh)
+
         if config is None:
             self.consoleStatus()
             return
@@ -2085,7 +2089,7 @@ class sqlConsole(QWidget):
         # self.indicator.nextAutorefresh = self.nextAutorefresh
         self.timerAutorefresh.start()
     
-    def setupAutorefresh(self, interval, suppressLog = False):
+    def setupAutorefresh(self, interval, suppressLog=False):
         if interval == 0:
             tname = self.tabname.rstrip(' *')
             log(f'[{tname}] Stopping the autorefresh')
@@ -2839,10 +2843,31 @@ class sqlConsole(QWidget):
                 return
                 
             statements.append(str)
+
+        def checkAutorefresh(txt, start, end):
+            '''check if the last line of txt is autorefresh timer
+
+            to be only checked for one-line sql comments
+            return autorefresh timer or None
+
+            '''
+
+            line = txt[:end].splitlines()[-1]
+
+            # other impl option, seems same performane so more clear one used
+            # line = txt[txt.rfind('\n', start, end)+1:end]
+
+            m = reAutoRefresh.match(line)
+
+            if m:
+                return int(m[1])
+
+            return None
         
         cursor = self.cons.textCursor()
 
         selectionMode = False
+        autorefreshTime = None
         
         txt = self.cons.toPlainText()
         length = len(txt)
@@ -2925,9 +2950,14 @@ class sqlConsole(QWidget):
                     continue
                 elif not leadingComment and c == '-' and i < scanTo and txt[i] == '-':
                     leadingComment = True
+                    autorefreshTime = None
                 elif leadingComment:
                     ### print(c, i, start, stop)
                     if c == '\n':
+
+                        with profiler('checkAutorefresh'):
+                            autorefreshTime = checkAutorefresh(txt, 0, i)
+
                         leadingComment = False
                     else:
                         continue
@@ -2943,7 +2973,7 @@ class sqlConsole(QWidget):
                     else:
                         if not F9:
                             statementDetected(start, stop)
-                        
+
                     start = i
                     str = str + c
                     ### print(i, 'sTr:', str, start, stop)
@@ -2964,7 +2994,6 @@ class sqlConsole(QWidget):
                 
         ### print('[just stop]')
 
-        
         if stop == 0:
             # no semicolon met
             stop = scanTo
@@ -2978,16 +3007,21 @@ class sqlConsole(QWidget):
         else:
             if not F9:
                 statementDetected(start, stop)
-            
+
         self.closeResults()
         
         #if F9 and (start <= cursorPos < stop):
         #print so not sure abous this change
         if F9 and (start <= cursorPos <= stop):
+            # autoselect single statement execution
             #print('-> [%s] ' % txt[start:stop])
-            
+
             st = txt[start:stop]
             result = self.newResult(self.conn, st)
+
+            if cfg('experimental') and autorefreshTime:
+                deb('setupAutorefresh')
+                self.setupAutorefresh(autorefreshTime)
             self.executeStatement(st, result)
             
         elif F9 and (start > stop and start <= cursorPos): # no semicolon in the end
@@ -3517,7 +3551,7 @@ class sqlConsole(QWidget):
         
         #print('3 <-- finished')
         
-    def executeStatement(self, sql, result, refreshMode = False):
+    def executeStatement(self, sql, result, refreshMode=False):
         '''
             triggers thread to execute the string without any analysis
             result populated in callback signal sqlFinished
