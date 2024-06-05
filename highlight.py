@@ -67,7 +67,13 @@ def loadFolder(column, folder):
     for f in files:
         fname = os.path.join(folder, f)
         if os.path.isfile(fname) and f.endswith('.yaml'):
-            c += loadSingleYaml(column, fname)
+            num = loadSingleYaml(column, fname)
+
+            if num is not None:
+                c += num
+            else:
+                log('[W] seems parsing error, check logs', 2)
+                return None
 
     return c
 
