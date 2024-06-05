@@ -54,7 +54,7 @@ from PyQt5.QtCore import pyqtSignal
 from profiler import profiler
 
 reExpPlan = re.compile('explain\s+plan\s+for\s+sql\s+plan\s+cache\s+entry\s+(\d+)\s*$', re.I)
-reAutoRefresh = re.compile('--\s+autorefresh\s+(\d+)$', re.I)
+reAutoRefresh = re.compile('--\s+autorefresh\s+(\d+)\s*$', re.I)
 
 class sqlWorker(QObject):
     finished = pyqtSignal()
@@ -2612,8 +2612,7 @@ class sqlConsole(QWidget):
     
         if self.timerAutorefresh:
             self.setupAutorefresh(0)
-            
-        
+
         # reset block numbering, #672
         self.cons.lineNumbers.fromLine = None
         
@@ -2852,6 +2851,9 @@ class sqlConsole(QWidget):
 
             '''
 
+            if not cfg('parseAutorefresh', True):
+                return None
+
             line = txt[:end].splitlines()[-1]
 
             # other impl option, seems same performane so more clear one used
@@ -2907,7 +2909,7 @@ class sqlConsole(QWidget):
         # startDelta = 0
         # clearDelta = False
         
-        ### print('from, to', scanFrom, scanTo)
+        # print('from, to', scanFrom, scanTo)
         
         for i in range(scanFrom, scanTo):
             c = txt[i]
@@ -2918,22 +2920,24 @@ class sqlConsole(QWidget):
                 clearDelta = False
             '''
 
-            #print('['+c+']')
+            # print(f'{i:03}: {c}')
             if not insideString and c == ';':
                 #print(i)
+                # print(f'{i=}, ; detected')
                 if not insideProc:
-                    ### print("str = '' #1")
+                    # print("str = '' #1")
                     str = ''
                     
                     #if stop < start: # this is to resolve #486
                     if stop < start or (start == 0 and stop == 0): # this is to resolve # 486, 2 
+                        # print('stop')
                         stop = i
                     # clearDelta = True
                     continue
                 else:
                     if isItEnd(str[-10:]):
                         insideProc = False
-                        ### print("str = '' #2")
+                        # print("str = '' #2")
                         str = ''
                         stop = i
                         # clearDelta = True
@@ -2950,13 +2954,21 @@ class sqlConsole(QWidget):
                     continue
                 elif not leadingComment and c == '-' and i < scanTo and txt[i] == '-':
                     leadingComment = True
-                    autorefreshTime = None
+
+                    if autorefreshTime and cursorPos is not None and cursorPos > i:
+                        deb(f'autorefresh --> None here, on {i=}, {cursorPos}', 'parser')
+                        autorefreshTime = None
+
                 elif leadingComment:
                     ### print(c, i, start, stop)
                     if c == '\n':
 
                         with profiler('checkAutorefresh'):
-                            autorefreshTime = checkAutorefresh(txt, 0, i)
+                            if not autorefreshTime:
+                                autorefreshTime = checkAutorefresh(txt, 0, i)
+
+                                if autorefreshTime:
+                                    deb(f'autorefresh set to: {autorefreshTime}', 'parser')
 
                         leadingComment = False
                     else:
@@ -2992,7 +3004,7 @@ class sqlConsole(QWidget):
             if not insideProc and isItCreate(str[:64]):
                 insideProc = True
                 
-        ### print('[just stop]')
+        # print('[stop the first pass of the parser]')
 
         if stop == 0:
             # no semicolon met
@@ -3015,16 +3027,21 @@ class sqlConsole(QWidget):
         if F9 and (start <= cursorPos <= stop):
             # autoselect single statement execution
             #print('-> [%s] ' % txt[start:stop])
+            deb('step 2, option 1: single statement', 'parser')
+            deb(f'{autorefreshTime=}', 'parser')
 
             st = txt[start:stop]
             result = self.newResult(self.conn, st)
 
-            if cfg('experimental') and autorefreshTime:
-                deb('setupAutorefresh')
+            if autorefreshTime:
+                deb(f'setupAutorefresh: {autorefreshTime=}', 'parser')
+                self.defaultTimer[0] = autorefreshTime
                 self.setupAutorefresh(autorefreshTime)
+
             self.executeStatement(st, result)
             
         elif F9 and (start > stop and start <= cursorPos): # no semicolon in the end
+            deb('step 2, option 2: single statement, no semicolon?', 'parser')
             #print('-> [%s] ' % txt[start:scanTo])
             st = txt[start:scanTo]
 
@@ -3032,6 +3049,7 @@ class sqlConsole(QWidget):
             self.executeStatement(st, result)
 
         else:
+            deb('step 2, option 3: multiple statements?', 'parser')
             if len(statements) > 1:
                 self.stQueue = statements.copy()
                 self.launchStatementQueue()
