@@ -99,8 +99,10 @@ def loadHighlights():
     for f in files:
         path = os.path.join(folder, f)
         if os.path.isdir(path):
-            c += loadFolder(f.lower(), path)
+            num = loadFolder(f.lower(), path)
 
+            if num is not None:
+                c += num
     return c
 
 
