@@ -515,12 +515,11 @@ class QResultSet(QTableWidget):
         highlightColCh = cmenu.addAction('Highlight changes')
         highlightColVal = cmenu.addAction('Highlight this value')
 
-        if cfg('experimental'):
-            showDatabar = cmenu.addAction('Show data bar')
+        showDatabar = cmenu.addAction('Show data bar')
             
         cmenu.addSeparator()
         
-        abapCopy = cmenu.addAction('ABAP-style (markdown) copy')
+        abapCopy = cmenu.addAction('Text formatted (markdown) copy')
 
         cmenu.addSeparator()
         
@@ -556,7 +555,7 @@ class QResultSet(QTableWidget):
             self.highlightValue = self.item(self.currentRow(), i).text()
             self.highlightRefresh()
         
-        if cfg('experimental') and action == showDatabar:
+        if action == showDatabar:
             self.databarAdd(i)
 
         if action == insertColumnName:
@@ -1123,12 +1122,26 @@ class QResultSet(QTableWidget):
         self.highlightRows.clear()
         cols = self.cols
         rows = self.rows
+
+        adhocDatabars = []
     
         row0 = []
 
-        for c in cols:
-            row0.append(c[0])
-            
+        if cfg('experimental-formatting', True): # #990
+            for i in range(len(cols)):
+                cname = cols[i][0]
+                if not refreshMode:
+                    if cname[-3:] == '$db':
+                        row0.append(cname[:-3])
+                        deb(f'databar column detected: {cname}')
+                        adhocDatabars.append(i)
+                    else:
+                        row0.append(cname)
+
+        else:
+            for c in cols:
+                row0.append(c[0])
+
         self.headers = row0.copy()
            
         self.setColumnCount(len(row0))
@@ -1282,6 +1295,9 @@ class QResultSet(QTableWidget):
                 for i in range(len(row0)):
                     if self.columnWidth(i) >= 512:
                         self.setColumnWidth(i, 512)
+
+        for i in adhocDatabars:
+            self.databarAdd(i)
 
         if self.databarCols:
             self.dataBarRenew()

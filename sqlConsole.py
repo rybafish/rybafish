@@ -3859,7 +3859,7 @@ class sqlConsole(QWidget):
             
             self.ABAPCopy = QToolButton()
             self.ABAPCopy.setIcon(QIcon(resourcePath('ico', 'abapcopy.png')))
-            self.ABAPCopy.setToolTip('Use ABAP-style (markdown) result copy by default.')
+            self.ABAPCopy.setToolTip('Use text-formatted (markdown) result copy by default')
             self.ABAPCopy.setCheckable(True)
             self.ABAPCopy.toggled.connect(self.toolbarABAP)
             self.toolbar.addWidget(self.ABAPCopy)
