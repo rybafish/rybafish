@@ -1127,7 +1127,7 @@ class QResultSet(QTableWidget):
     
         row0 = []
 
-        if cfg('experimental-formatting', True): # #990
+        if cfg('experimental-formatting', False): # #990
             for i in range(len(cols)):
                 cname = cols[i][0]
                 if not refreshMode:
