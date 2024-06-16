@@ -1033,7 +1033,10 @@ def formatTime(t, skipSeconds=False, skipMs=False):
     return s
 
 @profiler
-def timestampToStr(ts, trimZeroes = True):
+def timestampToStr(ts, trimZeroes=True):
+
+    if ts is None:
+        return ''
 
     if trimZeroes:
         if ts.microsecond:

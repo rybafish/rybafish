@@ -593,12 +593,15 @@ class QResultSet(QTableWidget):
                     if pm and cname == 'PORT':
                         value = int(str(value).replace(pm[0], pm[1]))
 
-                if self.dbi.ifNumericType(self.cols[c][1]):
-                    values.append('%s = %s' % (normalize_header(cname), value))
-                elif self.dbi.ifTSType(self.cols[c][1]):
-                    values.append('%s = \'%s\'' % (normalize_header(cname), utils.timestampToStr(value)))
+                if value is None:
+                    values.append(f'{normalize_header(cname)} is null')
                 else:
-                    values.append('%s = \'%s\'' % (normalize_header(cname), str(value)))
+                    if self.dbi.ifNumericType(self.cols[c][1]):
+                        values.append('%s = %s' % (normalize_header(cname), value))
+                    elif self.dbi.ifTSType(self.cols[c][1]):
+                        values.append('%s = \'%s\'' % (normalize_header(cname), utils.timestampToStr(value)))
+                    else:
+                        values.append('%s = \'%s\'' % (normalize_header(cname), str(value)))
                     
             filter = ' and '.join(values)
 
