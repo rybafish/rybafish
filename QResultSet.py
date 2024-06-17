@@ -351,7 +351,6 @@ class QResultSet(QTableWidget):
             else:
                 return QBrush(utils.colorMix(brush.color(), color))
 
-        deb('HL refresh')
         rows = self.rowCount()
         cols = self.columnCount()
         
@@ -1119,7 +1118,7 @@ class QResultSet(QTableWidget):
             populates the result set based on
             self.rows, self.cols
         '''
-    
+
         self.clear()
         
         self.highlightRows.clear()
@@ -1140,6 +1139,8 @@ class QResultSet(QTableWidget):
                         adhocDatabars.append(i)
                     else:
                         row0.append(cname)
+                else:
+                    row0.append(cname)
 
         else:
             for c in cols:
@@ -1180,11 +1181,9 @@ class QResultSet(QTableWidget):
         cfgdev = cfg('dev')
 
         for r in range(len(rows)):
-            #log('populate result: %i' % r, 5)
             for c in range(len(row0)):
-                
                 val = rows[r][c]
-                
+
                 if val is None:
                     val = cfg('nullString', '?')
                     
