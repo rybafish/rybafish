@@ -1140,7 +1140,11 @@ class QResultSet(QTableWidget):
                     else:
                         row0.append(cname)
                 else:
-                    row0.append(cname)
+                    if cname[-3:] == '$db':
+                        deb(f'databar column detected on refresh: {cname}')
+                        row0.append(cname[:-3])
+                    else:
+                        row0.append(cname)
 
         else:
             for c in cols:
