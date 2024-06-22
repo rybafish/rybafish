@@ -72,6 +72,8 @@ class hslWindow(QMainWindow):
 
         self.tabs = None
         self.kpisSave = {}      # list of kpis for quick save/restore
+
+        self.presetName = None
     
         super().__init__()
         
@@ -564,6 +566,11 @@ class hslWindow(QMainWindow):
         return f
 
 
+    def menuPresetUpdate(self):
+        '''process update of the current preset'''
+        hostPreset = self.hostPreset()
+        presetsDialog.presets.add(self.presetName, hostPreset)
+
     def menuPresetPopulate(self):
         self.presetsSubMenu.clear()
 
@@ -585,6 +592,7 @@ class hslWindow(QMainWindow):
             noPresets = QAction('No presets', self)
             self.presetsSubMenu.addAction(noPresets)
 
+
     def menuKPIsRestorePreset(self, presetName):
         '''restore preset based on name'''
         preset = presetsDialog.presets.get(presetName)
@@ -595,7 +603,14 @@ class hslWindow(QMainWindow):
             log(f'[w] no preset? {presetName} --> {preset}', 2)
             return
 
+        self.presetUpdate.setText(f'Update {presetName}')
+
+        if self.presetName is None:
+            self.presetUpdate.setVisible(True)
+
         hostWithKpis = None
+        self.presetName = presetName # for updates, etc
+        deb('preset name saved')
 
         for hi in range(len(self.chartArea.widget.hosts)):
             host = self.chartArea.widget.hosts[hi]
@@ -680,9 +695,7 @@ class hslWindow(QMainWindow):
             log('manage presets cancel, do reload...', 4)
             presetsDialog.presets = presetsDialog.Presets()
 
-    def menuKPIsSave(self):
-        self.kpisSave = {}
-
+    def hostPreset(self):
         hostPreset = {}
 
         hn = -1
@@ -693,7 +706,6 @@ class hslWindow(QMainWindow):
                 continue
 
             hname = f"{host['host']}:{host['port']}"
-            print('-->', hname)
 
             if cfg('presetVariables', True) == False:
                 # old style: no variables
@@ -721,6 +733,13 @@ class hslWindow(QMainWindow):
 
             hostPreset[hname] = kpisVars
 
+        return hostPreset
+        
+    def menuKPIsSave(self):
+        self.kpisSave = {}
+
+        hostPreset = self.hostPreset()
+
         preset = presetsDialog.PresetsDialog(self, preset=hostPreset)
         rslt = preset.exec_()
 
@@ -728,6 +747,7 @@ class hslWindow(QMainWindow):
             self.menuPresetPopulate()
         else:
             pass
+
 
     def menuLayout(self):
         self.layout['save_size'] = [self.size().width(), self.size().height()]
@@ -2074,6 +2094,11 @@ class hslWindow(QMainWindow):
         self.presetsSubMenu = layoutMenu.addMenu('Presets')
 
         self.menuPresetPopulate()
+
+        self.presetUpdate = QAction('Update ...', self)
+        self.presetUpdate.triggered.connect(self.menuPresetUpdate)
+        self.presetUpdate.setVisible(False)
+        layoutMenu.addAction(self.presetUpdate)
 
         reloadConfigAct = QAction('Reload &Config', self)
         # issue #255

@@ -7,7 +7,7 @@ from yaml import safe_load, dump, YAMLError #pip install pyyaml
 from utils import resourcePath, log, deb
 
 presetFile = 'presets.yaml'
-presets = None
+presets = None # kind of static class Presets()
 
 class Presets():
     '''the class does presets persistence management'''
@@ -32,12 +32,9 @@ class Presets():
     def persist(self):
         '''persist caurrent presets into yaml'''
 
-        print('[persist preset]')
-
-        for name, preset in self.presets.items():
-            print(f'name: {name}')
-            for kpi in preset.keys():
-                print(f'    {kpi} --> {preset[kpi]}')
+        # for name, preset in self.presets.items():
+        #     for kpi in preset.keys():
+        #         print(f'    {kpi} --> {preset[kpi]}')
 
         try:
             f = open(presetFile, 'w')
@@ -52,9 +49,8 @@ class Presets():
 
 
     def add(self, name, preset):
-        print('[add]')
-        print(preset)
         self.presets[name] = preset
+
 
     def list(self, host=None):
 
@@ -171,7 +167,6 @@ class PresetsDialog(QDialog):
             self.nameCB = QComboBox()
 
             names = presets.list()
-            print('names')
 
             for n in names:
                 self.nameCB.addItem(n)
