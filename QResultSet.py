@@ -897,7 +897,7 @@ class QResultSet(QTableWidget):
             log('Selection model check: %s' % s[0], 5)
             
         if False and cellsSelection and abapMode:
-            self.log('ABAP mode is only available when rows or columns are selected.', True)
+            self.log('Markdown copy is only available when rows or columns are selected.', True)
         
         if not cellsSelection and rowIndex: 
             # process rows
@@ -1024,7 +1024,7 @@ class QResultSet(QTableWidget):
                         break
                         
                 if abapNotPossible:
-                    self.log('ABAP-style copy is only possible for rectangular selections.', True)
+                    self.log('Markdown copy is only possible for rectangular selections.', True)
                     return
                         
                 values = []
