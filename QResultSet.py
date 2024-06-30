@@ -511,8 +511,8 @@ class QResultSet(QTableWidget):
         
         cmenu.addSeparator()
     
-        highlightColCh = cmenu.addAction('Highlight changes')
-        highlightColVal = cmenu.addAction('Highlight this value')
+        highlightColCh = cmenu.addAction('Highlight changes\tCtrl+Shift+Click')
+        highlightColVal = cmenu.addAction('Highlight this value\tCtrl+Alt+Click')
 
         showDatabar = cmenu.addAction('Show data bar')
             
@@ -1371,7 +1371,16 @@ class QResultSet(QTableWidget):
     def cellClickedSig(self, row, column):
         modifiers = QApplication.keyboardModifiers()
 
-        if modifiers == Qt.AltModifier:
+        if modifiers == (Qt.ShiftModifier | Qt.ControlModifier):
+            # ctrl+shift+click: HL changes
+            self.highlightColumn = column
+            self.highlightValue = None
+        elif modifiers == (Qt.AltModifier | Qt.ControlModifier):
+            # ctrl + alt: HL this value
+            self.highlightColumn = column
+            self.highlightValue = self.item(row, column).text()
+        elif modifiers == Qt.AltModifier:
+            # alt+click - hilight THIS line
             if row in self.highlightRows:
                 self.highlightRows.remove(row)
             else:

@@ -571,7 +571,10 @@ class hslWindow(QMainWindow):
         hostPreset = self.hostPreset()
         presetsDialog.presets.add(self.presetName, hostPreset)
 
+        presetsDialog.presets.persist()
+
     def menuPresetPopulate(self):
+        '''build a list of presets for QMenu item Preset'''
         self.presetsSubMenu.clear()
 
         presetNames = presetsDialog.presets.list()
@@ -610,7 +613,6 @@ class hslWindow(QMainWindow):
 
         hostWithKpis = None
         self.presetName = presetName # for updates, etc
-        deb('preset name saved')
 
         for hi in range(len(self.chartArea.widget.hosts)):
             host = self.chartArea.widget.hosts[hi]
@@ -715,6 +717,7 @@ class hslWindow(QMainWindow):
             # build variables
 
             kpisVars = []
+
             for kpi in kpis:
                 kpiStyles = self.chartArea.widget.hostKPIsStyles[hn]
                 style = kpiStyles[kpi]
@@ -736,6 +739,7 @@ class hslWindow(QMainWindow):
         return hostPreset
         
     def menuKPIsSave(self):
+        '''Save current preset'''
         self.kpisSave = {}
 
         hostPreset = self.hostPreset()
@@ -1131,7 +1135,6 @@ class hslWindow(QMainWindow):
                                         msgBox.setIcon(QMessageBox.Warning)
                                         msgBox.exec_()
                                 else:
-                                    deb('abort pwd reset')
                                     dpCreationLoop = False
                                     break # cancel -> abandone changing password dialog
                             else:
