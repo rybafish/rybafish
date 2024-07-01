@@ -596,6 +596,19 @@ class hslWindow(QMainWindow):
             self.presetsSubMenu.addAction(noPresets)
 
 
+    def presetCurrent(self, preset=None):
+        '''updates the menu and last set preset'''
+
+        if preset is None:
+            return
+
+        self.presetUpdate.setText(f'Update {preset}')
+
+        if self.presetName is None:
+            self.presetUpdate.setVisible(True)
+
+        self.presetName = preset # for updates, etc
+
     def menuKPIsRestorePreset(self, presetName):
         '''restore preset based on name'''
         preset = presetsDialog.presets.get(presetName)
@@ -606,13 +619,9 @@ class hslWindow(QMainWindow):
             log(f'[w] no preset? {presetName} --> {preset}', 2)
             return
 
-        self.presetUpdate.setText(f'Update {presetName}')
-
-        if self.presetName is None:
-            self.presetUpdate.setVisible(True)
+        self.presetCurrent(preset)
 
         hostWithKpis = None
-        self.presetName = presetName # for updates, etc
 
         for hi in range(len(self.chartArea.widget.hosts)):
             host = self.chartArea.widget.hosts[hi]
@@ -749,6 +758,7 @@ class hslWindow(QMainWindow):
 
         if rslt == QDialog.Accepted:
             self.menuPresetPopulate()
+            self.presetCurrent(preset.nameEdit.text())
         else:
             pass
 
