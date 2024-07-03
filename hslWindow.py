@@ -619,7 +619,7 @@ class hslWindow(QMainWindow):
             log(f'[w] no preset? {presetName} --> {preset}', 2)
             return
 
-        self.presetCurrent(preset)
+        self.presetCurrent(presetName)
 
         hostWithKpis = None
 
