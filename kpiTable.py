@@ -120,7 +120,7 @@ class kpiTable(QTableWidget):
     
     # setScale = pyqtSignal([int, 'QString', int, int])
     setScale = pyqtSignal([int, 'QString', object, object]) # details in issue #715
-    
+
     vrsUpdate = pyqtSignal()
     refreshRequest = pyqtSignal()
 
@@ -173,6 +173,9 @@ class kpiTable(QTableWidget):
         cmenu = QMenu(self)
 
         #if cfg('dev'):
+        menuKPIsUp = cmenu.addAction('Move Up\tAlt+Up')
+        menuKPIsDown = cmenu.addAction('Move Down\tAlt+Down')
+
         changeColor = cmenu.addAction('Change KPI Color')
         resetColor = cmenu.addAction('Reset KPI Color to default')
         cmenu.addSeparator()
@@ -246,6 +249,14 @@ class kpiTable(QTableWidget):
                 
             else:
                 log('Cannot identify KPI host/name', 2)
+
+        if action == menuKPIsUp:
+            i = self.currentRow()
+            self.moveKpi(i, 'up')
+
+        if action == menuKPIsDown:
+            i = self.currentRow()
+            self.moveKpi(i, 'down')
         
     def edit(self, index, trigger, event):
 
@@ -771,12 +782,45 @@ class kpiTable(QTableWidget):
             if not self.filterWidget.isHidden():
                 self.filterWidget.hide()
 
+    def moveKpi(self, row, direction):
+        deb(f'ok, kpi move: {direction=}')
+
+        i = row
+        deb(f'row: {i}, host: {self.host}')
+        deb(f'nkpis: {self.nkpis}')
+        kpis = self.nkpis[self.host]
+
+        deb(f'before: {kpis=}')
+
+        if direction == 'up':
+            if i>0 and i<len(kpis):
+                v = kpis.pop(i)
+                deb(f'doing pop... {kpis=} --> {v}')
+                kpis.insert(i-1, v)
+        elif direction == 'down':
+            if i>=0 and i<len(kpis)-1:
+                v = kpis.pop(i)
+                deb(f'doing pop... {kpis=} --> {v}')
+                kpis.insert(i+1, v)
+
+        deb(f'after: {kpis=}')
+        self.refill(self.host)
+
     def keyPressEvent (self, event):
         #log keypress
         modifiers = QApplication.keyboardModifiers()
 
         k = event.text()
         kcode = event.key()
+
+        if modifiers & Qt.AltModifier:
+            if kcode == Qt.Key_Up:
+                i = self.currentRow()
+                self.moveKpi(i, 'up')
+            if kcode == Qt.Key_Down:
+                i = self.currentRow()
+                self.moveKpi(i, 'down')
+
 
         if modifiers & Qt.AltModifier:
             super().keyPressEvent(event)
