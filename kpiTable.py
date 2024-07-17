@@ -805,6 +805,7 @@ class kpiTable(QTableWidget):
 
         deb(f'after: {kpis=}')
         self.refill(self.host)
+        self.refreshRequest.emit()
 
     def keyPressEvent (self, event):
         #log keypress
