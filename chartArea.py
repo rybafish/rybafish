@@ -57,7 +57,7 @@ class myWidget(QWidget):
     scrollSignal = pyqtSignal(int, float)
     
     statusMessage_ = pyqtSignal(['QString', bool])
-    
+
     timeZoneDelta = 0 # to be set after connection
 
     hosts = [] # list of 'hosts': host + tenants/services. based on this we fill the KPIs table(s) - in order, btw
@@ -2660,8 +2660,11 @@ class chartArea(QFrame):
             self.statusMessage(f'Nothing identified {direction}')
             return
             
-        yVal = ys[shift]
-        
+        if shift < 0:
+            deb('okay, crash here now')
+
+        yVal = ys[shift]        # here we go, crash #999
+
         if self.collisionsCurrent is not None:
             if collisions:
                 if direction == 'up':
@@ -4315,7 +4318,7 @@ class chartArea(QFrame):
         self.widget.zoomSignal.connect(self.zoomSignal)
         
         self.widget.scrollSignal.connect(self.scrollSignal)
-        
+
         # trigger upddate of scales in table?
         
         # dummy size calculation
