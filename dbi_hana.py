@@ -56,7 +56,8 @@ class hdbi ():
     # those two are missing in PyHDB
     message_types.CLOSERESULTSET = 69 
     message_types.DROPSTATEMENTID = 70
-    
+
+    suppress_log_ts = None      # timestamp for nolog=true sqls suppressions
     
     logline = 'db configuration:'
 
@@ -379,7 +380,9 @@ class hdbi ():
                 log('[PRMS]: %s' % str(params), 5)
 
         else:
-            log('[SQL]: <not logged due to nologging=True>', 5)
+            if self.suppress_log_ts is not None and self.suppress_log_ts < time.time():
+                log('[SQL]: <not logged due to nologging=True>, this message suppressed next 60 seconds', 5)
+                self.suppress_log_ts = time.time() + 60
 
         try:
             psid = cursor.prepare(sql_string)

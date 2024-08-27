@@ -1,6 +1,7 @@
 '''
     random stuff used in random places
 '''
+
 import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QIcon, QColor
