@@ -469,7 +469,11 @@ class hdbi ():
                     pass
                 '''
                 
-                log('results to fetch: %i' % len(cursor.description_list), 5)
+                if self.suppress_log_ts is not None and self.suppress_log_ts > time.time():
+                    log('results to fetch: %i' % len(cursor.description_list), 5)
+                else:
+                    if self.suppress_log_ts is not None:
+                        self.suppress_log_ts = None
                 
                 scalar_shift = 1 if scalarOutput else 0
 
