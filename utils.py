@@ -830,6 +830,9 @@ def saneNumberToStr(x, grp=True, digits=None):
             
     #bkp = x
     
+    with profiler('infinity check'):
+        if x in [float("-inf"),float("inf")]: return '?'
+    
     if x < 0:
         x = -x
         sign = '-'
