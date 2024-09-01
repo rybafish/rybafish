@@ -970,6 +970,8 @@ class dataProvider(QObject):
                 if grpby not in gbs:
                     gbs[grpby] = [v, v, v]
                 else:
+                    if v is None:
+                        v = -1
                     if gbs[grpby][0] > v and v != -1:
                         gbs[grpby][0] = v
 
@@ -1172,7 +1174,10 @@ class dataProvider(QObject):
                             gbv = row[gbi]
                             k = gb.index(gbv)
                             
-                            data[kpis_[j]][k][1][ii] = int(rawValue)
+                            if rawValue is None:
+                                data[kpis_[j]][k][1][ii] = -1
+                            else:
+                                data[kpis_[j]][k][1][ii] = int(rawValue)
                             
                         else:
                     
