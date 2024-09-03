@@ -1152,6 +1152,14 @@ class hslWindow(QMainWindow):
                                 conf['password'] = utils.cfgManager.encode(newpwd)
                                 if not secondary:
                                     self.primaryConf['password'] = conf['password']
+
+                                    if len(self.configurations) == 1:
+                                        log('[N] consoles password updated', 2)
+                                        cfg = self.configurations[0] # only one dpidx possible with pwd change
+                                        cfg['password'] = utils.cfgManager.encode(newpwd)
+                                    else:
+                                        log('[W] several DPIs open, password not updated! It\'s really better to reconnect now...', 1)
+                                    
                                 msgBox = QMessageBox(self)
                                 msgBox.setWindowTitle('Password update ok')
                                 msgBox.setText(f'Password change went fine, but you need to update it manually in connections for future use.')
@@ -1476,6 +1484,16 @@ class hslWindow(QMainWindow):
             utils.msgDialog('Password Ok', 'Password accepted, but don\'t forget to update your connections file manually.', self)
 
             conf['password'] = utils.cfgManager.encode(pwd)
+
+            cfg = self.configurations[0] # only one dpidx possible with pwd change
+
+            cfg['password'] = utils.cfgManager.encode(pwd)
+            
+            for i in range(self.tabs.count() -1, 0, -1):
+                w = self.tabs.widget(i)
+                if isinstance(w, sqlConsole.sqlConsole):
+                    log(f'{w.config=}')
+
 
     def menuOpen(self):
         '''
