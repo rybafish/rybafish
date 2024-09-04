@@ -1155,8 +1155,8 @@ class hslWindow(QMainWindow):
 
                                     if len(self.configurations) == 1:
                                         log('[N] consoles password updated', 2)
-                                        cfg = self.configurations[0] # only one dpidx possible with pwd change
-                                        cfg['password'] = utils.cfgManager.encode(newpwd)
+                                        confg = self.configurations[0] # only one dpidx possible with pwd change
+                                        confg['password'] = utils.cfgManager.encode(newpwd)
                                     else:
                                         log('[W] several DPIs open, password not updated! It\'s really better to reconnect now...', 1)
                                     
