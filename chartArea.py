@@ -2525,6 +2525,9 @@ class chartArea(QFrame):
         point = self.widget.highlightedPoint
         tgbi = self.widget.highlightedGBI
 
+        if h is None or kpiName is None:
+            return
+
         data = self.widget.ndata[h]
         
         kpiStylesNNN = self.hostKPIsStyles[h]
@@ -2805,6 +2808,9 @@ class chartArea(QFrame):
         kpi = self.widget.highlightedKpi
         entity = self.widget.highlightedEntity
         
+        if host is None or kpi is None:
+            return
+
         data = self.widget.ndata[host][kpi]
         
         entities = list(self.widget.ndata[host][kpi].keys())
@@ -2874,6 +2880,8 @@ class chartArea(QFrame):
                 host = self.widget.highlightedKpiHost
                 kpi = self.widget.highlightedKpi
 
+                if host is None or kpi is None:
+                    return
 
                 kpiStylesNNN = self.hostKPIsStyles[host]
                 subtype = kpiStylesNNN[kpi].get('subtype')
@@ -2904,6 +2912,9 @@ class chartArea(QFrame):
                 host = self.widget.highlightedKpiHost
                 kpi = self.widget.highlightedKpi
                 
+                if host is None or kpi is None:
+                    return
+
                 kpiStylesNNN = self.hostKPIsStyles[host]
                 subtype = kpiStylesNNN[kpi].get('subtype')
                 gbi = self.widget.highlightedGBI
