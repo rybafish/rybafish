@@ -1809,7 +1809,18 @@ class myWidget(QWidget):
                             else:
                                 ganttPen.setWidth(1)
                             
-                            qp.setPen(ganttPen)
+                            if cfg('gantt_brush_color') and manual_color:
+                                clr = t[5]
+
+                                if clr:
+                                    rgb = QColor(clr)
+                                else:
+                                    rgb = ganttBaseColor
+                                    
+                                rgb = QPen(QColor(int(rgb.red()*0.75), int(rgb.green()*0.75), int(rgb.blue()*0.75)))
+                                qp.setPen(QPen(rgb))
+                            else:
+                                qp.setPen(ganttPen)
                             
                             if kpiStylesNNN[kpi]['style'] == 'bar':
 
