@@ -1694,6 +1694,11 @@ class myWidget(QWidget):
                     else:
                         manual_color = False
 
+                    if kpiStylesNNN[kpi].get('manual_color_border'):
+                        manual_color_border = True
+                    else:
+                        manual_color_border = False
+
                 else:
                     gantt = False
                 
@@ -1809,7 +1814,7 @@ class myWidget(QWidget):
                             else:
                                 ganttPen.setWidth(1)
                             
-                            if cfg('gantt_brush_color') and manual_color:
+                            if manual_color and manual_color_border:
                                 clr = t[5]
 
                                 if clr:
@@ -1818,7 +1823,14 @@ class myWidget(QWidget):
                                     rgb = ganttBaseColor
                                     
                                 rgb = QPen(QColor(int(rgb.red()*0.75), int(rgb.green()*0.75), int(rgb.blue()*0.75)))
-                                qp.setPen(QPen(rgb))
+                                tPen = QPen(rgb)
+                                
+                                if highlight == True:
+                                    tPen.setWidth(2)
+                                else:
+                                    tPen.setWidth(1)
+
+                                qp.setPen(tPen)
                             else:
                                 qp.setPen(ganttPen)
                             
