@@ -2862,6 +2862,8 @@ class sqlConsole(QWidget):
             m = reAutoRefresh.match(line)
 
             if m:
+                deb(f'detected autorefresh: {m[1]} in: {start} .. {end}')
+                deb(txt[start:end])
                 return int(m[1])
 
             return None
@@ -2899,6 +2901,8 @@ class sqlConsole(QWidget):
         start = stop = 0
         
         leadingComment = False
+        lcPosition = None # leading commend position
+        arPosition = None # autorefresh position 
         insideString = False
         insideProc = False
         
@@ -2913,6 +2917,7 @@ class sqlConsole(QWidget):
         
         for i in range(scanFrom, scanTo):
             c = txt[i]
+            # print(f'{c}', end='')
             
             '''
             if clearDelta:
@@ -2924,14 +2929,19 @@ class sqlConsole(QWidget):
             if not insideString and c == ';':
                 #print(i)
                 # print(f'{i=}, ; detected')
+                deb('; detected...', 'parser')
                 if not insideProc:
+                    deb('not inside proc...', 'parser')
                     # print("str = '' #1")
                     str = ''
                     
                     #if stop < start: # this is to resolve #486
                     if stop < start or (start == 0 and stop == 0): # this is to resolve # 486, 2 
-                        # print('stop')
+                        deb(f'stop: {start}..{stop}, {i=}', 'parser')
                         stop = i
+
+                        deb(f'autorefresh pos: {arPosition=}')
+
                     # clearDelta = True
                     continue
                 else:
@@ -2954,6 +2964,8 @@ class sqlConsole(QWidget):
                     continue
                 elif not leadingComment and c == '-' and i < scanTo and txt[i] == '-':
                     leadingComment = True
+                    lcPosition = i + 1
+                    deb(f'leadingComment start... {i}, {lcPosition=}', 'parser')
 
                     if autorefreshTime and cursorPos is not None and cursorPos > i:
                         deb(f'autorefresh --> None here, on {i=}, {cursorPos}', 'parser')
@@ -2963,12 +2975,15 @@ class sqlConsole(QWidget):
                     ### print(c, i, start, stop)
                     if c == '\n':
 
+                        deb('leadingComment end', 'parser')
                         with profiler('checkAutorefresh'):
                             if not autorefreshTime:
+                                deb(f'check autorefresh, {0}..{i}')
                                 autorefreshTime = checkAutorefresh(txt, 0, i)
 
                                 if autorefreshTime:
-                                    deb(f'autorefresh set to: {autorefreshTime}', 'parser')
+                                    deb(f'autorefresh set to: {autorefreshTime=}, {lcPosition=}', 'parser')
+                                    arPosition = lcPosition
 
                         leadingComment = False
                     else:
@@ -2976,6 +2991,7 @@ class sqlConsole(QWidget):
                 else:
                     #if F9 and (start <= cursorPos < stop):
                     #reeeeeallly not sure!
+                    deb('no leadingComment 2', 'parser')
                     if F9 and (start <= cursorPos <= stop) and (start < stop):
                         #print('start <= cursorPos <= stop:', start, cursorPos, stop)
                         #print('warning! selectSingle used to be here, but removed 05.02.2021')
@@ -3028,8 +3044,21 @@ class sqlConsole(QWidget):
             # autoselect single statement execution
             #print('-> [%s] ' % txt[start:stop])
             deb('step 2, option 1: single statement', 'parser')
+            deb(f'from:to: {start}:{stop}', 'parser')
+            deb(txt[start:stop], 'parser')
             deb(f'{autorefreshTime=}', 'parser')
+            deb(f'{arPosition=}', 'parser')
+            deb(f'{lcPosition=}', 'parser')
+            deb(f'start - arPos: {start - arPosition}', 'parser')
 
+            if autorefreshTime and arPosition is not None and arPosition > stop:
+                deb(f'autorefresh detected after sql stop ({arPosition} > {stop}), cancelling autorefresh', 'parser')
+                autorefreshTime = None
+                
+            if autorefreshTime and arPosition is not None and (start - arPosition) > 20:
+                deb(f'autorefresh detected way before after sql start ({arPosition} <<< {start}), cancelling autorefresh', 'parser')
+                autorefreshTime = None
+                
             st = txt[start:stop]
             result = self.newResult(self.conn, st)
 
