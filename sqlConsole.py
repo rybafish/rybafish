@@ -3049,7 +3049,9 @@ class sqlConsole(QWidget):
             deb(f'{autorefreshTime=}', 'parser')
             deb(f'{arPosition=}', 'parser')
             deb(f'{lcPosition=}', 'parser')
-            deb(f'start - arPos: {start - arPosition}', 'parser')
+
+            if arPosition is not None:
+                deb(f'start - arPos: {start - arPosition}', 'parser')
 
             if autorefreshTime and arPosition is not None and arPosition > stop:
                 deb(f'autorefresh detected after sql stop ({arPosition} > {stop}), cancelling autorefresh', 'parser')
