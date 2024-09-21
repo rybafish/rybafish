@@ -1282,7 +1282,7 @@ class myWidget(QWidget):
                                 
                                     gb = self.ndata[h][kpi][i][0]
                                     
-                                    label = gb
+                                    label = str(gb) # theoretically gb might be int, #1004
                                     
                                     label += ': max: ' + str(self.nscalesml[h][kpi][gb]['max_label']) + unit
                                     label += ', last: ' + str(self.nscalesml[h][kpi][gb]['last_label']) + unit
@@ -2598,6 +2598,10 @@ class chartArea(QFrame):
             
                 timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, checkKPI)
                 subtype = kpiStylesNNN[checkKPI].get('subtype')
+                
+                if checkKPI not in self.widget.ndata[checkHost]:
+                    log(f'[w] {checkKPI} is not in data, skip', 5)
+                    continue
                 
                 if subtype == 'gantt':
                     continue
