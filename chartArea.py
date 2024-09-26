@@ -78,6 +78,9 @@ class myWidget(QWidget):
     highlightedNormVal = None
     
     highlightedGBI = None # multiline groupby index 
+
+    hiddenKPIs = []
+    hiddenGBs = {}
     
     #data = {} # dictionary of data sets + time line (all same length)
     #scales = {} # min and max values
