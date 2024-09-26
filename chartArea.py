@@ -79,7 +79,9 @@ class myWidget(QWidget):
     
     highlightedGBI = None # multiline groupby index 
 
-    hiddenKPIs = []
+    hiddenKPIsN = []            #list of hidden kpis in form hostname:port/kpiname
+    # hiddenKPIs = []             #list of hidden kpis 
+    # hiddenKPIsHost = []         #list of hosts for hidden kpis, same length 
     hiddenGBs = {}
     
     #data = {} # dictionary of data sets + time line (all same length)
@@ -546,6 +548,8 @@ class myWidget(QWidget):
         saveVAPNG = cmenu.addAction('Save screen')
         copyPNG = cmenu.addAction('Copy chart area')
         savePNG = cmenu.addAction('Save chart area')
+        hideKpi = None
+        unhideKpi = None
 
         copyLegend = None
         
@@ -578,6 +582,12 @@ class myWidget(QWidget):
             cmenu.addSeparator()
             fakeDisconnection = cmenu.addAction('fake disconnection')
         
+        if self.highlightedKpi is not None:
+            hideKpi = cmenu.addAction('Hide highlighted KPI')
+            
+        if self.hiddenKPIsN:
+            unhideKpi = cmenu.addAction('Unhide all hidden KPIs')
+            
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
         # from / to menu items
@@ -764,7 +774,43 @@ class myWidget(QWidget):
                 
             self.repaint()
 
-    
+        if self.highlightedKpi and action == hideKpi:
+            self.hideKPIs('regular')
+
+        if self.hiddenKPIsN and action == unhideKpi:
+            self.hiddenKPIsN.clear()
+            self.hiddenGBs.clear()
+            self.repaint()
+            log(f'unhide all hidden KPIs', 4)
+
+    def hideKPIs(self, mode):
+        '''add relevant kpi to the list of hidden kpis'''    
+
+        deb(f'{self.highlightedKpi=}')
+        deb(f'{self.highlightedKpiHost=}')
+        deb(f'{self.highlightedGBI=}')
+        deb(f'{self.highlightedEntity=}')
+
+        if mode == 'regular':
+            # need to check if not already in the list...
+            h = self.highlightedKpiHost
+            hostKey = self.hosts[h]['host'] + ':' + self.hosts[h]['port']
+            kpiKey = f'{hostKey}/{self.highlightedKpi}'
+            # self.hiddenKPIs.append(self.highlightedKpi)
+            # self.hiddenKPIsHost.append(self.highlightedKpiHost)
+            self.hiddenKPIsN.append(kpiKey)
+
+            if self.highlightedGBI:
+                if not kpiKey in self.hiddenGBs:
+                    self.hiddenGBs[kpiKey] = [self.highlightedGBI]
+                else:
+                    self.hiddenGBs[kpiKey].append(self.highlightedGBI)
+                
+            self.repaint()
+
+        log(f'list of hidden KPIs: {self.hiddenKPIs}')
+        log(f'list of hidden KPIs New style: {self.hiddenKPIsN}')
+
     def checkForHint(self, pos):
         '''
             1 actually we have to check the x scale 
@@ -1213,6 +1259,8 @@ class myWidget(QWidget):
             
             dbinfo = ''
 
+            hostKey = self.hosts[h]['host'] + ':' + self.hosts[h]['port']
+                
             if 'db' in self.hosts[h] and 'service' in self.hosts[h] and hostType == 'service':
 
                 if cfg('legendTenantName') and self.hosts[h].get('db'):
@@ -1234,7 +1282,10 @@ class myWidget(QWidget):
                 gantt = False
                 multiline = False
                 stacked = False
-                
+
+                kpiKey = hostKey + '/' + kpi
+                deb(f'{kpiKey=}')
+
                 if kpi not in self.nscales[h]:
                     continue
 
@@ -1251,6 +1302,9 @@ class myWidget(QWidget):
                         stacked = safeBool(stacked)
                         multiline = True
                         
+                    if multiline == False and kpiKey in self.hiddenKPIsN:
+                        continue
+                
                     label = kpiStylesNNN[kpi]['label']
                     
                     if not gantt and kpi in self.nscales[h] and 'unit' in self.nscales[h][kpi]:
@@ -1283,6 +1337,10 @@ class myWidget(QWidget):
                                 gbn = min(len(self.ndata[h][kpi]), legendCount)
                                 for i in range(gbn):
                                 
+                                    if kpiKey in self.hiddenGBs and i in self.hiddenGBs[kpiKey]:
+                                        deb(f'skip this ML entry: {i}')
+                                        continue
+                                    
                                     gb = self.ndata[h][kpi][i][0]
                                     
                                     label = str(gb) # theoretically gb might be int, #1004
@@ -1673,6 +1731,9 @@ class myWidget(QWidget):
                 
                 kpiKey = hostKey + '/' + kpi
 
+                if kpiKey in self.hiddenKPIsN and kpiStylesNNN[kpi].get('subtype') != 'multiline':
+                    continue
+
                 if kpi not in kpiStylesNNN:
                     log('[!] kpi removed: %s, skipping in drawChart and removing...' % (kpi), 2)
                     self.nkpis[h].remove(kpi)
@@ -2018,6 +2079,9 @@ class myWidget(QWidget):
                 for rn in range(rounds):
                     if subtype == 'multiline':
                         dataArray = self.ndata[h][kpi][rn][1]
+                        if kpiKey in self.hiddenKPIsN and kpiKey in self.hiddenGBs and rn in self.hiddenGBs[kpiKey]:
+                            # skip this multiline kpi entry
+                            continue
                     else:
                         dataArray = self.ndata[h][kpi]
 
@@ -4270,7 +4334,7 @@ class chartArea(QFrame):
         self.fromEdit = QLineEdit(starttime.strftime('%Y-%m-%d %H:%M:%S'))
         self.toEdit = QLineEdit()
 
-        if cfg('dev?') and False:
+        if cfg('dev_debug'):
             self.fromEdit.setText('2023-10-29 20:00:00')
             self.toEdit.setText('2023-10-30 12:00:00')
 
