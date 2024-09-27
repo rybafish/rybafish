@@ -79,10 +79,11 @@ class myWidget(QWidget):
     
     highlightedGBI = None # multiline groupby index 
 
-    hiddenKPIsN = []            #list of hidden kpis in form hostname:port/kpiname
+    hiddenKPIsN = set()            #list of hidden kpis in form hostname:port/kpiname
     # hiddenKPIs = []             #list of hidden kpis 
     # hiddenKPIsHost = []         #list of hosts for hidden kpis, same length 
-    hiddenGBs = {}
+    hiddenGBs = {}              # for multiline entry (line index to hide)
+    hiddenGantt = {}            # for gantt
     
     #data = {} # dictionary of data sets + time line (all same length)
     #scales = {} # min and max values
@@ -790,6 +791,7 @@ class myWidget(QWidget):
         deb(f'{self.highlightedKpiHost=}')
         deb(f'{self.highlightedGBI=}')
         deb(f'{self.highlightedEntity=}')
+        deb(f'{self.highlightedRange=}')
 
         if mode == 'regular':
             # need to check if not already in the list...
@@ -798,18 +800,27 @@ class myWidget(QWidget):
             kpiKey = f'{hostKey}/{self.highlightedKpi}'
             # self.hiddenKPIs.append(self.highlightedKpi)
             # self.hiddenKPIsHost.append(self.highlightedKpiHost)
-            self.hiddenKPIsN.append(kpiKey)
+            self.hiddenKPIsN.add(kpiKey)
 
-            if self.highlightedGBI:
+            if self.highlightedGBI is not None: # hide one oen multiline entry
                 if not kpiKey in self.hiddenGBs:
                     self.hiddenGBs[kpiKey] = [self.highlightedGBI]
                 else:
                     self.hiddenGBs[kpiKey].append(self.highlightedGBI)
+
+            if self.highlightedEntity is not None: # hide one gantt box 
+                if not kpiKey in self.hiddenGantt:
+                    self.hiddenGantt[kpiKey] = {}
+                if self.highlightedEntity not in self.hiddenGantt[kpiKey]:
+                    self.hiddenGantt[kpiKey][self.highlightedEntity] = []
+
+                self.hiddenGantt[kpiKey][self.highlightedEntity].append(self.highlightedRange) 
+                
+                deb(f'gantt hidding scheme: {self.hiddenGantt}')
                 
             self.repaint()
 
-        log(f'list of hidden KPIs: {self.hiddenKPIs}')
-        log(f'list of hidden KPIs New style: {self.hiddenKPIsN}')
+        log(f'list of hidden KPIs New style: {self.hiddenKPIsN}', 4)
 
     def checkForHint(self, pos):
         '''
@@ -1302,7 +1313,7 @@ class myWidget(QWidget):
                         stacked = safeBool(stacked)
                         multiline = True
                         
-                    if multiline == False and kpiKey in self.hiddenKPIsN:
+                    if multiline == False and gantt == False and kpiKey in self.hiddenKPIsN:
                         continue
                 
                     label = kpiStylesNNN[kpi]['label']
@@ -1730,8 +1741,9 @@ class myWidget(QWidget):
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
                 
                 kpiKey = hostKey + '/' + kpi
+                subtype = kpiStylesNNN[kpi].get('subtype')
 
-                if kpiKey in self.hiddenKPIsN and kpiStylesNNN[kpi].get('subtype') != 'multiline':
+                if kpiKey in self.hiddenKPIsN and subtype != 'multiline' and subtype != 'gantt':
                     continue
 
                 if kpi not in kpiStylesNNN:
@@ -1847,6 +1859,11 @@ class myWidget(QWidget):
                     
                         range_i = 0
                         for t in gc[entity]:
+                            
+                            if kpiKey in self.hiddenKPIsN and entity in self.hiddenGantt[kpiKey]:
+                                if range_i in self.hiddenGantt[kpiKey][entity]:
+                                    range_i += 1
+                                    continue
 
                             x = (t[0].timestamp() - from_ts) # number of seconds
                             x = int(self.side_margin + self.left_margin +  x * x_scale)
@@ -2061,7 +2078,7 @@ class myWidget(QWidget):
                 # due to multiline support
                 #
                 
-                subtype = kpiStylesNNN[kpi].get('subtype')
+                # subtype = kpiStylesNNN[kpi].get('subtype') -- move up, 2024-09-27
                 # asyncMultiline = kpiStylesNNN[kpi].get('async')
                 if 'async' in kpiStylesNNN[kpi]:
                     asyncMultiline = kpiStylesNNN[kpi].get('async')
