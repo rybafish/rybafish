@@ -820,9 +820,11 @@ class myWidget(QWidget):
                 
             self.repaint()
 
-        log(f'list of hidden KPIs New style: {self.hiddenKPIsN}', 4)
+        log(f'list of hidden KPIs: {self.hiddenKPIsN}', 4)
+        log(f'list of hidden KPIs: {self.hiddenGBs}', 5)
+        log(f'list of hidden KPIs: {self.hiddenGantt}', 5)
 
-    def checkForHint(self, pos):
+    def checkForHint(self, pos, hide=True):
         '''
             1 actually we have to check the x scale 
             and check 2 _pixels_ around and scan Y variations inside
@@ -842,6 +844,8 @@ class myWidget(QWidget):
                 found = self.scanForHint(pos, host, self.nkpis[host], self.nscales[host], self.ndata[host])
                 
                 if found == True: #we only can find one kpi to highlight (one for all the hosts)
+                    if hide:
+                        self.hideKPIs('regular')
                     return
 
         self.collisionsCurrent = None
@@ -1227,6 +1231,8 @@ class myWidget(QWidget):
             step2: look through metrics which one has same/similar value
         '''
         
+        modifiers = QApplication.keyboardModifiers()
+
         if event.button() == Qt.RightButton:
             return
         
@@ -1234,7 +1240,10 @@ class myWidget(QWidget):
         
         time = self.t_from + datetime.timedelta(seconds= ((pos.x() - self.side_margin - self.left_margin)/self.step_size*self.t_scale) - self.delta)
         
-        self.checkForHint(pos)
+        if modifiers == Qt.AltModifier:
+            self.checkForHint(pos, hide=True)
+        else:
+            self.checkForHint(pos, hide=False) #regulare check for hint 
             
     def resizeWidget(self):
         if self.t_to is None:
