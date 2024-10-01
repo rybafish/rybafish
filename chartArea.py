@@ -79,10 +79,11 @@ class myWidget(QWidget):
     
     highlightedGBI = None # multiline groupby index 
 
-    hiddenKPIsN = set()            #list of hidden kpis in form hostname:port/kpiname
-    # hiddenKPIs = []             #list of hidden kpis 
-    # hiddenKPIsHost = []         #list of hosts for hidden kpis, same length 
+    hiddenKPIs = set()            #list of hidden kpis in form hostname:port/kpiname
+    hiddenKPIsMode = {}           # created for negative mode for GBs, but who knows?
     hiddenGBs = {}              # for multiline entry (line index to hide)
+                                # negative means all except this one 
+                                # negative/positive cannot be combined
     hiddenGantt = {}            # for gantt
     
     #data = {} # dictionary of data sets + time line (all same length)
@@ -550,6 +551,7 @@ class myWidget(QWidget):
         copyPNG = cmenu.addAction('Copy chart area')
         savePNG = cmenu.addAction('Save chart area')
         hideKpi = None
+        hideKpiNegative = None
         unhideKpi = None
 
         copyLegend = None
@@ -586,7 +588,10 @@ class myWidget(QWidget):
         if self.highlightedKpi is not None:
             hideKpi = cmenu.addAction('Hide highlighted KPI')
             
-        if self.hiddenKPIsN:
+        if self.highlightedKpi is not None and self.highlightedGBI is not None:
+            hideKpiNegative = cmenu.addAction('Hide all multilines except highlighted one')
+            
+        if self.hiddenKPIs:
             unhideKpi = cmenu.addAction('Unhide all hidden KPIs')
             
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
@@ -777,9 +782,12 @@ class myWidget(QWidget):
 
         if self.highlightedKpi and action == hideKpi:
             self.hideKPIs('regular')
+            
+        if self.highlightedKpi and action == hideKpiNegative:
+            self.hideKPIs('negative')
 
-        if self.hiddenKPIsN and action == unhideKpi:
-            self.hiddenKPIsN.clear()
+        if self.hiddenKPIs and action == unhideKpi:
+            self.hiddenKPIs.clear()
             self.hiddenGBs.clear()
             self.repaint()
             log(f'unhide all hidden KPIs', 4)
@@ -787,42 +795,45 @@ class myWidget(QWidget):
     def hideKPIs(self, mode):
         '''add relevant kpi to the list of hidden kpis'''    
 
+        deb(f'hideKPIs, {mode=}')
         deb(f'{self.highlightedKpi=}')
         deb(f'{self.highlightedKpiHost=}')
         deb(f'{self.highlightedGBI=}')
         deb(f'{self.highlightedEntity=}')
         deb(f'{self.highlightedRange=}')
 
-        if mode == 'regular':
-            # need to check if not already in the list...
-            h = self.highlightedKpiHost
-            hostKey = self.hosts[h]['host'] + ':' + self.hosts[h]['port']
-            kpiKey = f'{hostKey}/{self.highlightedKpi}'
-            # self.hiddenKPIs.append(self.highlightedKpi)
-            # self.hiddenKPIsHost.append(self.highlightedKpiHost)
-            self.hiddenKPIsN.add(kpiKey)
+        # need to check if not already in the list...
+        h = self.highlightedKpiHost
+        hostKey = self.hosts[h]['host'] + ':' + self.hosts[h]['port']
+        kpiKey = f'{hostKey}/{self.highlightedKpi}'
+        self.hiddenKPIs.add(kpiKey)
 
-            if self.highlightedGBI is not None: # hide one oen multiline entry
-                if not kpiKey in self.hiddenGBs:
-                    self.hiddenGBs[kpiKey] = [self.highlightedGBI]
-                else:
-                    self.hiddenGBs[kpiKey].append(self.highlightedGBI)
+        if mode == 'negative':
+            self.hiddenKPIsMode[kpiKey] = 'negative'
+            # self.hiddenGBs[kpiKey] = []
 
-            if self.highlightedEntity is not None: # hide one gantt box 
-                if not kpiKey in self.hiddenGantt:
-                    self.hiddenGantt[kpiKey] = {}
-                if self.highlightedEntity not in self.hiddenGantt[kpiKey]:
-                    self.hiddenGantt[kpiKey][self.highlightedEntity] = []
+        if self.highlightedGBI is not None: # hide one oen multiline entry
+            if not kpiKey in self.hiddenGBs:
+                self.hiddenGBs[kpiKey] = [self.highlightedGBI]
+            else:
+                self.hiddenGBs[kpiKey].append(self.highlightedGBI)
 
-                self.hiddenGantt[kpiKey][self.highlightedEntity].append(self.highlightedRange) 
-                
-                deb(f'gantt hidding scheme: {self.hiddenGantt}')
-                
-            self.repaint()
+        if self.highlightedEntity is not None: # hide one gantt box 
+            if not kpiKey in self.hiddenGantt:
+                self.hiddenGantt[kpiKey] = {}
+            if self.highlightedEntity not in self.hiddenGantt[kpiKey]:
+                self.hiddenGantt[kpiKey][self.highlightedEntity] = []
 
-        log(f'list of hidden KPIs: {self.hiddenKPIsN}', 4)
-        log(f'list of hidden KPIs: {self.hiddenGBs}', 5)
-        log(f'list of hidden KPIs: {self.hiddenGantt}', 5)
+            self.hiddenGantt[kpiKey][self.highlightedEntity].append(self.highlightedRange) 
+
+            deb(f'gantt hidding scheme: {self.hiddenGantt}')
+
+        log(f'list of hidden KPIs:   {self.hiddenKPIs}', 4)
+        log(f'list of hidden mode:   {self.hiddenKPIsMode}', 5)
+        log(f'list of hidden GBs:    {self.hiddenGBs}', 5)
+        log(f'list of hidden Gantts: {self.hiddenGantt}', 5)
+
+        self.repaint()
 
     def checkForHint(self, pos, hide=True):
         '''
@@ -905,6 +916,8 @@ class myWidget(QWidget):
         for kpi in kpis:
         
             log('scanForHint kpi: %s' %(kpi), 5)
+            kpiKey = f"{self.hosts[host]['host']}:{self.hosts[host]['port']}/{kpi}"
+            log(f'key....{kpiKey}', 5)
 
             if not kpi in scales:
                 log(f'[w] kpi {kpi} not in scales, skip', 2)
@@ -912,7 +925,6 @@ class myWidget(QWidget):
         
             if kpi[:4] == 'time':
                 continue
-                
 
             if kpi not in kpiStylesNNN:
                 continue
@@ -926,7 +938,7 @@ class myWidget(QWidget):
             
                 if kpi not in data: # alt+clicked, but not refreshed yet
                     continue
-                    
+                
                 gc = data[kpi]
                 
                 if len(gc) == 0:
@@ -989,7 +1001,6 @@ class myWidget(QWidget):
                         self.highlightedKpiHost = host
                         self.highlightedEntity = entity
                         self.highlightedRange = reportRange
-                        
             
                         t0 = t[0].time().isoformat(timespec='milliseconds')
                         t1 = t[1].time().isoformat(timespec='milliseconds')
@@ -1065,6 +1076,14 @@ class myWidget(QWidget):
                 else:
                     gb = None
                     scan = data[kpi]
+                    
+                if subtype == 'multiline' and kpiKey in self.hiddenKPIs and self.hiddenGBs[kpiKey]:
+                    if self.hiddenKPIsMode.get(kpiKey) == 'negative':
+                        if not rc in self.hiddenGBs[kpiKey]:
+                            continue
+                    else:
+                        if rc in self.hiddenGBs[kpiKey]:
+                            continue
 
                 j = i
 
@@ -1322,7 +1341,7 @@ class myWidget(QWidget):
                         stacked = safeBool(stacked)
                         multiline = True
                         
-                    if multiline == False and gantt == False and kpiKey in self.hiddenKPIsN:
+                    if multiline == False and gantt == False and kpiKey in self.hiddenKPIs:
                         continue
                 
                     label = kpiStylesNNN[kpi]['label']
@@ -1356,10 +1375,21 @@ class myWidget(QWidget):
 
                                 gbn = min(len(self.ndata[h][kpi]), legendCount)
                                 for i in range(gbn):
+                                    # need to rotate raduga anyways
+                                    if kpiStylesNNN[kpi]['multicolor']:
+                                        pen = kpiDescriptions.getRadugaPen()
+                                    else:
+                                        pen = self.kpiPen[h][kpi]
                                 
-                                    if kpiKey in self.hiddenGBs and i in self.hiddenGBs[kpiKey]:
-                                        deb(f'skip this ML entry: {i}')
-                                        continue
+                                    if kpiKey in self.hiddenGBs:
+                                        if self.hiddenKPIsMode.get(kpiKey) == 'negative':
+                                            if not i in self.hiddenGBs[kpiKey]:
+                                                deb(f'skip this ML entry: {i}')
+                                                continue
+                                        else:
+                                            if i in self.hiddenGBs[kpiKey]:
+                                                deb(f'skip this ML entry: {i}')
+                                                continue
                                     
                                     gb = self.ndata[h][kpi][i][0]
                                     
@@ -1371,10 +1401,10 @@ class myWidget(QWidget):
                                     lkpis.append(kpi)
                                     lkpisl.append(label)
 
-                                    if kpiStylesNNN[kpi]['multicolor']:
-                                        pen = kpiDescriptions.getRadugaPen()
-                                    else:
-                                        pen = self.kpiPen[h][kpi]
+                                    # if kpiStylesNNN[kpi]['multicolor']:
+                                    #     pen = kpiDescriptions.getRadugaPen()
+                                    # else:
+                                    #     pen = self.kpiPen[h][kpi]
                                         
                                     if kpi == self.highlightedKpi and h == self.highlightedKpiHost and i == self.highlightedGBI:
                                         pen = QPen(pen)
@@ -1752,7 +1782,7 @@ class myWidget(QWidget):
                 kpiKey = hostKey + '/' + kpi
                 subtype = kpiStylesNNN[kpi].get('subtype')
 
-                if kpiKey in self.hiddenKPIsN and subtype != 'multiline' and subtype != 'gantt':
+                if kpiKey in self.hiddenKPIs and subtype != 'multiline' and subtype != 'gantt':
                     continue
 
                 if kpi not in kpiStylesNNN:
@@ -1869,7 +1899,7 @@ class myWidget(QWidget):
                         range_i = 0
                         for t in gc[entity]:
                             
-                            if kpiKey in self.hiddenKPIsN and entity in self.hiddenGantt[kpiKey]:
+                            if kpiKey in self.hiddenKPIs and entity in self.hiddenGantt[kpiKey]:
                                 if range_i in self.hiddenGantt[kpiKey][entity]:
                                     range_i += 1
                                     continue
@@ -2103,17 +2133,27 @@ class myWidget(QWidget):
                     kpiDescriptions.resetRaduga()
                 
                 for rn in range(rounds):
+                    print('kpiKey: ', kpiKey, 'rn: ', rn)
                     if subtype == 'multiline':
+                        # rotate raduga despite the hiddennesss
+                        if kpiStylesNNN[kpi]['multicolor']:
+                            kpiPen = kpiDescriptions.getRadugaPen()
+
                         dataArray = self.ndata[h][kpi][rn][1]
-                        if kpiKey in self.hiddenKPIsN and kpiKey in self.hiddenGBs and rn in self.hiddenGBs[kpiKey]:
-                            # skip this multiline kpi entry
-                            continue
+                        if kpiKey in self.hiddenKPIs and kpiKey in self.hiddenGBs and self.hiddenGBs[kpiKey]:
+                            if self.hiddenKPIsMode.get(kpiKey) == 'negative':
+                                if not rn in self.hiddenGBs[kpiKey]:       # skip all except
+                                    continue
+                            else:
+                                if rn in self.hiddenGBs[kpiKey]:           # skip this multiline kpi entry
+                                    continue
+                                
                     else:
                         dataArray = self.ndata[h][kpi]
 
-                    if subtype == 'multiline':
-                        if kpiStylesNNN[kpi]['multicolor']:
-                            kpiPen = kpiDescriptions.getRadugaPen()
+                    # if subtype == 'multiline':
+                    #     if kpiStylesNNN[kpi]['multicolor']:
+                    #         kpiPen = kpiDescriptions.getRadugaPen()
 
                     if highlight and (subtype != 'multiline' or self.highlightedGBI == rn):
                         kpiPen.setWidth(cfg('chartWidth', 1)*2)
@@ -2650,7 +2690,6 @@ class chartArea(QFrame):
         
         kpis = data.keys()
         
-        
         timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpiName)
 
         if timeKey is None:
@@ -2691,6 +2730,8 @@ class chartArea(QFrame):
             
                 timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, checkKPI)
                 subtype = kpiStylesNNN[checkKPI].get('subtype')
+
+                kpiKey = f"{self.widget.hosts[checkHost]['host']}:{self.widget.hosts[checkHost]['port']}/{checkKPI}"
                 
                 if checkKPI not in self.widget.ndata[checkHost]:
                     log(f'[w] {checkKPI} is not in data, skip', 5)
@@ -2704,6 +2745,10 @@ class chartArea(QFrame):
                 else:
                     rounds = 1
                 
+                if subtype != 'gantt' and subtype != 'multiline':
+                    if kpiKey in self.widget.hiddenKPIs:
+                        continue
+
                 for rc in range(rounds):
 
                     if subtype == 'multiline':
@@ -2711,6 +2756,14 @@ class chartArea(QFrame):
                     else:
                         gbi = None
                 
+                    if kpiKey in self.widget.hiddenKPIs:
+                        if self.widget.hiddenKPIsMode.get(kpiKey) == 'negative':
+                            if not rc in self.widget.hiddenGBs[kpiKey]:
+                                continue
+                        else:
+                            if rc in self.widget.hiddenGBs[kpiKey]:
+                                continue
+                        
                     y, idx = getY(self.widget.ndata[checkHost], checkHost, timeKey, checkKPI, pointTime, idxKnown=None, gbi=gbi)
                     if y is None:
                         continue
