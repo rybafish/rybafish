@@ -788,7 +788,9 @@ class myWidget(QWidget):
 
         if self.hiddenKPIs and action == unhideKpi:
             self.hiddenKPIs.clear()
+            self.hiddenKPIsMode.clear()
             self.hiddenGBs.clear()
+            self.hiddenGantt.clear()
             self.repaint()
             log(f'unhide all hidden KPIs', 4)
 
@@ -834,6 +836,22 @@ class myWidget(QWidget):
         log(f'list of hidden Gantts: {self.hiddenGantt}', 5)
 
         self.repaint()
+
+
+    def hideKPIsRemove(self, kpiKey):
+        '''remove kpi from hidden kpis structures'''
+
+        if kpiKey in self.hiddenKPIs:
+            log(f'Remove {kpiKey} from hidden kpis structures', 5)
+
+            self.hiddenKPIs.remove(kpiKey)
+            if kpiKey in self.hiddenGBs:
+                self.hiddenGBs.pop(kpiKey)
+            if kpiKey in self.hiddenGantt:
+                self.hiddenGantt.pop(kpiKey)
+            if kpiKey in self.hiddenKPIsMode:
+                self.hiddenKPIsMode.pop(kpiKey)
+        
 
     def checkForHint(self, pos, hide=True):
         '''
@@ -974,6 +992,12 @@ class myWidget(QWidget):
                     reportRange = None
                     
                     for t in gc[entity]:
+                        if kpiKey in self.hiddenKPIs and entity in self.hiddenGantt[kpiKey]:
+                            if j in self.hiddenGantt[kpiKey][entity]:
+                                print(f'we skip {j}, because, {self.hiddenGantt[kpiKey][entity]}')
+                                j += 1
+                                continue
+                            
                         #check ranges first
                         if t[0] <= trgt_time_dt <= t[1]:
                         
@@ -1838,6 +1862,8 @@ class myWidget(QWidget):
                     fontWidth = 0
                     
                     gc = self.ndata[h][kpi]
+
+                    ganttPen = None
                     
                     for e in gc:
                         width = fm.width(e)
@@ -2047,6 +2073,10 @@ class myWidget(QWidget):
                             # to avoid only ugly artefacts...
                             #qp.setPen(QColor('#448')) # entity label color
                             
+                            if ganttPen is None:
+                                # nothing to draw, likely because all is hidden
+                                continue
+
                             clr = ganttPen.color()
                             clr = QColor(int(clr.red()*0.6), int(clr.green()*0.6), int(clr.blue()*0.6))
                             
@@ -2133,7 +2163,6 @@ class myWidget(QWidget):
                     kpiDescriptions.resetRaduga()
                 
                 for rn in range(rounds):
-                    print('kpiKey: ', kpiKey, 'rn: ', rn)
                     if subtype == 'multiline':
                         # rotate raduga despite the hiddennesss
                         if kpiStylesNNN[kpi]['multicolor']:
@@ -3603,6 +3632,9 @@ class chartArea(QFrame):
 
                         log('kpis after unclick: %s' % (self.widget.nkpis[hst]), 4)
                         log('data keys: %s' % str(self.widget.ndata[hst].keys()), 4)
+
+                        kpiKey = f"{self.widget.hosts[hst]['host']}:{self.widget.hosts[hst]['port']}/{kpi}"
+                        self.widget.hideKPIsRemove(kpiKey)
                         
             else:       
                 if cfg('loglevel', 3) > 3:
@@ -3619,6 +3651,9 @@ class chartArea(QFrame):
                 if kpi in self.widget.ndata[host]: #might be empty for alt-added
                     del(self.widget.ndata[host][kpi]) # ndata is a dict
                     
+                kpiKey = f"{self.widget.hosts[host]['host']}:{self.widget.hosts[host]['port']}/{kpi}"
+                self.widget.hideKPIsRemove(kpiKey)
+
                 if cfg('loglevel', 3) > 3:
                     log('kpis after unclick: %s' % (self.widget.nkpis[host]))
                     log('data keys: %s' % str(self.widget.ndata[host].keys()))
