@@ -1982,13 +1982,23 @@ class myWidget(QWidget):
                             
                             if kpiStylesNNN[kpi]['style'] == 'bar':
 
-                                if gradient:
+                                if gradient and cfg('dev_gradient_border'):
                                     bv = t[5]
                                     
                                     if bv is not None:
                                         rgb = adjustGradient(ganttBaseColor, ganttFadeColor, bv)
                                         qp.setBrush(rgb)
+
+                                        rgb = QPen(QColor(int(rgb.red()*0.75), int(rgb.green()*0.75), int(rgb.blue()*0.75)))
+                                        tPen = QPen(rgb)
+
+                                        if highlight == True:
+                                            tPen.setWidth(3)
+                                        else:
+                                            tPen.setWidth(1)
                                     
+                                        qp.setPen(tPen)
+                                        
                                 if manual_color:
                                     clr = t[5]
 
