@@ -711,6 +711,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['shift'] = kpi.get('shift', 2)
             style['title'] = kpi.get('title')
             style['gradient'] = kpi.get('gradient')
+            style['gradient_border'] = kpi.get('gradient_border')
             style['manual_color'] = kpi.get('manual_color')
             style['manual_color_border'] = kpi.get('manual_color_border')
 

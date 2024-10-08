@@ -1989,7 +1989,7 @@ class myWidget(QWidget):
                                         rgb = adjustGradient(ganttBaseColor, ganttFadeColor, bv)
                                         qp.setBrush(rgb)
 
-                                        if cfg('dev_gradient_border'):
+                                        if kpiStylesNNN[kpi].get('gradient_border'):
                                             rgb = QPen(QColor(int(rgb.red()*0.75), int(rgb.green()*0.75), int(rgb.blue()*0.75)))
                                             tPen = QPen(rgb)
 
