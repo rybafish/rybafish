@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip, QAction
 
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap, QRegion
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap, QRegion, QLinearGradient
 
 from PyQt5.QtCore import QTimer, QRect, QSize
 
@@ -1297,6 +1297,31 @@ class myWidget(QWidget):
         self.resize(number_of_cells * self.step_size + self.side_margin*2 + self.left_margin, self.size().height()) #dummy size
         
     def drawLegend(self, qp, startX, stopX):
+
+        def ganttLegend(kpiPen):
+            '''draw gantt legend considering the gradient and manual color'''
+
+            style = 'solid'
+            
+            qp.setBrush(kpiPen[0])
+            qp.setPen(kpiPen[1])
+
+            if len(kpiPen) == 2: # classic solid, nothing special
+                style = 'solid'
+
+            if len(kpiPen) == 3: # classic solid, nothing special
+                style = 'gradient'
+            
+            if style == 'solid':
+                qp.drawRect(r)
+
+            if style == 'gradient':
+                g = QLinearGradient(QPoint(r.left(), 1), QPoint(r.right(), 1))
+                g.setColorAt(0.5, kpiPen[0].color())
+                g.setColorAt(1.0, QColor(kpiPen[2])) #fadeTo value which is gradientTo from style 
+                qp.fillRect(r, g)
+                qp.setBrush(QBrush(QColor(255, 255, 255, 0)))
+                qp.drawRect(r)
     
         lkpis = []      # kpi names to be able to skip doubles (what doubles?..)
         lkpisl = []     # kpi labels
@@ -1463,6 +1488,7 @@ class myWidget(QWidget):
 
                         lkpis.append(kpi)
                         lkpisl.append(label)
+                        fadeTo = None
                         
                         if kpiKey in kpiDescriptions.customColors:
                             c = kpiDescriptions.customColors[kpiKey]
@@ -1472,7 +1498,13 @@ class myWidget(QWidget):
                             pen = self.kpiPen[h][kpi]
                             brshColor = kpiStylesNNN[kpi]['brush']
                         
-                        lmeta.append(['gantt', [QBrush(brshColor), pen], 0, 44])
+                        if kpiStylesNNN[kpi]['gradient']:
+                            fadeTo = kpiStylesNNN[kpi].get('gradientTo')
+                            
+                        if fadeTo is None or not cfg('legendGradient'):
+                            lmeta.append(['gantt', [QBrush(brshColor), pen], 0, 44])
+                        else:
+                            lmeta.append(['gantt', [QBrush(brshColor), pen, fadeTo], 0, 44])
                     
         # calculates longest label width
         
@@ -1544,9 +1576,12 @@ class myWidget(QWidget):
         
             #if lpens[i] is not None:
             if meta[0] == 'gantt':
-                qp.setBrush(kpiPen[0])
-                qp.setPen(kpiPen[1])
-                qp.drawRect(leftX + 4, int(10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2), 36, 4)
+                # qp.setBrush(kpiPen[0])
+                # qp.setPen(kpiPen[1])
+                # # qp.drawRect(leftX + 4, int(10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2), 36, 4)
+                r = QRect(leftX + 4, int(10 + self.top_margin + fontHeight * (i+1) - fontHeight/4 + self.y_delta - 2), 36, 4)
+
+                ganttLegend(kpiPen)
                 
                 ident = 4  + meta[3]
                 
