@@ -1868,7 +1868,8 @@ class myWidget(QWidget):
                     else:
                         manual_color = False
 
-                    if kpiStylesNNN[kpi].get('manual_color_border'):
+                    # if kpiStylesNNN[kpi].get('manual_color_border'):
+                    if kpiStylesNNN[kpi].get('borderColor'):
                         manual_color_border = True
                     else:
                         manual_color_border = False
@@ -2024,7 +2025,7 @@ class myWidget(QWidget):
                                         rgb = adjustGradient(ganttBaseColor, ganttFadeColor, bv)
                                         qp.setBrush(rgb)
 
-                                        if kpiStylesNNN[kpi].get('gradient_border'):
+                                        if kpiStylesNNN[kpi].get('borderColor'):
                                             rgb = QPen(QColor(int(rgb.red()*0.75), int(rgb.green()*0.75), int(rgb.blue()*0.75)))
                                             tPen = QPen(rgb)
 
