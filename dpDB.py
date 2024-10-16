@@ -42,6 +42,8 @@ import traceback
 from os import getcwd
 from profiler import profiler
 
+import decimal
+
 class dataProvider(QObject):
     
     disconnected  = pyqtSignal()
@@ -691,8 +693,8 @@ class dataProvider(QObject):
             #(targetMax, targetMin) = fromTo # I like it reversed...
             
             if cfg('dev'):
-                log('Gantt gradient normalization', 5)
-                log('targetMax %i,  targetMin %i' % (targetMax, targetMin), 5)
+                log(f'Gantt gradient normalization, min/max: {brMin}/{brMax}', 5)
+                log('targetMin %i, targetMax %i' % (targetMin, targetMax), 5)
             
             delta = brMin
             
@@ -701,12 +703,16 @@ class dataProvider(QObject):
             else:
                 k = 1
             
+            k = decimal.Decimal(k)
+            
             for entity in data[kpi]:
                 for i in range(len(data[kpi][entity])):
+                    normVal = round(((data[kpi][entity][i][5] - delta) * k + targetMin)/100, 3)
                     if cfg('dev'):
-                        log('  %i -> %.2f' % (data[kpi][entity][i][5], ((data[kpi][entity][i][5] - delta) * k + targetMin)/100), 5)
+                        # log('  %i -> %.2f' % (data[kpi][entity][i][5], ((data[kpi][entity][i][5] - delta) * k + targetMin)/100), 5)
+                        log(f'  {data[kpi][entity][i][5]} --> {normVal}', 5)
                         
-                    data[kpi][entity][i][5] = ((data[kpi][entity][i][5] - delta) * k + targetMin)/100
+                    data[kpi][entity][i][5] = normVal
         
         try:
             #rows = db.execute_query(self.connection, sql, params)
@@ -772,6 +778,12 @@ class dataProvider(QObject):
         
         lastShift = {}      #last index for each shift per entity, lastShift[entity][shift] = some index in data[kpi][entity] array
 
+        brNorm = kpiStylesNNN[kpi].get('gradientNorm')
+
+        if brNorm:
+            brMin = decimal.Decimal(0.0)
+            brMax = decimal.Decimal(1.0)
+
         for r in rows:
             entity = str(r[0])
 
@@ -792,13 +804,16 @@ class dataProvider(QObject):
                 titleValue = r[tIndex]
 
             if brIndex is not None:
-                brValue = r[brIndex]
-                
-                if brValue > brMax:
-                    brMax = brValue
+                if brNorm:
+                    brValue = r[brIndex]
+                else:
+                    brValue = r[brIndex]
 
-                if brValue < brMin:
-                    brMin = brValue
+                    if brValue > brMax:
+                        brMax = brValue
+
+                    if brValue < brMin:
+                        brMin = brValue
             else:
                 if cIndex:
                     brValue = r[cIndex]
@@ -858,33 +873,15 @@ class dataProvider(QObject):
                     else:
                         # did not detect any empty slot --> generate new entry
                         shift += 1
-                        pass
-
-                '''
-                    #not a very improving attempt:
-                    
-                    bkp = 0
-                    while i < dataSize:
-                        if start < entry[i][1]: # if intersects...
-                            if shift == entry[i][3]:
-                                shift += 1
-                                i = bkp
-                        else:
-                            bkp = i
-
-                        i += 1
-                '''
 
                 ls[shift] = dataSize
-                
-                #print('final ls: ', ls)
                 
                 data[kpi][entity].append([start, stop, desc, shift, titleValue, brValue])
             else:
                 data[kpi][entity] = [[start, stop, desc, 0, titleValue, brValue]]
                 lastShift[entity] = {}
                 lastShift[entity][0] = 0
-                
+
             t2 = time.time()
             
             j += 1

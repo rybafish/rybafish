@@ -736,6 +736,9 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             clrFade = QColor(brightnessTo)
             style['gradientTo'] = clrFade
 
+            if style['gradient']:
+                style['gradientNorm'] = kpi.get('gradientNorm')
+
             yr = kpi.get('y_range')
             
             if type(yr) == list and len(yr) == 2:

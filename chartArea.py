@@ -1638,21 +1638,19 @@ class myWidget(QWidget):
     
         def adjustGradient(clr, clrTo, v):
         
-            #clrTo = QColor('#F00')
+            if v > 1:
+                v = 1
+            if v < 0:
+                v = 0
             
             (toR, toG, toB) = (clrTo.red(), clrTo.green(), clrTo.blue())
             (frR, frG, frB) = (clr.red(), clr.green(), clr.blue())
-            
-            #print(v)
-            #print(clr.red(), clr.green(), clr.blue())
             
             r = int(frR + (toR - frR) * v)
             g = int(frG + (toG - frG) * v)
             b = int(frB + (toB - frB) * v)
             
             clr = QColor(r, g, b)
-            
-            #print(clr.red(), clr.green(), clr.blue())
             
             return clr
             
