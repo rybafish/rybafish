@@ -1423,6 +1423,11 @@ class myWidget(QWidget):
                                         legendCount += 1
 
                                 gbn = min(len(self.ndata[h][kpi]), legendCount)
+
+                                for tmp in self.nscalesml[h].keys():
+                                    deb(f'#1029 gb keys: {tmp}')
+                                    deb(f'        {self.nscalesml[h][tmp].keys()}')
+                                
                                 for i in range(gbn):
                                     # need to rotate raduga anyways
                                     if kpiStylesNNN[kpi]['multicolor']:
