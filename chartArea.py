@@ -1449,8 +1449,11 @@ class myWidget(QWidget):
                                     
                                     label = str(gb) # theoretically gb might be int, #1004
                                     
-                                    label += ': max: ' + str(self.nscalesml[h][kpi][gb]['max_label']) + unit
-                                    label += ', last: ' + str(self.nscalesml[h][kpi][gb]['last_label']) + unit
+                                    if kpi in self.nscalesml[h]:
+                                        label += ': max: ' + str(self.nscalesml[h][kpi][gb]['max_label']) + unit # multiline crash #1029 
+                                        label += ', last: ' + str(self.nscalesml[h][kpi][gb]['last_label']) + unit
+                                    else:
+                                        label += '#### bug #1029 anticrash ####'
                                 
                                     lkpis.append(kpi)
                                     lkpisl.append(label)
