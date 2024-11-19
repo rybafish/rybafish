@@ -217,6 +217,10 @@ class QResultSet(QTableWidget):
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         
         self.horizontalHeader().setMinimumSectionSize(0)
+        
+        hdr = self.horizontalHeader()
+
+        hdr.sectionClicked.connect(self.headerClicked)
 
         # any style change resets everything to some defaults....
         # like selected color, etc. just gave up.
@@ -236,7 +240,15 @@ class QResultSet(QTableWidget):
 
         self.cellClicked.connect(self.cellClickedSig)
 
+    def headerClicked(self, index):
         
+        modifiers = QApplication.keyboardModifiers()
+        
+        if modifiers == Qt.AltModifier:
+            log(f'result header alt+click, {index}: hiding')
+            self.setColumnWidth(index, 0)
+            
+
     @profiler
     def checkHighlightClr(self, col, value):
         '''detect color for highlighter, returns brush'''
@@ -356,7 +368,7 @@ class QResultSet(QTableWidget):
         
         col = self.highlightColumn
         value = self.highlightValue
-        deb(f'do the highlight: column:{col}, value:{value}', comp='highlight')
+        # deb(f'do the highlight: column:{col}, value:{value}', comp='highlight')
 
         if col == -1 or rows == 0:
             return
@@ -406,18 +418,18 @@ class QResultSet(QTableWidget):
                 hlExplicit = False
 
             for j in range(cols):
-                deb(f'row: {i}, col: {j}', comp='highlight')
+                # deb(f'row: {i}, col: {j}', comp='highlight')
                 bg = self.item(i, j).background()
 
                 # okay I am lost now, what this can be not white?
 
-                deb(f'check: column {j}, value: {self.item(i, j).text()}', comp='highlight')
+                # deb(f'check: column {j}, value: {self.item(i, j).text()}', comp='highlight')
                 if self.checkHighlight(j, self.item(i, j).text()):
-                    deb('some color...', comp='highlight')
+                    # deb('some color...', comp='highlight')
                     # cl = hl2Brush.color()
                     cl = self.checkHighlightClr(j, self.item(i, j).text()).color()
                 else:
-                    deb('nope...', comp='highlight')
+                    # deb('nope...', comp='highlight')
                     cl = QBrush(Qt.NoBrush).color()
 
                 (r, g, b) = (cl.red(), cl.green(), cl.blue()) # bg color
@@ -426,10 +438,12 @@ class QResultSet(QTableWidget):
 
                 # the bG is not default normally in just a single case - cell is highlighted (based on value)
 
+                '''
                 if not noBg:
                     deb(f'>>> row: {i}, col:{j}: not a default bg', comp='highlight')
                 else:
                     deb(f'row: {i}, col:{j} default white', comp='highlight')
+                '''
 
                 if hl or hlExplicit:          # the row is highlighted
                     if j in lobCols:
@@ -484,7 +498,8 @@ class QResultSet(QTableWidget):
                 cname = self.headers[c]
                 
                 if cname not in headers:
-                    headers.append(cname)
+                    if self.columnWidth(c) > 0: #skip hidden columns 
+                        headers.append(cname)
                 
                 
             for h in headers:
