@@ -1,7 +1,7 @@
 import sys
 
 from PyQt5.QtWidgets import QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
-from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip, QAction
+from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip, QAction, QInputDialog
 
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap, QRegion, QLinearGradient
 
@@ -520,7 +520,22 @@ class myWidget(QWidget):
         return pos
         
     def contextMenuEvent(self, event):
-       
+        def inputFileName():
+            '''input a filename for screenshot if experimental'''
+            fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
+
+            id = QInputDialog
+
+            if cfg('experimental'):
+                value, ok = id.getText(self, 'File Name', 'provide a file name', text=fn+'_')
+
+                if ok:
+                    return value + '.png'
+                else:
+                    return None # cancel
+                
+            return fn + '.png'
+            
         cmenu = QMenu(self)
         
         between = False
@@ -615,16 +630,20 @@ class myWidget(QWidget):
             if not os.path.isdir(screensFolder):
                 os.mkdir(screensFolder)
                 
-            filename = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
-            fn = os.path.join(screensFolder, filename)
+            filename = inputFileName()
+
+            if filename:
+                fn = os.path.join(screensFolder, filename)
             
-            log('Saving PNG image (%s)' % filename)
-            
-            pixmap = QPixmap(self.size())
-            self.render(pixmap)
-            pixmap.save(fn)
-            
-            self.statusMessage('Screenshot saved as %s' % (fn))
+                log('Saving PNG image (%s)' % filename)
+
+                pixmap = QPixmap(self.size())
+                self.render(pixmap)
+                pixmap.save(fn)
+
+                self.statusMessage('Screenshot saved as %s' % (fn))
+            else:
+                log('Screen save cancelled', 4)
         
         if action == copyLegend:
             if not self.legendWidth:
@@ -656,16 +675,20 @@ class myWidget(QWidget):
             if not os.path.isdir(screensFolder):
                 os.mkdir(screensFolder)
                 
-            filename = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')+'.png'
-            fn = os.path.join(screensFolder, filename)
             
-            log('Saving PNG image (%s)' % filename)
-            
-            pixmap = QPixmap(self.parentWidget().size())
-            self.parentWidget().render(pixmap)
-            pixmap.save(fn)
-            
-            self.statusMessage('Screenshot saved as %s' % (fn))
+            filename = inputFileName()
+
+            if filename:
+                fn = os.path.join(screensFolder, filename)
+                log('Saving PNG image (%s)' % filename)
+
+                pixmap = QPixmap(self.parentWidget().size())
+                self.parentWidget().render(pixmap)
+                pixmap.save(fn)
+
+                self.statusMessage('Screenshot saved as %s' % (fn))
+            else:
+                log('Screen save cancelled', 4)
             
         if action == copyPNG:
             log('Creating a screen')
