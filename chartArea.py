@@ -524,7 +524,9 @@ class myWidget(QWidget):
             '''input a filename for screenshot if experimental'''
             fn = 'screen_'+datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
 
-            id = QInputDialog
+            id = QInputDialog()
+            # id = QInputDialog(self, flags= ~Qt.WindowContextHelpButtonHint)
+            # id.setWindowFlags(id.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
             if cfg('experimental'):
                 value, ok = id.getText(self, 'File Name', 'provide a file name', text=fn+'_')

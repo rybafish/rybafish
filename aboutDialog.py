@@ -25,7 +25,7 @@ class About(QDialog):
         #QtGui.QDialog(None, QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint)
         #super().__init__(None, Qt.WindowSystemMenuHint | Qt.WindowTitleHint)
         super().__init__(hwnd)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         
         self.initUI()
         

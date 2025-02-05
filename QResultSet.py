@@ -302,6 +302,10 @@ class QResultSet(QTableWidget):
     def dataBarNormalize(self, c):
         '''normalize column values and save normilized to item.data'''
 
+        if c < 0:               # probably -1: no column
+            deb(f'dataBarNormalize: {c} skip...')
+            return
+
         rows = self.rowCount()
 
         if c >= len(self.cols):
@@ -335,7 +339,12 @@ class QResultSet(QTableWidget):
             else:
                 d = v/maxval
 
-            self.item(i, c).setData(Qt.UserRole + 1, d)
+            item = self.item(i, c)
+
+            if item is None:
+                return
+
+            item.setData(Qt.UserRole + 1, d)
 
         return True
 
