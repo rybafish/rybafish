@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidgetItem,
+from PyQt5.QtWidgets import (QLineEdit, QWidget, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QSplitter, QTableWidgetItem,
                              QTabWidget, QApplication, QMenu, QFileDialog, QMessageBox, QInputDialog, QLabel,
                              QToolBar, QAction, QStyle, QCheckBox, QToolButton)
 
@@ -350,6 +350,7 @@ class console(QPlainTextEditLN):
         self.manualStylesRB = [] # rollback styles
 
         self.lastSearch = ''    #for searchDialog
+        self.bindVars = None
 
         super().__init__(parent)
 
@@ -596,6 +597,28 @@ class console(QPlainTextEditLN):
         cursor.insertText(txt)
         
         
+    def substituteBindVars(self):
+        cursor = self.textCursor()
+
+        if cursor.selection().isEmpty():
+            self.log.emit('Select the statement manually first')
+            return
+            
+        txt = cursor.selection().toPlainText()
+        
+        id = QInputDialog
+
+        value, ok = id.getText(self, 'Bind variables', 'Input coma-separated list of variables. Same format as exp.st. trace', QLineEdit.Normal, self.bindVars)
+
+        if ok:
+            self.bindVars = value
+            txt, values = utils.bindVariables(txt, value)
+            self.log.emit(f'Values: {values}')
+            cursor.insertText(txt)
+            
+        else:
+            pass
+    
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
@@ -615,6 +638,9 @@ class console(QPlainTextEditLN):
         cmenu.addSeparator()
         explainPlan = cmenu.addAction('Explain Plan\tCtrl+Shift+X')
         sqlFormat = cmenu.addAction('Format SQL\tCtrl+Shift+O')
+        if cfg('experimental'):
+            menuBindVars = cmenu.addAction('Subtitute bind variables')
+            
             
         if cfg('dev'):
             cmenu.addSeparator()
@@ -644,6 +670,8 @@ class console(QPlainTextEditLN):
             self.executionTriggered.emit('no parsing')
         if action == menuExecLR:
             self.executionTriggered.emit('leave results')
+        if cfg('experimental') and action == menuBindVars:
+            self.substituteBindVars()
         elif action == menuDisconnect:
             self.disconnectSignal.emit()
         elif action == menuAbort:

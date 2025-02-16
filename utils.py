@@ -1640,3 +1640,46 @@ def pwd_escape(value):
         lambda match: ESCAPE_MAP.get(match.group(0)),
         value
     )
+
+@profiler
+def bindVariables(txt, vars):
+    '''
+    Very silly bind variables render into txt
+
+    does not take into account comments or literals at all
+    '''
+    
+    values = vars.split(',')
+    valuesCopy = values.copy()
+    global varCount
+
+    varCount = 0
+    output = ''
+
+    def renderOne(line, vals, start=0):
+        i = line.find('?', start)
+        global varCount
+        
+        if i >= 0:
+            if len(vals):
+                v = vals.pop(0)
+                line = line[:i] + v + line[i+1:]
+                varCount += 1
+            else:
+                log('Bind variables parser: not enough values passed', 2)
+
+            print(line)
+
+            return renderOne(line, vals, i+1)
+        return line
+    
+    for l in txt.splitlines():
+        line = renderOne(l, values)
+        output += line+'\n'
+        
+    values = valuesCopy
+
+    deb(f'bind: {output=}')
+    deb(f'bind: {values=}')
+
+    return output, values
