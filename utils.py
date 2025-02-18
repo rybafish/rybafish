@@ -1644,37 +1644,81 @@ def pwd_escape(value):
 @profiler
 def bindVariables(txt, vars):
     '''
-    Very silly bind variables render into txt
+    Very, very silly bind variables render into txt
 
     does not take into account comments or literals at all
     '''
     
     values = vars.split(',')
     valuesCopy = values.copy()
-    global varCount
 
-    varCount = 0
     output = ''
+
+    def smartLine(line, flags, values):
+        '''
+        flags = list of input flags: s=string, c=comment
+        
+        returns: processed str and list of outgoing flags
+        
+        if c in flags:
+              scan for eoc
+
+        else
+           scan for str
+           if not - replace
+        '''
+        
+        l = len(line)
+        s = ''                  # result
+
+        fs = False
+        fc = False               #in comment 
+        if 'c' in flags:
+            fc = True
+            
+        i = 0
+        while i < l:
+            ch = line[i]
+            
+            if not fc and ch == '/' and i<l and line[i+1] == '*':
+                i += 1
+                s += '/*'
+                fc = True
+            elif fc and ch == '*' and i<l and line[i+1] == '/':
+                i += 1
+                s += '*/'
+                fc = False
+            else:
+                # some part of string with no mode change
+                if not fc and not fs and ch == '?':
+                    if len(values):
+                        s += values.pop(0)
+                    else:
+                        log('Bind variables parser: not enough values passed', 2)
+                else:
+                    s += ch
+
+            i += 1
+
+        return s
 
     def renderOne(line, vals, start=0):
         i = line.find('?', start)
-        global varCount
         
         if i >= 0:
             if len(vals):
                 v = vals.pop(0)
                 line = line[:i] + v + line[i+1:]
-                varCount += 1
             else:
                 log('Bind variables parser: not enough values passed', 2)
-
-            print(line)
 
             return renderOne(line, vals, i+1)
         return line
     
+    flags = []
     for l in txt.splitlines():
-        line = renderOne(l, values)
+        # line = renderOne(l, values)
+        line = smartLine(l, flags, values)
         output += line+'\n'
         
     values = valuesCopy
