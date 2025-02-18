@@ -1700,6 +1700,10 @@ def bindVariables(txt, vars):
 
             i += 1
 
+        if fc:
+            flags.clear()
+            flags.append('c')
+
         return s
 
     def renderOne(line, vals, start=0):
