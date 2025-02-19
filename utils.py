@@ -1654,7 +1654,7 @@ def bindVariables(txt, vars):
 
     output = ''
 
-    def smartLine(line, flags, values):
+    def smartLine(line, flag, values):
         '''
         flags = list of input flags: s=string, c=comment
         
@@ -1668,26 +1668,40 @@ def bindVariables(txt, vars):
            if not - replace
         '''
         
+        deb(f'new line, flag: {flag}', 'bindRepl')
         l = len(line)
         s = ''                  # result
 
         fs = False
         fc = False               #in comment 
-        if 'c' in flags:
+
+        if flag == 'c':
             fc = True
+        if flag == 's':
+            fs = True
             
         i = 0
         while i < l:
             ch = line[i]
+            sol = True          # start of line
             
-            if not fc and ch == '/' and i<l and line[i+1] == '*':
+            if sol and ch != ' ':
+                sol = False
+                
+            if not fs and not fc and ch == '/' and i<l-1 and line[i+1] == '*':
                 i += 1
                 s += '/*'
                 fc = True
-            elif fc and ch == '*' and i<l and line[i+1] == '/':
+            elif fc and ch == '*' and i<l-1 and line[i+1] == '/':
                 i += 1
                 s += '*/'
                 fc = False
+            elif not fc and not fs and ch == "'":
+                fs = True
+                s += ch
+            elif not fc and fs and ch == "'":
+                fs = False
+                s += ch
             else:
                 # some part of string with no mode change
                 if not fc and not fs and ch == '?':
@@ -1698,13 +1712,25 @@ def bindVariables(txt, vars):
                 else:
                     s += ch
 
+            if fc:
+                f = 'C'
+            elif fs:
+                f = 'S'
+            else:
+                f = ''
+                
+            deb(f'{i:4}  [{ch}] {f}', 'bindRepl')
+
             i += 1
 
+        flag = ''
+        
         if fc:
-            flags.clear()
-            flags.append('c')
+            flag = 'c'
+        elif fs:
+            flag = 's'
 
-        return s
+        return s, flag
 
     def renderOne(line, vals, start=0):
         i = line.find('?', start)
@@ -1719,15 +1745,12 @@ def bindVariables(txt, vars):
             return renderOne(line, vals, i+1)
         return line
     
-    flags = []
+    flag = ''
     for l in txt.splitlines():
         # line = renderOne(l, values)
-        line = smartLine(l, flags, values)
+        line, flag = smartLine(l, flag, values)
         output += line+'\n'
         
     values = valuesCopy
-
-    deb(f'bind: {output=}')
-    deb(f'bind: {values=}')
 
     return output, values
