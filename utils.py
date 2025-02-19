@@ -1644,9 +1644,12 @@ def pwd_escape(value):
 @profiler
 def bindVariables(txt, vars):
     '''
-    Very, very silly bind variables render into txt
+    Bind variables render into txt
 
-    does not take into account comments or literals at all
+    taked into account comments and literals in txt
+    should also in vars at some point...
+
+    returns the render and error text if any
     '''
     
     values = vars.split(',')
@@ -1668,6 +1671,7 @@ def bindVariables(txt, vars):
            if not - replace
         '''
         
+        err = None
         deb(f'new line, flag: {flag}', 'bindRepl')
         l = len(line)
         s = ''                  # result
@@ -1708,7 +1712,9 @@ def bindVariables(txt, vars):
                     if len(values):
                         s += values.pop(0)
                     else:
+                        s += '?'
                         log('Bind variables parser: not enough values passed', 2)
+                        err = 'Not enough values passed'
                 else:
                     s += ch
 
@@ -1730,7 +1736,7 @@ def bindVariables(txt, vars):
         elif fs:
             flag = 's'
 
-        return s, flag
+        return s, flag, err
 
     def renderOne(line, vals, start=0):
         i = line.find('?', start)
@@ -1746,11 +1752,18 @@ def bindVariables(txt, vars):
         return line
     
     flag = ''
+    errors = []
     for l in txt.splitlines():
         # line = renderOne(l, values)
-        line, flag = smartLine(l, flag, values)
+        line, flag, err = smartLine(l, flag, values)
         output += line+'\n'
         
+        if err:
+            errors.append(err)
+        
+    if len(values) > 0:
+        errors.append(f'Not all variables used: {values}')
+
     values = valuesCopy
 
-    return output, values
+    return output, values, errors

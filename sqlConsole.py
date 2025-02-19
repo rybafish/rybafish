@@ -612,8 +612,12 @@ class console(QPlainTextEditLN):
 
         if ok:
             self.bindVars = value
-            txt, values = utils.bindVariables(txt, value)
-            self.log.emit(f'Values: {values}')
+            txt, values, err = utils.bindVariables(txt, value)
+            
+            if err:
+                for e in err:
+                    self.log.emit(f'[E]: {e}')
+                
             cursor.insertText(txt)
             
         else:
