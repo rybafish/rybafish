@@ -1641,6 +1641,7 @@ def pwd_escape(value):
         value
     )
 
+
 @profiler
 def bindVariables(txt, vars):
     '''
@@ -1652,10 +1653,50 @@ def bindVariables(txt, vars):
     returns the render and error text if any
     '''
     
-    values = vars.split(',')
-    valuesCopy = values.copy()
+    # values = vars.split(',')
+    def smartSplit(s, ch, spl):
+        i = 0
+        l = []
+        inStr = False
+        v = ''
 
-    output = ''
+        # print(f'process: [{s}]')
+        while i < len(s):
+            c = s[i]
+            i += 1
+
+            # print(f'{i:3} - {c} {inStr} - [{v}]')
+            if inStr:
+                if c != ch:
+                    v += c
+                else:
+                    if i < len(s) - 1:
+                        if s[i+1] == ch:
+                            v += ch
+                            i += 1
+                            continue
+
+                    v += c
+                    # l.append(v)
+                    # print(1, l)
+                    # v = ''
+                    inStr = False
+            else:
+                if c == spl:
+                    l.append(v)
+                    # print(2, l)
+                    v = ''
+                    continue
+
+                v += c
+                if c == ch:
+                    inStr = True
+
+        if v != '':
+            # print(3, l)
+            l.append(v)
+
+        return l
 
     def smartLine(line, flag, values):
         '''
@@ -1751,6 +1792,11 @@ def bindVariables(txt, vars):
             return renderOne(line, vals, i+1)
         return line
     
+    values = smartSplit(vars, "'", ',')
+    valuesCopy = values.copy()
+
+    output = ''
+
     flag = ''
     errors = []
     for l in txt.splitlines():
@@ -1767,3 +1813,7 @@ def bindVariables(txt, vars):
     values = valuesCopy
 
     return output, values, errors
+
+if __name__ == '__main__':
+    l = smartSplit("1,2,'ab,c',3", "'", ",")
+    print(l)
