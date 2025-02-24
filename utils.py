@@ -1654,6 +1654,7 @@ def bindVariables(txt, vars):
     '''
     
     # values = vars.split(',')
+    @profiler
     def smartSplit(s, ch, spl):
         i = 0
         l = []
