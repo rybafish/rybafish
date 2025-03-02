@@ -199,11 +199,11 @@ class dataProvider:
             t11 = utils.setTZ(t11, tzUTC)
 
             if host['port'] == '30040' and host['host'] == 'dummy1':
-                data['cs-exp_st']['Stacy'] = [[t0, t1, '0:00 - 1:00', 0, '4gb'], [t2, t3, '1:30 - 3:30', 0, 'x gb']]
+                data['cs-exp_st']['Stacy'] = [[t0, t1, '0:00 - 1:00', 0, '4gb', 8], [t2, t3, '1:30 - 3:30', 0, 'x gb', 8]]
 
             if host['port'] == '30040' and host['host'] == 'dummy1':
-                data['cs-exp_st']['SASCHA'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0, ''], [t2, t3, 'asdf', 1, 'x gb']]
-                data['cs-exp_st']['LUCIA'] = [[t4, t5, 'select...', 0, ''], [t6, t7, 'asdf', 0, ''], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0, '']]
+                data['cs-exp_st']['SASCHA'] = [[t0, t1, 'mem: 34 GB \nhash: 2392133lkwejw9872', 0, '', 8], [t2, t3, 'asdf', 1, 'x gb', 8]]
+                data['cs-exp_st']['LUCIA'] = [[t4, t5, 'select...', 0, '', 8], [t6, t7, 'asdf', 0, '', 7], [t8, t9, 'asdfldfkjsdlfjksdl\nfjsdlfj sldkfj sldkfj l asdlf', 0, '', 8]]
             else:
                 pass
                 # data['cs-exp_st']['RAYMOND'] = [[t10, t11, 'select * from ExpensiveView', 0, '']]

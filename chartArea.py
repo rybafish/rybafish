@@ -149,6 +149,9 @@ class myWidget(QWidget):
             
         self.tzInfo = None
 
+        self.dragNdrop = False  # are we dnd?
+        self.dnd_start = 0          # dnd start pos
+
         self.calculateMargins()
         
         self.initPens()
@@ -1293,6 +1296,76 @@ class myWidget(QWidget):
             
         log('click scan / kpi scan: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
 
+    def readjustGanttRange(self, y1, y2):
+        '''Recalculates new Y1/Y2 values based on current values and y1/y2 passed
+
+        it is expected that there is a highlighed gantt is on
+        and it has y1 y2
+        '''
+    
+        kpi = self.highlightedKpi
+        h = self.highlightedKpiHost
+        
+        entity = self.highlightedEntity
+        range = self.highlightedRange
+        
+        if kpi is None or entity is None or h is None:
+            log(f'[w] readjustGanttRange false trigger? {kpi=}, {entity=} {h=}', 2)
+            return
+
+        kpiStylesNNN = self.hostKPIsStyles[h]
+        yr0, yr1 = kpiStylesNNN[kpi]['y_range']
+        
+        gc = self.ndata[h][kpi] 
+        wsize = self.size()
+        top_margin = self.top_margin + self.y_delta
+        # y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+        height = wsize.height() - top_margin - self.bottom_margin - 2 - 1
+        
+        ypct1 = (height - y1)/height*100
+        ypct2 = (height - y2)/height*100
+
+        print(f'full height: {height}')
+        print(f'calculated y% from is {ypct1}')
+        print(f'calculated y% to is {ypct2}')
+        
+        print(f'change: {ypct1 - ypct2}')
+
+        print(f'{yr0}, {yr1}, {len(gc)}, y_scale=')
+
+        dkeys = sorted(gc.keys())
+        idx = dkeys.index(entity)
+
+        print(f'kpi: {kpi}->{entity} {idx}, {range}')
+        
+        if idx < len(gc)/2:
+            y1n = yr0
+            y2n = yr1 + ypct2 - ypct1
+        else:
+            y1n = yr0 + ypct2 - ypct1
+            y2n = yr1
+        
+        y1n = int(max(y1n, 0))
+        y2n = int(min(y2n, 100))
+
+        kpiStylesNNN[kpi]['y_range'] = [y1n, y2n]
+        self.repaint()
+        
+        log(f'set ney y_range for {kpi}: {y1n}, {y2n}', 5)
+        
+    def mouseReleaseEvent(self, event):
+        print(f'mouse release, {self.dragNdrop=}')
+
+        if self.dragNdrop and cfg('experimental'):
+            self.dragNdrop = False
+            pos = event.pos()
+
+            y1 = self.dnd_start.y()
+            y2 = pos.y()
+            print(f'y change: {y1} --> {y2}')
+            self.readjustGanttRange(y1, y2)
+        
+
     def mousePressEvent(self, event):
         '''
             step1: calculate time
@@ -1300,7 +1373,7 @@ class myWidget(QWidget):
         '''
         
         modifiers = QApplication.keyboardModifiers()
-
+        
         if event.button() == Qt.RightButton:
             return
         
@@ -1312,6 +1385,11 @@ class myWidget(QWidget):
             self.checkForHint(pos, hide=True)
         else:
             self.checkForHint(pos, hide=False) #regulare check for hint 
+            
+            if self.highlightedEntity is not None:
+                deb('dnd needed, enable')
+                self.dragNdrop = True
+                self.dnd_start = pos
             
     def resizeWidget(self):
         if self.t_to is None:
