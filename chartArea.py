@@ -1316,6 +1316,15 @@ class myWidget(QWidget):
         kpiStylesNNN = self.hostKPIsStyles[h]
         yr0, yr1 = kpiStylesNNN[kpi]['y_range']
         
+        # those could be strings in variables, so...
+        try:
+            yr0 = max(0, int(yr0))
+            yr1 = min(100, int(yr1))
+        except ValueError:
+            log('[W] Cannot convert all of the variables to integer! %s or %s' % (yr0, yr1), 1)
+            yr0 = 90
+            yr1 = 100
+            
         gc = self.ndata[h][kpi] 
         wsize = self.size()
         top_margin = self.top_margin + self.y_delta
@@ -1325,18 +1334,18 @@ class myWidget(QWidget):
         ypct1 = (height - y1)/height*100
         ypct2 = (height - y2)/height*100
 
-        print(f'full height: {height}')
-        print(f'calculated y% from is {ypct1}')
-        print(f'calculated y% to is {ypct2}')
+        # print(f'full height: {height}')
+        # print(f'calculated y% from is {ypct1}')
+        # print(f'calculated y% to is {ypct2}')
         
-        print(f'change: {ypct1 - ypct2}')
+        deb(f'pixels {y1} --> {y2}, change pct: {ypct1 - ypct2}')
 
-        print(f'{yr0}, {yr1}, {len(gc)}, y_scale=')
+        deb(f'{yr0=}, {yr1=}')
 
         dkeys = sorted(gc.keys())
         idx = dkeys.index(entity)
 
-        print(f'kpi: {kpi}->{entity} {idx}, {range}')
+        deb(f'kpi: {kpi}->{entity} {idx}, {range}')
         
         if idx < len(gc)/2:
             y1n = yr0
@@ -1351,7 +1360,7 @@ class myWidget(QWidget):
         kpiStylesNNN[kpi]['y_range'] = [y1n, y2n]
         self.repaint()
         
-        log(f'set ney y_range for {kpi}: {y1n}, {y2n}', 5)
+        deb(f'set new y_range for {kpi}: {y1n}, {y2n}')
         
     def mouseReleaseEvent(self, event):
         print(f'mouse release, {self.dragNdrop=}')
@@ -2043,7 +2052,7 @@ class myWidget(QWidget):
                             yr0 = 100 - max(0, int(yr0p))
                             yr1 = 100 - min(100, int(yr1p))
                         except ValueError:
-                            log('[E] Cannot convert all of the variables to integer! %s or %s' % (yr0p, yr1p), 1)
+                            log('[W] Cannot convert all of the variables to integer! %s or %s' % (yr0p, yr1p), 1)
                             yr0 = 100
                             yr1 = 90
                         
