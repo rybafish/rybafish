@@ -1,5 +1,5 @@
 '''
-    random stuff used in random places (test)
+    random stuff used in random places (test 2)
 '''
 
 import sys, os, time
