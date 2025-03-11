@@ -1,7 +1,7 @@
 # things shared by S2J and HANA interfaces
 import re
 from datetime import datetime
-from utils import cfg, dbException
+from utils import cfg, dbException, hana_version
 
 def getDBProperties(connection, queryFunction, log, dbProperties):
     '''
@@ -46,12 +46,8 @@ def getDBProperties(connection, queryFunction, log, dbProperties):
                     dbProperties['sid'] = row[1]
             elif row[0] == 'build_version':
                 ver = row[1]
-                # example: 2.00.045.00.1575639312
 
-                m = re.match('^\s*(\d\.\d+\.\d+)', ver)
-
-                if m:
-                    ver = m.group(1)
+                ver = hana_version(ver)
 
                 dbProperties['version'] = ver
             elif row[0] == 'usage':

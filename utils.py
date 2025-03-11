@@ -1815,6 +1815,25 @@ def bindVariables(txt, vars):
 
     return output, values, errors
 
+def hana_version(ver):
+    '''
+    extract hana version truncating minor build stuff
+    example: 2.00.045.00.1575639312 --> 2.00.045
+    2.00.079.02.1734604810 --> 2.00.079.02 
+
+    '''
+    m = re.match('^\s*(\d\.\d+\.\d+)(\.\d+)', ver)
+
+    if m:
+        ver = m.group(1)
+        if cfg('experimental') and m.group(2):
+            minor = m.group(2)
+            if len(minor) == 3 and minor[0] == '.' and minor != '.00':
+                ver += minor
+
+    return ver
+    
 if __name__ == '__main__':
-    l = smartSplit("1,2,'ab,c',3", "'", ",")
-    print(l)
+    for v in ('2.00.079.02.1734604810', '2.00.045.00.157563931', '123'):
+        print(f'{v} --> {hana_version(v)}')
+
