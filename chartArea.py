@@ -1363,7 +1363,6 @@ class myWidget(QWidget):
         deb(f'set new y_range for {kpi}: {y1n}, {y2n}')
         
     def mouseReleaseEvent(self, event):
-        print(f'mouse release, {self.dragNdrop=}')
 
         if self.dragNdrop and cfg('experimental'):
             self.dragNdrop = False
@@ -1371,8 +1370,10 @@ class myWidget(QWidget):
 
             y1 = self.dnd_start.y()
             y2 = pos.y()
-            print(f'y change: {y1} --> {y2}')
-            self.readjustGanttRange(y1, y2)
+            deb(f'y change: {y1} --> {y2}')
+            
+            if abs(y1 - y2) > 1: # 1 = drag n drop tolerance
+                self.readjustGanttRange(y1, y2)
         
 
     def mousePressEvent(self, event):
