@@ -156,7 +156,28 @@ class hslWindow(QMainWindow):
     
         
     def switchTab(self, index):
-        self.tabs.setCurrentIndex(index)
+        '''
+        if index > 1000
+            1011 - move next tab
+            1009 - move previous tab
+        else: switch tab to index
+        '''
+        if index > 1000:
+            n = self.tabs.count()
+            i = self.tabs.currentIndex()
+            if index == 1009:
+                if i > 0:
+                    i -= 1
+                else:
+                    i = n-1
+            if index == 1011:
+                if i < n-1:
+                    i += 1
+                else:
+                    i = 0
+            self.tabs.setCurrentIndex(i)
+        else:
+            self.tabs.setCurrentIndex(index)
         
     def keyPressEvent(self, event):
         #log('window keypress: %s' % (str(event.key())))

@@ -2281,6 +2281,7 @@ class sqlConsole(QWidget):
         result.detachSignal.connect(self.resultDetached)
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         result.fontUpdateSignal.connect(self.fontResultUpdated)
+        result.changeResultTab.connect(self.resultChangeTab)
 
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results)+1)
@@ -3997,6 +3998,34 @@ class sqlConsole(QWidget):
     def fontUpdated(self):
         self.fontUpdateSignal.emit('console')
 
+    def resultChangeTab(self, direction):
+        '''
+        ctrl+tab processor
+        direction = 1/-1 next/previous
+        '''
+        n = self.resultTabs.count()
+        i = self.resultTabs.currentIndex()
+
+        if n <= 1:
+            if direction == 1:
+                self.tabSwitchSignal.emit(1011) #secret code to switch to next (shame...) 
+            if direction == -1:
+                self.tabSwitchSignal.emit(1009) #secret code to switch to prev
+        else:
+            if direction == 1:
+                if i == n-1:
+                    i = 0
+                else:
+                    i += 1
+
+            if direction == -1:
+                if i == 0:
+                    i = n-1
+                else:
+                    i -= 1
+
+            self.resultTabs.setCurrentIndex(i)
+        
     def fontResultUpdated(self):
         self.fontUpdateSignal.emit('resultSet')
 

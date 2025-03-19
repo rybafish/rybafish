@@ -153,6 +153,7 @@ class QResultSet(QTableWidget):
     triggerAutorefresh = pyqtSignal([int])
     detachSignal = pyqtSignal()
     fontUpdateSignal = pyqtSignal()
+    changeResultTab = pyqtSignal([int])
 
     def __init__(self, conn):
     
@@ -1123,6 +1124,14 @@ class QResultSet(QTableWidget):
     
         modifiers = QApplication.keyboardModifiers()
         
+        if modifiers & Qt.ControlModifier and (event.key() == Qt.Key_Tab or event.key() == Qt.Key_Backtab):
+            if modifiers & Qt.ShiftModifier:
+                self.changeResultTab.emit(-1) # Backtab 
+            else:
+                self.changeResultTab.emit(1)  # normal tab
+                
+            return
+            
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_A:
                 self.selectAll()
