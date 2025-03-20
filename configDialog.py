@@ -12,6 +12,8 @@ from utils import log, deb, cfg, cfgManager
 
 from dbi import dbidict
 
+unsavedChanges = None
+
 class Config(QDialog):
 
     # config = {}, face palm, 2023-08-12, face palm
@@ -265,6 +267,8 @@ class Config(QDialog):
     def confSave(self):
         txt = self.confCB.currentText()
         
+        global unsavedChanges
+        
         if txt == '':
             self.setStatus('Please fill in the configuration name before saving.')
             return
@@ -298,6 +302,7 @@ class Config(QDialog):
             self.setStatus('Configuration added.')
         else:
             self.setStatus('Configuration updated.')
+            unsavedChanges = False
                 
     def confDel(self):
         name = self.confCB.currentText()

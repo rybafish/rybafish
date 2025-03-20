@@ -442,6 +442,12 @@ class hslWindow(QMainWindow):
         
         log('Exit request...')
         
+        if configDialog.unsavedChanges:
+            answer = utils.yesNoDialog('Warning', 'You have changed one of passwords, but never saved the change. Exit anyway?')
+            if answer != True:
+                log('Exit aborted to save pwd.')
+                return
+        
         log('before dump layout', 5)
         
         status = None
@@ -1501,7 +1507,10 @@ class hslWindow(QMainWindow):
             log(f'[e], pwd change exception: {e}')
             utils.msgDialog('Password Error', str(e), self)
         else:
-            log('Pwd change done fine')
+            log('Pwd change done fine, but not saved yet!')
+            self.unsavedPwd = True
+            configDialog.unsavedChanges = True
+            log(f"new pwd: {conf['password']}", 4)
             utils.msgDialog('Password Ok', 'Password accepted, but don\'t forget to update your connections file manually.', self)
 
             conf['password'] = utils.cfgManager.encode(pwd)
@@ -1510,10 +1519,11 @@ class hslWindow(QMainWindow):
 
             cfg['password'] = utils.cfgManager.encode(pwd)
             
+            log('Update consoles config:', 5)
             for i in range(self.tabs.count() -1, 0, -1):
                 w = self.tabs.widget(i)
                 if isinstance(w, sqlConsole.sqlConsole):
-                    log(f'{w.config=}')
+                    log(f'{w.config=}', 5)
 
 
     def menuOpen(self):
