@@ -3399,7 +3399,7 @@ class chartArea(QFrame):
             
         return idx
         
-    def initDP(self, dpidx, kpis=None, message=None):
+    def initDP(self, dpidx, kpis=None, message=None, keepTimeframe=False):
         '''
             this one to be called after creating a data provider
             to be called right after dp = new dp
@@ -3525,8 +3525,11 @@ class chartArea(QFrame):
             starttime = datetime.datetime.now() - datetime.timedelta(seconds= 12*3600)
             starttime -= datetime.timedelta(seconds= (starttime.timestamp() % 3600 - self.widget.timeZoneDelta))
                     
-            self.fromEdit.setText(starttime.strftime('%Y-%m-%d %H:%M:%S'))
-            self.toEdit.setText('')
+            if keepTimeframe:   # #869 
+                pass
+            else:
+                self.fromEdit.setText(starttime.strftime('%Y-%m-%d %H:%M:%S'))
+                self.toEdit.setText('')
         
         else:
             self.widget.timeZoneDelta = 0

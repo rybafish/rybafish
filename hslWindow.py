@@ -1710,7 +1710,7 @@ class hslWindow(QMainWindow):
                 dp = self.chartArea.ndp[dpidx]
                 if type(dp) == dpDB.dataProvider and dp.dbi.name == 'HDB':
                     log(f're-init dp[{dpidx}], ({dp.dbi.name})')
-                    self.chartArea.initDP(dpidx, kpis.copy(), message = 'Re-initializing hosts information...')
+                    self.chartArea.initDP(dpidx, kpis.copy(), message='Re-initializing hosts information...', keepTimeframe=True)
                 else:
                     log(f'dp[{dpidx}] skipped, {type(dp)}')
     
