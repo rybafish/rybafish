@@ -186,6 +186,12 @@ class QResultSet(QTableWidget):
         #self.timerSet = None        # autorefresh menu switch flag
         
         self.alerted = None         # one time alarm signal flag
+        self.alertCell = None       # set to (row, col) once alert detected
+        
+        self.alert_str = None
+        self.alert_simple = None
+        self.alert_len = None
+        self.alert_prefix = None
         
         super().__init__()
         
@@ -433,11 +439,22 @@ class QResultSet(QTableWidget):
 
                 # okay I am lost now, what this can be not white?
 
-                # deb(f'check: column {j}, value: {self.item(i, j).text()}', comp='highlight')
-                if self.checkHighlight(j, self.item(i, j).text()):
+                clr = (bg.color().red(), bg.color().green(), bg.color().blue())
+                deb(f'{i:2} {j:2}, value: {self.item(i, j).text():16}, bg: {clr}', comp='highlight')
+
+                alert = None
+
+                # if self.item(i, j).text()[:6] == '{alert':
+                if self.alertCell and i == self.alertCell[0] and j == self.alertCell[1]:
+                    alert = True
+
+                if self.checkHighlight(j, self.item(i, j).text()) or alert:
                     # deb('some color...', comp='highlight')
                     # cl = hl2Brush.color()
-                    cl = self.checkHighlightClr(j, self.item(i, j).text()).color()
+                    if alert:
+                        cl = QColor('#FAC')
+                    else:
+                        cl = self.checkHighlightClr(j, self.item(i, j).text()).color()
                 else:
                     # deb('nope...', comp='highlight')
                     cl = QBrush(Qt.NoBrush).color()
@@ -478,7 +495,10 @@ class QResultSet(QTableWidget):
                             useBrush = wBrush
                         else:
                             # useBrush = hl2Brush
-                            useBrush = self.checkHighlightClr(j, self.item(i, j).text())
+                            if alert:
+                                useBrush = QBrush(cl)
+                            else:
+                                useBrush = self.checkHighlightClr(j, self.item(i, j).text())
 
                     self.item(i, j).setBackground(useBrush)
 
@@ -1198,18 +1218,18 @@ class QResultSet(QTableWidget):
 
         #return -- it leaks even before this point
         
-        alert_str = cfg('alertTriggerOn')
-        alert_simple = None
+        self.alert_str = cfg('alertTriggerOn')
+        self.alert_simple = None
         
-        if alert_str:
-            if alert_str[0:1] == '{' and alert_str[-1:] == '}':
-                alert_prefix = alert_str[:-1]
-                alert_len = len(alert_str)
-                alert_simple = False
+        if self.alert_str:
+            if self.alert_str[0:1] == '{' and self.alert_str[-1:] == '}':
+                self.alert_prefix = self.alert_str[:-1]
+                self.alert_len = len(self.alert_str)
+                self.alert_simple = False
             else:
-                alert_simple = True
-                alert_prefix = alert_str
-                alert_len = len(alert_str)
+                self.alert_simple = True
+                self.alert_prefix = self.alert_str
+                self.alert_len = len(self.alert_str)
         
         #fill the result table
 
@@ -1217,6 +1237,7 @@ class QResultSet(QTableWidget):
         pm = cfg('mapport')
         cfgdev = cfg('dev')
 
+        self.alertCell = None
         for r in range(len(rows)):
             for c in range(len(row0)):
                 val = rows[r][c]
@@ -1287,27 +1308,23 @@ class QResultSet(QTableWidget):
                         item.setBackground(hlclr)
                         item.setToolTip(hl)
 
-                    if alert_str:
+                    if self.alert_str:
                         #and val == cfg('alertTriggerOn'): # this is old, not flexible style
                         #'{alert}'
                         
                         with profiler('alertChecker'):
-                        
-                            #надо двинуть всё это барахло в отдельную функцию которая вернёт звук и громкость
-                            #короче #696
-                        
                             sound = None
                             
-                            if alert_simple and val == alert_str:
+                            if self.alert_simple and val == self.alert_str:
                                 sound = ''
                                 volume = -1
-                            elif val[:alert_len - 1] == alert_prefix:
+                            elif val[:self.alert_len - 1] == self.alert_prefix:
                                 # okay this looks like alert
-                                
                                 sound, volume = utils.parseAlertString(val)
                                 
                             if sound is not None and not self.alerted:
                                 self.alerted = True
+                                self.alertCell = (r, c)
                                 
                                 item.setBackground(QBrush(QColor('#FAC')))
                                 
