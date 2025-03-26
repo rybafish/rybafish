@@ -1330,16 +1330,12 @@ class myWidget(QWidget):
         top_margin = self.top_margin + self.y_delta
         # y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
         height = wsize.height() - top_margin - self.bottom_margin - 2 - 1
+        heightr = height * abs(yr0 -yr1)/100
         
         ypct1 = (height - y1)/height*100
         ypct2 = (height - y2)/height*100
-
-        # print(f'full height: {height}')
-        # print(f'calculated y% from is {ypct1}')
-        # print(f'calculated y% to is {ypct2}')
         
-        deb(f'pixels {y1} --> {y2}, change pct: {ypct1 - ypct2}')
-
+        deb(f'pixels {y1} --> {y2}, {height=}, change pct: {ypct1 - ypct2}')
         deb(f'{yr0=}, {yr1=}')
 
         dkeys = sorted(gc.keys())
@@ -1347,11 +1343,13 @@ class myWidget(QWidget):
 
         deb(f'kpi: {kpi}->{entity} {idx}, {range}')
         
+        yscale = 1
+        
         if idx < len(gc)/2:
             y1n = yr0
-            y2n = yr1 + ypct2 - ypct1
+            y2n = yr1 + (ypct2 - ypct1)*yscale
         else:
-            y1n = yr0 + ypct2 - ypct1
+            y1n = yr0 + (ypct2 - ypct1)*yscale
             y2n = yr1
         
         y1n = int(max(y1n, 0))
