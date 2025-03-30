@@ -2143,10 +2143,12 @@ class myWidget(QWidget):
                         y = (100 - y0) * y_scalel / 100
                         y = int(y)
                         qp.drawLine(x1, y + top_margin, x2 + 50, y + top_margin)
+                        qp.drawText(x1, y + top_margin - 2, 'y1: ' + str(int(round(y0))))
                         
                         y = (100 - y1) * y_scalel / 100
                         y = int(y)
                         qp.drawLine(x1, y + top_margin, x2 + 50, y + top_margin)
+                        qp.drawText(x1, y + top_margin - 2, 'y2: ' + str(int(round(y1))))
 
                     for entity in gc:
                     
