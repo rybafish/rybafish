@@ -151,6 +151,10 @@ class myWidget(QWidget):
 
         self.dragNdrop = False  # are we dnd?
         self.dnd_start = 0          # dnd start pos
+        self.dnd_yr0 = None
+        self.dnd_yr1 = None
+        self.dnd_delta = 0
+        self.dnd_top = None
 
         self.calculateMargins()
         
@@ -1360,10 +1364,51 @@ class myWidget(QWidget):
         
         deb(f'set new y_range for {kpi}: {y1n}, {y2n}')
         
+
+    def dndInit(self, pos):
+        kpi = self.highlightedKpi
+        h = self.highlightedKpiHost
+        
+        entity = self.highlightedEntity
+        # range = self.highlightedRange
+        
+        if kpi is None or entity is None or h is None:
+            log(f'[w] dndInit false trigger? {kpi=}, {entity=} {h=}', 2)
+            return
+
+        gc = self.ndata[h][kpi] 
+        dkeys = sorted(gc.keys())
+        idx = dkeys.index(entity)
+        
+        if idx > len(gc) / 2:
+            self.dnd_top = True
+        else:
+            self.dnd_top = False
+
+        kpiStylesNNN = self.hostKPIsStyles[h]
+        self.dnd_yr0, self.dnd_yr1 = kpiStylesNNN[kpi]['y_range']
+        self.dnd_start = pos
+        
+    def mouseMoveEvent(self, event):
+        if not self.dragNdrop:
+            return
+
+        pos = event.pos()
+        y1 = self.dnd_start.y()
+        y2 = pos.y()
+
+        y_delta = self.dnd_start.y() - pos.y()
+        deb(f'y delta: {y_delta}', 'dnd')
+        
+        #self.readjustGanttRange(y1, y2)
+        self.dnd_delta = y_delta
+        self.repaint()
+
     def mouseReleaseEvent(self, event):
 
         if self.dragNdrop and cfg('experimental'):
             self.dragNdrop = False
+            self.dnd_delta = 0
             pos = event.pos()
 
             y1 = self.dnd_start.y()
@@ -1372,8 +1417,8 @@ class myWidget(QWidget):
             
             if abs(y1 - y2) > 1: # 1 = drag n drop tolerance
                 self.readjustGanttRange(y1, y2)
-        
 
+                
     def mousePressEvent(self, event):
         '''
             step1: calculate time
@@ -1397,7 +1442,7 @@ class myWidget(QWidget):
             if self.highlightedEntity is not None:
                 deb('dnd needed, enable')
                 self.dragNdrop = True
-                self.dnd_start = pos
+                self.dndInit(pos)
             
     def resizeWidget(self):
         if self.t_to is None:
@@ -2039,7 +2084,19 @@ class myWidget(QWidget):
                     ganttFadeColor = kpiStylesNNN[kpi]['gradientTo']  # does not depend of custom colors
                                         
                     if len(gc) > 0:
-                        yr0, yr1 = kpiStylesNNN[kpi]['y_range']
+                        if self.dragNdrop:
+                            # substitute with dinamically calculated yranges based on dnd_delta
+                            y_scalel = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)
+                            sensitivity = y_scalel / 100
+                            yr0 = int(self.dnd_yr0)
+                            yr1 = int(self.dnd_yr1)
+
+                            if self.dnd_top:
+                                yr0 += self.dnd_delta / sensitivity
+                            else:
+                                yr1 += self.dnd_delta / sensitivity
+                        else:
+                            yr0, yr1 = kpiStylesNNN[kpi]['y_range']
                         
                         sqlIdx = kpiStylesNNN[kpi]['sql']
                         
@@ -2066,6 +2123,31 @@ class myWidget(QWidget):
                     height = kpiStylesNNN[kpi]['width']
                     ganttShift = kpiStylesNNN[kpi]['shift']
                     
+                    if self.dragNdrop: # display y range
+                        qp.setPen(QPen(QColor('blue')))
+                        sensitivity = 5 # must be some scale of windget height or something
+                        x1 = 50
+                        x2 = 300
+                        y_scalel = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)
+                        sensitivity = y_scalel / 100
+                        # y = 0 * y_scale + y_scale*0.5 - height/2 + y_shift
+                        # print('dnd y0/y1: ', self.dnd_yr0, self.dnd_yr1, 'delta', self.dnd_delta)
+                        y0 = int(self.dnd_yr0)
+                        y1 = int(self.dnd_yr1)
+
+                        if self.dnd_top:
+                            y0 += self.dnd_delta / sensitivity
+                        else:
+                            y1 += self.dnd_delta / sensitivity
+                        
+                        y = (100 - y0) * y_scalel / 100
+                        y = int(y)
+                        qp.drawLine(x1, y + top_margin, x2 + 50, y + top_margin)
+                        
+                        y = (100 - y1) * y_scalel / 100
+                        y = int(y)
+                        qp.drawLine(x1, y + top_margin, x2 + 50, y + top_margin)
+
                     for entity in gc:
                     
                         qp.setFont(gtFont)
