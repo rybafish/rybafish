@@ -1406,7 +1406,7 @@ class myWidget(QWidget):
 
     def mouseReleaseEvent(self, event):
 
-        if self.dragNdrop and cfg('experimental'):
+        if self.dragNdrop:
             self.dragNdrop = False
             self.dnd_delta = 0
             pos = event.pos()
@@ -1417,6 +1417,8 @@ class myWidget(QWidget):
             
             if abs(y1 - y2) > 1: # 1 = drag n drop tolerance
                 self.readjustGanttRange(y1, y2)
+
+            self.repaint()
 
                 
     def mousePressEvent(self, event):
@@ -1439,7 +1441,7 @@ class myWidget(QWidget):
         else:
             self.checkForHint(pos, hide=False) #regulare check for hint 
             
-            if self.highlightedEntity is not None:
+            if self.highlightedEntity is not None and cfg('experimental'):
                 deb('dnd needed, enable')
                 self.dragNdrop = True
                 self.dndInit(pos)
@@ -2084,7 +2086,7 @@ class myWidget(QWidget):
                     ganttFadeColor = kpiStylesNNN[kpi]['gradientTo']  # does not depend of custom colors
                                         
                     if len(gc) > 0:
-                        if self.dragNdrop:
+                        if self.dragNdrop and self.highlightedKpi == kpi and self.highlightedKpiHost == h:
                             # substitute with dinamically calculated yranges based on dnd_delta
                             y_scalel = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)
                             sensitivity = y_scalel / 100
@@ -2123,10 +2125,17 @@ class myWidget(QWidget):
                     height = kpiStylesNNN[kpi]['width']
                     ganttShift = kpiStylesNNN[kpi]['shift']
                     
-                    if self.dragNdrop: # display y range
-                        qp.setPen(QPen(QColor('blue')))
+                    if self.dragNdrop and self.highlightedKpi == kpi and self.highlightedKpiHost == h:
+                        # draw Y-range lines
+                        # ganttPen = kpiStylesNNN[kpi]['pen']
+                        gpen = kpiStylesNNN[kpi]['pen']
+                        clr = gpen.color()
+                        rgb = QColor(int(clr.red()*0.75), int(clr.green()*0.75), int(clr.blue()*0.75))
+                        qp.setPen(QPen(rgb))
+                        
                         sensitivity = 5 # must be some scale of windget height or something
-                        x1 = 50
+                        x1 = int(self.side_margin + self.left_margin + 16*2)
+                        # x1 = 50
                         x2 = 300
                         y_scalel = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)
                         sensitivity = y_scalel / 100
