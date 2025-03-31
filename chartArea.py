@@ -149,7 +149,8 @@ class myWidget(QWidget):
             
         self.tzInfo = None
 
-        self.dragNdrop = False  # are we dnd?
+        self.dragNdrop = False  # are we going to drag'n'drop
+        self.dragNdropGo = False # acually do the dnd
         self.dnd_start = 0          # dnd start pos
         self.dnd_yr0 = None
         self.dnd_yr1 = None
@@ -1402,12 +1403,18 @@ class myWidget(QWidget):
         
         #self.readjustGanttRange(y1, y2)
         self.dnd_delta = y_delta
-        self.repaint()
+
+        if not self.dragNdropGo and abs(y_delta) > 1:
+            self.dragNdropGo = True
+
+        if self.dragNdropGo:
+            self.repaint()
 
     def mouseReleaseEvent(self, event):
 
         if self.dragNdrop:
             self.dragNdrop = False
+            self.dragNdropGo = False
             self.dnd_delta = 0
             pos = event.pos()
 
@@ -2125,7 +2132,7 @@ class myWidget(QWidget):
                     height = kpiStylesNNN[kpi]['width']
                     ganttShift = kpiStylesNNN[kpi]['shift']
                     
-                    if self.dragNdrop and self.highlightedKpi == kpi and self.highlightedKpiHost == h:
+                    if self.dragNdropGo and self.highlightedKpi == kpi and self.highlightedKpiHost == h:
                         # draw Y-range lines
                         # ganttPen = kpiStylesNNN[kpi]['pen']
                         gpen = kpiStylesNNN[kpi]['pen']
