@@ -1849,6 +1849,10 @@ class hslWindow(QMainWindow):
                     w.resultFontUpdate()
 
 
+    def refreshKPIs(self):
+        '''redraw the kpis table, normally on signal'''
+        self.kpisTable.refill(self.hostTable.currentRow())
+        
     def initUI(self):
     
         global rybaSplash
@@ -2416,6 +2420,7 @@ class hslWindow(QMainWindow):
         self.chartArea.widget.statusMessage_.connect(self.statusMessage)
 
         self.chartArea.connected.connect(self.setTabName)
+        self.chartArea.widget.kpiRefreshSignal.connect(self.refreshKPIs)
         
         #self.chartArea.setFocus() set above
         

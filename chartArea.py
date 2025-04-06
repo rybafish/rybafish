@@ -55,6 +55,8 @@ class myWidget(QWidget):
     
     zoomSignal = pyqtSignal(int, int)
     scrollSignal = pyqtSignal(int, float)
+
+    kpiRefreshSignal = pyqtSignal()
     
     statusMessage_ = pyqtSignal(['QString', bool])
 
@@ -1364,7 +1366,23 @@ class myWidget(QWidget):
         self.repaint()
         
         deb(f'set new y_range for {kpi}: {y1n}, {y2n}')
-        
+
+        sqlIdx = kpiStylesNNN[kpi].get('sql')
+
+        if sqlIdx and cfg('propagateGanttRange', True):
+            vd = kpiDescriptions.vrs[sqlIdx]
+            deb(f'vars: {vd}', 'dnd')
+            deb(f'varsStr  : {kpiDescriptions.vrsStr[sqlIdx]}', 'dnd')
+            
+            if 'y1' in vd.keys() and 'y2' in vd.keys():
+                vd['y1'] = y1n
+                vd['y2'] = y2n
+                
+            varsStr = ', '.join(['%s: %s' % (key, value) for (key, value) in vd.items()])
+            deb(f'vars repl: {varsStr}', 'dnd')
+            kpiDescriptions.addVars(sqlIdx, varsStr, overwrite=True)
+            self.kpiRefreshSignal.emit()
+
 
     def dndInit(self, pos):
         kpi = self.highlightedKpi
@@ -1399,7 +1417,7 @@ class myWidget(QWidget):
         y2 = pos.y()
 
         y_delta = self.dnd_start.y() - pos.y()
-        deb(f'y delta: {y_delta}', 'dnd')
+        # deb(f'y delta: {y_delta}', 'dnd')
         
         #self.readjustGanttRange(y1, y2)
         self.dnd_delta = y_delta
@@ -2140,10 +2158,10 @@ class myWidget(QWidget):
                         rgb = QColor(int(clr.red()*0.75), int(clr.green()*0.75), int(clr.blue()*0.75))
                         qp.setPen(QPen(rgb))
                         
-                        sensitivity = 5 # must be some scale of windget height or something
-                        x1 = int(self.side_margin + self.left_margin + 16*2)
+                        # x1 = int(self.side_margin + self.left_margin + 16*2)
                         # x1 = 50
-                        x2 = 300
+                        x1 = startX + 16
+                        x2 = x1 + int((stopX - startX)/3) 
                         y_scalel = (wsize.height() - top_margin - self.bottom_margin - 2 - 1)
                         sensitivity = y_scalel / 100
                         # y = 0 * y_scale + y_scale*0.5 - height/2 + y_shift

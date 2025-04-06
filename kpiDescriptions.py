@@ -229,6 +229,7 @@ class Variables(QDialog):
         self.fillVariables('defaults')
     
     def processVars(self):
+        '''process table into vars, done on Ok button'''
     
         global vrs
         global vrsStr
@@ -385,7 +386,7 @@ def addVarsDef(sqlIdx, vStr):
     logvar('yaml variables for %s defined as %s' % (sqlIdx, str(vrsDef[sqlIdx])))
     
 
-def addVars(sqlIdx, vStr, overwrite = False):
+def addVars(sqlIdx, vStr, overwrite=False):
     '''
         this one called on manual update of variables from the KPIs table
         
@@ -426,7 +427,7 @@ def addVars(sqlIdx, vStr, overwrite = False):
                 
         return True
     
-    logvar('addVars input: %s' % (str(vStr)))
+    logvar('addVars input: %s -> %s' % (sqlIdx, str(vStr)))
         
     for idx in vrs:
         logvar('    %s --> %s' % (idx, str(vrs[idx])), 5)
