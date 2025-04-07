@@ -154,8 +154,11 @@ class myWidget(QWidget):
         self.dragNdrop = False  # are we going to drag'n'drop
         self.dragNdropGo = False # acually do the dnd
         self.dnd_start = 0          # dnd start pos
-        self.dnd_yr0 = None
-        self.dnd_yr1 = None
+        self.dnd_yr0 = None         # starting y0
+        self.dnd_yr1 = None         # starting y1
+        self.dnd_yr0n = None    # target y0
+        self.dnd_yr1n = None    # target y1 
+
         self.dnd_delta = 0
         self.dnd_top = None
 
@@ -1303,13 +1306,46 @@ class myWidget(QWidget):
             
         log('click scan / kpi scan: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
 
-    def readjustGanttRange(self, y1, y2):
+    def readjustGanttRange(self):
+        deb(f'readjustGanttRange v2', 'dnd')
+        
+        kpi = self.highlightedKpi
+        h = self.highlightedKpiHost
+
+        kpiStylesNNN = self.hostKPIsStyles[h]
+
+        y1n = self.dnd_yr0n
+        y2n = self.dnd_yr1n
+
+        deb(f'Y-range we already know: {y1n}, {y2n}', 'dnd')
+        kpiStylesNNN[kpi]['y_range'] = [y1n, y2n]
+        self.repaint()
+    
+        sqlIdx = kpiStylesNNN[kpi].get('sql')
+
+        if sqlIdx and cfg('propagateGanttRange', True):
+            vd = kpiDescriptions.vrs[sqlIdx]
+            deb(f'vars: {vd}', 'dnd')
+            deb(f'varsStr  : {kpiDescriptions.vrsStr[sqlIdx]}', 'dnd')
+            
+            if 'y1' in vd.keys() and 'y2' in vd.keys():
+                vd['y1'] = y1n
+                vd['y2'] = y2n
+                
+            varsStr = ', '.join(['%s: %s' % (key, value) for (key, value) in vd.items()])
+            deb(f'vars repl: {varsStr}', 'dnd')
+            kpiDescriptions.addVars(sqlIdx, varsStr, overwrite=True)
+            self.kpiRefreshSignal.emit()
+            
+
+    def readjustGanttRange_depr(self, y1, y2):
         '''Recalculates new Y1/Y2 values based on current values and y1/y2 passed
 
         it is expected that there is a highlighed gantt is on
         and it has y1 y2
         '''
     
+        deb(f'readjust v1: {y1}, {y2}', 'dnd')
         kpi = self.highlightedKpi
         h = self.highlightedKpiHost
         
@@ -1441,7 +1477,7 @@ class myWidget(QWidget):
             deb(f'y change: {y1} --> {y2}')
             
             if abs(y1 - y2) > 1: # 1 = drag n drop tolerance
-                self.readjustGanttRange(y1, y2)
+                self.readjustGanttRange()
 
             self.repaint()
 
@@ -2122,6 +2158,9 @@ class myWidget(QWidget):
                                 yr0 += self.dnd_delta / sensitivity
                             else:
                                 yr1 += self.dnd_delta / sensitivity
+
+                            self.dnd_yr0n = int(round(yr0))
+                            self.dnd_yr1n = int(round(yr1))
                         else:
                             yr0, yr1 = kpiStylesNNN[kpi]['y_range']
                         
@@ -2176,13 +2215,15 @@ class myWidget(QWidget):
                         
                         y = (100 - y0) * y_scalel / 100
                         y = int(y)
+
+                        qp.setFont(gFont)
                         qp.drawLine(x1, y + top_margin, x2 + 50, y + top_margin)
-                        qp.drawText(x1, y + top_margin - 2, 'y1: ' + str(int(round(y0))))
+                        qp.drawText(x1, y + top_margin + fontHeight, 'y1: ' + str(int(round(y0))))
                         
                         y = (100 - y1) * y_scalel / 100
                         y = int(y)
                         qp.drawLine(x1, y + top_margin, x2 + 50, y + top_margin)
-                        qp.drawText(x1, y + top_margin - 2, 'y2: ' + str(int(round(y1))))
+                        qp.drawText(x1, y + top_margin - 4, 'y2: ' + str(int(round(y1))))
 
                     for entity in gc:
                     
