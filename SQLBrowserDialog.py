@@ -163,11 +163,25 @@ class SQLBrowser(QTreeView):
 
         foldersAdded = []
 
+        # substract scripts path from filename for filtering
+        deduct = cfg('scriptsFolder', 'scripts').lower()
+        dedlen = len(deduct)
+
         for (f, fpath, fdesc, fmode, offset) in files:
 
+            f_lower = f.lower()
             if filter:
+                # print(f'{filter=}, {f=}, {fpath=}, {deduct=}')
+                if f_lower[:dedlen] == deduct:
+                    fstrip = f_lower[dedlen:]
+                else:
+                    fstrip = f_lower
+
+                # print(f'stripped: {fstrip}')
+
                 if (
-                    (f.lower().find(filter) < 0) 
+                    # (f.lower().find(filter) < 0) 
+                    (fstrip.find(filter) < 0) 
                     and 
                     (fdesc is None or (fdesc is not None and fdesc.lower().find(filter) < 0))):
 
