@@ -1003,7 +1003,7 @@ class myWidget(QWidget):
                 i = 0
                 
                 yr0, yr1 = kpiStylesNNN[kpi]['y_range']
-                
+
                 try:
                     #yr0p = processVars(sqlIdx, yr0)
                     #yr1p = processVars(sqlIdx, yr1)
@@ -1318,24 +1318,32 @@ class myWidget(QWidget):
         y2n = self.dnd_yr1n
 
         deb(f'Y-range we already know: {y1n}, {y2n}', 'dnd')
-        kpiStylesNNN[kpi]['y_range'] = [y1n, y2n]
+        # kpiStylesNNN[kpi]['y_range'] = [y1n, y2n]
         self.repaint()
     
+        damage = None
         sqlIdx = kpiStylesNNN[kpi].get('sql')
 
-        if sqlIdx and cfg('propagateGanttRange', True):
+        if sqlIdx and cfg('propagateGanttRange', True) and sqlIdx in kpiDescriptions.vrs:
             vd = kpiDescriptions.vrs[sqlIdx]
             deb(f'vars: {vd}', 'dnd')
-            deb(f'varsStr  : {kpiDescriptions.vrsStr[sqlIdx]}', 'dnd')
+            deb(f'varsStr  : {kpiDescriptions.vrsStr.get(sqlIdx)}', 'dnd')
             
             if 'y1' in vd.keys() and 'y2' in vd.keys():
                 vd['y1'] = y1n
                 vd['y2'] = y2n
+                damage = 'done'
                 
             varsStr = ', '.join(['%s: %s' % (key, value) for (key, value) in vd.items()])
             deb(f'vars repl: {varsStr}', 'dnd')
             kpiDescriptions.addVars(sqlIdx, varsStr, overwrite=True)
             self.kpiRefreshSignal.emit()
+            
+        if damage is None:
+            kpiStylesNNN[kpi]['y_range'] = [y1n, y2n]
+        else:
+            # y1/y2 managed through variables, so additional changes needed
+            pass
             
 
     def readjustGanttRange_depr(self, y1, y2):
@@ -1434,11 +1442,13 @@ class myWidget(QWidget):
         gc = self.ndata[h][kpi] 
         dkeys = sorted(gc.keys())
         idx = dkeys.index(entity)
-        
-        if idx > len(gc) / 2:
+
+        if idx > (len(gc)-1)/2:
             self.dnd_top = True
         else:
             self.dnd_top = False
+        
+        deb(f'y1/y2 detector, {idx=}, len(gc)-1={len(gc)-1}, /2={(len(gc)-1)/2} --> dnd_top={self.dnd_top}', 'dnd')
 
         kpiStylesNNN = self.hostKPIsStyles[h]
         self.dnd_yr0, self.dnd_yr1 = kpiStylesNNN[kpi]['y_range']
@@ -2154,10 +2164,19 @@ class myWidget(QWidget):
                             yr0 = int(self.dnd_yr0)
                             yr1 = int(self.dnd_yr1)
 
-                            if self.dnd_top:
+                            if len(gc) == 1: # move both
                                 yr0 += self.dnd_delta / sensitivity
-                            else:
                                 yr1 += self.dnd_delta / sensitivity
+                            else:
+                                if self.dnd_top:
+                                    yr0 += self.dnd_delta / sensitivity
+                                else:
+                                    yr1 += self.dnd_delta / sensitivity
+
+                            yr0 = max(0, yr0)
+                            yr1 = max(0, yr1)
+                            yr0 = min(100, yr0)
+                            yr1 = min(100, yr1)
 
                             self.dnd_yr0n = int(round(yr0))
                             self.dnd_yr1n = int(round(yr1))
@@ -2208,11 +2227,21 @@ class myWidget(QWidget):
                         y0 = int(self.dnd_yr0)
                         y1 = int(self.dnd_yr1)
 
-                        if self.dnd_top:
+                        if len(gc) == 1: # ok, move both y1/y2 
                             y0 += self.dnd_delta / sensitivity
-                        else:
                             y1 += self.dnd_delta / sensitivity
+                        else:
+                            if self.dnd_top:
+                                y0 += self.dnd_delta / sensitivity
+                            else:
+                                y1 += self.dnd_delta / sensitivity
                         
+                        y0 = max(0, y0)
+                        y1 = max(0, y1)
+
+                        y0 = min(100, y0)
+                        y1 = min(100, y1)
+
                         y = (100 - y0) * y_scalel / 100
                         y = int(y)
 
