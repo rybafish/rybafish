@@ -7,16 +7,19 @@ from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRepl
 
 from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt, QUrl, QTimer
 
-from utils import resourcePath
+from utils import formatTime, resourcePath
 from yaml import safe_load, YAMLError
 
 from urllib.parse import urlparse
 
 from utils import log, cfg
+from datetime import datetime
 
 from _constants import build_date, version, platform
+
+startTime = None
 
 class About(QDialog):
 
@@ -144,6 +147,14 @@ class About(QDialog):
     def rybafishDotNet(self, link):
         QDesktopServices.openUrl(QUrl(link))
         
+    def refreshTimer(self):
+        uptStr = ''
+        if startTime is not None:
+            uptSec = (datetime.now() - startTime).total_seconds()
+            uptStr = formatTime(uptSec, skipSeconds=True, skipMs=True, skipMsreally=True)
+        
+        self.uTime.setText(f'Uptime: {uptStr}')
+
     def initUI(self):
 
         iconPath = resourcePath('ico', 'favicon.png')
@@ -179,7 +190,19 @@ Current version: %s, build %s.
         vbox = QVBoxLayout()
         hbox = QHBoxLayout()
         vbox2 = QVBoxLayout()
+
+
+        uptStr = ''
+        if startTime is not None:
+            uptSec = (datetime.now() - startTime).total_seconds()
+            uptStr = formatTime(uptSec, skipSeconds=True, skipMs=True)
         
+        self.uTime = QLabel(f'Uptime: quantum calibration...')
+        
+        self.timer = QTimer(self.window())
+        self.timer.timeout.connect(self.refreshTimer)
+        self.timer.start(1000)
+
         vbox2.addStretch(1)
         vbox2.addWidget(txt)
         vbox2.addWidget(checkButton)
@@ -193,6 +216,7 @@ Current version: %s, build %s.
         hbox.addLayout(vbox2)
         vbox.addLayout(hbox)
 
+        vbox.addWidget(self.uTime)
         vbox.addWidget(self.buttons)
         checkButton.clicked.connect(self.checkUpdates)
         checkButton.resize(150, 150)

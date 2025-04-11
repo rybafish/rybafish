@@ -220,6 +220,12 @@ class hslWindow(QMainWindow):
             utils.configReportStats()
 
         log('Exiting...')
+        
+        if aboutDialog.startTime is not None:
+            uptSec = (datetime.datetime.now() - aboutDialog.startTime).total_seconds()
+            uptStr = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
+            log(f'Uptime: {uptStr}')
+
 
         if cfg('saveLayout', True):
             self.dumpLayout()
@@ -1856,6 +1862,8 @@ class hslWindow(QMainWindow):
     def initUI(self):
     
         global rybaSplash
+
+        aboutDialog.startTime = datetime.datetime.now()
         
         #QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, False)
         #QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, False) 

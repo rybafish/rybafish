@@ -997,7 +997,7 @@ def formatTimeus(us):
     return s
 
 @profiler
-def formatTime(t, skipSeconds=False, skipMs=False):
+def formatTime(t, skipSeconds=False, skipMs=False, skipMsreally=False):
     
     (ti, ms) = divmod(t, 1)
     
@@ -1010,8 +1010,10 @@ def formatTime(t, skipSeconds=False, skipMs=False):
         ms = str(int(ms*1000)).rstrip('0')
     
     if ti < 60:
-        
-        s = str(round(t, 3)) + ' s'
+        if skipMs and skipMsreally:
+            s = str(round(t)) + ' s'
+        else:
+            s = str(round(t, 3)) + ' s'
         
     elif ti < 3600:
         format = '%M:%S'
@@ -1834,6 +1836,8 @@ def hana_version(ver):
     return ver
     
 if __name__ == '__main__':
-    for v in ('2.00.079.02.1734604810', '2.00.045.00.157563931', '123'):
-        print(f'{v} --> {hana_version(v)}')
+    # for v in ('2.00.079.02.1734604810', '2.00.045.00.157563931', '123'):
+    #     print(f'{v} --> {hana_version(v)}')
+
+    print(formatTime(1.11, skipSeconds=True, skipMs=True, skipMsreally=True))
 
