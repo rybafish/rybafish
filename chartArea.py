@@ -2197,7 +2197,8 @@ class myWidget(QWidget):
                             yr0 = 100
                             yr1 = 90
                         
-                        y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                        # y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1) / len(gc)
+                        y_scale = (wsize.height() - top_margin - self.bottom_margin - 2 - 1 + self.y_delta/2) / len(gc) # bug #849
                         y_shift = y_scale/100*yr0 * len(gc)
                         y_scale = y_scale * (yr1 - yr0)/100
                     
@@ -2437,8 +2438,12 @@ class myWidget(QWidget):
                                 qp.setFont(gFont)
 
                             
+                            halfFont = int(tFontHeight/1.625/2) + 1 #this is considering that fontHeight is 1.625 higher actual height
+                            fontOffset = int(height/2) + halfFont
+
                             qp.setPen(clr) # entity label color
-                            qp.drawText(int(startX + self.side_margin + fontHeight), int(y + top_margin + fontHeight/2), entity);
+                            # qp.drawText(int(startX + self.side_margin + fontHeight), int(y + top_margin + fontHeight/2), entity)
+                            qp.drawText(int(startX + self.side_margin + fontHeight), int(y + top_margin + fontOffset), entity) # fix #849
 
                             if self.highlightedEntity == entity:
                                 gFont.setWeight(QFont.Normal)
