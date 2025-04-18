@@ -1668,7 +1668,8 @@ class myWidget(QWidget):
                                     if kpiStylesNNN[kpi]['multicolor']:
                                         pen = kpiDescriptions.getRadugaPen()
                                     else:
-                                        pen = self.kpiPen[h][kpi]
+                                        # pen = self.kpiPen[h][kpi]
+                                        pen = kpiDescriptions.customPen(kpiKey, self.kpiPen[h][kpi])
                                 
                                     if kpiKey in self.hiddenGBs:
                                         if self.hiddenKPIsMode.get(kpiKey) == 'negative':
