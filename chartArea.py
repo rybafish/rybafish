@@ -992,6 +992,11 @@ class myWidget(QWidget):
                 height = kpiStylesNNN[kpi]['width']
                 ganttShift = kpiStylesNNN[kpi]['shift']
             
+                lsqlIdx = kpiStylesNNN[kpi].get('sql')
+                if lsqlIdx:
+                    ganttShift = kpiDescriptions.processVars(lsqlIdx, ganttShift)
+                    ganttShift = utils.safeFloat(ganttShift, 1)
+
                 if kpi not in data: # alt+clicked, but not refreshed yet
                     continue
                 
@@ -1039,7 +1044,8 @@ class myWidget(QWidget):
                         #check ranges first
                         if t[0] <= trgt_time_dt <= t[1]:
                         
-                            y0 = y + top_margin - t[3]*ganttShift
+                            # y0 = y + top_margin - t[3]*ganttShift
+                            y0 = (y + top_margin - round(t[3]*ganttShift))
                             y1 = y0 + height
                             
                             #check Y second:                            
@@ -2209,6 +2215,12 @@ class myWidget(QWidget):
                     height = kpiStylesNNN[kpi]['width']
                     ganttShift = kpiStylesNNN[kpi]['shift']
                     
+                    lsqlIdx = kpiStylesNNN[kpi].get('sql')
+                    
+                    if lsqlIdx:
+                        ganttShift = kpiDescriptions.processVars(lsqlIdx, ganttShift)
+                        ganttShift = utils.safeFloat(ganttShift, 1)
+                    
                     if self.dragNdropGo and self.highlightedKpi == kpi and self.highlightedKpiHost == h:
                         # draw Y-range lines
                         # ganttPen = kpiStylesNNN[kpi]['pen']
@@ -2358,7 +2370,7 @@ class myWidget(QWidget):
                                     #qp.setPen(QPen(rgb))
 
                                 #qp.drawRect(int(x), int(y + top_margin - t[3]*ganttShift), int(width), height)
-                                qp.drawRect(x, y + top_margin - t[3]*ganttShift, width, height)
+                                qp.drawRect(x, y + top_margin - int(round(t[3]*ganttShift)), width, height)
                                     
                                 if title:
                                     tv = str(t[4])
@@ -2408,7 +2420,8 @@ class myWidget(QWidget):
                                     
                                 nl = hlDesc.count('\n') + 1
                                 
-                                yShift = t[3]*ganttShift
+                                # yShift = t[3]*ganttShift
+                                yShift = int(round(t[3]*ganttShift))
                                 
                                 hlRect = QRect(int(x + xOff), int(y + top_margin - fontHeight*nl - 2 - yShift), cfg('ganttLabelWidth', 500), int(fontHeight*nl))
                             

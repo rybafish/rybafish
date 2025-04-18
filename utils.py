@@ -678,12 +678,22 @@ def safeBool(s):
         return s
     
 @profiler
-def safeInt(s, default = 0):
+def safeInt(s, default=0):
     
     try:
         i = int(s)
     except ValueError as e:
-        log('error converting %s to integer: %s' % (s, str(e)), 2)
+        log('[w] error converting %s to integer: %s' % (s, str(e)), 2)
+        return default
+        
+    return i
+    
+def safeFloat(s, default=0):
+    
+    try:
+        i = float(s)
+    except ValueError as e:
+        log('[w] error converting %s to float: %s' % (s, str(e)), 2)
         return default
         
     return i
