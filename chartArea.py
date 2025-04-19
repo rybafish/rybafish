@@ -1617,6 +1617,10 @@ class myWidget(QWidget):
 
                 if self.legend == 'hosts': ## it is either hosts or None now so 'hosts' basically mean it is enabled
                 
+                    if kpi not in kpiStylesNNN:
+                        log(f'[W] drawLegend kpi missing in styles: {kpi}', 2)
+                        continue
+
                     subtype = kpiStylesNNN[kpi].get('subtype')
                     
                     kpiKey = f"{self.hosts[h]['host']}:{self.hosts[h]['port']}/{kpi}"
@@ -2082,6 +2086,10 @@ class myWidget(QWidget):
                     return
             
                 #log('lets draw %s (host: %i)' % (str(kpi), h))
+                
+                if kpi not in kpiStylesNNN:
+                    log(f'[W] kpi missing in styles: {kpi}', 2)
+                    continue
                 
                 kpiKey = hostKey + '/' + kpi
                 subtype = kpiStylesNNN[kpi].get('subtype')
@@ -4301,6 +4309,10 @@ class chartArea(QFrame):
                 if kpi[:4] == 'time':
                     continue
 
+                if kpi not in kpiStylesNNN:
+                    log(f'[W] renewMaxValues, kpi missing in styles: {kpi}', 2)
+                    continue
+                
                 subtype = kpiStylesNNN[kpi].get('subtype')
 
                 if kpi not in self.hostKPIsList[h]:
