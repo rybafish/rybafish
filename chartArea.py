@@ -1325,7 +1325,9 @@ class myWidget(QWidget):
 
         deb(f'Y-range we already know: {y1n}, {y2n}', 'dnd')
         # kpiStylesNNN[kpi]['y_range'] = [y1n, y2n]
-        self.repaint()
+        
+        # print('readjustGanttRange repaint call --> suppress')
+        # self.repaint()
     
         damage = None
         sqlIdx = kpiStylesNNN[kpi].get('sql')
@@ -1495,6 +1497,7 @@ class myWidget(QWidget):
             if abs(y1 - y2) > 1: # 1 = drag n drop tolerance
                 self.readjustGanttRange()
 
+            # print('repaint call from mouseReleaseEvent')
             self.repaint()
 
                 
@@ -1607,7 +1610,7 @@ class myWidget(QWidget):
                 stacked = False
 
                 kpiKey = hostKey + '/' + kpi
-                deb(f'{kpiKey=}')
+                # deb(f'{kpiKey=}')
 
                 if kpi not in self.nscales[h]:
                     continue
