@@ -35,7 +35,7 @@ import sql
 from dbi import dbi
 
 import utils
-from utils import cfg, log, yesNoDialog, formatTime, safeBool, safeInt
+from utils import cfg, log, yesNoDialog, formatTime, safeBool, safeInt, sqlStr
 from utils import dbException, customKPIException, deb
 
 import traceback
@@ -958,9 +958,10 @@ class dataProvider(QObject):
                     tCount += 1
 
                 grpby = row[gbi]
+                grpby = sqlStr(grpby)
 
                 if grpby not in gb:
-                    gb.append(row[gbi])
+                    gb.append(grpby)
                     
                 v = row[1]
                     
@@ -1169,6 +1170,7 @@ class dataProvider(QObject):
 
                         if multiline:
                             gbv = row[gbi]
+                            gbv = sqlStr(gbv)
                             k = gb.index(gbv)
                             
                             if rawValue is None:

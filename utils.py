@@ -1845,6 +1845,14 @@ def hana_version(ver):
 
     return ver
     
+@profiler
+def sqlStr(s):
+    if s is None:
+        return cfg('nullString', '?')
+    else:
+        return str(s)
+
+    
 if __name__ == '__main__':
     # for v in ('2.00.079.02.1734604810', '2.00.045.00.157563931', '123'):
     #     print(f'{v} --> {hana_version(v)}')
