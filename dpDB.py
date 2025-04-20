@@ -809,11 +809,12 @@ class dataProvider(QObject):
                 else:
                     brValue = r[brIndex]
 
-                    if brValue > brMax:
-                        brMax = brValue
+                    if brValue is not None: # 1042104210421042104210421042104210421042
+                        if brValue > brMax:
+                            brMax = brValue
 
-                    if brValue < brMin:
-                        brMin = brValue
+                        if brValue < brMin:
+                            brMin = brValue
             else:
                 if cIndex:
                     brValue = r[cIndex]
