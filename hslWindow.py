@@ -550,7 +550,13 @@ class hslWindow(QMainWindow):
 
 
             #not really sure if this one can be called twice...
-            kpiDescriptions.clarifyGroups(hostKPIsStyles)
+            try:
+                kpiDescriptions.clarifyGroups(hostKPIsStyles)
+            except utils.customKPIException as ex:
+                log(f'[W] kpi potential issue, might crash here', 2)
+                log(f'[e]: {ex}', 2)
+                msgDialog('KPIs load error', f'{ex}', parent=self)
+
             log(f'{h}: {hostKPIsList=}')
             
         self.chartArea.widget.initPens()
