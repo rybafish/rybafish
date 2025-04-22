@@ -813,14 +813,18 @@ class QResultSet(QTableWidget):
             widths = [0]*len(colList)
             types = [0]*len(colList)
             
-            deb(f'{widths=}')
-            deb(f'len(colList) = {len(colList)}')
-            deb(f'len(copypaste) = {len(copypaste)}')
+            deb(f'{widths=}', 'abapCopy')
+            deb(f'{copypaste=}', 'abapCopy')
+            deb(f'len(copypaste) = {len(copypaste)}', 'abapCopy')
+            deb(f'{colList=}', 'abapCopy')
+            deb(f'len(colList) = {len(colList)}', 'abapCopy')
+
+            deb('copypaste content:', 'abapCopy')
 
             for l in copypaste:
-                deb(l)
+                deb('    ' + str(l), 'abapCopy')
 
-            for c in range(len(colList)):
+            for c in range(len(copypaste[0])):
             
                 types[c] = self.cols[colList[c]][1]
             
@@ -833,7 +837,6 @@ class QResultSet(QTableWidget):
                         else:
                             widths[c] = len(copypaste[r][c])
                             
-
             '''
             tableWidth = 0
             
@@ -963,6 +966,7 @@ class QResultSet(QTableWidget):
                     if self.columnWidth(i) > 4:
                         hdrrow.append(h)
                         
+                        deb(f'append col{i}')
                         colList.append(i) # important for abapCopy
                     
                 i+=1
@@ -1004,6 +1008,7 @@ class QResultSet(QTableWidget):
 
                 if self.columnWidth(c) > 4:
                     hdrrow.append(self.headers[c])
+                    deb(f'----> append col{c}', 'abapCopy')
                     colList.append(c)
 
                 
@@ -1056,8 +1061,12 @@ class QResultSet(QTableWidget):
                 # check if the square area selected first
                 
                 if len(colIndex) > 0:
+                    deb('generate call list as wtf', 'abapCopy')
+                    deb(f'{rowIndex=}', 'abapCopy')
+                    deb(f'{colIndex=}', 'abapCopy')
                     colList = colIndex[rowIndex[0]].copy()
                 else:
+                    deb('generate call list as range', 'abapCopy')
                     colList = range(len(self.cols)) #fake 'all columns selected' list when the selection is empty
                 
                 abapNotPossible = False
@@ -1073,9 +1082,22 @@ class QResultSet(QTableWidget):
                     return
                         
                 values = []
+                eliminateCols = []
+
                 for c in colList:
                     if self.columnWidth(c) > 4:
                         values.append(self.headers[c])
+                    else:
+                        #1041
+                        if c not in eliminateCols:
+                            eliminateCols.append(c)
+
+                # remove columns excluded from values, #1041
+                deb(f'{colList=}', 'abapCopy')
+                deb(f'cols to eliminate: {eliminateCols}', 'abapCopy')
+                for elc in eliminateCols:
+                    colList.remove(elc)
+                deb(f'{colList=}', 'abapCopy')
                         
                 copypaste.append(values)
 
