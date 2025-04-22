@@ -1515,26 +1515,29 @@ class hslWindow(QMainWindow):
             sql = f'alter user {user} password "{pwd}"'
             dp.dbi.execute_query_desc(dp.connection, sql, [], 10, noLogging=True)
         except dbException as e:
-            log(f'[e], pwd change exception: {e}')
+            log(f'[e], pwd change exception: {e}', 2)
             utils.msgDialog('Password Error', str(e), self)
         else:
-            log('Pwd change done fine, but not saved yet!')
+            log('Pwd change done fine, but not saved yet!', 2)
             self.unsavedPwd = True
             configDialog.unsavedChanges = True
-            log(f"new pwd: {conf['password']}", 4)
+            deb(f"old pwd: {conf['password']}", '_pwd')
             utils.msgDialog('Password Ok', 'Password accepted, but don\'t forget to update your connections file manually.', self)
 
-            conf['password'] = utils.cfgManager.encode(pwd)
+            pwdenc = utils.cfgManager.encode(pwd)
+            conf['password'] = pwdenc
 
             cfg = self.configurations[0] # only one dpidx possible with pwd change
 
-            cfg['password'] = utils.cfgManager.encode(pwd)
+            cfg['password'] = pwdenc
             
-            log('Update consoles config:', 5)
+            deb(f"new pwd: {conf['password']}", '_pwd')
+            deb('Update consoles config with pwd one line above:', '_pwd')
             for i in range(self.tabs.count() -1, 0, -1):
                 w = self.tabs.widget(i)
                 if isinstance(w, sqlConsole.sqlConsole):
-                    log(f'{w.config=}', 5)
+                    tabname = w.tabname.rstrip(' *')
+                    log(f'{tabname}, {w.config=}', 5)
 
 
     def menuOpen(self):

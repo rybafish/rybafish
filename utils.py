@@ -66,7 +66,6 @@ def getTZ(s):
 
 def pwdunhash(pwdhsh):
     pwd = pwdhsh[5:]
-    print('------', pwd)
     return pwd
     
 def pwdtohash(pwd):
@@ -110,11 +109,15 @@ class cfgManager():
     def encode(pwd):
         if not pwd:
             return None
-        return cfgManager.fernet.encrypt(pwd.encode())
+        pwdenc = cfgManager.fernet.encrypt(pwd.encode())
+        deb(f'pwd encode: {pwdenc}', '_pwd')
+        return pwdenc
+        # return cfgManager.fernet.encrypt(pwd.encode())
 
     def decode(pwd):
         if not pwd:
             return None
+        deb(f'pwd decode: {pwd}', '_pwd')
         return cfgManager.fernet.decrypt(pwd).decode()
 
     def reload(self):
@@ -182,9 +185,11 @@ class cfgManager():
         
     def dump(self):
         
+        deb('dump connections...')
         ds = {}
         for n in self.configs:
             confEntry = self.configs[n].copy()
+            deb(f'   {n}, {confEntry.get("pwd")}', '_pwd')
             # if 'pwd' in confEntry:
                 # pwd = confEntry['pwd']
                 # pwd = self.fernet.encrypt(pwd.encode())
@@ -565,7 +570,7 @@ def log(s, loglevel=3, nots=False, nonl=False, component=None,):
     pfx = ''
 
     if component:
-        if cfg_logcomp and (component in cfg_logcomp or '*' in cfg_logcomp):
+        if cfg_logcomp and (component in cfg_logcomp or (component[:1]!= '_' and '*' in cfg_logcomp)):
             pfx = f'[{component}] '
         else:
             return
@@ -1852,6 +1857,12 @@ def sqlStr(s):
     else:
         return str(s)
 
+    
+def undoPwd(pwd):
+    from cryptography.fernet import Fernet
+    fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
+    
+    print(fernet.decrypt(pwd.encode()).decode())
     
 if __name__ == '__main__':
     # for v in ('2.00.079.02.1734604810', '2.00.045.00.157563931', '123'):

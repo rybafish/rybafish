@@ -84,6 +84,7 @@ class hdbi ():
 
             port =server['port']
             pm = cfg('mapport')
+            deb(f'using pwd hash: {server["password"]}', '_pwd')
             pwdDecoded = cfgManager.decode(server['password'])
             if pm:
                 port = int(str(port).replace(pm[1], pm[0]))
@@ -150,6 +151,7 @@ class hdbi ():
         
         port =server['port']
         pm = cfg('mapport')
+        deb(f'using pwd hash: {server["password"]}', '_pwd')
         pwdDecoded = cfgManager.decode(server['password'])
 
         if cfg('dev') and pm:

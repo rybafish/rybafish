@@ -1443,6 +1443,8 @@ class sqlConsole(QWidget):
             self.sqlWorker.dbi = self.dbi       # again, instance
 
             log('starting console connection')
+            tname = self.tabname.rstrip(' *')
+            deb(f'{tname} open connection: {config}', '_pwd')
             self.conn = self.dbi.console_connection(config)
             self.config = config
 
@@ -2026,6 +2028,8 @@ class sqlConsole(QWidget):
             return
     
         try: 
+            tname = self.tabname.rstrip(' *')
+            deb(f'{tname}open connection: {self.config}', '_pwd')
             log('connectDB, indicator sync?', 4)
             self.indicator.status = 'sync'
             self.indicator.repaint()
