@@ -159,7 +159,10 @@ class cfgManager():
 
     def __init__(self, fname = None):
         from cryptography.fernet import Fernet
-        cfgManager.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
+        # cfgManager.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
+        k = cfg('cryptKey', 'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
+        k = k.encode()
+        cfgManager.fernet = Fernet(k)
 
         if fname is None:
             script = sys.argv[0]
@@ -1860,7 +1863,14 @@ def sqlStr(s):
     
 def undoPwd(pwd):
     from cryptography.fernet import Fernet
-    fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
+
+    k = cfg('cryptKey')
+    if k is None:
+        print('Explicit key must be set in config')
+        return
+        
+    k = k.encode()
+    fernet = Fernet(k)
     
     print(fernet.decrypt(pwd.encode()).decode())
     
