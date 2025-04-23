@@ -160,7 +160,7 @@ class myWidget(QWidget):
         self.dnd_yr1n = None    # target y1 
 
         self.dnd_delta = 0
-        self.dnd_top = None
+        self.dnd_mode = None
 
         self.calculateMargins()
         
@@ -1436,7 +1436,7 @@ class myWidget(QWidget):
             self.kpiRefreshSignal.emit()
 
 
-    def dndInit(self, pos):
+    def dndInit(self, pos, mode):
         kpi = self.highlightedKpi
         h = self.highlightedKpiHost
         
@@ -1451,12 +1451,14 @@ class myWidget(QWidget):
         dkeys = sorted(gc.keys())
         idx = dkeys.index(entity)
 
-        if idx > (len(gc)-1)/2:
-            self.dnd_top = True
+        if mode == 'shift' or idx == (len(gc)-1)/2:
+            self.dnd_mode = 'shift'
+        elif idx > (len(gc)-1)/2:
+            self.dnd_mode = 'top'
         else:
-            self.dnd_top = False
+            self.dnd_mode = 'bottom'
         
-        deb(f'y1/y2 detector, {idx=}, len(gc)-1={len(gc)-1}, /2={(len(gc)-1)/2} --> dnd_top={self.dnd_top}', 'dnd')
+        deb(f'y1/y2 detector, {idx=}, len(gc)-1={len(gc)-1}, /2={(len(gc)-1)/2} --> dnd_mode={self.dnd_mode}', 'dnd')
 
         kpiStylesNNN = self.hostKPIsStyles[h]
         self.dnd_yr0, self.dnd_yr1 = kpiStylesNNN[kpi]['y_range']
@@ -1488,6 +1490,7 @@ class myWidget(QWidget):
             self.dragNdrop = False
             self.dragNdropGo = False
             self.dnd_delta = 0
+            self.dnd_mode = None
             pos = event.pos()
 
             y1 = self.dnd_start.y()
@@ -1522,9 +1525,14 @@ class myWidget(QWidget):
             self.checkForHint(pos, hide=False) #regulare check for hint 
             
             if self.highlightedEntity is not None and cfg('experimental'):
-                deb('dnd needed, enable')
+                deb('dnd needed, enable', 'dnd')
+                
+                mode = None
+                if modifiers == Qt.ShiftModifier:
+                    mode = 'shift'
+                    
                 self.dragNdrop = True
-                self.dndInit(pos)
+                self.dndInit(pos, mode)
             
     def resizeWidget(self):
         if self.t_to is None:
@@ -2182,14 +2190,11 @@ class myWidget(QWidget):
                             yr0 = int(self.dnd_yr0)
                             yr1 = int(self.dnd_yr1)
 
-                            if len(gc) == 1: # move both
+                            # if len(gc) == 1: # move both
+                            if self.dnd_mode in ('shift', 'top'):
                                 yr0 += self.dnd_delta / sensitivity
+                            if self.dnd_mode in ('shift', 'bottom'):
                                 yr1 += self.dnd_delta / sensitivity
-                            else:
-                                if self.dnd_top:
-                                    yr0 += self.dnd_delta / sensitivity
-                                else:
-                                    yr1 += self.dnd_delta / sensitivity
 
                             yr0 = max(0, yr0)
                             yr1 = max(0, yr1)
@@ -2252,14 +2257,11 @@ class myWidget(QWidget):
                         y0 = int(self.dnd_yr0)
                         y1 = int(self.dnd_yr1)
 
-                        if len(gc) == 1: # ok, move both y1/y2 
+                        # if len(gc) == 1: # ok, move both y1/y2 
+                        if self.dnd_mode in ('shift', 'top'):
                             y0 += self.dnd_delta / sensitivity
+                        if self.dnd_mode in ('shift', 'bottom'):
                             y1 += self.dnd_delta / sensitivity
-                        else:
-                            if self.dnd_top:
-                                y0 += self.dnd_delta / sensitivity
-                            else:
-                                y1 += self.dnd_delta / sensitivity
                         
                         y0 = max(0, y0)
                         y1 = max(0, y1)
