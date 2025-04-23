@@ -1891,7 +1891,41 @@ class myWidget(QWidget):
                 qp.drawText(leftX + ident, 10 + int(self.top_margin + fontHeight * (i+1) + self.y_delta), str(kpi))
                         
         if drawTimeScale:
-            qp.drawText(leftX + 4, 10 + int(self.top_margin + fontHeight * (i+2) + self.y_delta) + 6, 'Time scale: ' + self.timeScale)
+            def hoursStr(hours):
+                if hours == 0:
+                    return ''
+
+                if hours < 0:
+                    s = '-'
+                else:
+                    s = '+'
+
+                if hours % 1 == 0:
+                    s += str(int(hours))
+                else:
+                    s += f'{hours:.1f}'
+                    
+                return s
+
+            timeTxt = 'Time scale: ' + self.timeScale
+
+            if cfg('legendTimezone', False):
+                if len(self._parent.ndp) == 1:
+                    prop = self._parent.ndp[0].dbProperties
+                    utcOffset = prop.get('utcOffset')
+                    deb(f'tz utc offset: {utcOffset}')
+
+                    tsShift = prop.get('timestampShift')
+                    if tsShift:
+                        utcOffset += tsShift
+                        deb(f'ts shift: {tsShift}, result: {utcOffset}')
+
+                    utcOffset/= 3600
+                    # utcOffset = 3.5
+
+                timeTxt += ', UTC' + hoursStr(utcOffset)
+            
+            qp.drawText(leftX + 4, 10 + int(self.top_margin + fontHeight * (i+2) + self.y_delta) + 6, timeTxt)
               
     @profiler
     def drawChart(self, qp, startX, stopX):
