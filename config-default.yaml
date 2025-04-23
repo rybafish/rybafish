@@ -37,6 +37,9 @@ color-bg: '#FFF'
 #legendTenantName: True
 #legendServiceName: True
 
+# uncomment to hide gantt KPI stats on legend
+#legendGanttDetails: False
+
 # uncomment to enable old gantt render algorithm (potentially slow, see .log file for measurements)
 #ganttOldImplementation: True
 

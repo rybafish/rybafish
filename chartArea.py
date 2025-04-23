@@ -1745,6 +1745,12 @@ class myWidget(QWidget):
                     
                         # label defined before if
 
+
+                        if cfg('legentGanttDetails', True):
+                            label += f': '
+                            label += str(self.nscales[h][kpi]['label']) + ' / '
+                            label += str(self.nscales[h][kpi]['max_label'])
+                        
                         lkpis.append(kpi)
                         lkpisl.append(label)
                         fadeTo = None
