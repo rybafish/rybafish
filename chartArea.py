@@ -1318,6 +1318,9 @@ class myWidget(QWidget):
         kpi = self.highlightedKpi
         h = self.highlightedKpiHost
 
+        if kpi is None or h i None:
+            log('[W] nothing highlighed, no need to readjust gantt range...', 2)
+            return
         kpiStylesNNN = self.hostKPIsStyles[h]
 
         y1n = self.dnd_yr0n
