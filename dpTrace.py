@@ -10,7 +10,7 @@ import time
 import kpis #default kpi styles hor hdb
 import re
 
-from utils import log, profiler
+from utils import log, deb, profiler
 
 def getKPI(kName):
 
@@ -51,6 +51,8 @@ class dataProvider:
         
         self.TZShift = 0
         
+        utc_offset = 0
+        
         if len(files) == 1:
             m = re.search('_utc(-?)(\d+)\.trc$', files[0], flags=re.IGNORECASE)
             
@@ -81,6 +83,7 @@ class dataProvider:
         
         
         self.dbProperties['timeZoneOffset'] = self.TZShift
+        self.dbProperties['utcOffset'] = utc_offset
         self.supportedKPIs = ['indexserverCpu', 'indexserverMemUsed', 'indexserverMemLimit']
 
         self.files = files
@@ -428,6 +431,7 @@ class dataProvider:
             data[kpi] = ds
         
         # seems it is just ignoring the from/to:
+        deb(f'trace get data, {tzShift=}')
         for i in range(0, data_size):
             data['time'][i] = self.data[port][0][i] + tzShift
             

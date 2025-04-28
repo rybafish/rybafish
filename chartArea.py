@@ -1895,6 +1895,10 @@ class myWidget(QWidget):
                         
         if drawTimeScale:
             def hoursStr(hours):
+
+                if hours is None:
+                    return None
+                
                 if hours == 0:
                     return ''
 
@@ -1912,20 +1916,31 @@ class myWidget(QWidget):
 
             timeTxt = 'Time scale: ' + self.timeScale
 
+            utcOffset = None
             if cfg('legendTimezone', False):
+
+                for dp in self._parent.ndp:
+                    prop = dp.dbProperties
+                    deb(f'{prop=}')
+                
                 if len(self._parent.ndp) == 1:
                     prop = self._parent.ndp[0].dbProperties
                     utcOffset = prop.get('utcOffset')
                     deb(f'tz utc offset: {utcOffset}')
 
-                    tsShift = prop.get('timestampShift')
-                    if tsShift:
-                        utcOffset += tsShift
-                        deb(f'ts shift: {tsShift}, result: {utcOffset}')
+                    print(prop)
 
-                    utcOffset/= 3600
-                    # utcOffset = 3.5
+                    if utcOffset is not None:
 
+                        tsShift = prop.get('timestampShift')
+                        if tsShift:
+                            utcOffset += tsShift
+                            deb(f'ts shift: {tsShift}, result: {utcOffset}')
+
+                        utcOffset/= 3600
+                        # utcOffset = 3.5
+
+            if utcOffset is not None:
                 timeTxt += ', UTC' + hoursStr(utcOffset)
             
             qp.drawText(leftX + 4, 10 + int(self.top_margin + fontHeight * (i+2) + self.y_delta) + 6, timeTxt)
