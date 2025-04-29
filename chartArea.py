@@ -1318,7 +1318,7 @@ class myWidget(QWidget):
         kpi = self.highlightedKpi
         h = self.highlightedKpiHost
 
-        if kpi is None or h i None:
+        if kpi is None or h is None:
             log('[W] nothing highlighed, no need to readjust gantt range...', 2)
             return
         kpiStylesNNN = self.hostKPIsStyles[h]
@@ -3661,6 +3661,9 @@ class chartArea(QFrame):
         self.widget.ndata.clear()
         self.widget.hosts.clear()
         self.widget.nkpis.clear()
+        
+        self.widget.dragNdrop = False
+        self.widget.dragNdropGo = False
         
         log('cleanup complete')
         
