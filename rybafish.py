@@ -20,6 +20,7 @@ from _constants import build_date, version, platform
 import traceback
 import sqlConsole
 import kpiDescriptions
+import aboutDialog, datetime
 
 '''
     TODO
@@ -57,6 +58,11 @@ class ExceptionHandler(QtCore.QObject):
         cwd = os.getcwd()
         log('[!] fatal exception\n---------')
         
+        if aboutDialog.startTime is not None:
+            uptSec = (datetime.datetime.now() - aboutDialog.startTime).total_seconds()
+            uptStr = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
+            log(f'Uptime: {uptStr}')
+
         details = '%s.%s: %s\n\n' % (exctype.__module__ , exctype.__qualname__  , str(value))
 
         #self.errorSignal.emit()
