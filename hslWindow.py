@@ -652,6 +652,7 @@ class hslWindow(QMainWindow):
         preset = presetsDialog.presets.get(presetName)
 
         log(f'Extracting preset: {presetName}', 4)
+        deb(f'preset: {preset}', 'preset')
 
         if not preset:
             log(f'[w] no preset? {presetName} --> {preset}', 2)
@@ -671,10 +672,16 @@ class hslWindow(QMainWindow):
                 kpis = []
 
                 for kpisVar in kpisList:
-                    if type(kpisVar) == list and len(kpisVar) == 2:
+                    if type(kpisVar) == list and (len(kpisVar) == 2 or len(kpisVar) == 3):
                         kpi, vars = kpisVar[0], kpisVar[1]
 
+                        if len(kpisVar) == 3:
+                            scales = kpisVar[2]
+                            if scales:
+                                deb(f'artificial scales change for {kpi}', 'preset')
+                                self.chartArea.setScale(hi, kpi, scales[0], scales[1]) # somehow please) 
 
+                        # custom = kpiDescriptions.customKpi(kpi)
 
                         kpiStyles = self.chartArea.widget.hostKPIsStyles[hi]
                         style = kpiStyles.get(kpi)
@@ -701,10 +708,10 @@ class hslWindow(QMainWindow):
                     if hostWithKpis is None:
                         hostWithKpis = hi # remmember host to switch to after restore
                 else:
-                    log(f'Restoring 1: {hname} --> []', 5)
+                    deb(f'Nothing for {hname} #2 --> []', 'preset')
                     self.chartArea.widget.nkpis[hi].clear()
             else:
-                log(f'Restoring 2: {hname} --> []', 5)
+                deb(f'nothing for: {hname} --> []', 'preset')
                 self.chartArea.widget.nkpis[hi].clear()
 
 
@@ -745,9 +752,14 @@ class hslWindow(QMainWindow):
             presetsDialog.presets = presetsDialog.Presets()
 
     def hostPreset(self):
+        '''Build preset dict based on current KPIs selected'''
+
         hostPreset = {}
 
         hn = -1
+        
+        manualScales = self.chartArea.widget.manual_scales
+
         for host, kpis in zip(self.chartArea.widget.hosts, self.chartArea.widget.nkpis):
             hn +=1
 
@@ -770,17 +782,36 @@ class hslWindow(QMainWindow):
                 style = kpiStyles[kpi]
 
                 vars = None
+                scales = None
 
                 idx = style.get('sql')
 
                 if idx:
                     vars = kpiDescriptions.vrsStr.get(idx)
 
+                if 'manual_scale' in style:
+                    print(f'{kpi} own scale is:' + str(style['manual_scale']))
+                    scales = list(style['manual_scale'])
+                elif style['group'] in manualScales:
+                    print(f'{kpi} group {style["group"]} scale is: ' + str(manualScales[style['group']]))
+                    scales = list(manualScales[style['group']])
+                else:
+                    print(f'{kpi} has no manual scale')
+                    
+                deb(f'{kpi=}, {scales=}', 'preset')
+                '''
+                depricate this dynamic approach: too complex
+                '''
+
+                '''
                 if vars is None:
                     kpisVars.append(kpi)   # no vars - single value
                 else:
                     kpisVars.append([kpi, vars]) # tuple --> list because of yaml dump()/safe_load issues
+                '''
 
+                kpisVars.append([kpi, vars, scales]) # always tuple now, #998
+                
             hostPreset[hname] = kpisVars
 
         return hostPreset

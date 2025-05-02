@@ -3878,7 +3878,7 @@ class chartArea(QFrame):
         '''
             scale changed to manual value
         '''
-        log('setScale signal: %s -> %i-%i' % (kpi, yMin, yMax))
+        log(f'setScale signal: {host=}, {kpi=} -> {yMin}-{yMax}')
         
         kpiStylesNNN = self.hostKPIsStyles[host]
         

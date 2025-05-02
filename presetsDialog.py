@@ -108,18 +108,21 @@ class PresetsDialog(QDialog):
         for host in preset.keys():
             hostvalue = host    # only put host on the first line
             for kpiVar in preset[host]:
-                if type(kpiVar) == list and len(kpiVar) == 2:
-                    rows.append((hostvalue, kpiVar[0], kpiVar[1]))
+                # #998
+
+                if type(kpiVar) == list and len(kpiVar) == 3: # new style, 998
+                    rows.append((hostvalue, kpiVar[0], kpiVar[1], kpiVar[2]))
+                elif type(kpiVar) == list and len(kpiVar) == 2: # backward compatability 
+                    rows.append((hostvalue, kpiVar[0], kpiVar[1], None))
                 else:
-                    rows.append((hostvalue, kpiVar, ''))
+                    rows.append((hostvalue, kpiVar, '', None))
 
                 hostvalue = ''
-
 
         self.presetTab.setRowCount(len(rows))
 
         for i in range(len(rows)):
-            host, kpi, vars = rows[i]
+            host, kpi, vars, scales = rows[i]
             item1 = QTableWidgetItem(host)
 
             item2 = QTableWidgetItem(kpi)
@@ -128,6 +131,16 @@ class PresetsDialog(QDialog):
             self.presetTab.setItem(i, 0, item1)
             self.presetTab.setItem(i, 1, item2)
             self.presetTab.setItem(i, 2, item3)
+
+            if scales is not None:
+                if scales[0]:
+                    scalesStr = f'{scales[0]} - {scales[1]}'
+                else:
+                    scalesStr = str(scales[1])
+            else:
+                scalesStr = ''
+                
+            self.presetTab.setItem(i, 3, QTableWidgetItem(scalesStr))
 
         self.presetTab.resizeColumnsToContents()
 
@@ -179,9 +192,9 @@ class PresetsDialog(QDialog):
 
         self.presetTab = QTableWidget()
 
-        self.presetTab.setColumnCount(3)
+        self.presetTab.setColumnCount(4)
 
-        self.presetTab.setHorizontalHeaderLabels(['Host', 'KPI', 'Variables'])
+        self.presetTab.setHorizontalHeaderLabels(['Host', 'KPI', 'Variables', 'Scale'])
 
         vbox.addLayout(nameBox)
         vbox.addWidget(self.presetTab)
