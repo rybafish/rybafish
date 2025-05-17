@@ -2259,6 +2259,9 @@ class myWidget(QWidget):
                             yr0 = min(100, yr0)
                             yr1 = min(100, yr1)
 
+                            yr0 = int(round(yr0)) #otherwise y1/y2 drawn async to gantts themselves 
+                            yr1 = int(round(yr1))
+                        
                             self.dnd_yr0n = int(round(yr0))
                             self.dnd_yr1n = int(round(yr1))
                         else:
@@ -2326,6 +2329,9 @@ class myWidget(QWidget):
 
                         y0 = min(100, y0)
                         y1 = min(100, y1)
+
+                        y0 = int(round(y0))
+                        y1 = int(round(y1))
 
                         y = (100 - y0) * y_scalel / 100
                         y = int(y)+1 # no clue why +1 really
