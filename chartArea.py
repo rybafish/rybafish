@@ -2328,14 +2328,15 @@ class myWidget(QWidget):
                         y1 = min(100, y1)
 
                         y = (100 - y0) * y_scalel / 100
-                        y = int(y)
+                        y = int(y)+1 # no clue why +1 really
 
                         qp.setFont(gFont)
                         qp.drawLine(x1, y + top_margin, x2 + 50, y + top_margin)
                         qp.drawText(x1, y + top_margin + fontHeight, 'y1: ' + str(int(round(y0))))
                         
                         y = (100 - y1) * y_scalel / 100
-                        y = int(y)
+                        y = int(y)+1 #same
+                        
                         qp.drawLine(x1, y + top_margin, x2 + 50, y + top_margin)
                         qp.drawText(x1, y + top_margin - 4, 'y2: ' + str(int(round(y1))))
 
