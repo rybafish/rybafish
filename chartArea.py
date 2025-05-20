@@ -2808,6 +2808,9 @@ class myWidget(QWidget):
             elif t_scale == 12*3600:
                 min_scale = 3600*24*2
                 hrs_scale = 60*24*4
+            elif t_scale == 24*3600:
+                min_scale = 3600*24*2 #scales are same
+                hrs_scale = 60*24*8
 
             # number of minutes since the grid start
             min = int(c_time.strftime("%H")) *60 + int(c_time.strftime("%M"))
@@ -2819,16 +2822,25 @@ class myWidget(QWidget):
                 if c_time.timestamp() % hrs_scale == 0:
                     date_mark = True
             elif min % min_scale == 0:
-                major_line = True
                 
                 if hrs_scale <= 60*24:
+                    major_line = True
                     if min % hrs_scale == 0:
                         date_mark = True
-                else:
+                elif hrs_scale <= 60*24*4:
+                    major_line = True
                     if min == 0:
                         day = int(c_time.strftime("%d"))
                         if day % (hrs_scale/60/24) == 1:
                             date_mark = True
+                else:
+                    # currently this is just 24 hours time scale
+                    day = int(c_time.strftime("%d"))
+                    if day % 5 == 0 or day == 1: # force major line here
+                        major_line = True
+
+                    if day in (1, 10, 20): # fixed dates reported 
+                        date_mark = True
 
             ct = c_time.strftime('%Y-%m-%d %H:%M:%S')
             # log(f'{ct=}, {min=}, {major_line=}', component='tz')
@@ -4867,10 +4879,11 @@ class chartArea(QFrame):
         self.scaleCB.addItem('30 minutes')
         self.scaleCB.addItem('1 hour')
         self.scaleCB.addItem('4 hours')
+        self.scaleCB.addItem('8 hours')
+        self.scaleCB.addItem('12 hours')
 
         if cfg('experimental'):
-            self.scaleCB.addItem('8 hours')
-            self.scaleCB.addItem('12 hours')
+            self.scaleCB.addItem('24 hours')
 
         self.scaleCB.setFocusPolicy(Qt.ClickFocus)
         
