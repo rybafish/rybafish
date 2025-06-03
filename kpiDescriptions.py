@@ -624,7 +624,7 @@ kpiStylesNN = {'host':{}, 'service':{}}     # supposed to keep all the kpi style
 
 customSql = {}
 
-def createStyle(kpi, custom = False, sqlIdx = None):
+def createStyle(kpi, custom=False, sqlIdx=None, path=None):
 
     #log(str(kpi))
 
@@ -791,6 +791,7 @@ def createStyle(kpi, custom = False, sqlIdx = None):
             style['pen'] = QPen(color, 1, penStyle)
 
     style['sql'] = sqlIdx
+    style['path'] = path
 
     '''
     except Exception as e:

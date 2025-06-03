@@ -3,8 +3,9 @@ import sys
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, 
                              QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QItemDelegate, QColorDialog, QApplication, QLabel)
     
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter, QFontMetrics
+import os
+from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPainter, QFontMetrics, QDesktopServices
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -171,6 +172,7 @@ class kpiTable(QTableWidget):
     def contextMenuEvent(self, event):
        
         cmenu = QMenu(self)
+        editKpi = None
 
         #if cfg('dev'):
         menuKPIsUp = cmenu.addAction('Move Up\tAlt+Up')
@@ -181,7 +183,13 @@ class kpiTable(QTableWidget):
         cmenu.addSeparator()
         resetAll = cmenu.addAction('Reset all colors to defaults')
         
+        cmenu.addSeparator()
+
+        if cfg('experimental'):
+            editKpi = cmenu.addAction('Edit custom KPI yaml')
+
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
+
 
         if action == resetAll:
             kpiDescriptions.customColors.clear()
@@ -211,6 +219,44 @@ class kpiTable(QTableWidget):
                     
             self.refreshRequest.emit()
         
+        if action == editKpi:
+            # open a local editor for the file path of the kpi
+            i = self.currentRow()
+            cellCheckBox = self.cellWidget(i, 0)
+
+            if isinstance(cellCheckBox, myCheckBox):
+                kpi = cellCheckBox.name
+
+                if not kpiDescriptions.customKpi(kpi):
+                    log(f'not a custom kpi: {kpi}', 4)
+                    return
+                    
+                kpiKey = self.hosts[cellCheckBox.host]['host'] + ':' + self.hosts[cellCheckBox.host]['port'] + '/' + kpi
+                
+                hst = cellCheckBox.host
+                kpiStylesNNN = self.hostKPIsStyles[hst]
+                style = kpiStylesNNN.get(kpi)
+
+                if style is None:
+                    log(f'[w] There is no style for {kpi=} in host: {hst}', 2)
+                    return
+
+                sql = style.get('sql')
+                path = style.get('path')
+
+                if path is None or path is None:
+                    log(f'[w] There is no sql or path for {kpi=} in host: {hst}', 2)
+                    return
+
+                fname = os.path.join(path, sql)
+                # fname = r'C:\home\dug\projects\rybafish\sql\gantt\expst.yaml'
+                log(f'try to open {kpi} definition file: {fname}')
+
+                if not QDesktopServices.openUrl(QUrl.fromLocalFile(fname)):
+                    log('[w] some error to open file editor', 2)
+                
+                
+
         if action == changeColor:
             i = self.currentRow()
             

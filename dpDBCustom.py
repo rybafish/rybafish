@@ -141,7 +141,7 @@ def makeKPIsN(path, file, hostKPIs, srvcKPIs, kpiStylesN, grpname = 'Custom'):
             kpi['description'] = 'change the KPI name in YAML definition: ' + file
             
             
-        style = createStyle(kpi, True, srcIdx)
+        style = createStyle(kpi, True, srcIdx, path)
         
         if style is not None:
             kpiStylesN[htype][csName + errorSuffix] = style
