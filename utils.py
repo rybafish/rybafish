@@ -1015,8 +1015,14 @@ def formatTimeus(us):
     return s
 
 @profiler
-def formatTime(t, skipSeconds=False, skipMs=False, skipMsreally=False):
+def formatTime(t, skipSeconds=False, skipMs=False, skipMsreally=False, longDays=False):
     
+    def singleMultiple(i):
+        if i % 10 == 1:
+            return ''
+        else:
+            return 's'
+        
     (ti, ms) = divmod(t, 1)
     
     ms = round(ms, 3)
@@ -1046,7 +1052,12 @@ def formatTime(t, skipSeconds=False, skipMs=False, skipMsreally=False):
         if ti >= 3600*24:
             days, ti = divmod(ti, 3600*24)
             days = int(days)
-            s = f'{days}D '
+
+            if longDays:
+                daysStr = 'day' + singleMultiple(days)
+                s = f'{days} {daysStr}, '
+            else:
+                s = f'{days}D '
 
         s += time.strftime(format, time.gmtime(ti)) + msStr
 

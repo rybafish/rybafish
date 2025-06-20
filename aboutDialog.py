@@ -151,7 +151,7 @@ class About(QDialog):
         uptStr = ''
         if startTime is not None:
             uptSec = (datetime.now() - startTime).total_seconds()
-            uptStr = formatTime(uptSec, skipSeconds=True, skipMs=True, skipMsreally=True)
+            uptStr = formatTime(uptSec, skipSeconds=True, skipMs=True, skipMsreally=True, longDays=True)
         
         self.uTime.setText(f'Uptime: {uptStr}')
 

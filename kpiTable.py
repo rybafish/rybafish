@@ -186,7 +186,12 @@ class kpiTable(QTableWidget):
         cmenu.addSeparator()
 
         if cfg('experimental'):
-            editKpi = cmenu.addAction('Edit custom KPI yaml')
+            i = self.currentRow()
+            cellCheckBox = self.cellWidget(i, 0)
+            kpi = cellCheckBox.name
+
+            if kpiDescriptions.customKpi(kpi):
+                editKpi = cmenu.addAction('Edit custom KPI yaml')
 
         action = cmenu.exec_(self.mapToGlobal(event.pos()))
 
