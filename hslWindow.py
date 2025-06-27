@@ -1167,7 +1167,7 @@ class hslWindow(QMainWindow):
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
-                self.chartArea.setStatus('sync', True)
+                self.chartArea.setStatus('render', True)
                 
                 # 2022-11-23
                 #self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
@@ -1219,6 +1219,9 @@ class hslWindow(QMainWindow):
                             else:
                                 log('Okay, seems pwd reset done okay, now need proper DP init', 2)
                                 conf['password'] = utils.cfgManager.encode(newpwd)
+
+                                self.chartArea.setStatus('sync', True)
+                                
                                 if not secondary:
                                     self.primaryConf['password'] = conf['password']
 
