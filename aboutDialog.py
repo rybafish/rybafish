@@ -9,12 +9,12 @@ from PyQt5.QtGui import QPixmap, QIcon, QDesktopServices
 
 from PyQt5.QtCore import Qt, QUrl, QTimer
 
-from utils import formatTime, resourcePath
+from utils import formatTime, resourcePath, safeInt
 from yaml import safe_load, YAMLError
 
 from urllib.parse import urlparse
 
-from utils import log, cfg
+from utils import log, cfg, stripPath
 from datetime import datetime
 
 from _constants import build_date, version, platform
@@ -198,6 +198,17 @@ Current version: %s, build %s.
             uptStr = formatTime(uptSec, skipSeconds=True, skipMs=True)
         
         self.uTime = QLabel(f'Uptime: quantum calibration...')
+
+        n = cfg('aboutFolders', 2)
+
+        if n:
+            n = safeInt(n)
+            sPath = stripPath(n)
+        else:
+            sPath = None
+
+        if sPath:
+            self.path = QLabel(f'path: {sPath}')
         
         self.timer = QTimer(self.window())
         self.timer.timeout.connect(self.refreshTimer)
@@ -217,6 +228,10 @@ Current version: %s, build %s.
         vbox.addLayout(hbox)
 
         vbox.addWidget(self.uTime)
+
+        if sPath:
+            vbox.addWidget(self.path)
+
         vbox.addWidget(self.buttons)
         checkButton.clicked.connect(self.checkUpdates)
         checkButton.resize(150, 150)

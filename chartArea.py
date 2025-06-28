@@ -2919,7 +2919,7 @@ class myWidget(QWidget):
         Displays a stupid warning if yes
 
         '''
-        log(f'okay, check daylight, {self.tzChangeWarning=}, bug920={cfg("bug920")}', component='daylight')
+        log(f"okay, check daylight, {self.tzChangeWarning=}, bug920={cfg('bug920')}", component='daylight')
         if self.tzChangeWarning == False and cfg('bug920', False) == False:
             date_from = self.t_from.date()
             date_to = self.t_to.date()

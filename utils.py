@@ -423,6 +423,23 @@ def fakeRaduga():
     global config
     config['raduga'] = ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00fa9a', '#8a2be2']
     
+def stripPath(comp=0):
+    ''' format last N components of script path and return as a string
+        if comp is 0 or None - return full path
+    '''
+    
+    path = os.path.dirname(os.path.realpath(__file__))
+    pathList = path.split(os.path.sep)
+
+    if comp:
+        lastN = ['..'] + pathList[-comp:] # N last elements of path 
+    else:
+        lastN = pathList        # full path
+    
+    s = os.path.sep.join(lastN)
+
+    return s
+
 def loadConfig(silent=False):
 
     global config

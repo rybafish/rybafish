@@ -115,3 +115,6 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 
 ## uncomment to use $db - inline databar marker
 # experimental-formatting: True
+
+## Uncomment to remove folder information from about dialog
+#aboutFolders: 0
