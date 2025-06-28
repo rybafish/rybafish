@@ -14,13 +14,15 @@ def parsePair(pair):
     q = s[0]
     
     if q != "'":
-        print('cannot find the first quote, stop', pair)
+        print('cannot find the first quote, skip', pair)
+        return
         sys.exit(1)
         
     keyStop = s[1:].find(q)
     
     if keyStop < 0:
-        print('cannot find second quote, stop', pair)
+        print('cannot find second quote, skip', pair)
+        return
         sys.exit(1)
     
     setting = s[1:keyStop+1]
@@ -63,6 +65,9 @@ def fileStats(fname):
                 if debug:
                     print(f'   ---> {i}')
                 v = parsePair(i)
+
+                if v is None:
+                    continue
                 
                 if debug:
                     print(f'{v[0]} --> {v[1]}')
