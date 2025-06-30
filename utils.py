@@ -428,7 +428,8 @@ def stripPath(comp=0):
         if comp is 0 or None - return full path
     '''
     
-    path = os.path.dirname(os.path.realpath(__file__))
+    # path = os.path.dirname(os.path.realpath(__file__))
+    path = os.getcwd()
     pathList = path.split(os.path.sep)
 
     if comp:
