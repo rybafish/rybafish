@@ -1167,6 +1167,7 @@ class hslWindow(QMainWindow):
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
+                deb('indicator --> render')
                 self.chartArea.setStatus('render', True)
                 
                 # 2022-11-23
@@ -1220,6 +1221,7 @@ class hslWindow(QMainWindow):
                                 log('Okay, seems pwd reset done okay, now need proper DP init', 2)
                                 conf['password'] = utils.cfgManager.encode(newpwd)
 
+                                deb('indicator --> sync')
                                 self.chartArea.setStatus('sync', True)
                                 
                                 if not secondary:
