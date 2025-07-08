@@ -545,6 +545,7 @@ class QResultSet(QTableWidget):
         
         cmenu.addSeparator()
         insertColumnName = cmenu.addAction('Insert Column Name(s)')
+        inlistFilter = cmenu.addAction('Copy values as in-list')
         copyFilter = cmenu.addAction('Generate Filter Condition')
         
         cmenu.addSeparator()
@@ -651,6 +652,29 @@ class QResultSet(QTableWidget):
 
             self.insertText.emit(filter)
             
+        if action == inlistFilter:
+            sm = self.selectionModel()
+            values = []
+            for c in sm.selectedIndexes():
+                r, c = c.row(), c.column()
+
+                value = self.rows[r][c]
+                cname = self.headers[c]
+                
+                if value is None:
+                    values.append('null')
+                elif self.dbi.ifNumericType(self.cols[c][1]):
+                    values.append(str(value))
+                elif self.dbi.ifTSType(self.cols[c][1]):
+                    values.append(f"'{utils.timestampToStr(value)}'")
+                else:
+                    values.append(f"'{value}'")
+
+            inlist = '(' + ', '.join(values) + ')'
+            
+            clipboard = QApplication.clipboard()
+            clipboard.setText(inlist)
+        
         if action == copyTableScreen:
             w = self.verticalHeader().width() + self.horizontalHeader().length() + 1
             h = self.verticalHeader().length() + self.horizontalHeader().height() + 1
