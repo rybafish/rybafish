@@ -3969,6 +3969,8 @@ class chartArea(QFrame):
             return False
     
     def setStatus(self, st, repaint = False):
+
+        deb(f'chartarea: set status {st}')
         
         if self.indicator:
             self.indicator.status = st

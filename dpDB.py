@@ -58,7 +58,7 @@ class dataProvider(QObject):
     
     # lock = False
     
-    def __init__(self, server):
+    def __init__(self, server, callback=None):
     
         super().__init__()
         self.dbProperties = {}
@@ -71,7 +71,10 @@ class dataProvider(QObject):
         self.dbProperties['dbi'] = 'DB'
         
         try: 
-            conn = self.dbi.create_connection(server, self.dbProperties)
+            if server['dbi'] == 'HDB':
+                conn = self.dbi.create_connection(server, self.dbProperties, stateCallback=callback) # only HDB impl supports callback 
+            else:
+                conn = self.dbi.create_connection(server, self.dbProperties)
         except dbException as e:
             log('dataprovider exception bubble up...')
             raise e

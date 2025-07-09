@@ -73,7 +73,7 @@ class hdbi ():
     def __init__(self):
         log('Using HDB as DB driver implementation')
 
-    def create_connection (self, server, dbProperties=None):
+    def create_connection (self, server, dbProperties=None, stateCallback=None):
 
         t0 = time.time()
         try: 
@@ -90,12 +90,19 @@ class hdbi ():
                 port = int(str(port).replace(pm[1], pm[0]))
             
             auth = server.get('auth')
+
+            if callable(stateCallback):
+                stateCallback('connecting')
+                
             if server.get('ssl'):
                 log(f'Opening connection with SSL support, auth: {auth}', 4)
                 connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=pwdDecoded, sslsupport=True, auth=auth)
             else:
                 log(f'Opening regular connection (no ssl), auth: {auth}', 5)
                 connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=pwdDecoded, auth=auth)
+                
+            if callable(stateCallback):
+                stateCallback('connected')
                 
             connection.large_sql = False
             
@@ -115,6 +122,9 @@ class hdbi ():
 
         except dbException as e:
             log(f'[!]: create_connection exception: type {e.type}: {e}\n', 2)
+
+            if callable(stateCallback):
+                stateCallback('error')
 
             if e.type == dbException.PWD:
                 log('[!] Connected, but password change requested', 2)

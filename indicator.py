@@ -19,6 +19,7 @@ class indicator(QWidget):
         #'disconnected': '#FCC',
         'alert': '#FAC',
         'autorefresh': '#cfc',
+        'connecting': '#f00',    # password ok, connection initializing
         'detach': ('#CCC', '#444'),
         #'detach': '#EEC',
     }
@@ -167,6 +168,11 @@ class indicator(QWidget):
             qp.setPen(QColor('#888'))
         '''
             
-        qp.drawRect(int((h - 10 )/2), int((w - 10 )/2), 10, 10)
+        if self.status == 'connecting':
+            width = 5
+        else:
+            width = 10
+            
+        qp.drawRect(int((h - 10 )/2), int((w - 10 )/2), width, 10)
         
         qp.end()

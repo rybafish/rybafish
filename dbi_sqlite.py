@@ -33,7 +33,7 @@ class sqlite():
     def __init__(self):
         log('Using SQLite as DB driver implementation (SLT)')
         
-    def create_connection(self, server, dbProperties = None):
+    def create_connection(self, server, dbProperties=None):
         dbFile = server['host']
         log(f'Open connection: {dbFile}')
 

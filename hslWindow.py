@@ -1068,6 +1068,21 @@ class hslWindow(QMainWindow):
         if not yet connected in this session - primaryConnection loaded from layout.yaml
         '''
 
+        def updateState(s):
+            '''
+            callback function to somehow report connection progress
+            possible values are: connecting, connected, error
+
+            supposed to update indicator
+            '''
+            log(f'[State] {s}', 4)
+
+            if s == 'connecting':
+                self.chartArea.setStatus('connecting', True)
+            else:
+                self.chartArea.setStatus('sync', True)
+
+
         log(f'processConnection, {secondary=}')
         
         conf = None
@@ -1167,8 +1182,8 @@ class hslWindow(QMainWindow):
                 self.statusMessage('Connecting...', False)
                 self.repaint()
 
-                deb('indicator --> render')
-                self.chartArea.setStatus('render', True)
+                deb('indicator --> connecting (depr)')
+                # self.chartArea.setStatus('connecting', True)
                 
                 # 2022-11-23
                 #self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
@@ -1176,7 +1191,13 @@ class hslWindow(QMainWindow):
                 dpCreationLoop = True
                 while dpCreationLoop:
                     dpCreationLoop = False # very regular execution
-                    dp = dpDB.dataProvider(conf) # db data provider
+
+                    if cfg('dev'):
+                        f = updateState
+                    else:
+                        f = None
+                        
+                    dp = dpDB.dataProvider(conf, callback=f) # db data provider
 
                     if hasattr(dp, 'dbProperties'):
                         if dp.dbProperties.get('error') == 'password reset':
@@ -1221,8 +1242,8 @@ class hslWindow(QMainWindow):
                                 log('Okay, seems pwd reset done okay, now need proper DP init', 2)
                                 conf['password'] = utils.cfgManager.encode(newpwd)
 
-                                deb('indicator --> sync')
-                                self.chartArea.setStatus('sync', True)
+                                deb('indicator --> connected (depr)')
+                                # self.chartArea.setStatus('connected', True)
                                 
                                 if not secondary:
                                     self.primaryConf['password'] = conf['password']
