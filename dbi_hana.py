@@ -120,6 +120,9 @@ class hdbi ():
 
             self.execute_query_desc(connection, setApp, [], 0)
 
+            if callable(stateCallback):
+                stateCallback('contextset')
+                
         except dbException as e:
             log(f'[!]: create_connection exception: type {e.type}: {e}\n', 2)
 
@@ -149,6 +152,9 @@ class hdbi ():
         
         log('(re)connect/properties: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
         
+        if callable(stateCallback):
+            stateCallback('gotproperties')
+            
         return connection
 
     def console_connection(self, server, dbProperties = None, data_format_version2 = False):

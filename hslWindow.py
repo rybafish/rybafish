@@ -1075,11 +1075,17 @@ class hslWindow(QMainWindow):
 
             supposed to update indicator
             '''
-            log(f'[State] {s}', 4)
+            log(f'[state] {s}', 4)
 
             if s == 'connecting':
-                self.chartArea.setStatus('connecting', True)
-            else:
+                self.chartArea.setStatus('connecting', True, 20)
+            elif s == 'connected':
+                self.chartArea.setStatus('connecting', True, 40)
+            elif s == 'contextset':
+                self.chartArea.setStatus('connecting', True, 60)
+            elif s == 'gotproperties':
+                self.chartArea.setStatus('connecting', True, 80)
+            else:               # kpis request 
                 self.chartArea.setStatus('sync', True)
 
 

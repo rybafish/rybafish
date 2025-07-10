@@ -19,7 +19,7 @@ class indicator(QWidget):
         #'disconnected': '#FCC',
         'alert': '#FAC',
         'autorefresh': '#cfc',
-        'connecting': '#f00',    # password ok, connection initializing
+        'connecting': '#2dd',    # password ok, connection initializing
         'detach': ('#CCC', '#444'),
         #'detach': '#EEC',
     }
@@ -40,6 +40,8 @@ class indicator(QWidget):
         self.t0 = None              # link to parent tab statement start time (charts or console)
         self.nextAutorefresh = None # link to parent next autorefresh time
         self.runtimeTimer = None
+
+        self.progress = None    # percent of completeness, introduced for connected
 
         super().__init__(parent)
         
@@ -168,10 +170,13 @@ class indicator(QWidget):
             qp.setPen(QColor('#888'))
         '''
             
+        width = 10
+
         if self.status == 'connecting':
-            width = 5
-        else:
-            width = 10
+            if self.progress:
+                width = int(round(10*self.progress/100))
+            else:
+                width = 10
             
         qp.drawRect(int((h - 10 )/2), int((w - 10 )/2), width, 10)
         

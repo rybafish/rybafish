@@ -3968,12 +3968,17 @@ class chartArea(QFrame):
         else:
             return False
     
-    def setStatus(self, st, repaint = False):
+    def setStatus(self, st, repaint=False, progress=None):
 
-        deb(f'chartarea: set status {st}')
+        deb(f'chartarea: set status {st}, {progress=}')
         
         if self.indicator:
             self.indicator.status = st
+
+            if progress is not None:
+               self.indicator.progress = progress
+            else:
+               self.indicator.progress = None
 
             if st == 'autorefresh' and self.timer:
                 self.indicator.nextAutorefresh = datetime.datetime.now() + datetime.timedelta(seconds=self.refreshTime)
