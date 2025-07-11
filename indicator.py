@@ -19,7 +19,7 @@ class indicator(QWidget):
         #'disconnected': '#FCC',
         'alert': '#FAC',
         'autorefresh': '#cfc',
-        'connecting': '#2dd',    # password ok, connection initializing
+        'connecting': '#8f8',
         'detach': ('#CCC', '#444'),
         #'detach': '#EEC',
     }
@@ -132,6 +132,10 @@ class indicator(QWidget):
         
     def paintEvent(self, QPaintEvent):
 
+        def l(t):
+            if r:
+                print(t)
+
         qp = QPainter()
         super().paintEvent(QPaintEvent)
         qp.begin(self)
@@ -144,6 +148,11 @@ class indicator(QWidget):
             qp.setBrush(QBrush(QColor('#8C8'), Qt.SolidPattern))
         '''
 
+        r = False
+        if self.status == 'connecting':
+            r = True
+            
+
         if self.status in self.styles:
         
             st = self.styles[self.status]
@@ -151,6 +160,7 @@ class indicator(QWidget):
             if isinstance(st, tuple):
                 brush = st[0]
                 frame = st[1]
+                l(f'yes, tuple {st}')
             else:
                 brush = st
                 frame = '#888'

@@ -48,6 +48,14 @@ def check_pyhdb_version():
     else:
         return 'SAP'            # incorrect old version
 
+def devDelay(ms):
+    if cfg('dev'):
+        rnd = time.time() % 1
+        rnd = (rnd*100000 % ms)/1000 # random number from 0 to .5
+        deb(f'random delay: {rnd}')
+        time.sleep(0.25 + rnd)
+
+    
 class hdbi ():
 
     name = 'HDB'
@@ -103,6 +111,7 @@ class hdbi ():
                 
             if callable(stateCallback):
                 stateCallback('connected')
+                devDelay(200)
                 
             connection.large_sql = False
             
@@ -122,7 +131,9 @@ class hdbi ():
 
             if callable(stateCallback):
                 stateCallback('contextset')
+                devDelay(500)
                 
+
         except dbException as e:
             log(f'[!]: create_connection exception: type {e.type}: {e}\n', 2)
 
@@ -154,6 +165,7 @@ class hdbi ():
         
         if callable(stateCallback):
             stateCallback('gotproperties')
+            devDelay(800)
             
         return connection
 

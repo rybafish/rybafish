@@ -216,7 +216,7 @@ class hslWindow(QMainWindow):
         if hasattr(profiler, 'report'):
             profiler.report()
             
-        if cfg('dev'):
+        if cfg('experimental'):
             utils.configReportStats()
 
         if aboutDialog.startTime is not None:
@@ -1198,7 +1198,7 @@ class hslWindow(QMainWindow):
                 while dpCreationLoop:
                     dpCreationLoop = False # very regular execution
 
-                    if cfg('dev'):
+                    if cfg('experimental'): # define connection progress callback report
                         f = updateState
                     else:
                         f = None
