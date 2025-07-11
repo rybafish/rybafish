@@ -1203,7 +1203,13 @@ class hslWindow(QMainWindow):
                     else:
                         f = None
                         
+                    '''
+                    --> and this is long sync call...
+                    '''
                     dp = dpDB.dataProvider(conf, callback=f) # db data provider
+                    '''
+                    <-- and we are back from sync call
+                    '''
 
                     if hasattr(dp, 'dbProperties'):
                         if dp.dbProperties.get('error') == 'password reset':
