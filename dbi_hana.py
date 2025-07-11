@@ -101,6 +101,7 @@ class hdbi ():
 
             if callable(stateCallback):
                 stateCallback('connecting')
+                devDelay(400)
                 
             if server.get('ssl'):
                 log(f'Opening connection with SSL support, auth: {auth}', 4)

@@ -1071,14 +1071,14 @@ class hslWindow(QMainWindow):
         def updateState(s):
             '''
             callback function to somehow report connection progress
-            possible values are: connecting, connected, error
+            possible values are: connecting, connected, contextset, gotproperties and error
 
             supposed to update indicator
             '''
             log(f'[state] {s}', 4)
 
             if s == 'connecting':
-                self.chartArea.setStatus('connecting', True, 20)
+                self.chartArea.setStatus('connecting', True, 10)
             elif s == 'connected':
                 self.chartArea.setStatus('connecting', True, 40)
             elif s == 'contextset':

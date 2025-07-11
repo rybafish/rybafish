@@ -132,7 +132,7 @@ class indicator(QWidget):
         
     def paintEvent(self, QPaintEvent):
 
-        def l(t):
+        def ideb(t):
             if r:
                 print(t)
 
@@ -160,7 +160,7 @@ class indicator(QWidget):
             if isinstance(st, tuple):
                 brush = st[0]
                 frame = st[1]
-                l(f'yes, tuple {st}')
+                ideb(f'yes, tuple {st}')
             else:
                 brush = st
                 frame = '#888'
