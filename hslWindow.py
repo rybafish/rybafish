@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
 
-from PyQt5.QtCore import Qt, QUrl, QEvent, QRect, QProcess, QThread
+from PyQt5.QtCore import QObject, Qt, QUrl, QEvent, QRect, QProcess, QThread, pyqtSignal
 
 from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
@@ -55,6 +55,44 @@ from passwordDialog import pwdDialog
 
 from profiler import profiler
 
+class connectWorker(QObject):
+    finished = pyqtSignal()
+    
+    def log(self, s):
+        deb(f'[ConnWRK]{s}')
+
+    def __init__(self, hslw):
+        super().__init__()
+        log('init connectin worker')
+        
+        self.dp = None
+        self.exception = None
+        self.args = []
+        self.hslw = hslw        # not sure needed
+
+    def openDP(self):
+        
+        self.log(f'thread iteslf, child: {int(QThread.currentThreadId())}')
+        self.conf = self.args[0]
+        cbfunc = self.args[1]   # call back function
+        self.log('call openDP')
+
+        try:
+            self.log('going into sync...')
+            self.dp = dpDB.dataProvider(self.conf, callback=cbfunc) # db data provider
+        except dbException as e:
+            log(f'[ConnWRK] exception: {e}')
+            log(f'[ConnWRK] dp: {self.dp}')
+            # self.dp = None    @
+            self.exception = str(e)
+            self.finished.emit()
+            return
+            
+        self.log('seems all ok?')
+        self.log(str(self.dp.dbProperties))
+        self.finished.emit()
+
+
 class hslWindow(QMainWindow):
 
     statusbar = None
@@ -64,8 +102,18 @@ class hslWindow(QMainWindow):
     kpisTable = None
     threadID = None
 
+    def connFinished(self):
+        log('[ConnWRK] finished, got control in hslWindow.connFinished')
+        self.processConnection(threadCB=True)
+
     def __init__(self):
     
+        self.thread = QThread()
+        self.connWorker = connectWorker(self)
+        self.connWorker.moveToThread(self.thread)
+        self.connWorker.finished.connect(self.connFinished)
+        self.thread.started.connect(self.connWorker.openDP)
+
         self.layoutDumped = False
     
         self.sqlTabCounter = 0 #static tab counter
@@ -1057,7 +1105,7 @@ class hslWindow(QMainWindow):
         self.setWindowTitle(f'RybaFish Charts [{windowStr}]{tz}')
 
 
-    def processConnection(self, secondary=False):
+    def processConnection(self, secondary=False, threadCB=False):
         '''
         shows the connection dialog and triggers connection
         both primary and secondary
@@ -1086,9 +1134,11 @@ class hslWindow(QMainWindow):
             elif s == 'gotproperties':
                 self.chartArea.setStatus('connecting', True, 80)
             else:               # kpis request 
-                self.chartArea.setStatus('sync', True)
+                self.chartArea.setStatus('nync', True)
 
 
+        modeAsync = None
+        
         log(f'processConnection, {secondary=}')
         
         conf = None
@@ -1107,7 +1157,14 @@ class hslWindow(QMainWindow):
         if not connConf.get('name') and self.layout and not secondary:
             connConf['setToName'] = self.layout['connectionName']
 
-        conf, ok = configDialog.Config.getConfig(connConf, self)
+        if not threadCB:
+            # regular execution
+            conf, ok = configDialog.Config.getConfig(connConf, self)
+        else:
+            conf = self.connWorker.conf
+            log(f'[ConnWRK] {conf=}')
+            log(f'[ConnWRK] {self.connWorker.exception=}')
+            ok = True             # assuming no error... 
 
         conf['usage'] = None
 
@@ -1118,6 +1175,7 @@ class hslWindow(QMainWindow):
             log(f'after connection dialog {connConf=}, {self.primaryConf}', 6) # #815
         
         if ok and conf['ok']:
+            deb(f'ok and conf ok... and {threadCB=}')
         
             try:
             
@@ -1206,7 +1264,27 @@ class hslWindow(QMainWindow):
                     '''
                     --> and this is long sync call...
                     '''
-                    dp = dpDB.dataProvider(conf, callback=f) # db data provider
+                    if cfg('dev') is None:
+                        if not threadCB:
+                            modeAsync = True
+                            self.connWorker.args = [conf, f] # thread step 1 
+                            log('[ConnWRK] start here...')
+                            log(f'[ConnWRK] starting child thread, parent: {int(QThread.currentThreadId())}', 5)
+                            self.thread.start()
+
+                            log('[ConnWRK] return from processConnection')
+                            return
+                        else:
+                            log('[ConnWRK] already in callback mode...')
+                            if self.connWorker.exception:
+                                log('[ConnWRK] wrk thread exception detected...')
+                                raise(dbException(self.connWorker.exception)) # buble up wrk thread exception in UI thread
+                            else:
+                                log('[ConnWRK] continue with regular connection...')
+                                dp = self.connWorker.dp
+                    else:
+                        # old style sync connection
+                        dp = dpDB.dataProvider(conf, callback=f) # db data provider
                     '''
                     <-- and we are back from sync call
                     '''
@@ -1336,7 +1414,7 @@ class hslWindow(QMainWindow):
                 else:
                     self.chartArea.initDP(dpidx)
                     
-                   
+
                 '''
                 if not secondary:
                     log('refill due to non-secondary connection', 5)
@@ -1406,6 +1484,7 @@ class hslWindow(QMainWindow):
                         log('wrong keepalive setting: %s' % (cfg('keepalive')))
                                 
             except dbException as e:
+                deb(f'dp creation exception: {e}')
                 self.chartArea.indicator.status = 'disconnected'
                 log('Connect or init error:')
                 if hasattr(e, 'message'):
