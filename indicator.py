@@ -19,7 +19,7 @@ class indicator(QWidget):
         #'disconnected': '#FCC',
         'alert': '#FAC',
         'autorefresh': '#cfc',
-        'connecting': '#8f8',
+        'connecting': '#cdf',
         'detach': ('#CCC', '#444'),
         #'detach': '#EEC',
     }

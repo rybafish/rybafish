@@ -59,16 +59,16 @@ class connectWorker(QObject):
     finished = pyqtSignal()
     
     def log(self, s):
-        deb(f'[ConnWRK]{s}')
+        deb(f'[ConnWRK] {s}')
 
     def __init__(self, hslw):
         super().__init__()
-        log('init connectin worker')
+        self.log('init connectin worker')
         
         self.dp = None
         self.exception = None
         self.args = []
-        self.hslw = hslw        # not sure needed
+        self.hslw = hslw        # not really needed, but why not
 
     def openDP(self):
         
@@ -81,14 +81,14 @@ class connectWorker(QObject):
             self.log('going into sync...')
             self.dp = dpDB.dataProvider(self.conf, callback=cbfunc) # db data provider
         except dbException as e:
-            log(f'[ConnWRK] exception: {e}')
-            log(f'[ConnWRK] dp: {self.dp}')
+            self.log(f'exception: {e}')
+            self.log(f'dp: {self.dp}')
             # self.dp = None    @
             self.exception = str(e)
             self.finished.emit()
             return
             
-        self.log('seems all ok?')
+        self.log('seems all ok...')
         self.log(str(self.dp.dbProperties))
         self.finished.emit()
 
@@ -103,7 +103,8 @@ class hslWindow(QMainWindow):
     threadID = None
 
     def connFinished(self):
-        log('[ConnWRK] finished, got control in hslWindow.connFinished')
+        log('[ConnWRK] finished, got control in hslWindow.connFinished, thread.quit()')
+        self.thread.quit()
         self.processConnection(threadCB=True)
 
     def __init__(self):
@@ -1264,11 +1265,11 @@ class hslWindow(QMainWindow):
                     '''
                     --> and this is long sync call...
                     '''
-                    if cfg('dev') is None:
+                    if cfg('experimental') and cfg('asyncChartConnect', True):
                         if not threadCB:
                             modeAsync = True
                             self.connWorker.args = [conf, f] # thread step 1 
-                            log('[ConnWRK] start here...')
+                            log('[ConnWRK] starting async connection routine')
                             log(f'[ConnWRK] starting child thread, parent: {int(QThread.currentThreadId())}', 5)
                             self.thread.start()
 
@@ -1284,6 +1285,7 @@ class hslWindow(QMainWindow):
                                 dp = self.connWorker.dp
                     else:
                         # old style sync connection
+                        log('[ConnWRK] do a sync chart initial connect...')
                         dp = dpDB.dataProvider(conf, callback=f) # db data provider
                     '''
                     <-- and we are back from sync call
