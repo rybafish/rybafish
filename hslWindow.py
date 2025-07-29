@@ -72,14 +72,15 @@ class connectWorker(QObject):
 
     def openDP(self):
         
+        self.log('inside openDP')
         self.log(f'thread iteslf, child: {int(QThread.currentThreadId())}')
-        self.conf = self.args[0]
+        self.dp = self.args[0]
         cbfunc = self.args[1]   # call back function
-        self.log('call openDP')
 
         try:
             self.log('going into sync...')
-            self.dp = dpDB.dataProvider(self.conf, callback=cbfunc) # db data provider
+            # self.dp = dpDB.dataProvider(self.conf, callback=cbfunc) # db data provider
+            self.dp.connectSync(callback=cbfunc)
         except dbException as e:
             self.log(f'exception: {e}')
             self.log(f'dp: {self.dp}')
@@ -234,7 +235,7 @@ class hslWindow(QMainWindow):
         modifiers = event.modifiers()
 
         if (modifiers == Qt.ControlModifier and event.key() == 82) or event.key() == Qt.Key_F5:
-            log('reload request!')
+            log('reload request...')
             self.chartArea.reloadChart()
             
         elif modifiers == Qt.AltModifier and Qt.Key_0 < event.key() <= Qt.Key_9:
@@ -1162,7 +1163,7 @@ class hslWindow(QMainWindow):
             # regular execution
             conf, ok = configDialog.Config.getConfig(connConf, self)
         else:
-            conf = self.connWorker.conf
+            conf = self.connWorker.dp.server
             log(f'[ConnWRK] {conf=}')
             log(f'[ConnWRK] {self.connWorker.exception=}')
             ok = True             # assuming no error... 
@@ -1265,15 +1266,21 @@ class hslWindow(QMainWindow):
                     '''
                     --> and this is long sync call...
                     '''
+
                     if cfg('experimental') and cfg('asyncChartConnect', True):
                         if not threadCB:
                             modeAsync = True
-                            self.connWorker.args = [conf, f] # thread step 1 
                             log('[ConnWRK] starting async connection routine')
                             log(f'[ConnWRK] starting child thread, parent: {int(QThread.currentThreadId())}', 5)
-                            self.thread.start()
 
-                            log('[ConnWRK] return from processConnection')
+                            # create a data provider object
+                            dp = dpDB.dataProvider(conf)
+
+                            # prepare it to fork connect in thread
+                            self.connWorker.args = [dp, f] # thread step 1 
+                            self.thread.start()            # go! 
+
+                            log('[ConnWRK] return from processConnection (wait for return from thread)')
                             return
                         else:
                             log('[ConnWRK] already in callback mode...')
@@ -1282,11 +1289,13 @@ class hslWindow(QMainWindow):
                                 raise(dbException(self.connWorker.exception)) # buble up wrk thread exception in UI thread
                             else:
                                 log('[ConnWRK] continue with regular connection...')
-                                dp = self.connWorker.dp
+                                dp = self.connWorker.dp # extract it back from thread object
                     else:
                         # old style sync connection
-                        log('[ConnWRK] do a sync chart initial connect...')
-                        dp = dpDB.dataProvider(conf, callback=f) # db data provider
+                        log('[ConnWRK] do a sync chart initial connect, old-style...')
+                        dp = dpDB.dataProvider(conf)
+                        dp.connectSync(callback=f)
+
                     '''
                     <-- and we are back from sync call
                     '''
@@ -1367,6 +1376,7 @@ class hslWindow(QMainWindow):
                             log('also updating the primaryConf prop', 5)
                             self.primaryConf['usage'] = usage
 
+                log('Now put this dp into chart area dp list...')
                 dpidx = self.chartArea.appendDP(dp)
                 self.configurations[dpidx] = conf
 
@@ -1481,6 +1491,9 @@ class hslWindow(QMainWindow):
                 if cfg('keepalive'):
                     try:
                         keepalive = int(cfg('keepalive'))
+                        log(f'no clue thread, but create keepalive timer here {threadCB=}')
+                        log(f'thread now: {int(QThread.currentThreadId())}')
+                        log(f'window now: {self}')
                         dp.enableKeepAlive(self, keepalive)
                     except ValueError:
                         log('wrong keepalive setting: %s' % (cfg('keepalive')))

@@ -24,7 +24,7 @@ import sql
 import sys
 
 from utils import cfg, hextostr
-from utils import getlog, deb
+from utils import getlog, deb, safeInt
 from utils import dbException
 from utils import cfgManager
 
@@ -55,7 +55,8 @@ def devDelay(ms):
         deb(f'random delay: {rnd}')
 
         if cfg('devDelay'):
-            time.sleep(0.25 + rnd)
+            delay = safeInt(cfg('devDelay', 250))*0.001
+            time.sleep(delay + rnd)
 
     
 class hdbi ():

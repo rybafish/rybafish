@@ -12,7 +12,7 @@
     those two calls must be implemented in any dataprovider.
 '''
 
-from PyQt5.QtCore import QObject
+from PyQt5.QtCore import QObject, QThread
 
 from array import array
 
@@ -58,11 +58,18 @@ class dataProvider(QObject):
     
     # lock = False
     
-    def __init__(self, server, callback=None):
-    
+    def __init__(self, server):
         super().__init__()
+        self.server = server
         self.dbProperties = {}
-        
+        deb('dp created')
+
+            
+    def connectSync(self, callback=None):
+        '''
+        fully sync old syle connection
+        '''
+        server = self.server
         log(f"Connecting to {server['dbi']}:\\\\{server['host']}:{server['port']}...")
 
         dbimpl = dbi(server['dbi'])
@@ -80,14 +87,19 @@ class dataProvider(QObject):
             raise e
         
         if conn is None:
+            # self.server = None
             log('[i] Failed to connect, dont know what to do next')
             raise Exception('Failed to connect, dont know what to do next...')
         else:
             log('connected')
             self.connection = conn
-            self.server = server
-            
+            # self.server = server
+
+    def connectASync(self, callback=None):
+        pass
+
     def terminate(self, closeConnection = False):
+        deb('terminate timer')
         if self.timer:
             self.timer.stop()
             self.timer = None
@@ -123,13 +135,16 @@ class dataProvider(QObject):
             log('Keep-alives not supported by this DBI')
             return
     
-        log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
+        log(f'Setting up DB keep-alive requests (chart): {keepalive} seconds')
+        log(f'thread now: {int(QThread.currentThreadId())}')
+        log(f'window now: {window}')
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)
         self.timer.timeout.connect(self.keepAlive)
         self.timer.start(1000 * keepalive)
         
     def renewKeepAlive(self):
+        deb('renew keepalive chart timer')
         if self.timer is not None:
             self.timer.stop()
             self.timer.start(1000 * self.timerkeepalive)
@@ -146,6 +161,8 @@ class dataProvider(QObject):
             self.timer.stop()
         
     def keepAlive(self):
+
+        deb('chart keepAlive...')
     
         if self.connection is None:
             log('no connection, disabeling the keep-alive timer')
@@ -408,6 +425,14 @@ class dataProvider(QObject):
         deb(f'getData data keys: {data.keys()}')
         deb(f'getData requested kpis: {kpiIn}')
 
+        if self.timer:
+            deb('we have a timer')
+            deb(f'active: {self.timer.isActive()}')
+            deb(f'timeout: {self.timer.interval()}')
+            deb(f'remaining: {self.timer.remainingTime()}')
+        else:
+            deb('no timer.')
+
         for kpi in data.keys():
             if kpi in kpiIn or kpi == 'time':
                 pass
@@ -660,6 +685,7 @@ class dataProvider(QObject):
                     log('[W] Custom KPI exception ignored, so we just continue.', 2)
                 else:
                     #reply = None, it was not a custom KPI, most likely a connection issue
+                    log('dpDB don\'t know how to handle, connection --> None', 4)
                     self.connection = None
                     
                     log('[!] getHostKpis (%s) failed: %s' % (str(kpis), str(e)))
