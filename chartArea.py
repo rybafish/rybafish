@@ -4106,6 +4106,20 @@ class chartArea(QFrame):
 
         deb(f'chartarea: set status {st}, {progress=}')
         
+        if progress:
+            stm = {}
+            stm[10] = 'Connecting...'
+            stm[40] = 'Connected ok, init client'
+            stm[60] = 'Init db props...'
+            stm[80] = 'Connection fine.'
+            
+            if progress in stm:
+                msg = stm[progress]
+            else:
+                msg = f'connection: {progress}'
+            
+            self.statusMessage(msg, True)
+
         if self.indicator:
             self.indicator.status = st
 
@@ -4863,10 +4877,13 @@ class chartArea(QFrame):
                     reconnected = self.connectionLost(dp, str(e), nodialog=True)
                 else:
                     deb('user triggered reconnect, connectionLost mode #1')
-                    # reconnected = self.connectionLost(dp, str(e), nodialog=False)
-                    self.asyncReconnection = True # kind of not really connected state 
-                    reconnected = self.connectionLostAsync(dp, 'reloadChart manual', str(e), nodialog=False)
-                    return
+
+                    if cfg('experimental') and cfg('asyncChartConnect', True):
+                        self.asyncReconnection = True # kind of not really connected state 
+                        reconnected = self.connectionLostAsync(dp, 'reloadChart manual', str(e), nodialog=False)
+                        return
+                    else:
+                        reconnected = self.connectionLost(dp, str(e), nodialog=False)
 
                 if reconnected == False:
                     log('reconnected == False')
