@@ -79,6 +79,7 @@ class dataProvider(QObject):
         
         try: 
             if server['dbi'] == 'HDB':
+                log('Okas, dbi with callback here...')
                 conn = self.dbi.create_connection(server, self.dbProperties, stateCallback=callback) # only HDB impl supports callback 
             else:
                 conn = self.dbi.create_connection(server, self.dbProperties)
@@ -116,9 +117,15 @@ class dataProvider(QObject):
         return
             
             
-    def reconnect(self):
+    def reconnect(self, cbFunc=None):
         try: 
-            conn = self.dbi.create_connection(self.server)
+            deb(f'dpDB: reconnect called, {self.server=}')
+            if self.server['dbi'] == 'HDB':
+                deb(f'yes, hdb, cb={cbFunc}')
+                conn = self.dbi.create_connection(self.server, stateCallback=cbFunc)
+            else:
+                conn = self.dbi.create_connection(self.server)
+                
         except Exception as e:
             raise e
         

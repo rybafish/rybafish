@@ -49,15 +49,13 @@ def check_pyhdb_version():
         return 'SAP'            # incorrect old version
 
 def devDelay(ms):
-    if cfg('dev'):
+    if cfg('devDelay'):
         rnd = time.time() % 1
         rnd = (rnd*100000 % ms)/1000 # random number from 0 to .5
+
         deb(f'random delay: {rnd}')
-
-        if cfg('devDelay'):
-            delay = safeInt(cfg('devDelay', 250))*0.001
-            time.sleep(delay + rnd)
-
+        delay = safeInt(cfg('devDelay', 250))*0.001
+        time.sleep(delay + rnd)
     
 class hdbi ():
 

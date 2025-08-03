@@ -31,7 +31,7 @@ from indicator import indicator
 from utils import resourcePath
 
 from utils import loadConfig
-from utils import log, deb
+from utils import log, deb, threadID
 from utils import cfg
 from utils import Layout
 from utils import dbException, msgDialog
@@ -73,7 +73,7 @@ class connectWorker(QObject):
     def openDP(self):
         
         self.log('inside openDP')
-        self.log(f'thread iteslf, child: {int(QThread.currentThreadId())}')
+        self.log(f'thread iteslf, child: {threadID()}')
         self.dp = self.args[0]
         cbfunc = self.args[1]   # call back function
 
@@ -127,7 +127,7 @@ class hslWindow(QMainWindow):
     
         super().__init__()
         
-        self.threadID = int(QThread.currentThreadId())
+        self.threadID = threadID()
         log(f'[thread] main window thread: {self.threadID}', 5)
         
         self.initUI()
@@ -1271,7 +1271,7 @@ class hslWindow(QMainWindow):
                         if not threadCB:
                             modeAsync = True
                             log('[ConnWRK] starting async connection routine')
-                            log(f'[ConnWRK] starting child thread, parent: {int(QThread.currentThreadId())}', 5)
+                            log(f'[ConnWRK] starting child thread, parent: {threadID()}', 5)
 
                             # create a data provider object
                             dp = dpDB.dataProvider(conf)
@@ -1492,7 +1492,7 @@ class hslWindow(QMainWindow):
                     try:
                         keepalive = int(cfg('keepalive'))
                         log(f'no clue thread, but create keepalive timer here {threadCB=}')
-                        log(f'thread now: {int(QThread.currentThreadId())}')
+                        log(f'thread now: {threadID()}')
                         log(f'window now: {self}')
                         dp.enableKeepAlive(self, keepalive)
                     except ValueError:

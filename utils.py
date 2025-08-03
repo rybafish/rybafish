@@ -6,7 +6,7 @@ import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QIcon, QColor
 
-from PyQt5.QtCore import QMutex
+from PyQt5.QtCore import QMutex, QThread
 
 from datetime import datetime
 
@@ -1909,3 +1909,5 @@ if __name__ == '__main__':
 
     print(formatTime(1.11, skipSeconds=True, skipMs=True, skipMsreally=True))
 
+def threadID():
+    return int(QThread.currentThreadId())

@@ -25,7 +25,7 @@ from PyQt5.QtCore import pyqtSignal
 import kpiDescriptions
 from kpiDescriptions import kpiStylesNN, hType
 #, processVars
-from utils import resourcePath
+from utils import dbException, resourcePath, threadID
 
 import importTrace
 import utils
@@ -55,13 +55,16 @@ class connectWorker(QObject):
         self.exception = None
         self.args = []
         self.chart = chart        # access to all chartArea properties
+        self.cbFunc = None
 
     def reconnect(self):
         
-        self.log(f'thread iteslf, child: {int(QThread.currentThreadId())}')
+        self.log(f'[ConnWRK] in child thread, threadid: {threadID()}')
 
+        self.exception = None
         self.dp = self.args[0]
         self.continueFrom = self.args[1]
+        self.cbFunc = self.args[2]   # callback function 
         
         if self.dp is None:
             self.exception = 'DP is None, no reconnect possible'
@@ -70,16 +73,16 @@ class connectWorker(QObject):
         
         try:
             self.log('going into sync...')
-            self.dp.reconnect()
+            self.dp.reconnect(self.cbFunc)
         except dbException as e:
-            log(f'[ConnWRK] exception: {e}')
-            log(f'[ConnWRK] dp: {self.dp}')
+            self.log(f'exception: {e}')
+            self.log(f'dp: {self.dp}')
             # self.dp = None    @
             self.exception = str(e)
             self.finished.emit()
             return
             
-        self.log('seems reconnected.')
+        self.log('[ConnWRK] seems reconnected.')
         self.log(str(self.dp.dbProperties))
         self.finished.emit()
 
@@ -1026,9 +1029,9 @@ class myWidget(QWidget):
 
         for kpi in kpis:
         
-            log('scanForHint kpi: %s' %(kpi), 5)
+            # log('scanForHint kpi: %s' %(kpi), 5)
             kpiKey = f"{self.hosts[host]['host']}:{self.hosts[host]['port']}/{kpi}"
-            log(f'key....{kpiKey}', 5)
+            # log(f'key....{kpiKey}', 5)
 
             if not kpi in scales:
                 log(f'[w] kpi {kpi} not in scales, skip', 2)
@@ -3986,9 +3989,30 @@ class chartArea(QFrame):
     def connectionLostAsync(self, dp, continueFrom, err_str='', nodialog=False):
         '''
             async connection management
+            it will fork a thread, method itself runs in the main ui thread
             nodialog probably 100% useless here
         '''
-        log(f'[ConnWRK] connectionLostAsync enter, return: {continueFrom}')
+        def updateState(s):
+            '''
+            callback function to somehow report connection progress
+            possible values are: connecting, connected, contextset, gotproperties and error
+
+            supposed to update indicator
+            '''
+            log(f'[chart state] {s}', 4)
+
+            if s == 'connecting':
+                self.setStatus('connecting', True, 10)
+            elif s == 'connected':
+                self.setStatus('connecting', True, 40)
+            elif s == 'contextset':
+                self.setStatus('connecting', True, 60)
+            elif s == 'gotproperties':
+                self.setStatus('connecting', True, 80)
+            else:               # kpis request 
+                self.setStatus('nync', True)
+
+        log(f'[ConnWRK] connectionLostAsync starting, return point: {continueFrom}')
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Charts connection lost')
         msgBox.setText('Connection failed, reconnect?')
@@ -4000,10 +4024,11 @@ class chartArea(QFrame):
 
         reply = None
         
-        deb(f'{dp=}, {dp.connection=}')
+        deb(f'{dp=}')
+        deb(f'{dp.connection=}')
 
         while reply != QMessageBox.No and dp.connection is None:
-            deb('inside whyle loop...')
+            deb('connectionLostAsync: inside while loop...')
             reply = msgBox.exec_()
             if reply == QMessageBox.Yes:
                 try:
@@ -4012,9 +4037,9 @@ class chartArea(QFrame):
                     assert dp is not None, 'Dataprovider cannot be None during reconnection. Failed.'
                     # dp.reconnect()
 
-                    self.connWorker.args = [dp, continueFrom]
+                    self.connWorker.args = [dp, continueFrom, updateState]
                     self.connWorker.continueFrom = continueFrom
-                    log('[ConnWRK] starting reconnection thread...')
+                    log(f'[ConnWRK] parent thread: {threadID()}, starting reconnection thread...')
                     self.thread.start()
                     return
                         
@@ -4746,7 +4771,7 @@ class chartArea(QFrame):
         return True
 
                 
-    def reloadChart(self, autorefresh=False, asyncConn=False):
+    def reloadChart(self, autorefresh=False, asyncConn=False, asyncOkay=None):
     
         dp = None
         
@@ -4776,24 +4801,22 @@ class chartArea(QFrame):
         
         t0 = time.time()
 
-        if asyncConn:
-            log('  reloadChart(asyncConn=True)', 5)
-        else:
-            log('  reloadChart()', 5)
-
+        allOk = None
+        
         log('  hosts: %s' % str(self.widget.hosts), 5)
                         
         fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
         
-        allOk = None
-        
         self.setStatus('sync', True)
         
         self.reloadLock = True
-        
         actualRequest = False
-                
-        while allOk is None:
+
+        deb(f'enter allOk loop {allOk=}, {asyncConn=}, {asyncOkay=}')
+        # while allOk is None:
+
+        while allOk is None or (asyncConn and not asyncOkay):
+            deb(f'inside allOk loop')
             try:
                 for host in range(0, len(self.widget.hosts)):
                     if len(self.widget.nkpis[host]) > 0:
@@ -4816,7 +4839,10 @@ class chartArea(QFrame):
                         dpidx = self.widget.hosts[host]['dpi']
                         dp = self.ndp[dpidx]
                         
-
+                        # can be only done once dp defined, makes no sense to reconnect without it
+                        if asyncConn and not asyncOkay:
+                            raise dbException(self.connWorker.exception) # propagate exception from thread
+                
                         if self.widget.tmpDisco:
                             dp.connection = None
                             deb('dp.connection --> None, raise fake dbException to call reconnect...')
@@ -4866,6 +4892,8 @@ class chartArea(QFrame):
         t1 = time.time()
         self.lastReloadTime = t1-t0
         
+        deb('reloadChart after networking')
+
         if actualRequest:
             self.statusMessage('Reload finish, %s s' % (str(round(t1-t0, 3))))
             
@@ -4982,16 +5010,21 @@ class chartArea(QFrame):
         log(f'[ConnWRK] contunue from: {cont}')
         self.connWorker.continueFrom = None
 
+        self.thread.quit()      # no clue... 
+
         if self.connWorker.exception:
-            log(f'[ConnWrk] there was an exception (self.connWorker.exception)')
+            log(f'[ConnWrk] there was an exception {self.connWorker.exception}')
+            self.statusMessage('Reconnect failed', True)
         else:
             log('[ConnWrk] kind of restored ok...')
             self.widget.tmpDisco = False
-        
-        self.statusMessage('Connection restored', True)
+            self.statusMessage('Connection restored', True)
 
         if cont == 'reloadChart manual':
-            self.reloadChart(asyncConn=True)
+            if not self.connWorker.exception:
+                self.reloadChart(asyncConn=True, asyncOkay=True)
+            else:
+                self.reloadChart(asyncConn=True, asyncOkay=False)
     
     def __init__(self):
         
@@ -5007,6 +5040,8 @@ class chartArea(QFrame):
         self.connWorker.moveToThread(self.thread)
         self.connWorker.finished.connect(self.connFinished)
         self.thread.started.connect(self.connWorker.reconnect)
+        
+        self.asyncReconnection = False # kind of not really connected state
         
         super().__init__()
 
