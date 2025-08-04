@@ -19,7 +19,8 @@ class indicator(QWidget):
         #'disconnected': '#FCC',
         'alert': '#FAC',
         'autorefresh': '#cfc',
-        'connecting': '#cdf',
+        # 'connecting': '#8F8',
+        'connecting': ('#8F8','#0A0'),
         'detach': ('#CCC', '#444'),
         #'detach': '#EEC',
     }
@@ -132,10 +133,10 @@ class indicator(QWidget):
         
     def paintEvent(self, QPaintEvent):
 
-        def ideb(t):
-            if r:
-                print(t)
-
+        '''
+        render the indicator
+        '''
+        
         qp = QPainter()
         super().paintEvent(QPaintEvent)
         qp.begin(self)
@@ -148,10 +149,11 @@ class indicator(QWidget):
             qp.setBrush(QBrush(QColor('#8C8'), Qt.SolidPattern))
         '''
 
-        r = False
-        if self.status == 'connecting':
-            r = True
-            
+        if self.status == 'connecting' and self.progress:
+            # kind of bg indication: disconnected state
+            qp.setBrush(QBrush(QColor(self.styles['disconnected']), Qt.SolidPattern))
+            qp.setPen(QColor('#888'))
+            qp.drawRect(int((h - 10 )/2), int((w - 10 )/2), w, 10)
 
         if self.status in self.styles:
         
@@ -160,7 +162,6 @@ class indicator(QWidget):
             if isinstance(st, tuple):
                 brush = st[0]
                 frame = st[1]
-                ideb(f'yes, tuple {st}')
             else:
                 brush = st
                 frame = '#888'
