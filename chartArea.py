@@ -56,6 +56,7 @@ class connectWorker(QObject):
         self.args = []
         self.chart = chart        # access to all chartArea properties
         self.cbFunc = None
+        self.nodialog = None
 
     def reconnect(self):
         
@@ -65,6 +66,7 @@ class connectWorker(QObject):
         self.dp = self.args[0]
         self.continueFrom = self.args[1]
         self.cbFunc = self.args[2]   # callback function 
+        self.nodialog = self.args[3]
         
         if self.dp is None:
             self.exception = 'DP is None, no reconnect possible'
@@ -4002,7 +4004,7 @@ class chartArea(QFrame):
             log(f'[chart state] {s}', 4)
 
             if s == 'connecting':
-                self.setStatus('connecting', True, 10)
+                self.setStatus('connecting', True, 20)
             elif s == 'connected':
                 self.setStatus('connecting', True, 40)
             elif s == 'contextset':
@@ -4012,7 +4014,7 @@ class chartArea(QFrame):
             else:               # kpis request 
                 self.setStatus('nync', True)
 
-        log(f'[ConnWRK] connectionLostAsync starting, return point: {continueFrom}')
+        log(f'[ConnWRK] connectionLostAsync starting, return point: {continueFrom}, {nodialog=}')
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Charts connection lost')
         msgBox.setText('Connection failed, reconnect?')
@@ -4025,19 +4027,25 @@ class chartArea(QFrame):
         reply = None
         
         deb(f'{dp=}')
-        deb(f'{dp.connection=}')
+        if hasattr(dp, 'connection'):
+            deb(f'{dp.connection=}')
+        else:
+            deb('[W] no connection attribute in this dp')
 
         while reply != QMessageBox.No and dp.connection is None:
             deb('connectionLostAsync: inside while loop...')
-            reply = msgBox.exec_()
-            if reply == QMessageBox.Yes:
+
+            if not nodialog:
+                reply = msgBox.exec_()
+                
+            if nodialog or reply == QMessageBox.Yes:
                 try:
                     self.statusMessage('Reconnecting to %s:%s...' % (dp.server['host'], str(dp.server['port'])), True)
                     
                     assert dp is not None, 'Dataprovider cannot be None during reconnection. Failed.'
                     # dp.reconnect()
 
-                    self.connWorker.args = [dp, continueFrom, updateState]
+                    self.connWorker.args = [dp, continueFrom, updateState, nodialog]
                     self.connWorker.continueFrom = continueFrom
                     log(f'[ConnWRK] parent thread: {threadID()}, starting reconnection thread...')
                     self.thread.start()
@@ -4045,8 +4053,9 @@ class chartArea(QFrame):
                         
                     self.statusMessage('Connection restored', True)
                 except Exception as e:
-                    log('Reconnect failed: %s' % e)
-                    self.statusMessage('Reconnect failed: %s' % str(e))
+                    log('Reconnect thread creation failed: %s' % e)
+                    self.statusMessage('Reconnect thread failed: %s' % str(e))
+                    return False
 
         deb('outside while loop')
 
@@ -4104,14 +4113,17 @@ class chartArea(QFrame):
     
     def setStatus(self, st, repaint=False, progress=None):
 
-        deb(f'chartarea: set status {st}, {progress=}')
+        if progress is None:
+            deb(f'chartarea: set status {st}')
+        else:
+            deb(f'chartarea: set status {st}, {progress=}')
         
         if progress:
             stm = {}
-            stm[10] = 'Connecting...'
-            stm[40] = 'Connected ok, init client'
-            stm[60] = 'Init db props...'
-            stm[80] = 'Connection fine.'
+            stm[20] = 'Connecting: init...'
+            stm[40] = 'Connecting: credentials ok, init client'
+            stm[60] = 'Connecting: init db properties'
+            stm[80] = 'Connected'
             
             if progress in stm:
                 msg = stm[progress]
@@ -4196,6 +4208,8 @@ class chartArea(QFrame):
                         else:
                             log('ok')
 
+                    log(f'checkbox toggle, dp idx: [{dpidx}]', 5)
+                    
                     dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], self.hostKPIsStyles[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     
@@ -4450,7 +4464,7 @@ class chartArea(QFrame):
         
         if self.timer is None:
             log('Fire up autorefresh: %i' % (self.refreshTime))
-            self.statusMessage('Autorefresh triggered: %i seconds' % (self.refreshTime))
+            self.statusMessage('Autorefresh set: %i seconds' % (self.refreshTime))
             self.timer = QTimer(self.window())
             self.timer.timeout.connect(self.refreshTimer)
             self.timer.start(1000 * self.refreshTime)
@@ -4835,23 +4849,27 @@ class chartArea(QFrame):
                 for host in range(0, len(self.widget.hosts)):
                     if len(self.widget.nkpis[host]) > 0:
 
-                        log('--->> need to check here if all the kpis actually exist...')
+                        # log('--->> need to check here if all the kpis actually exist...')
                         
                         kpiStylesNNN = self.hostKPIsStyles[host]
                         
-                        log(f'nkpis for host {host}: {self.widget.nkpis[host]}')
+                        # clean up some disappeared kpis from list of kpis, silently
                         for k in self.widget.nkpis[host]:
-                            log(f'kpi: {k}')
+                            # log(f'kpi: {k}')
                             if k not in kpiStylesNNN:
-                                log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
+                                # log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
                                 self.widget.nkpis[host].remove(k)
                             else:
-                                log('ok')
+                                pass
+                                # log('ok')
                                 
-                        log(f'{host=}')
+                        log(f'host index: {host}')
                         log(f'{self.widget.hosts[host]}')
+                        log(f'nkpis for host {host}: {self.widget.nkpis[host]}')
+
                         dpidx = self.widget.hosts[host]['dpi']
                         dp = self.ndp[dpidx]
+                        log(f'reload chart, dp idx: [{dpidx}]', 5)
                         
                         # can be only done once dp defined, makes no sense to reconnect without it
                         if asyncConn and not asyncOkay:
@@ -4869,21 +4887,35 @@ class chartArea(QFrame):
             except utils.dbException as e:
                 self.setStatus('error', True)
 
-                deb('reload failed, reconnecting...')
-
-                # modal dialog only possible if autorefresh consoles do not need reconnect themselves
-                if autorefresh and cfg('reconnectTimer'):
-                    deb('timer triggered reconnect, connectionLost mode #2')
-                    reconnected = self.connectionLost(dp, str(e), nodialog=True)
+                giveup = False
+                if asyncConn and self.connWorker.nodialog:
+                    deb('autorefresh reconnect failed, giving up')
+                    # self.setStatus('autoreconnect failed, give up. You need to reconnect manually.') # overwritten right away
+                    giveup = True
                 else:
-                    deb('user triggered reconnect, connectionLost mode #1')
+                    deb('reload failed, reconnecting...')
 
-                    if cfg('experimental') and cfg('asyncChartConnect', True):
-                        self.asyncReconnection = True # kind of not really connected state 
-                        reconnected = self.connectionLostAsync(dp, 'reloadChart manual', str(e), nodialog=False)
-                        return
+                reconnected = False
+
+                if not giveup:
+                    # modal dialog only possible if autorefresh consoles do not need reconnect themselves
+                    if autorefresh and cfg('reconnectTimer'):
+                        deb('timer triggered reconnect, connectionLost mode #2')
+                        if cfg('experimental') and cfg('asyncChartConnect', True):
+                            self.asyncReconnection = True # kind of not really connected state 
+                            reconnected = self.connectionLostAsync(dp, 'reloadChart timer', str(e), nodialog=True)
+                            return
+                        else:
+                            reconnected = self.connectionLost(dp, str(e), nodialog=True)
                     else:
-                        reconnected = self.connectionLost(dp, str(e), nodialog=False)
+                        deb('user triggered reconnect, connectionLost mode #1')
+
+                        if cfg('experimental') and cfg('asyncChartConnect', True):
+                            self.asyncReconnection = True # kind of not really connected state 
+                            reconnected = self.connectionLostAsync(dp, 'reloadChart manual', str(e), nodialog=False)
+                            return
+                        else:
+                            reconnected = self.connectionLost(dp, str(e), nodialog=False)
 
                 if reconnected == False:
                     log('reconnected == False')
@@ -4892,6 +4924,10 @@ class chartArea(QFrame):
                     self.refreshCB.setCurrentIndex(0) # will disable the timer on this change
                     self.setStatus('disconnected', True)
                     self.statusMessage(f'Chart Disconnected: {e}...')
+                    
+
+                    if giveup:
+                        break   # break out and touch faith
 
         self.renewMaxValues()
         
@@ -4936,6 +4972,7 @@ class chartArea(QFrame):
             self.setStatus('autorefresh', True)
         else:
             if allOk:
+                deb('staus --> idle')
                 self.setStatus('idle', True)
 
         self.reloadLock = False
@@ -5042,6 +5079,12 @@ class chartArea(QFrame):
                 self.reloadChart(asyncConn=True, asyncOkay=True)
             else:
                 self.reloadChart(asyncConn=True, asyncOkay=False)
+
+        if cont == 'reloadChart timer':
+            if not self.connWorker.exception:
+                self.reloadChart(autorefresh=True, asyncConn=True, asyncOkay=True)
+            else:
+                self.reloadChart(autorefresh=True, asyncConn=True, asyncOkay=False)
     
     def __init__(self):
         

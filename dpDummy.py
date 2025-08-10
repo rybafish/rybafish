@@ -20,6 +20,7 @@ class dataProvider:
     def __init__(self):
         self.dbProperties = {}
         self.dbProperties['dbi'] = 'DMY'
+        self.connection = 'fake'
         log('dummy data provider init()')
         
     def initHosts(self, dpidx):

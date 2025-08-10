@@ -432,6 +432,7 @@ class dataProvider(QObject):
         deb(f'getData data keys: {data.keys()}')
         deb(f'getData requested kpis: {kpiIn}')
 
+        '''
         if self.timer:
             deb('we have a timer')
             deb(f'active: {self.timer.isActive()}')
@@ -439,6 +440,7 @@ class dataProvider(QObject):
             deb(f'remaining: {self.timer.remainingTime()}')
         else:
             deb('no timer.')
+        '''
 
         for kpi in data.keys():
             if kpi in kpiIn or kpi == 'time':

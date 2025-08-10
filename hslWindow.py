@@ -69,13 +69,16 @@ class connectWorker(QObject):
         self.exception = None
         self.args = []
         self.hslw = hslw        # not really needed, but why not
+        self.secondary = None
 
     def openDP(self):
         
         self.log('inside openDP')
         self.log(f'thread iteslf, child: {threadID()}')
+        self.exception = None
         self.dp = self.args[0]
         cbfunc = self.args[1]   # call back function
+        self.secondary = self.args[2]
 
         try:
             self.log('going into sync...')
@@ -106,7 +109,7 @@ class hslWindow(QMainWindow):
     def connFinished(self):
         log('[ConnWRK] finished, got control in hslWindow.connFinished, thread.quit()')
         self.thread.quit()
-        self.processConnection(threadCB=True)
+        self.processConnection(secondary=self.connWorker.secondary, threadCB=True)
 
     def __init__(self):
     
@@ -1128,7 +1131,7 @@ class hslWindow(QMainWindow):
             log(f'[state] {s}', 4)
 
             if s == 'connecting':
-                self.chartArea.setStatus('connecting', True, 10)
+                self.chartArea.setStatus('connecting', True, 20)
             elif s == 'connected':
                 self.chartArea.setStatus('connecting', True, 40)
             elif s == 'contextset':
@@ -1277,7 +1280,7 @@ class hslWindow(QMainWindow):
                             dp = dpDB.dataProvider(conf)
 
                             # prepare it to fork connect in thread
-                            self.connWorker.args = [dp, f] # thread step 1 
+                            self.connWorker.args = [dp, f, secondary] # thread step 1 
                             self.thread.start()            # go! 
 
                             log('[ConnWRK] return from processConnection (wait for return from thread)')
