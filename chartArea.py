@@ -60,7 +60,7 @@ class connectWorker(QObject):
 
     def reconnect(self):
         
-        self.log(f'[ConnWRK] in child thread, threadid: {threadID()}')
+        self.log(f'in child thread, threadid: {threadID()}')
 
         self.exception = None
         self.dp = self.args[0]
@@ -74,7 +74,7 @@ class connectWorker(QObject):
             return
         
         try:
-            self.log('going into sync...')
+            self.log(f'child thread {threadID()} going into sync...')
             self.dp.reconnect(self.cbFunc)
         except dbException as e:
             self.log(f'exception: {e}')
@@ -84,7 +84,7 @@ class connectWorker(QObject):
             self.finished.emit()
             return
             
-        self.log('[ConnWRK] seems reconnected.')
+        self.log('seems reconnected.')
         self.log(str(self.dp.dbProperties))
         self.finished.emit()
 
@@ -4146,7 +4146,7 @@ class chartArea(QFrame):
             if repaint:
                 self.indicator.repaint()
     
-    def checkboxToggle(self, host, kpi):
+    def checkboxToggle(self, host, kpi, asyncConn=False, asyncOkay=None):
         def substract(list1, list2):
             res = [item for item in list1 if item not in list2]
             return res
@@ -4166,7 +4166,8 @@ class chartArea(QFrame):
                 self.statusMessage('Not connected to the DB', True)
                 return False
 
-            log(f'request_kpis, {host_d}')
+            log(f'request_kpis, {host=}, {host_d=}')
+            log(f'request_kpis: {kpi=}, {kpis=}')
             
             dpidx = host_d['dpi']
             dp = self.ndp[dpidx]
@@ -4194,22 +4195,28 @@ class chartArea(QFrame):
                 try:
                     t0 = time.time()
                     
-                    log('request kpis: need to check here if all the kpis actually exist...')
-                    log(f'host: {host}')
-                    log(f'kpis: {kpis}')
+                    # log('request kpis: need to check here if all the kpis actually exist...')
+                    # log(f'host: {host}')
+                    # log(f'kpis: {kpis}')
                     
                     kpiStylesNNN = self.hostKPIsStyles[host]
 
                     for k in self.widget.nkpis[host]:
-                        log(f'kpi: {k}')
+                        # log(f'kpi: {k}')
                         if k not in kpiStylesNNN:
-                            log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
+                            # log('[!] okay, %s does not exist anymore, so deleting it from the list...' % k)
                             self.widget.nkpis[host].remove(k)
                         else:
-                            log('ok')
+                            # log('ok')
+                            pass
 
                     log(f'checkbox toggle, dp idx: [{dpidx}]', 5)
                     
+                    if self.widget.tmpDisco:
+                        dp.connection = None
+                        deb('dp.connection --> None, raise fake dbException to call reconnect...')
+                        raise(utils.dbException('Fake disconnection'))
+
                     dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], self.hostKPIsStyles[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     
@@ -4220,11 +4227,22 @@ class chartArea(QFrame):
                     self.statusMessage('%s added, %s s' % (kpi, str(round(t1-t0, 3))), True)
                 except utils.dbException as e:
                     log('issue on KPI enable: connectionLost mode #3')
-                    reconnected = self.connectionLost(dp, str(e))
                     
+                    if cfg('experimental') and cfg('asyncChartConnect', True):
+                        self.asyncReconnection = True # kind of not really connected state 
+
+                        self.asyncTmpHost = host # kinga global variable between threads, bad, bad developer... 
+                        self.asyncTmpKPI = kpi 
+                        reconnected = self.connectionLostAsync(dp, 'checkboxToggle', str(e), nodialog=False)
+                        return
+                    else:
+                        reconnected = self.connectionLost(dp, str(e), nodialog=False)
+
                     if reconnected == False:
                         allOk = False
                         timer = False
+                    else:
+                        self.widget.tmpDisco = False
                         
             # self.widget.paintLock = False
             
@@ -4236,7 +4254,7 @@ class chartArea(QFrame):
 
             return allOk
         
-        log('checkboxToggle %i %s' % (host, kpi), 5)
+        log(f'checkboxToggle {host=}, {kpi=}, {asyncConn=}', 5)
         
         modifiers = QApplication.keyboardModifiers()
 
@@ -4246,6 +4264,7 @@ class chartArea(QFrame):
         
         if kpi in self.widget.nkpis[host]:
             # remove kpi
+            deb('kpi in kpis for host...')
             if modifiers & Qt.ControlModifier:
                 for hst in range(0, len(self.widget.hosts)):
                     
@@ -4280,6 +4299,7 @@ class chartArea(QFrame):
                         self.widget.hideKPIsRemove(kpiKey)
                         
             else:       
+                # not ctrl, but kpi is in the list, unclick
                 if cfg('loglevel', 3) > 3:
                     log('unclick, %s, %s:' % (str(host), kpi))
                     log('kpis before unclick: %s' % (self.widget.nkpis[host]))
@@ -4303,6 +4323,7 @@ class chartArea(QFrame):
             
             self.widget.update()
         else:
+            deb('kpi is NOT in kpis for host (so, add it)')
             # add kpi
             fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
             
@@ -4332,9 +4353,9 @@ class chartArea(QFrame):
             else:
                 #self.widget.nkpis[host].append(kpi)
                 kpis = self.widget.nkpis[host] + [kpi]
+                deb(f'new kpis list for {host=} is: {kpis=}')
                 
             if modifiers == Qt.AltModifier:
-                #pass
                 self.widget.nkpis[host] = kpis
             else:
                 if modifiers & Qt.ControlModifier:
@@ -4380,9 +4401,13 @@ class chartArea(QFrame):
                         self.setStatus('idle', True)
 
                 else:
+                    # no modifiers
+                    deb('most regular single kpi checkbox execution')
                     for hst in range(0, len(self.widget.hosts)):
                         if hst == host:
                             # normal click after alt-click (somewhere before)
+                            # hey from 2025 - good catch!!!
+                            deb(f'request_kpis call 1, {kpis=}')
                             allOk = request_kpis(self, host_d, host, kpi, kpis)
                         else: 
                             #check for kpis existing in host list but not existing in data:
@@ -4392,6 +4417,7 @@ class chartArea(QFrame):
                                 host_d = self.widget.hosts[hst]
                                 
                                 #it actually gets all the kpis, can it request only missed ones?
+                                deb('request_kpis call 2')
                                 allOk = request_kpis(self, host_d, hst, kpi, self.widget.nkpis[hst])
                                 
                         if allOk == False:
@@ -5086,6 +5112,12 @@ class chartArea(QFrame):
             else:
                 self.reloadChart(autorefresh=True, asyncConn=True, asyncOkay=False)
     
+        if cont == 'checkboxToggle':
+            if not self.connWorker.exception:
+                self.checkboxToggle(host=self.asyncTmpHost, kpi=self.asyncTmpKPI, asyncConn=True, asyncOkay=True)
+            else:
+                self.checkboxToggle(host=self.asyncTmpHost, kpi=self.asyncTmpKPI, asyncConn=True, asyncOkay=False)
+    
     def __init__(self):
         
         '''
@@ -5102,6 +5134,8 @@ class chartArea(QFrame):
         self.thread.started.connect(self.connWorker.reconnect)
         
         self.asyncReconnection = False # kind of not really connected state
+        self.asyncTmpHost = None       # checkboxtoggle host storage somehow 
+        self.asyncTmpKPI = None       # checkboxtoggle host storage 
         
         super().__init__()
 
