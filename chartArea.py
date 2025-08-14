@@ -4176,7 +4176,6 @@ class chartArea(QFrame):
                 self.statusMessage('Not connected to the DB', True)
                 return False
             
-            self.setStatus('sync')
             
             sm = 'Request %s:%s/%s...' % (host_d['host'], host_d['port'], kpi)
             
@@ -4217,6 +4216,7 @@ class chartArea(QFrame):
                         deb('dp.connection --> None, raise fake dbException to call reconnect...')
                         raise(utils.dbException('Fake disconnection'))
 
+                    self.setStatus('sync')
                     dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], self.hostKPIsStyles[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     
@@ -4234,6 +4234,10 @@ class chartArea(QFrame):
                         self.asyncTmpHost = host # kinga global variable between threads, bad, bad developer... 
                         self.asyncTmpKPI = kpi 
                         reconnected = self.connectionLostAsync(dp, 'checkboxToggle', str(e), nodialog=False)
+                        if reconnected:
+                            self.setStatus('idle') # actually, will be 20% soon
+                        else:
+                            self.setStatus('error') # disconnected and aborted
                         return
                     else:
                         reconnected = self.connectionLost(dp, str(e), nodialog=False)

@@ -1210,9 +1210,10 @@ class hslWindow(QMainWindow):
 
                     self.layoutDumped = False
 
-                if not secondary:
+                if not secondary and not threadCB:
                     # need to disconnect open consoles first...
                     self.statusMessage('Disconnecing open consoles...', False)
+                    log('Disconnecing open consoles...')
 
                     for i in range(self.tabs.count()):
 
@@ -1781,7 +1782,7 @@ class hslWindow(QMainWindow):
         dpid = None
 
         if configuration is None:
-            log('menuSQLConsole...')
+            deb(f'menuSQLConsole, conf is None, {self.primaryConf}')
             secondary = False
             conf = self.primaryConf
         else:
@@ -1813,6 +1814,10 @@ class hslWindow(QMainWindow):
         self.statusbar.addPermanentWidget(ind)
 
         ind.status = 'sync'
+
+        if cfg('dev'):
+            time.sleep(0.8)
+
         ind.repaint()
 
         tname = self.generateTabName()
