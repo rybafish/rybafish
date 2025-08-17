@@ -53,8 +53,8 @@ def devDelay(ms):
         rnd = time.time() % 1
         rnd = (rnd*100000 % ms)/1000 # random number from 0 to .5
 
-        deb(f'random delay: {rnd}')
         delay = safeInt(cfg('devDelay', 250))*0.001
+        deb(f'random delay: {delay+rnd:.2f}')
         time.sleep(delay + rnd)
     
 class hdbi ():

@@ -493,7 +493,7 @@ def cfgPersist(param, value, layout):
     layout['settings'][param] = value
 
 @profiler
-def cfg(param, default = None):
+def cfg(param, default=None):
 
     global config
     global configStats
