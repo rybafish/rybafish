@@ -102,7 +102,8 @@ class hdbi ():
 
             if callable(stateCallback):
                 stateCallback('connecting')
-                devDelay(400)
+
+            devDelay(400)
                 
             if server.get('ssl'):
                 log(f'Opening connection with SSL support, auth: {auth}', 4)
@@ -113,7 +114,8 @@ class hdbi ():
                 
             if callable(stateCallback):
                 stateCallback('connected')
-                devDelay(200)
+
+            devDelay(200)
                 
             connection.large_sql = False
             
@@ -133,7 +135,8 @@ class hdbi ():
 
             if callable(stateCallback):
                 stateCallback('contextset')
-                devDelay(500)
+                
+            devDelay(500)
                 
 
         except dbException as e:

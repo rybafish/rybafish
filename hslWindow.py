@@ -1253,7 +1253,7 @@ class hslWindow(QMainWindow):
                 self.repaint()
 
                 deb('indicator --> connecting (depr)')
-                # self.chartArea.setStatus('connecting', True)
+                self.chartArea.setStatus('sync', True)
                 
                 # 2022-11-23
                 #self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
