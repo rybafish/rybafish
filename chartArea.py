@@ -1,3 +1,4 @@
+#from contextlib import contextmanager # what is that???
 import sys
 
 from PyQt5.QtWidgets import QTreeView, QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
@@ -4014,7 +4015,7 @@ class chartArea(QFrame):
             else:               # kpis request 
                 self.setStatus('nync', True)
 
-        log(f'[ConnWRK] connectionLostAsync starting, return point: {continueFrom}, {nodialog=}')
+        log(f'ConnectionLostAsync starting, return point: {continueFrom}, {nodialog=}', component='ConnWRK')
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle('Charts connection lost')
         msgBox.setText('Connection failed, reconnect?')
@@ -4039,6 +4040,7 @@ class chartArea(QFrame):
                 reply = msgBox.exec_()
                 
             if nodialog or reply == QMessageBox.Yes:
+                deb('trigger connection thread...', 'ConnWRK')
                 try:
                     self.statusMessage('Reconnecting to %s:%s...' % (dp.server['host'], str(dp.server['port'])), True)
                     
@@ -4047,7 +4049,7 @@ class chartArea(QFrame):
 
                     self.connWorker.args = [dp, continueFrom, updateState, nodialog]
                     self.connWorker.continueFrom = continueFrom
-                    log(f'[ConnWRK] parent thread: {threadID()}, starting reconnection thread...')
+                    log(f'Parent thread: {threadID()}, starting reconnection thread...', component='ConnWRK')
                     self.thread.start()
                     return
                         
@@ -4258,10 +4260,24 @@ class chartArea(QFrame):
 
             return allOk
         
-        log(f'checkboxToggle {host=}, {kpi=}, {asyncConn=}', 5)
-        
-        modifiers = QApplication.keyboardModifiers()
+        log(f'checkboxToggle {host=}, {kpi=}, {asyncConn=}, {asyncOkay=}', 5)
 
+        if asyncConn and self.asyncTmpModifiers:
+            modifiers = self.asyncTmpModifiers
+        else:
+            modifiers = QApplication.keyboardModifiers()
+
+        mod = []
+        if modifiers & Qt.ControlModifier:
+            mod.append('Ctrl')
+        if modifiers & Qt.ShiftModifier:
+            mod.append('Shift')
+        if modifiers & Qt.AltModifier:
+            mod.append('Alt')
+
+        if mod:
+            deb(' kbd modifiers: ' + '+'.join(mod))
+            
         host_d = self.widget.hosts[host]
         
         allOk = None
@@ -4364,6 +4380,7 @@ class chartArea(QFrame):
             else:
                 if modifiers & Qt.ControlModifier:
                     #list of kpis formed above, here we actually request
+                    deb(f'Go request all KPIs for all hosts (ctrl+click), {asyncOkay=}', 'ConnWrk')
                     self.statusMessage('Request all/%s...' % (kpi), True)
                     t0 = time.time()
 
@@ -4372,12 +4389,24 @@ class chartArea(QFrame):
                         try:
                             t2 = t0 = time.time()
                             
+                            deb('checkboxToggle allOk loop 1', 'ConnWrk')
+
                             for hst in range(0, len(self.widget.hosts)):
                                 if (host_d['port'] == '' and self.widget.hosts[hst]['port'] == '') or (host_d['port'] != '' and self.widget.hosts[hst]['port'] != ''):  # doesnt look right 27.01.2021
                                     
+                                    deb('checkboxToggle allOk loop 2', 'ConnWrk')
                                     if len(kpis[hst]) > 0:
                                         dpidx = self.widget.hosts[hst]['dpi']
                                         dp = self.ndp[dpidx]
+
+                                        if asyncConn and not asyncOkay:
+                                            deb('fake exception...', 'ConnWRk')
+                                            raise dbException(self.connWorker.exception) # propagate exception from thread
+
+                                        if self.widget.tmpDisco:
+                                            dp.connection = None
+                                            deb('dp.connection --> None, raise fake dbException to call reconnect...', 'ConnWrk')
+                                            raise(utils.dbException('Fake disconnection'))
                                         
                                         t1 = time.time()
                                         dp.getData(self.widget.hosts[hst], fromto, kpis[hst], self.widget.ndata[hst], self.hostKPIsStyles[hst], wnd=self)
@@ -4393,8 +4422,24 @@ class chartArea(QFrame):
                         except utils.dbException as e:
                             log('[!] getData: %s' % str(e))
                             self.setStatus('error')
-                            log('another issue on KPI enable: connectionLost mode #4 (no clue)')
-                            reconnected = self.connectionLost(dp, str(e))
+                            log('connectionLost mode #4 (ctrl+click)')
+
+
+                            if cfg('experimental') and cfg('asyncChartConnect', True):
+                                self.asyncReconnection = True # kind of not really connected state 
+
+                                self.asyncTmpHost = host # kinga global variable between threads, bad, bad developer... 
+                                self.asyncTmpKPI = kpi 
+                                self.asyncTmpModifiers = modifiers
+
+                                reconnected = self.connectionLostAsync(dp, 'checkboxToggle all', str(e), nodialog=False)
+                                if reconnected:
+                                    self.setStatus('idle') # actually, will be 20% soon
+                                else:
+                                    self.setStatus('error') # disconnected and aborted
+                                return
+                            else:
+                                reconnected = self.connectionLost(dp, str(e))
                             
                             if reconnected == False:
                                 allOk = False
@@ -4436,6 +4481,12 @@ class chartArea(QFrame):
                     log('self.scalesUpdated.emit() #1', 5)
                     self.scalesUpdated.emit()
          
+                    if asyncConn:
+                        deb('Zero down tmp vars', 'ConnWRK')
+                        self.asyncTmpKPI = None
+                        self.asyncTmpHost = None
+                        self.asyncTmpModifiers = None
+                        
                 self.widget.update()
                 
         #log('checkboxToggle result self.widget.nkpis:')
@@ -5090,17 +5141,17 @@ class chartArea(QFrame):
     def connFinished(self):
         # self.continue()
         cont = self.connWorker.continueFrom
-        log('[ConnWRK] reconnect finished, control back into chartArea class')
-        log(f'[ConnWRK] contunue from: {cont}')
+        log('Reconnect finished, control back into chartArea class', component='ConnWRK')
+        log(f'Contunue from: {cont}', component='ConnWRK')
         self.connWorker.continueFrom = None
 
         self.thread.quit()      # no clue... 
 
         if self.connWorker.exception:
-            log(f'[ConnWrk] there was an exception {self.connWorker.exception}')
+            log(f'There was an exception {self.connWorker.exception}', component='ConnWRK')
             self.statusMessage('Reconnect failed', True)
         else:
-            log('[ConnWrk] kind of restored ok...')
+            log('Kind of restored ok...', component='ConnWRK')
             self.widget.tmpDisco = False
             self.statusMessage('Connection restored', True)
 
@@ -5117,6 +5168,12 @@ class chartArea(QFrame):
                 self.reloadChart(autorefresh=True, asyncConn=True, asyncOkay=False)
     
         if cont == 'checkboxToggle':
+            if not self.connWorker.exception:
+                self.checkboxToggle(host=self.asyncTmpHost, kpi=self.asyncTmpKPI, asyncConn=True, asyncOkay=True)
+            else:
+                self.checkboxToggle(host=self.asyncTmpHost, kpi=self.asyncTmpKPI, asyncConn=True, asyncOkay=False)
+
+        if cont == 'checkboxToggle all':
             if not self.connWorker.exception:
                 self.checkboxToggle(host=self.asyncTmpHost, kpi=self.asyncTmpKPI, asyncConn=True, asyncOkay=True)
             else:
@@ -5140,6 +5197,7 @@ class chartArea(QFrame):
         self.asyncReconnection = False # kind of not really connected state
         self.asyncTmpHost = None       # checkboxtoggle host storage somehow 
         self.asyncTmpKPI = None       # checkboxtoggle host storage 
+        self.asyncTmpModifiers = None       # checkboxtoggle kbd modifiers saved
         
         super().__init__()
 
