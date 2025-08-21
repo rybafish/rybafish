@@ -79,7 +79,7 @@ class dataProvider(QObject):
         
         try: 
             if server['dbi'] == 'HDB':
-                log('Okas, dbi with callback here...')
+                log('Okay, dbi with callback here...')
                 conn = self.dbi.create_connection(server, self.dbProperties, stateCallback=callback) # only HDB impl supports callback 
             else:
                 conn = self.dbi.create_connection(server, self.dbProperties)

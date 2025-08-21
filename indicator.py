@@ -6,6 +6,7 @@ from PyQt5.QtCore import pyqtSignal, QTimer
 from datetime import datetime
 import time
 import utils
+from utils import deb
 
 class indicator(QWidget):
 
@@ -52,10 +53,12 @@ class indicator(QWidget):
         
     def leaveEvent(self, event):
         #self.iToggle.emit('off')
+        deb('exit event', 'ind')
         self.updateRuntime('off')
     
     def enterEvent(self, event):
         # self.iToggle.emit('on')
+        deb('enter event', 'ind')
         self.updateRuntime('on')
         
     def updateRuntime_depr(self):
@@ -85,6 +88,7 @@ class indicator(QWidget):
         t0 = self.t0
         t1 = time.time()
 
+        deb(f'update runtime, mode:{mode=}, {t0=}', 'ind')
         if mode == 'on':
             if t0 is not None: # normal hint for running console
                 if self.runtimeTimer == None:

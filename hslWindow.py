@@ -109,6 +109,7 @@ class hslWindow(QMainWindow):
     def connFinished(self):
         log('[ConnWRK] finished, got control in hslWindow.connFinished, thread.quit()')
         self.thread.quit()
+        self.chartArea.indicatorTimer('off')
         self.processConnection(secondary=self.connWorker.secondary, threadCB=True)
 
     def __init__(self):
@@ -1282,6 +1283,8 @@ class hslWindow(QMainWindow):
 
                             # prepare it to fork connect in thread
                             self.connWorker.args = [dp, f, secondary] # thread step 1 
+
+                            self.chartArea.indicatorTimer('on')
                             self.thread.start()            # go! 
 
                             log('[ConnWRK] return from processConnection (wait for return from thread)')

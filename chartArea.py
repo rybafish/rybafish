@@ -4050,6 +4050,8 @@ class chartArea(QFrame):
                     self.connWorker.args = [dp, continueFrom, updateState, nodialog]
                     self.connWorker.continueFrom = continueFrom
                     log(f'Parent thread: {threadID()}, starting reconnection thread...', component='ConnWRK')
+
+                    self.indicatorTimer('on')
                     self.thread.start()
                     return
                         
@@ -5145,6 +5147,7 @@ class chartArea(QFrame):
         log(f'Contunue from: {cont}', component='ConnWRK')
         self.connWorker.continueFrom = None
 
+        self.indicatorTimer('off')
         self.thread.quit()      # no clue... 
 
         if self.connWorker.exception:
@@ -5427,6 +5430,14 @@ class chartArea(QFrame):
         qp.drawLine(size.width(), 0, 0,  size.height())
         
         qp.end()
+        
+    def indicatorTimer(self, mode):
+        deb(f'indicatorTimer {mode=}', 'ind')
+        if mode == 'on':
+            self.indicator.t0 = time.time()
+        else:
+            self.indicator.t0 = None
+            self.indicator.updateRuntime('stop')
         
     def cleanDPs(self):
         log('Clean up DPs and destroy DBIs...')
