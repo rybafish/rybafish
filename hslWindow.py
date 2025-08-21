@@ -1400,6 +1400,8 @@ class hslWindow(QMainWindow):
                 for i in range(self.tabs.count()):
                     w = self.tabs.widget(i)
                 
+                    # push succesful connection to all consoles
+                    # could this be done before actual finish, on progress = 20?
                     if not secondary and isinstance(w, sqlConsole.sqlConsole):
                         w.config = conf
 
@@ -2501,7 +2503,9 @@ class hslWindow(QMainWindow):
         
         if cfg('saveOpenTabs', True) and self.layout is not None and self.layout['tabs']:
             for t in self.layout['tabs']:
+                
                 if len(t) != 4:
+                    log(f'[W] unexpected length of tabs entry from layout.yaml, skip', 2)
                     continue
                     
                 console = sqlConsole.sqlConsole(self, None, '?')

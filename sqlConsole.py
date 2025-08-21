@@ -1849,6 +1849,7 @@ class sqlConsole(QWidget):
         
     def autocompleteHint(self):
             
+        
             if self.conn is None:
                 self.log('The console is not connected to the DB', True)
                 return
