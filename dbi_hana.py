@@ -178,11 +178,12 @@ class hdbi ():
         log('(re)connect/properties: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
         
 
-        deb('callback gotprop', 'ConnWRK')
+        deb('okay thread gotproperties ', 'ConnWRK')
         if callable(stateCallback):
             stateCallback('gotproperties')
             devDelay(800)
             
+        deb('okay thread create_connection finished, return', 'ConnWRK')
         return connection
 
     def console_connection(self, server, dbProperties = None, data_format_version2 = False):

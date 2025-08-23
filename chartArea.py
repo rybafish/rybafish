@@ -43,6 +43,7 @@ from profiler import profiler
 
 class connectWorker(QObject):
     finished = pyqtSignal()
+    active = True
     
     def log(self, s):
         deb(f'[ConnWRK] {s}')
@@ -4052,6 +4053,9 @@ class chartArea(QFrame):
                     log(f'Parent thread: {threadID()}, starting reconnection thread...', component='ConnWRK')
 
                     self.indicatorTimer('on')
+                    self.connWorker.active = True
+
+                    deb(f'chartarea thread running: {self.thread.isRunning()}', 'ConnWRK')
                     self.thread.start()
                     return
                         
@@ -5149,6 +5153,7 @@ class chartArea(QFrame):
 
         self.indicatorTimer('off')
         self.thread.quit()      # no clue... 
+        self.connWorker.active = False
 
         if self.connWorker.exception:
             log(f'There was an exception {self.connWorker.exception}', component='ConnWRK')

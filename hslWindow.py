@@ -57,9 +57,10 @@ from profiler import profiler
 
 class connectWorker(QObject):
     finished = pyqtSignal()
+    active = None
     
     def log(self, s):
-        deb(f'{s}', component='ConnWRK')
+        deb(f'{s}', 'ConnWRK')
 
     def __init__(self, hslw):
         super().__init__()
@@ -107,8 +108,10 @@ class hslWindow(QMainWindow):
     threadID = None
 
     def connFinished(self):
-        log('Finished, got control in hslWindow.connFinished, thread.quit()', component='ConnWRK')
+        log('connFinished, got control in hslWindow.connFinished', component='ConnWRK')
+        log('thread.quit()', component='ConnWRK')
         self.thread.quit()
+        self.connWorker.active = False
         self.chartArea.indicatorTimer('off')
         self.processConnection(secondary=self.connWorker.secondary, threadCB=True)
 
@@ -1259,6 +1262,17 @@ class hslWindow(QMainWindow):
                 # 2022-11-23
                 #self.chartArea.dp = dpDB.dataProvider(conf) # db data provider
 
+
+                deb(f'hsl thread running: {self.thread.isRunning()}', 'ConnWRK')
+                deb(f'widget thread running: {self.chartArea.thread.isRunning()}', 'ConnWRK')
+
+                if self.connWorker.active:
+                    log('[W] thread seems already active, aborting', component='[ConnWRK]')
+                    deb('crash here?', '[ConnWRK]')
+                    self.statusMessage('Warning: connection thread already active? Aborting.', True)
+                    # lets allow to crash
+                    # return
+
                 dpCreationLoop = True
                 while dpCreationLoop:
                     dpCreationLoop = False # very regular execution
@@ -1285,6 +1299,7 @@ class hslWindow(QMainWindow):
                             self.connWorker.args = [dp, f, secondary] # thread step 1 
 
                             self.chartArea.indicatorTimer('on')
+                            self.connWorker.active = True
                             self.thread.start()            # go! 
 
                             log('Return from processConnection (wait for return from thread)', component='ConnWRK')

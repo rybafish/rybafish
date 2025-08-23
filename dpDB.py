@@ -62,7 +62,7 @@ class dataProvider(QObject):
         super().__init__()
         self.server = server
         self.dbProperties = {}
-        deb('dp created')
+        deb('dpDB: dp created')
 
             
     def connectSync(self, callback=None):
@@ -92,7 +92,7 @@ class dataProvider(QObject):
             log('[i] Failed to connect, dont know what to do next')
             raise Exception('Failed to connect, dont know what to do next...')
         else:
-            log('connected')
+            log('dpDB: connected, return')
             self.connection = conn
             # self.server = server
 
