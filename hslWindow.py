@@ -110,6 +110,7 @@ class hslWindow(QMainWindow):
     def connFinished(self):
         log('connFinished, got control in hslWindow.connFinished', component='ConnWRK')
         log('thread.quit()', component='ConnWRK')
+        deb(f'hsl thread running: {self.thread.isRunning()}', 'ConnWRK')
         self.thread.quit()
         self.connWorker.active = False
         self.chartArea.indicatorTimer('off')

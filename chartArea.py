@@ -5152,6 +5152,7 @@ class chartArea(QFrame):
         self.connWorker.continueFrom = None
 
         self.indicatorTimer('off')
+        deb(f'chartarea thread running: {self.thread.isRunning()}', 'ConnWRK')
         self.thread.quit()      # no clue... 
         self.connWorker.active = False
 
