@@ -59,7 +59,7 @@ class connectWorker(QObject):
     finished = pyqtSignal()
     
     def log(self, s):
-        deb(f'[ConnWRK] {s}')
+        deb(f'{s}', component='ConnWRK')
 
     def __init__(self, hslw):
         super().__init__()
@@ -107,7 +107,7 @@ class hslWindow(QMainWindow):
     threadID = None
 
     def connFinished(self):
-        log('[ConnWRK] finished, got control in hslWindow.connFinished, thread.quit()')
+        log('Finished, got control in hslWindow.connFinished, thread.quit()', component='ConnWRK')
         self.thread.quit()
         self.chartArea.indicatorTimer('off')
         self.processConnection(secondary=self.connWorker.secondary, threadCB=True)
@@ -1129,7 +1129,7 @@ class hslWindow(QMainWindow):
 
             supposed to update indicator
             '''
-            log(f'[state] {s}', 4)
+            log(f'callback state: {s}', 4, component='ConnWRK')
 
             if s == 'connecting':
                 self.chartArea.setStatus('connecting', True, 20)
@@ -1168,8 +1168,8 @@ class hslWindow(QMainWindow):
             conf, ok = configDialog.Config.getConfig(connConf, self)
         else:
             conf = self.connWorker.dp.server
-            log(f'[ConnWRK] {conf=}')
-            log(f'[ConnWRK] {self.connWorker.exception=}')
+            log(f'{conf=}', component='ConnWRK')
+            log(f'{self.connWorker.exception=}', component='ConnWRK')
             ok = True             # assuming no error... 
 
         conf['usage'] = None
@@ -1275,8 +1275,8 @@ class hslWindow(QMainWindow):
                     if cfg('experimental') and cfg('asyncChartConnect', True):
                         if not threadCB:
                             modeAsync = True
-                            log('[ConnWRK] starting async connection routine')
-                            log(f'[ConnWRK] starting child thread, parent: {threadID()}', 5)
+                            log('Starting async connection routine', component='ConnWRK')
+                            log(f'Starting child thread, parent: {threadID()}', 5, component='ConnWRK')
 
                             # create a data provider object
                             dp = dpDB.dataProvider(conf)
@@ -1287,19 +1287,19 @@ class hslWindow(QMainWindow):
                             self.chartArea.indicatorTimer('on')
                             self.thread.start()            # go! 
 
-                            log('[ConnWRK] return from processConnection (wait for return from thread)')
+                            log('Return from processConnection (wait for return from thread)', component='ConnWRK')
                             return
                         else:
-                            log('[ConnWRK] already in callback mode...')
+                            log('Already in callback mode...', component='ConnWRK')
                             if self.connWorker.exception:
-                                log('[ConnWRK] wrk thread exception detected...')
+                                log('Wrk thread exception detected...', component='ConnWRK')
                                 raise(dbException(self.connWorker.exception)) # buble up wrk thread exception in UI thread
                             else:
-                                log('[ConnWRK] continue with regular connection...')
+                                log('Continue with regular connection...', component='ConnWRK')
                                 dp = self.connWorker.dp # extract it back from thread object
                     else:
                         # old style sync connection
-                        log('[ConnWRK] do a sync chart initial connect, old-style...')
+                        log('Do a sync chart initial connect, old-style...', component='ConnWRK')
                         dp = dpDB.dataProvider(conf)
                         dp.connectSync(callback=f)
 

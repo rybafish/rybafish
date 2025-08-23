@@ -100,24 +100,31 @@ class hdbi ():
             
             auth = server.get('auth')
 
+            deb('callback connecting', 'ConnWRK')
             if callable(stateCallback):
                 stateCallback('connecting')
 
             devDelay(400)
                 
+            deb('go into connection...', 'ConnWRK')
             if server.get('ssl'):
                 log(f'Opening connection with SSL support, auth: {auth}', 4)
                 connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=pwdDecoded, sslsupport=True, auth=auth)
             else:
                 log(f'Opening regular connection (no ssl), auth: {auth}', 5)
                 connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=pwdDecoded, auth=auth)
+
+            deb('right after connection...', 'ConnWRK')
                 
+            deb('callback connected', 'ConnWRK')
             if callable(stateCallback):
                 stateCallback('connected')
 
             devDelay(200)
                 
             connection.large_sql = False
+
+            deb('set up context', 'ConnWRK')
             
             setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
             self.execute_query_desc(connection, setApp, [], 0)
@@ -133,6 +140,7 @@ class hdbi ():
 
             self.execute_query_desc(connection, setApp, [], 0)
 
+            deb('callback contextset', 'ConnWRK')
             if callable(stateCallback):
                 stateCallback('contextset')
                 
@@ -142,7 +150,8 @@ class hdbi ():
         except dbException as e:
             log(f'[!]: create_connection exception: type {e.type}: {e}\n', 2)
 
-            if callable(stateCallback):
+            deb('callback error', 'ConnWRK')
+            if callable(nstateCallback):
                 stateCallback('error')
 
             if e.type == dbException.PWD:
@@ -168,6 +177,8 @@ class hdbi ():
         
         log('(re)connect/properties: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
         
+
+        deb('callback gotprop', 'ConnWRK')
         if callable(stateCallback):
             stateCallback('gotproperties')
             devDelay(800)
