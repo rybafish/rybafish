@@ -3076,6 +3076,24 @@ class chartArea(QFrame):
     
     suppressStatus = None # supress status update, intended for autorefresh theshold vialation message
     
+    def dpConnectProgress(self, s):
+        '''
+        this is to be called in main UI thread upon async status changes
+        '''
+        
+        log(f'Async connection progress: {s}', 4, component='ConnWRK')
+
+        if s == 'connecting':
+            self.setStatus('connecting', True, 20)
+        elif s == 'connected':
+            self.setStatus('connecting', True, 40)
+        elif s == 'contextset':
+            self.setStatus('connecting', True, 60)
+        elif s == 'gotproperties':
+            self.setStatus('connecting', True, 80)
+        else:               # kpis request 
+            self.setStatus('nync', True)
+        
     def dpDisconnected(self):
         self.setStatus('disconnected', True)
 
@@ -4003,8 +4021,9 @@ class chartArea(QFrame):
 
             supposed to update indicator
             '''
-            log(f'[chart state] {s}', 4)
+            log(f'[w] [depricated chart state call] {s}', 4)
 
+            '''
             if s == 'connecting':
                 self.setStatus('connecting', True, 20)
             elif s == 'connected':
@@ -4015,6 +4034,7 @@ class chartArea(QFrame):
                 self.setStatus('connecting', True, 80)
             else:               # kpis request 
                 self.setStatus('nync', True)
+            '''
 
         log(f'ConnectionLostAsync starting, return point: {continueFrom}, {nodialog=}', component='ConnWRK')
         msgBox = QMessageBox(self)
@@ -4119,6 +4139,10 @@ class chartArea(QFrame):
         else:
             return False
     
+    def dpConnectProgress(self, progress):
+        log(f'dpConnectProgress: {progress}', component='ConnWRK')
+        self.setStatus('connecting', True, progress)
+        
     def setStatus(self, st, repaint=False, progress=None):
 
         if progress is None:
@@ -4250,6 +4274,7 @@ class chartArea(QFrame):
                     else:
                         reconnected = self.connectionLost(dp, str(e), nodialog=False)
 
+                    deb(f'reconnected --> {reconnected}')
                     if reconnected == False:
                         allOk = False
                         timer = False
@@ -5004,6 +5029,8 @@ class chartArea(QFrame):
                         else:
                             reconnected = self.connectionLost(dp, str(e), nodialog=False)
 
+                deb(f'reconnected --> {reconnected}')
+                
                 if reconnected == False:
                     log('reconnected == False')
                     allOk = False
@@ -5015,6 +5042,10 @@ class chartArea(QFrame):
 
                     if giveup:
                         break   # break out and touch faith
+
+                else:
+                    self.widget.tmpDisco = False
+                        
 
         self.renewMaxValues()
         

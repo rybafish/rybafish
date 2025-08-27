@@ -84,7 +84,8 @@ class connectWorker(QObject):
         try:
             self.log('going into sync...')
             # self.dp = dpDB.dataProvider(self.conf, callback=cbfunc) # db data provider
-            self.dp.connectSync(callback=cbfunc)
+            # self.dp.connectSync(callback=cbfunc)
+            self.dp.connectSync()
         except dbException as e:
             self.log(f'exception: {e}')
             self.log(f'dp: {self.dp}')
@@ -1133,8 +1134,11 @@ class hslWindow(QMainWindow):
 
             supposed to update indicator
             '''
-            log(f'callback state: {s}', 4, component='ConnWRK')
+            
 
+            log(f'[w] depricated callback state: {s}', 4, component='ConnWRK')
+
+            '''
             if s == 'connecting':
                 self.chartArea.setStatus('connecting', True, 20)
             elif s == 'connected':
@@ -1145,6 +1149,7 @@ class hslWindow(QMainWindow):
                 self.chartArea.setStatus('connecting', True, 80)
             else:               # kpis request 
                 self.chartArea.setStatus('nync', True)
+            '''
 
 
         modeAsync = None
@@ -1296,6 +1301,12 @@ class hslWindow(QMainWindow):
                             # create a data provider object
                             dp = dpDB.dataProvider(conf)
 
+                            if 'connectProgressSignal' in dp.options:
+                                deb('progress signal: yep')
+                                dp.connectProgress.connect(self.chartArea.dpConnectProgress)
+                            else:
+                                deb('progress signal: nope')
+
                             # prepare it to fork connect in thread
                             self.connWorker.args = [dp, f, secondary] # thread step 1 
 
@@ -1317,7 +1328,7 @@ class hslWindow(QMainWindow):
                         # old style sync connection
                         log('Do a sync chart initial connect, old-style...', component='ConnWRK')
                         dp = dpDB.dataProvider(conf)
-                        dp.connectSync(callback=f)
+                        dp.connectSync()
 
                     '''
                     <-- and we are back from sync call
