@@ -615,7 +615,15 @@ class dataProvider(QObject):
                 else:
                     kpisSql.append(kpiStylesNNN[kpi]['sqlname'])
                     
-            if kpiStylesNNN[kpi].get('nofilter'):
+            '''
+            deb(f'missing check: {kpi}')
+            if customKpi(kpi):
+                deb('custom kpi')
+            else:
+                deb('standard kpi')
+            '''
+                
+            if customKpi(kpi) and kpiStylesNNN[kpi].get('nofilter'):
                 nofilter = True
             
             cols = ', '.join(kpisSql)
