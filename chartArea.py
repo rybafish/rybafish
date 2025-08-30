@@ -1,4 +1,4 @@
-#from contextlib import contextmanager # what is that???
+#from contextlib import contextmanager # what was that?
 import sys
 
 from PyQt5.QtWidgets import QTreeView, QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
