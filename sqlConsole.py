@@ -1849,6 +1849,7 @@ class sqlConsole(QWidget):
         
     def autocompleteHint(self):
             
+        
             if self.conn is None:
                 self.log('The console is not connected to the DB', True)
                 return
@@ -1975,7 +1976,7 @@ class sqlConsole(QWidget):
         
     def disconnectDB(self, keepReconnect=False):
 
-        deb(f'disconnectFB, {keepReconnect=}')
+        deb(f'disconnectDB, {keepReconnect=}')
 
         if self.timerReconnect is not None:
             log('Stopping reconnect timer')
@@ -1998,6 +1999,7 @@ class sqlConsole(QWidget):
                 self.prod = None
                 self.secondary = None
 
+                deb('--> disconnected')
                 self.indicator.status = 'disconnected'
                 self.indicator.repaint()
                 self.log('\nDisconnected')
@@ -2040,6 +2042,7 @@ class sqlConsole(QWidget):
                 self.stopKeepAlive()
                 self.conn = None
                 self.connection_id = None
+                deb('--> Disconnected in connectDB()')
                 self.log('\nDisconnected')
 
             self.sqlRunning = False

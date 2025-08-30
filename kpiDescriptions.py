@@ -43,7 +43,7 @@ class Style(UserDict):
         super().__init__(*args)
         
     def __missing__(self, key):
-        log('[!] Style key missing: %s' % key, 1)
+        log('[w] Style key missing: %s' % key, 5)
         raise KeyError(key)
             
     def __getitem__(self, key):

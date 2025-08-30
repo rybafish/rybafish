@@ -6,7 +6,7 @@ import sys, os, time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QIcon, QColor
 
-from PyQt5.QtCore import QMutex
+from PyQt5.QtCore import QMutex, QThread
 
 from datetime import datetime
 
@@ -45,6 +45,7 @@ cfg_logmode = 'file'
 cfg_loglevel = 3
 cfg_logcomp = []
 cfg_servertz = None
+cfg_deb = None
 
 configStats = {}
 
@@ -493,7 +494,7 @@ def cfgPersist(param, value, layout):
     layout['settings'][param] = value
 
 @profiler
-def cfg(param, default = None):
+def cfg(param, default=None):
 
     global config
     global configStats
@@ -577,6 +578,9 @@ def loadHints():
 
 loadHints()
 
+def threadID():
+    return int(QThread.currentThreadId())
+
 @profiler
 def log(s, loglevel=3, nots=False, nonl=False, component=None,):
     '''
@@ -590,11 +594,15 @@ def log(s, loglevel=3, nots=False, nonl=False, component=None,):
 
     pfx = ''
 
+    if cfg_deb:
+        pfx += f'[{threadID()}] '
+
     if component:
         if cfg_logcomp and (component in cfg_logcomp or (component[:1]!= '_' and '*' in cfg_logcomp)):
-            pfx = f'[{component}] '
+            pfx += f'[{component}] '
         else:
             return
+
 
     if not nots:
         ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' '
@@ -816,6 +824,7 @@ def initGlobalSettings():
     global cfg_loglevel
     global cfg_logcomp
     global cfg_servertz
+    global cfg_deb
     
     if cfg('dev'):
         configStats['dummy'] = 0
@@ -824,6 +833,9 @@ def initGlobalSettings():
     cfg_loglevel = cfg('loglevel', 3)
     cfg_logcomp = cfg('log_components', [])
     cfg_servertz = cfg('serverTZ', True)
+    
+    if 'deb' in cfg_logcomp:
+        cfg_deb = True
 
     if type(cfg_logcomp) != list:
         cfg_comp = []
@@ -1908,4 +1920,3 @@ if __name__ == '__main__':
     #     print(f'{v} --> {hana_version(v)}')
 
     print(formatTime(1.11, skipSeconds=True, skipMs=True, skipMsreally=True))
-

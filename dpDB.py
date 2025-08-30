@@ -48,21 +48,62 @@ class dataProvider(QObject):
     
     disconnected  = pyqtSignal()
     busy  = pyqtSignal(int)
+    connectProgress  = pyqtSignal(int)
     
     connection = None
     server = None
     timer = None
     timerkeepalive = None
     
-    options = ['disconnectSignal', 'busySignal']
+    options = ['disconnectSignal', 'busySignal', 'connectProgressSignal']
     
     # lock = False
     
-    def __init__(self, server, callback=None):
-    
+    def __init__(self, server):
         super().__init__()
+        self.server = server
         self.dbProperties = {}
-        
+        deb('dpDB: dp created')
+
+            
+    def updateState(self, s):
+        '''
+        callback function to somehow report connection progress
+        possible values are: connecting, connected, contextset, gotproperties and error
+
+        supposed to update indicator
+        '''
+        log(f'updateState callback func: {s}', 4, component='ConnWRK')
+
+        if s == 'connecting':
+            # self.setStatus('connecting', True, 20)
+            log('connectProgress.emit(20)', 4, component='ConnWRK')
+            self.connectProgress.emit(20)
+        elif s == 'connected':
+            # self.setStatus('connecting', True, 40)
+            log('connectProgress.emit(40)', 4, component='ConnWRK')
+            self.connectProgress.emit(40)
+        elif s == 'contextset':
+            # self.setStatus('connecting', True, 60)
+            log('connectProgress.emit(60)', 4, component='ConnWRK')
+            self.connectProgress.emit(60)
+        elif s == 'gotproperties':
+            # self.setStatus('connecting', True, 80)
+            log('connectProgress.emit(80)', 4, component='ConnWRK')
+            self.connectProgress.emit(80)
+        else:               # kpis request 
+            # self.setStatus('nync', True)
+            log('connectProgress.emit(100)', 4, component='ConnWRK')
+            self.connectProgress.emit(100)
+
+        def connectionProgress(self):
+            deb('callback execution', 'ConnWRK')
+
+    def connectSync(self):
+        '''
+        fully sync old syle connection
+        '''
+        server = self.server
         log(f"Connecting to {server['dbi']}:\\\\{server['host']}:{server['port']}...")
 
         dbimpl = dbi(server['dbi'])
@@ -72,7 +113,9 @@ class dataProvider(QObject):
         
         try: 
             if server['dbi'] == 'HDB':
-                conn = self.dbi.create_connection(server, self.dbProperties, stateCallback=callback) # only HDB impl supports callback 
+                log('Okay, dbi with callback here...')
+                # conn = self.dbi.create_connection(server, self.dbProperties, stateCallback=callback) # only HDB impl supports callback 
+                conn = self.dbi.create_connection(server, self.dbProperties, stateCallback=self.updateState) # only HDB + thread-safe now (we hope)
             else:
                 conn = self.dbi.create_connection(server, self.dbProperties)
         except dbException as e:
@@ -80,14 +123,19 @@ class dataProvider(QObject):
             raise e
         
         if conn is None:
+            # self.server = None
             log('[i] Failed to connect, dont know what to do next')
             raise Exception('Failed to connect, dont know what to do next...')
         else:
-            log('connected')
+            log('dpDB: connected, return')
             self.connection = conn
-            self.server = server
-            
+            # self.server = server
+
+    def connectASync(self, callback=None):
+        pass
+
     def terminate(self, closeConnection = False):
+        deb('terminate timer')
         if self.timer:
             self.timer.stop()
             self.timer = None
@@ -104,9 +152,16 @@ class dataProvider(QObject):
         return
             
             
-    def reconnect(self):
+    def reconnect(self, cbFunc=None):
         try: 
-            conn = self.dbi.create_connection(self.server)
+            deb(f'dpDB: reconnect called, {self.server=}')
+            if self.server['dbi'] == 'HDB':
+                deb(f'yes, hdb, cb={cbFunc}')
+                # conn = self.dbi.create_connection(self.server, stateCallback=cbFunc)
+                conn = self.dbi.create_connection(self.server, stateCallback=self.updateState)
+            else:
+                conn = self.dbi.create_connection(self.server)
+                
         except Exception as e:
             raise e
         
@@ -123,13 +178,16 @@ class dataProvider(QObject):
             log('Keep-alives not supported by this DBI')
             return
     
-        log('Setting up DB keep-alive requests: %i seconds' % (keepalive))
+        log(f'Setting up DB keep-alive requests (chart): {keepalive} seconds')
+        log(f'thread now: {utils.threadID()}')
+        log(f'window now: {window}')
         self.timerkeepalive = keepalive
         self.timer = QTimer(window)
         self.timer.timeout.connect(self.keepAlive)
         self.timer.start(1000 * keepalive)
         
     def renewKeepAlive(self):
+        deb('renew keepalive chart timer')
         if self.timer is not None:
             self.timer.stop()
             self.timer.start(1000 * self.timerkeepalive)
@@ -146,6 +204,8 @@ class dataProvider(QObject):
             self.timer.stop()
         
     def keepAlive(self):
+
+        deb('chart sync keepAlive...')
     
         if self.connection is None:
             log('no connection, disabeling the keep-alive timer')
@@ -408,6 +468,16 @@ class dataProvider(QObject):
         deb(f'getData data keys: {data.keys()}')
         deb(f'getData requested kpis: {kpiIn}')
 
+        '''
+        if self.timer:
+            deb('we have a timer')
+            deb(f'active: {self.timer.isActive()}')
+            deb(f'timeout: {self.timer.interval()}')
+            deb(f'remaining: {self.timer.remainingTime()}')
+        else:
+            deb('no timer.')
+        '''
+
         for kpi in data.keys():
             if kpi in kpiIn or kpi == 'time':
                 pass
@@ -545,7 +615,15 @@ class dataProvider(QObject):
                 else:
                     kpisSql.append(kpiStylesNNN[kpi]['sqlname'])
                     
-            if kpiStylesNNN[kpi].get('nofilter'):
+            '''
+            deb(f'missing check: {kpi}')
+            if customKpi(kpi):
+                deb('custom kpi')
+            else:
+                deb('standard kpi')
+            '''
+                
+            if customKpi(kpi) and kpiStylesNNN[kpi].get('nofilter'):
                 nofilter = True
             
             cols = ', '.join(kpisSql)
@@ -660,6 +738,7 @@ class dataProvider(QObject):
                     log('[W] Custom KPI exception ignored, so we just continue.', 2)
                 else:
                     #reply = None, it was not a custom KPI, most likely a connection issue
+                    log('dpDB don\'t know how to handle, connection --> None', 4)
                     self.connection = None
                     
                     log('[!] getHostKpis (%s) failed: %s' % (str(kpis), str(e)))
@@ -696,8 +775,8 @@ class dataProvider(QObject):
             #(targetMax, targetMin) = fromTo # I like it reversed...
             
             if cfg('dev'):
-                log(f'Gantt gradient normalization, min/max: {brMin}/{brMax}', 5)
-                log('targetMin %i, targetMax %i' % (targetMin, targetMax), 5)
+                log(f'[dev] Gantt gradient normalization, min/max: {brMin}/{brMax}', 5)
+                log('[dev] targetMin %i, targetMax %i' % (targetMin, targetMax), 5)
             
             delta = brMin
             
@@ -713,7 +792,8 @@ class dataProvider(QObject):
                     normVal = round(((data[kpi][entity][i][5] - delta) * k + targetMin)/100, 3)
                     if cfg('dev'):
                         # log('  %i -> %.2f' % (data[kpi][entity][i][5], ((data[kpi][entity][i][5] - delta) * k + targetMin)/100), 5)
-                        log(f'  {data[kpi][entity][i][5]} --> {normVal}', 5)
+                        # log(f'  {data[kpi][entity][i][5]} --> {normVal}', 5)
+                        pass
                         
                     data[kpi][entity][i][5] = normVal
         

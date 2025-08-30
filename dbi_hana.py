@@ -24,7 +24,7 @@ import sql
 import sys
 
 from utils import cfg, hextostr
-from utils import getlog, deb
+from utils import getlog, deb, safeInt
 from utils import dbException
 from utils import cfgManager
 
@@ -49,12 +49,13 @@ def check_pyhdb_version():
         return 'SAP'            # incorrect old version
 
 def devDelay(ms):
-    if cfg('dev'):
+    if cfg('devDelay'):
         rnd = time.time() % 1
         rnd = (rnd*100000 % ms)/1000 # random number from 0 to .5
-        deb(f'random delay: {rnd}')
-        time.sleep(0.25 + rnd)
 
+        delay = safeInt(cfg('devDelay', 250))*0.001
+        deb(f'random delay: {delay+rnd:.2f}')
+        time.sleep(delay + rnd)
     
 class hdbi ():
 
@@ -99,22 +100,31 @@ class hdbi ():
             
             auth = server.get('auth')
 
+            deb('callback connecting', 'ConnWRK')
             if callable(stateCallback):
                 stateCallback('connecting')
-                devDelay(400)
+
+            devDelay(400)
                 
+            deb('go into connection...', 'ConnWRK')
             if server.get('ssl'):
                 log(f'Opening connection with SSL support, auth: {auth}', 4)
                 connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=pwdDecoded, sslsupport=True, auth=auth)
             else:
                 log(f'Opening regular connection (no ssl), auth: {auth}', 5)
                 connection = pyhdb.connect(host=server['host'], port=port, user=server['user'], password=pwdDecoded, auth=auth)
+
+            deb('right after connection...', 'ConnWRK')
                 
+            deb('callback connected', 'ConnWRK')
             if callable(stateCallback):
                 stateCallback('connected')
-                devDelay(200)
+
+            devDelay(200)
                 
             connection.large_sql = False
+
+            deb('set up context', 'ConnWRK')
             
             setApp = "set 'APPLICATION' = 'RybaFish %s'" % version
             self.execute_query_desc(connection, setApp, [], 0)
@@ -130,15 +140,18 @@ class hdbi ():
 
             self.execute_query_desc(connection, setApp, [], 0)
 
+            deb('callback contextset', 'ConnWRK')
             if callable(stateCallback):
                 stateCallback('contextset')
-                devDelay(500)
+                
+            devDelay(500)
                 
 
         except dbException as e:
             log(f'[!]: create_connection exception: type {e.type}: {e}\n', 2)
 
-            if callable(stateCallback):
+            deb('callback error', 'ConnWRK')
+            if callable(nstateCallback):
                 stateCallback('error')
 
             if e.type == dbException.PWD:
@@ -164,10 +177,13 @@ class hdbi ():
         
         log('(re)connect/properties: %s/%s' % (str(round(t1-t0, 3)), str(round(t2-t1, 3))))
         
+
+        deb('okay thread gotproperties ', 'ConnWRK')
         if callable(stateCallback):
             stateCallback('gotproperties')
             devDelay(800)
             
+        deb('okay thread create_connection finished, return', 'ConnWRK')
         return connection
 
     def console_connection(self, server, dbProperties = None, data_format_version2 = False):
