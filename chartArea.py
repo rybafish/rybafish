@@ -5020,7 +5020,7 @@ class chartArea(QFrame):
                         else:
                             reconnected = self.connectionLost(dp, str(e), nodialog=True)
                     else:
-                        deb('user triggered reconnect, connectionLost mode #1')
+                        deb('user triggered reload, connectionLost mode #1')
 
                         if cfg('experimental') and cfg('asyncChartConnect', True):
                             self.asyncReconnection = True # kind of not really connected state 

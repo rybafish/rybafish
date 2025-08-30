@@ -205,7 +205,7 @@ class dataProvider(QObject):
         
     def keepAlive(self):
 
-        deb('chart keepAlive...')
+        deb('chart sync keepAlive...')
     
         if self.connection is None:
             log('no connection, disabeling the keep-alive timer')
