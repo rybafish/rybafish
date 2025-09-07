@@ -152,5 +152,8 @@ raduga: ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00f
 # 096 has major change in timezones support, but you can return old behaviour in case of issues:
 # serverTZ: False
 
+## Warning on exit request, uncomment if you need one
+# exitConfirmation: True
+
 ## Uncomment to remove folder information from about dialog
 #aboutFolders: 0

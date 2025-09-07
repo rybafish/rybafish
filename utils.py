@@ -308,7 +308,7 @@ class customKPIException(Exception):
         super().__init__(message)
     
 
-def yesNoDialog(title, message, cancel = False, ignore = False, parent = None):
+def yesNoDialog(title, message, cancel=False, ignore=False, parent=None):
 
     if parent:
         msgBox = QMessageBox(parent)

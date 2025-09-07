@@ -28,7 +28,7 @@ import datetime
 
 from indicator import indicator
 
-from utils import resourcePath
+from utils import resourcePath, yesNoDialog
 
 from utils import loadConfig
 from utils import log, deb, threadID
@@ -505,6 +505,13 @@ class hslWindow(QMainWindow):
         '''
         
         log('Exit request...')
+        
+
+        if cfg('exitConfirmation', False):
+            resp = yesNoDialog('Exit RybaFish?', 'Do you really want to exit?', parent=self)
+
+            if not resp:
+                return
         
         if configDialog.unsavedChanges:
             answer = utils.yesNoDialog('Warning', 'You have changed one of passwords, but never saved the change. Exit anyway?')
