@@ -190,6 +190,8 @@ class hslWindow(QMainWindow):
     def closeTab(self):
         indx = self.tabs.currentIndex()
         
+        deb(f'closeTab, index: {indx}')
+        
         if indx > 0: #print need a better way to identify sql consoles...
             cons = self.tabs.currentWidget()
             
@@ -271,7 +273,8 @@ class hslWindow(QMainWindow):
             if repaint:
                 self.repaint()
         
-    def closeEvent(self, event):
+    def closeEvent_depricated(self, event):
+        log(f'Close window request #1, exitMode: {self.inExitMode}...', 4)
 
         if hasattr(profiler, 'report'):
             profiler.report()
@@ -477,6 +480,17 @@ class hslWindow(QMainWindow):
         if 'running' in self.layout.lo:
             self.layout.lo.pop('running')
             
+        # update uptime
+        uptSec = (datetime.datetime.now() - aboutDialog.startTime).total_seconds()
+        topUptime = self.layout['uptime']
+        if not topUptime:
+            self.layout['uptime'] = uptSec
+        else:
+            if self.layout['uptime'] < uptSec:
+                self.layout['uptime'] = uptSec
+                self.layout['uptimeStr'] = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
+            
+        
         if kpiDescriptions.customColors:
             colorsHTML = kpiDescriptions.colorsHTML(kpiDescriptions.customColors)
             self.layout['customColors'] = colorsHTML
@@ -490,13 +504,15 @@ class hslWindow(QMainWindow):
         
         
     def closeEvent(self, event):
-        log(f'Close window request, exitMode: {self.inExitMode}...', 4)
+        log(f'Close window request #2, exitMode: {self.inExitMode}...', 4)
         
         reallyQuit = True
         
         if not self.inExitMode:
-            reallyQuit = self.gracefulQuit()
-
+            reallyQuit = self.gracefulQuit(closeTabs=False)
+        else:
+            self.gracefulQuit(closeTabs=True)
+            
         self.inExitMode = False
         if reallyQuit:
             if cfg('exitConfirmation', True):
@@ -507,6 +523,7 @@ class hslWindow(QMainWindow):
                     event.ignore()
                 else:
                     log('Exit request accepted')
+                    log('Exiting...')
                     event.accept()
         else:
             event.ignore()
@@ -515,14 +532,14 @@ class hslWindow(QMainWindow):
     def menuQuit(self):
         log(f'Menu exit request, exitMode: {self.inExitMode}...', 4)
                     
-        reallyQuit = self.gracefulQuit()
+        reallyQuit = self.gracefulQuit(closeTabs=False)
         # and now actually call close event (that can be even aborted)
 
         if reallyQuit:
             self.inExitMode = True
             self.close()
 
-    def gracefulQuit(self):
+    def gracefulQuit(self, closeTabs):
         log(f'gracefulQuit, exitMode: {self.inExitMode}...', 4)
         if configDialog.unsavedChanges:
             answer = utils.yesNoDialog('Warning', 'You have changed one of passwords, but never saved the change. Exit anyway?')
@@ -534,8 +551,19 @@ class hslWindow(QMainWindow):
         
         status = None
         
+        if hasattr(profiler, 'report'):
+            profiler.report()
+            
+        if cfg('experimental'):
+            utils.configReportStats()
+
+        if aboutDialog.startTime is not None:
+            uptSec = (datetime.datetime.now() - aboutDialog.startTime).total_seconds()
+            uptStr = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
+            log(f'Uptime: {uptStr}')
+
         if cfg('saveLayout', True):
-            status = self.dumpLayout()
+            status = self.dumpLayout(closeTabs)
         
         if status == False:
             log('termination aborted....')
