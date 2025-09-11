@@ -133,6 +133,7 @@ class hslWindow(QMainWindow):
         self.kpisSave = {}      # list of kpis for quick save/restore
 
         self.presetName = None
+        self.inExitMode = None
     
         super().__init__()
         
@@ -488,36 +489,46 @@ class hslWindow(QMainWindow):
         return True
         
         
+    def closeEvent(self, event):
+        log(f'Close window request, exitMode: {self.inExitMode}...', 4)
+        
+        reallyQuit = True
+        
+        if not self.inExitMode:
+            reallyQuit = self.gracefulQuit()
+
+        self.inExitMode = False
+        if reallyQuit:
+            if cfg('exitConfirmation', True):
+                resp = yesNoDialog('Exit RybaFish?', 'Do you really want to exit?', parent=self)
+
+                if not resp:
+                    log('Exit request rejected')
+                    event.ignore()
+                else:
+                    log('Exit request accepted')
+                    event.accept()
+        else:
+            event.ignore()
+                
+
     def menuQuit(self):
-    
-        '''
-        for i in range(self.tabs.count() -1, 0, -1):
-            w = self.tabs.widget(i)
-            if isinstance(w, sqlConsole.sqlConsole):
-                
-                status = w.close(True) # can abort
-                
-                if status == True:
-                    self.tabs.removeTab(i)
-                
-                if status == False:
-                    return
-        '''
-        
-        log('Exit request...')
-        
+        log(f'Menu exit request, exitMode: {self.inExitMode}...', 4)
+                    
+        reallyQuit = self.gracefulQuit()
+        # and now actually call close event (that can be even aborted)
 
-        if cfg('exitConfirmation', False):
-            resp = yesNoDialog('Exit RybaFish?', 'Do you really want to exit?', parent=self)
+        if reallyQuit:
+            self.inExitMode = True
+            self.close()
 
-            if not resp:
-                return
-        
+    def gracefulQuit(self):
+        log(f'gracefulQuit, exitMode: {self.inExitMode}...', 4)
         if configDialog.unsavedChanges:
             answer = utils.yesNoDialog('Warning', 'You have changed one of passwords, but never saved the change. Exit anyway?')
             if answer != True:
                 log('Exit aborted to save pwd.')
-                return
+                return False
         
         log('before dump layout', 5)
         
@@ -528,11 +539,11 @@ class hslWindow(QMainWindow):
         
         if status == False:
             log('termination aborted....')
-            return
+            return False
             
         log('dump layout done', 5)
-                    
-        self.close()
+        return True
+        
 
     def menuReloadCustomSQLs(self):
         customSQLs.loadSQLs()

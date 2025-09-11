@@ -4947,6 +4947,7 @@ class chartArea(QFrame):
                         
         fromto = {'from': self.fromEdit.text(), 'to': self.toEdit.text()}
         
+        deb('set status sync...')
         self.setStatus('sync', True)
         
         self.reloadLock = True
