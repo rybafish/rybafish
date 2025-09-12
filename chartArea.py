@@ -4248,7 +4248,8 @@ class chartArea(QFrame):
                         deb('dp.connection --> None, raise fake dbException to call reconnect...')
                         raise(utils.dbException('Fake disconnection'))
 
-                    self.setStatus('sync')
+                    deb('click self status sync')
+                    self.setStatus('sync', True)
                     dp.getData(self.widget.hosts[host], fromto, kpis, self.widget.ndata[host], self.hostKPIsStyles[host], wnd=self)
                     self.widget.nkpis[host] = kpis
                     

@@ -465,6 +465,9 @@ class dataProvider(QObject):
 
         kpisToDel = []
 
+        if cfg('dev'):
+            time.sleep(0.25)
+
         deb(f'getData data keys: {data.keys()}')
         deb(f'getData requested kpis: {kpiIn}')
 
