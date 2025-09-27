@@ -533,6 +533,7 @@ class console(QPlainTextEditLN):
     def consSelection(self):
         #512 
         if self.manualSelection:
+            deb('clear call #2 not sure')
             self.clearManualSelection()
 
         if cfg('noWordHighlighting'):
@@ -1061,17 +1062,39 @@ class console(QPlainTextEditLN):
         cursor = QTextCursor(self.document())
         
         #print('clear manualSelectionPos... 1')
+        # deb(f'clear call: {start}:{stop}')
+
+        i = 0
+        
+        mb = self.document().blockCount()
+
         for (block, lo, af) in self.manualStylesRB:
-            #print(' '*10, block, block.blockNumber(), lo, af)
+            print(i, ' '*10, block, block.blockNumber(), lo, af)
+            # deb(f'start for: {i}')
+
+            if i > mb:
+                deb('[w] block number exceeded, break')
+                break
+            
             if block.isValid():
+                # deb('block is valid...')
+                deb(block.blockNumber())
                 lo.setAdditionalFormats(af)
+                # deb('after add formats...')
             else:
+                # deb('hey 1')
                 log('[W] block highlighting anti-crash skip...', 4)
+                # deb('hey 2')
+
+            # deb('end for')
+            i += 1
             #print(' '*10,'(clear)')
             
         #print('clear manualSelectionPos... 2')
             
+        # deb('manualStylesRB.clear...')
         self.manualStylesRB.clear()
+        # deb('manualStylesRB.clear done')
         
         #print('clear manualSelectionPos... 3')
 
@@ -1093,6 +1116,7 @@ class console(QPlainTextEditLN):
         #print('cursorPositionChangedSignal', self.lock)
     
         if self.manualSelection:
+            deb('clear call #1 --> potential crash')
             self.clearManualSelection()
     
         if cfg('noBracketsHighlighting'):
