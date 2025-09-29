@@ -7,16 +7,18 @@ from PyQt5.QtCore import Qt, QSize
 
 from PyQt5.QtCore import pyqtSignal
 
-from utils import cfg, cfgSet
+from utils import cfg, cfgSet, deb
 
 class QPlainTextEditLN(QWidget):
 
     fontUpdateSignal = pyqtSignal()
     tabSwitchSignal = pyqtSignal(int)
-
+    undoSignal = pyqtSignal()
+    
     class PlainTextEdit(QPlainTextEdit):
         
         rehighlightSig = pyqtSignal()
+        undoSignal = pyqtSignal()
         tabSwitchSignal = pyqtSignal(int)
         
         def __init__(self, parent=None):
@@ -245,7 +247,7 @@ class QPlainTextEditLN(QWidget):
 
             super().wheelEvent(event)
 
-
+        
         def keyPressEvent (self, event):
 
             modifiers = QApplication.keyboardModifiers()
@@ -280,6 +282,11 @@ class QPlainTextEditLN(QWidget):
                 cursor.insertText(txt.lower())
             elif modifiers == Qt.AltModifier and Qt.Key_0 < event.key() <= Qt.Key_9:
                 self.tabSwitchSignal.emit(event.key() - Qt.Key_1)
+                
+            if ((modifiers & Qt.ControlModifier and event.key() == Qt.Key_Z) or
+                (modifiers & Qt.AltModifier and event.key() == Qt.Key_Backspace)):
+                self.undoSignal.emit()
+                super().keyPressEvent(event)
             else:
                 super().keyPressEvent(event)
 
@@ -493,6 +500,7 @@ class QPlainTextEditLN(QWidget):
         self.edit.contextMenuEvent = self.contextMenuEvent # not sure why this works but it does.
         
         self.edit.tabSwitchSignal.connect(self.tabSwitchSignal)
+        self.edit.undoSignal.connect(self.undoSignal)
         
         #self.insertFromMimeData = self.edit.insertFromMimeData
         

@@ -351,6 +351,7 @@ class console(QPlainTextEditLN):
 
         self.lastSearch = ''    #for searchDialog
         self.bindVars = None
+        self.undoProcessing = False
 
         super().__init__(parent)
 
@@ -1052,6 +1053,10 @@ class console(QPlainTextEditLN):
             self.haveHighlighrs = False
         '''
 
+    def undoRequested(self):
+        deb('Undo mode --> True')
+        self.undoProcessing = True
+
     @profiler
     def clearManualSelection(self):
         #print('clear manualSelectionPos...', self.manualSelectionPos)
@@ -1069,8 +1074,16 @@ class console(QPlainTextEditLN):
         mb = self.document().blockCount()
 
         for (block, lo, af) in self.manualStylesRB:
-            print(i, ' '*10, block, block.blockNumber(), lo, af)
+            # print(i, ' '*10, block, block.blockNumber(), lo, af)
             # deb(f'start for: {i}')
+
+
+            if self.undoProcessing:
+                deb('seems undo processing, skip to avoid crash, #1071')
+                break
+                
+            # deb(f'{i:4}, block # {block.blockNumber()}, id: {bid}/{id(block)}')
+            # deb(f'    text: {block.text()}')
 
             if i > mb:
                 deb('[w] block number exceeded, break')
@@ -1078,19 +1091,15 @@ class console(QPlainTextEditLN):
             
             if block.isValid():
                 # deb('block is valid...')
-                deb(block.blockNumber())
+                # deb(f'    reset formats for block: {block.blockNumber()}')
+                # deb(f'{af=}')
                 lo.setAdditionalFormats(af)
                 # deb('after add formats...')
             else:
-                # deb('hey 1')
                 log('[W] block highlighting anti-crash skip...', 4)
-                # deb('hey 2')
 
-            # deb('end for')
             i += 1
-            #print(' '*10,'(clear)')
             
-        #print('clear manualSelectionPos... 2')
             
         # deb('manualStylesRB.clear...')
         self.manualStylesRB.clear()
@@ -1116,7 +1125,7 @@ class console(QPlainTextEditLN):
         #print('cursorPositionChangedSignal', self.lock)
     
         if self.manualSelection:
-            deb('clear call #1 --> potential crash')
+            deb('clear call #1 --> potential crash #1071')
             self.clearManualSelection()
     
         if cfg('noBracketsHighlighting'):
@@ -1531,6 +1540,10 @@ class sqlConsole(QWidget):
         
     def textChangedS(self):
     
+        if self.cons.undoProcessing:
+            deb('undo mode --> False')
+            self.cons.undoProcessing = False
+        
         if self.cons.lock:
             return
             
@@ -2789,6 +2802,7 @@ class sqlConsole(QWidget):
         while curTB <= toTB and block.isValid():
         
             #print('block, pos:', curTB, block.position())
+            # deb(f'highlight: block #: {curTB}, {block.blockNumber()}')
             
             if block == tbStart:
                 delta = start - block.position()
@@ -4083,6 +4097,7 @@ class sqlConsole(QWidget):
         self.cons.openFileSignal.connect(self.openFile)
         self.cons.goingToCrash.connect(self.delayBackup)
         self.cons.fontUpdateSignal.connect(self.fontUpdated)
+        self.cons.undoSignal.connect(self.cons.undoRequested)
         
         self.resultTabs = QTabWidget()
         
