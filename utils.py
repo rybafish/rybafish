@@ -102,10 +102,12 @@ def timePrint():
         
     return s
 
+'''
 class cfgManager():
 
     configs = {}
     path = None
+    salt = None
     
     def encode(pwd):
         if not pwd:
@@ -146,19 +148,36 @@ class cfgManager():
             return
 
         for n in cfs:
+
+            if n == '__salt__':
+                slt = cfs[n]
+                log(f'this connections.yaml is salty: {slt}', component='_pwd')
+                self.salt = bytes.fromhex(slt)
+                continue
                 
             confEntry = cfs[n]
 
-            '''
+            ''
             if 'pwd' in confEntry:
                 pwd = confEntry['pwd']
                 pwd = self.fernet.decrypt(pwd).decode()
                 confEntry['pwd'] = pwd
-            '''
+            ''
                 
             self.configs[n] = confEntry
 
-    def __init__(self, fname = None):
+    def generateSalt(self):
+        if self.salt:
+            log(f'[!] This cfgManager already has salt: [{self.salt}], aborting', 1)
+            log('[!] This might as well crash to save connections.yaml consistent', 1)
+            return None
+        
+        self.salt = os.urandom(16)
+        return self.salt
+    
+    def __init__(self, fname=None):
+
+        deb('[cfgManager] init')
         from cryptography.fernet import Fernet
         # cfgManager.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
         k = cfg('cryptKey', 'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
@@ -191,7 +210,16 @@ class cfgManager():
         
         deb('dump connections...')
         ds = {}
+        
+        # we use a master massword for this connections.yaml
+        if self.salt or True:
+            ds['__salt__'] = self.generateSalt().hex()
+
         for n in self.configs:
+
+            if n == '__salt__':
+                continue
+
             confEntry = self.configs[n].copy()
             deb(f'   {n}, {confEntry.get("pwd")}', '_pwd')
             # if 'pwd' in confEntry:
@@ -212,6 +240,7 @@ class cfgManager():
                     del confEntry['user']
                     
             ds[n] = confEntry
+            
 
         try: 
             f = open(self.fname, 'w')
@@ -220,6 +249,7 @@ class cfgManager():
             f.close()
         except Exception as e:
             log('layout dump issue:' + str(e))
+'''
 
 class Preset():
     '''KPIs preset class with it's own persistence but no dialog yet...'''
@@ -1901,8 +1931,8 @@ def sqlStr(s):
     else:
         return str(s)
 
-    
-def undoPwd(pwd):
+'''
+def undoPwd_depr(pwd):
     from cryptography.fernet import Fernet
 
     k = cfg('cryptKey')
@@ -1914,6 +1944,8 @@ def undoPwd(pwd):
     fernet = Fernet(k)
     
     print(fernet.decrypt(pwd.encode()).decode())
+
+'''
     
 if __name__ == '__main__':
     # for v in ('2.00.079.02.1734604810', '2.00.045.00.157563931', '123'):

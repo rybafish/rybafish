@@ -14,7 +14,7 @@ from yaml import safe_load, dump, YAMLError #pip install pyyaml
 
 import kpiTable, hostsTable
 import chartArea
-import configDialog, aboutDialog
+import configDialog, aboutDialog, mpDialog
 import dpDBCustom
 
 import dpTrace
@@ -52,6 +52,9 @@ import highlight
 
 import presetsDialog
 from passwordDialog import pwdDialog
+# import cfgManager
+from cfgManager import cfgManInst
+from pwdPlayDialog import pwdPlayDialog
 
 from profiler import profiler
 
@@ -1393,7 +1396,7 @@ class hslWindow(QMainWindow):
                                 # newpwd, ok = id.getText(self, 'Password change', 'You have to change initial password:')
 
                                 user = conf.get('user')
-                                pwd = utils.cfgManager.decode(conf['password'])
+                                pwd = cfgManInst.decode(conf['password'])
                                 pwdDiag = pwdDialog(self, user, pwd, 'Change initial password')
                                 rslt = pwdDiag.exec_()
 
@@ -1421,7 +1424,7 @@ class hslWindow(QMainWindow):
                                     break # cancel -> abandone changing password dialog
                             else:
                                 log('Okay, seems pwd reset done okay, now need proper DP init', 2)
-                                conf['password'] = utils.cfgManager.encode(newpwd)
+                                conf['password'] = cfgManInst.encode(newpwd)
 
                                 deb('indicator --> connected (depr)')
                                 # self.chartArea.setStatus('connected', True)
@@ -1432,7 +1435,7 @@ class hslWindow(QMainWindow):
                                     if len(self.configurations) == 1:
                                         log('[N] consoles password updated', 2)
                                         confg = self.configurations[0] # only one dpidx possible with pwd change
-                                        confg['password'] = utils.cfgManager.encode(newpwd)
+                                        confg['password'] = cfgManInst.encode(newpwd)
                                     else:
                                         log('[W] several DPIs open, password not updated! It\'s really better to reconnect now...', 1)
                                     
@@ -1744,7 +1747,7 @@ class hslWindow(QMainWindow):
             utils.msgDialog('Error', 'Some user/pwd error, sorry.', self)
             return
 
-        pwd = utils.cfgManager.decode(pwd)
+        pwd = cfgManInst.decode(pwd)
 
         pwdDiag = pwdDialog(self, user, pwd)
         rslt = pwdDiag.exec_()
@@ -1769,7 +1772,7 @@ class hslWindow(QMainWindow):
             deb(f"old pwd: {conf['password']}", '_pwd')
             utils.msgDialog('Password Ok', 'Password accepted, but don\'t forget to update your connections file manually.', self)
 
-            pwdenc = utils.cfgManager.encode(pwd)
+            pwdenc = cfgManInst.encode(pwd)
             conf['password'] = pwdenc
 
             cfg = self.configurations[0] # only one dpidx possible with pwd change
@@ -2116,6 +2119,63 @@ class hslWindow(QMainWindow):
         '''redraw the kpis table, normally on signal'''
         self.kpisTable.refill(self.hostTable.currentRow())
         
+    def requestMP(self, mode=None):
+        '''Request and process master password'''
+        deb('[mp] enter')
+
+        if mode == 'init':
+            mpDiag = mpDialog.mpDialog(self, initial=True)
+        else:
+            mpDiag = mpDialog.mpDialog(self, initial=False)
+            
+        rslt = mpDiag.exec_()
+        if rslt == QDialog.Accepted:
+            deb('[mp] --> ok', '_pwd')
+            deb(f'[mp] pwd defined', '_pwd')
+
+            if cfgManInst.salt is None:
+                deb(f'no salt, lets generate...', '_pwd')
+                cfgManInst.generateSalt()
+                cfgManInst.dump() # save salt (?) 
+            else:
+                log('Salt already exests...', 2, component='_pwd')
+                
+            cfgManInst.generateKey(mpDiag.pwdEdit.text()) # generate Key with salt and master pwd 
+            cfgManInst.createFernet()                     # instantinate encode/decode  
+
+            incorrect = True
+
+            while incorrect and rslt == QDialog.Accepted:
+                (total, failed) = cfgManInst.testFernet()
+                
+                deb(f'Validity test total/failed: {total}/{failed}', '_pwd')
+
+                if total > 0 and failed > 0:
+                    incorrect = True
+                else:
+                    incorrect = False
+                    break
+
+                mpDiag.info1.setText('Error: this password failed for one or more saved credentials. Try again?')
+                rslt = mpDiag.exec_()
+                deb(f'[mp] pwd re-defined', '_pwd')
+                cfgManInst.generateKey(mpDiag.pwdEdit.text()) # generate Key with salt and master pwd 
+                cfgManInst.createFernet()                     # instantinate encode/decode  
+
+            return True
+        else:
+            deb('[mp] --> not ok', '_pwd')
+            deb(f'never? {mpDiag.never=}', '_pwd')
+
+            if mpDiag.never == True:
+                cfgManInst.generateSalt(noSalt=True)
+
+        cfgManInst.createFernet()                     # instantinate encode/decode  
+    
+    def menuPwdEncodeDecode(self):
+        dialog = pwdPlayDialog(self)
+        dialog.exec_()
+
     def initUI(self):
     
         global rybaSplash
@@ -2302,6 +2362,10 @@ class hslWindow(QMainWindow):
         dummyAct.setStatusTip('Dummy Data provider')
         dummyAct.triggered.connect(self.menuDummy)
 
+        pwdplayAct = QAction('&Password Encoder/Decoder', self)
+        pwdplayAct.setStatusTip('Encode/Decode password strings')
+        pwdplayAct.triggered.connect(self.menuPwdEncodeDecode)
+
         configAct = QAction('&Connect', self)
         configAct.setShortcut('Alt+C')
         configAct.setStatusTip('Configure connection')
@@ -2350,8 +2414,9 @@ class hslWindow(QMainWindow):
         
         fileMenu.addAction(saveAct)
         
-        if cfg('dev'):
+        if cfg('dev') or cfg('pwdDecoder'):
             fileMenu.addAction(dummyAct)
+            fileMenu.addAction(pwdplayAct)
 
         fileMenu.addAction(exitAct)
         
@@ -2359,7 +2424,7 @@ class hslWindow(QMainWindow):
         
         if cfg('experimental'):
             fontAct = QAction('&Adjust Fonts', self)
-            fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary screen)')
+            fontAct.setStatusTip('Adjust margins after font change (for example after move to secondary creen)')
             fontAct.triggered.connect(self.menuFont)
             actionsMenu.addAction(fontAct)
 
@@ -2738,6 +2803,20 @@ class hslWindow(QMainWindow):
                             
             console.dummyResultTable()
         
+
+        salt = cfgManInst.salt
+        deb(f'salt: {salt=}')
+
+        if salt is None:
+            # initialization of connections.yaml
+            self.requestMP(mode='init')    # request and process master password
+        elif salt != '':
+            deb(f'we have salt: {salt.hex()}', '_pwd')
+            self.requestMP(mode='normal')    # request and process master password
+        else:
+            deb('salt is empty, no mp', '_pwd')
+            cfgManInst.createFernet()
+
         self.statusMessage('', False)
         
         if self.chartArea.dp:

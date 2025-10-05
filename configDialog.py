@@ -8,7 +8,8 @@ from PyQt5.QtCore import Qt
 
 from utils import resourcePath
 
-from utils import log, deb, cfg, cfgManager
+from utils import log, deb, cfg
+from cfgManager import cfgManInst
 
 from dbi import dbidict
 
@@ -31,7 +32,7 @@ class Config(QDialog):
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
                 # self.pwdEdit.setText(conf['password'])
-                self.pwdEdit.setText(cfgManager.decode(conf['password']))
+                self.pwdEdit.setText(cfgManInst.decode(conf['password']))
 
                 if 'ssl' in conf:
                     self.sslCB.setChecked(conf['ssl'])
@@ -70,7 +71,7 @@ class Config(QDialog):
 
         self.auth = None
         
-        self.cfgManager = cfgManager(cfg('connectionsFile', None))
+        # self.cfgManager = cfgManager(cfg('connectionsFile', None))
         self.initUI()
         
         self.conf = conf
@@ -157,7 +158,7 @@ class Config(QDialog):
         cf.config['dbi'] = dbidict[cf.driverCB.currentText()]
         
         cf.config['user'] = cf.userEdit.text()
-        cf.config['password'] = cfgManager.encode(cf.pwdEdit.text().strip())
+        cf.config['password'] = cfgManInst.encode(cf.pwdEdit.text().strip())
         
         cf.config['noreload'] = cf.noReload.isChecked()
         cf.config['ssl'] = cf.sslCB.isChecked()
@@ -228,7 +229,7 @@ class Config(QDialog):
         name = self.confCB.currentText()
         
         if name != '':
-            c = self.cfgManager.configs[name]
+            c = cfgManInst.configs[name]
             
             host, port = parseHost(c['hostport'])
             conf['dbi'] = c['dbi']
@@ -278,7 +279,7 @@ class Config(QDialog):
         cfg['name'] = txt
         cfg['dbi'] = dbidict[self.driverCB.currentText()]
         cfg['user'] = self.userEdit.text()
-        cfg['pwd'] = cfgManager.encode(self.pwdEdit.text())
+        cfg['pwd'] = cfgManInst.encode(self.pwdEdit.text())
         cfg['hostport'] = self.hostportEdit.text()
         cfg['ssl'] = self.sslCB.isChecked()
         
@@ -294,7 +295,7 @@ class Config(QDialog):
         for i in range(self.confCB.count()):
             items.append(self.confCB.itemText(i))
             
-        self.cfgManager.updateConf(cfg)
+        cfgManInst.updateConf(cfg)
         
         if txt not in items:
             self.confCB.addItem(txt)
@@ -309,7 +310,7 @@ class Config(QDialog):
         i = self.confCB.currentIndex()
         self.confCB.removeItem(i)
         
-        self.cfgManager.removeConf(name)
+        cfgManInst.removeConf(name)
         
         self.setStatus('Configuration removed.')
         
@@ -319,7 +320,7 @@ class Config(QDialog):
     def checkForChanges(self, name):
         # returns True if there are changes
         
-        conf = self.cfgManager.configs.get(name)
+        conf = cfgManInst.configs.get(name)
         
         if conf:
             #print(conf)
@@ -419,7 +420,7 @@ class Config(QDialog):
 
         self.confCB.addItem('')
         
-        for k in sorted(self.cfgManager.configs):
+        for k in sorted(cfgManInst.configs):
             self.confCB.addItem(k)
         
         self.confCB.setEditable(True)
