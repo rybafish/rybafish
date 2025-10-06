@@ -1329,7 +1329,11 @@ class hslWindow(QMainWindow):
                     # return
 
                 dpCreationLoop = True
+
+                deb('[w] dpcreation loop enter', 'ConnWRK')
                 while dpCreationLoop:
+                    deb('[w] dpcreation loop inside...', 'ConnWRK')
+
                     dpCreationLoop = False # very regular execution
 
                     if cfg('experimental'): # define connection progress callback report
@@ -1390,27 +1394,37 @@ class hslWindow(QMainWindow):
                             passwordNotOkay = True
                             dpCreationLoop = True          # okay, we'll need to reconnect
 
+                            deb('[w] password not okay loop', 'ConnWRK')
                             while passwordNotOkay:
 
+                                deb('[w] inside the loop', 'ConnWRK')
                                 # id = QInputDialog
                                 # newpwd, ok = id.getText(self, 'Password change', 'You have to change initial password:')
 
+                                deb('[w] show dialog...', 'ConnWRK')
                                 user = conf.get('user')
                                 pwd = cfgManInst.decode(conf['password'])
                                 pwdDiag = pwdDialog(self, user, pwd, 'Change initial password')
+                                deb('[w] show dialog...', 'ConnWRK')
                                 rslt = pwdDiag.exec_()
 
+                                deb('[w] dialog closed...', 'ConnWRK')
                                 if rslt == QDialog.Accepted:
+                                    deb('[w] ... with acceptance', 'ConnWRK')
                                     newpwd = pwdDiag.pwdEdit.text()
 
                                     try:
+                                        deb('[w] try to use it...', 'ConnWRK')
                                         newpwd = utils.pwd_escape(newpwd)
                                         sql = f'alter user {user} password "{newpwd}"'
+
                                         dp.dbi.execute_query_desc(dp.connection, sql, [], 10, noLogging=True)
 
+                                        deb('[w] alter user sql executed fine', 'ConnWRK')
                                         passwordNotOkay = False
 
                                     except dbException as e:
+                                        deb('[w] exception...', 'ConnWRK')
                                         log(f'[e], alter user exception: {e}')
                                         msgBox = QMessageBox(self)
                                         msgBox.setWindowTitle('Password update error')
@@ -1420,9 +1434,12 @@ class hslWindow(QMainWindow):
                                         msgBox.setIcon(QMessageBox.Warning)
                                         msgBox.exec_()
                                 else:
+                                    deb('[w] ... with ESC', 'ConnWRK')
                                     dpCreationLoop = False
                                     break # cancel -> abandone changing password dialog
+
                             else:
+                                deb('[w] else of the loop', 'ConnWRK')
                                 log('Okay, seems pwd reset done okay, now need proper DP init', 2)
                                 conf['password'] = cfgManInst.encode(newpwd)
 
@@ -1445,8 +1462,14 @@ class hslWindow(QMainWindow):
                                 iconPath = resourcePath('ico', 'favicon.png')
                                 msgBox.setWindowIcon(QIcon(iconPath))
                                 # msgBox.setIcon(QMessageBox.Warning)
+                                deb('[w] show pwd change went fine message.', 'ConnWRK')
                                 msgBox.exec_()
 
+                            threadCB = False # enforce reconnect fork on the next dpcreation loop
+                            deb('[w] out of pwd not okay loop', 'ConnWRK')
+                            
+                    deb('[w] dpcreation loop border...', 'ConnWRK')
+                    
                 deb('out of dp creation loop')
                 if hasattr(dp, 'dbProperties'):
                     if dp.dbProperties.get('usage'):

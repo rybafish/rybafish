@@ -152,7 +152,7 @@ class hdbi ():
             log(f'[!]: create_connection exception: type {e.type}: {e}\n', 2)
 
             deb('callback error', 'ConnWRK')
-            if callable(nstateCallback):
+            if callable(stateCallback):
                 stateCallback('error')
 
             if e.type == dbException.PWD:
