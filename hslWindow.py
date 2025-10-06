@@ -152,7 +152,7 @@ class hslWindow(QMainWindow):
         
     # def tabChanged(self, newidx):
     
-    def updatesCB(self, status, buildDate = None):
+    def updatesCB(self, status, buildDate=None):
     
         interval = cfg('updatesCheckInterval', '7')
         
@@ -486,13 +486,16 @@ class hslWindow(QMainWindow):
         # update uptime
         uptSec = (datetime.datetime.now() - aboutDialog.startTime).total_seconds()
         topUptime = self.layout['uptime']
+        
+        deb(f'dumpting uptime, top uptime: {topUptime}, now: {uptSec}')
         if not topUptime:
             self.layout['uptime'] = uptSec
+            self.layout['uptimeStr'] = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
         else:
+            deb('upscoring uptime')
             if self.layout['uptime'] < uptSec:
                 self.layout['uptime'] = uptSec
                 self.layout['uptimeStr'] = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
-            
         
         if kpiDescriptions.customColors:
             colorsHTML = kpiDescriptions.colorsHTML(kpiDescriptions.customColors)
@@ -501,6 +504,7 @@ class hslWindow(QMainWindow):
             if 'customColors' in self.layout.lo:
                 del self.layout.lo['customColors']
            
+        deb('layout.dump()')
         self.layout.dump()
         
         return True
