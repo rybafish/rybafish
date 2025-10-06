@@ -2830,14 +2830,17 @@ class hslWindow(QMainWindow):
         salt = cfgManInst.salt
         deb(f'salt: {salt=}')
 
-        if salt is None:
-            # initialization of connections.yaml
-            self.requestMP(mode='init')    # request and process master password
-        elif salt != '':
-            deb(f'we have salt: {salt.hex()}', '_pwd')
-            self.requestMP(mode='normal')    # request and process master password
+        if cfg('disableMasterPassword', True) == False:
+            if salt is None:
+                # initialization of connections.yaml
+                self.requestMP(mode='init')    # request and process master password
+            elif salt != '':
+                deb(f'we have salt: {salt.hex()}', '_pwd')
+                self.requestMP(mode='normal')    # request and process master password
+            else:
+                deb('salt is empty, no mp', '_pwd')
         else:
-            deb('salt is empty, no mp', '_pwd')
+            deb('disableMasterPassword = False in settings, ignore master password features', '_pwd')
             cfgManInst.createFernet()
 
         self.statusMessage('', False)

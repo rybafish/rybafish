@@ -49,8 +49,16 @@ class mpDialog(QDialog):
         self.never = True
         self.reject()
         
-    def initUI(self):
+    def setMode(self, mode):
+        if mode == 'initial':
+            self.info1.setText('You can define a master password for this installation. This password will be used to encrypt credentials.\nYou can also go "Don\'t set" and keep using RybaFish the old way.')
+            self.neverBtn.setVisible(True)
+        else:
+            self.info1.setText('This RybaFish installation uses master passsword, please provide it.')
+            self.neverBtn.setVisible(False)
+            
 
+    def initUI(self):
         iconPath = utils.resourcePath('ico', 'favicon.png')
 
         vbox = QVBoxLayout()
@@ -62,17 +70,14 @@ class mpDialog(QDialog):
         cancelBtn = QPushButton('Cancel')
         cancelBtn.clicked.connect(self.reject)
 
-        neverBtn = QPushButton('Don\'t set')
-        neverBtn.clicked.connect(self.dontset)
+        self.neverBtn = QPushButton('Don\'t set')
+        self.neverBtn.clicked.connect(self.dontset)
 
-        if self.initial:
-            self.info1 = QLabel('You can define a master password for this installation. This password will be used to encrypt credentials.\nYou can also go "Don\'t set" and keep using RybaFish the old way.')
-        else:
-            self.info1 = QLabel('This RybaFish installation uses master passsword, please provide it.')
-
+        self.info1 = QLabel()
         self.info2 = QLabel('See more <a href="https://www.rybafish.net/masterPassword">details</a> on rybafish site.')
         self.info2.linkActivated.connect(self.rybafishDotNet)
 
+        self.setMode(self.initial)
         self.message = QLabel('')
 
         self.pwdEdit = QLineEdit()
@@ -95,7 +100,7 @@ class mpDialog(QDialog):
         btns.addWidget(cancelBtn)
 
         if self.initial:
-            btns.addWidget(neverBtn)
+            btns.addWidget(self.neverBtn)
 
         if self.initial or True:
             vbox.addWidget(self.info1)
