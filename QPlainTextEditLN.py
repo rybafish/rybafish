@@ -283,7 +283,7 @@ class QPlainTextEditLN(QWidget):
             elif modifiers == Qt.AltModifier and Qt.Key_0 < event.key() <= Qt.Key_9:
                 self.tabSwitchSignal.emit(event.key() - Qt.Key_1)
                 
-            if ((modifiers & Qt.ControlModifier and event.key() == Qt.Key_Z) or
+            elif ((modifiers & Qt.ControlModifier and event.key() == Qt.Key_Z) or
                 (modifiers & Qt.AltModifier and event.key() == Qt.Key_Backspace)):
                 self.undoSignal.emit()
                 super().keyPressEvent(event)
