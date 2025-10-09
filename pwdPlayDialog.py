@@ -166,8 +166,8 @@ class pwdPlayDialog(QDialog):
         # form.addWidget(self.userEdit, 1, 2)
 
         self.mpEdit = QLineEdit()
-        self.mpEdit.setToolTip('Free style master password (pin) you use to encrypt credentials')
-        formCommon.addWidget(QLabel('Master Password'), 1, 1)
+        self.mpEdit.setToolTip('Free style master key (pin) you use to encrypt credentials')
+        formCommon.addWidget(QLabel('Master Key'), 1, 1)
         formCommon.addWidget(self.mpEdit, 1, 2)
         
         slt = cfgManInst.salt
@@ -191,7 +191,7 @@ class pwdPlayDialog(QDialog):
         formCommon.addLayout(dkeyLO, 3, 2)
 
         self.dkEdit = QLineEdit()
-        self.dkEdit.setToolTip('Calculated using PBKDF2 with HMAC-SHA256 based on master pwd and salt')
+        self.dkEdit.setToolTip('Calculated using PBKDF2 with HMAC-SHA256 based on master key and salt')
         formCommon.addWidget(QLabel('Derived Key'), 4, 1)
         formCommon.addWidget(self.dkEdit, 4, 2)
         

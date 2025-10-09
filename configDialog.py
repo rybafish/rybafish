@@ -32,7 +32,16 @@ class Config(QDialog):
                 self.hostportEdit.setText(hostport)
                 self.userEdit.setText(conf['user'])
                 # self.pwdEdit.setText(conf['password'])
-                self.pwdEdit.setText(cfgManInst.decode(conf['password']))
+                
+
+                decodedPwd = cfgManInst.decode(conf['password'])
+
+                if decodedPwd:
+                    self.pwdEdit.setText(decodedPwd)
+                else:
+                    if conf['password']:
+                        self.reportError('Password cannot be decrypted, check Master Key')
+                        self.pwdEdit.setText('')
 
                 if 'ssl' in conf:
                     self.sslCB.setChecked(conf['ssl'])
@@ -262,6 +271,7 @@ class Config(QDialog):
         else:
             conf = self.conf
         
+        self.reportError('')
         self.setConf(conf)
         self.setStatus('')
     
@@ -304,7 +314,20 @@ class Config(QDialog):
         else:
             self.setStatus('Configuration updated.')
             unsavedChanges = False
+
+        self.reportError('')
                 
+    def reportError(self, txt):
+
+        if txt:
+            self.errorMessage.show()
+            self.errorMessage.setStyleSheet("QLabel {color: blue;}");
+            self.errorMessage.setText(txt)
+        else:
+            self.errorMessage.hide()
+            self.errorMessage.setStyleSheet("QLabel {color: black;}");
+            self.errorMessage.setText('')
+    
     def confDel(self):
         name = self.confCB.currentText()
         i = self.confCB.currentIndex()
@@ -465,6 +488,7 @@ class Config(QDialog):
         buttonsHBox.addWidget(btnConnect)
         buttonsHBox.addWidget(btnCancel)
         
+        self.errorMessage = QLabel()
         self.status = QLabel()
 
         # okay, Layout:
@@ -505,6 +529,7 @@ class Config(QDialog):
         
         self.setWindowIcon(QIcon(iconPath))
         
+        vbox.addWidget(self.errorMessage)
         vbox.addWidget(self.status)
         self.setLayout(vbox)
         

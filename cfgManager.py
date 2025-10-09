@@ -40,6 +40,47 @@ class cfgManager():
             
         return pwddec
 
+    def recodeConfigs(self, oldFernet):
+        '''
+        convert all the passwords from oldFernet to self.Fernet
+
+        returns
+            False in case of a single error, but it does not stop on first error, it goes through
+            True if encoded fine
+        '''
+        failed = 0
+        total = 0
+
+        for cname, cfg in self.configs.items():
+
+            if 'pwd' in cfg:
+                total += 1
+                pwddecoded = None
+                oldpwd = cfg['pwd']
+                try:
+                    pwddecoded = oldFernet.decrypt(oldpwd).decode()
+                    status = 'ok'
+                except InvalidToken:
+                    failed += 1
+                    pwddecoded = None
+                    deb(f'cannot decode pwd for {cname}: {oldpwd}', '_pwd')
+                    status = 'failed'
+                    
+                log(f'config entry "{cname}" password decode: {status}')
+
+                if status == 'ok':
+                    pwdencnew = self.encode(pwddecoded)
+                    cfg['pwd'] = pwdencnew
+
+        log(f'Recoding statistics', 2)
+        log(f'    Total passwords: {total}', 2)
+        log(f'    Failed to recode: {failed}', 2)
+
+        if failed > 0:
+            return False
+        else:
+            return True
+       
     def testFernet(self):
 
         ok = ''
@@ -107,6 +148,12 @@ class cfgManager():
                 
             confEntry = cfs[n]
 
+            if 'pwd' in confEntry:
+                pwd = confEntry['pwd']
+                if isinstance(pwd, str):
+                    pwd = pwd.encode()
+                    confEntry['pwd'] = pwd
+                    
             '''
             if 'pwd' in confEntry:
                 pwd = confEntry['pwd']
@@ -138,11 +185,22 @@ class cfgManager():
         '''generates fernet key based on master password
         to be called just once per session
         '''
+        if not self.salt:
+            log(f'[w] salt is not prepared, aborting master key sequence', 2)
+            return None
+
         key_bytes = hashlib.pbkdf2_hmac('sha256', mp.encode(), self.salt, 100000, dklen=32)
         self.cryptkey = base64.urlsafe_b64encode(key_bytes)
         deb(f'generateKey: ==> {self.salt}', '_pwd')
-        deb(f'generateKey: ==> {mp.encode()}', '_pwd')
+        # deb(f'generateKey: ==> {mp.encode()}', '_pwd')
         deb(f'generateKey: ==> {self.cryptkey}', '_pwd')
+        
+    def removeMasterKey(self):
+        deb('removing master key and salt', '_pwd')
+        self.salt = ''
+        self.cryptkey = None
+        # if '__salt__' in self.configs:
+        #     self.configs['__salt__'] = ''
         
     def createFernet(self):
         deb(f'createFernet: cryptkey: {self.cryptkey}', '_pwd')
@@ -151,7 +209,6 @@ class cfgManager():
             self.masterPassword = True
             deb(f'Manual fernet instance assigned, derivek key: {self.cryptkey}', '_pwd')
         else:
-            log('[w] key is not generated, aborting', 2)
             # cfgManager.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
             k = cfg('cryptKey', 'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
             k = k.encode()
@@ -223,13 +280,20 @@ class cfgManager():
                 if 'user' in confEntry:
                     del confEntry['user']
                     
+            if 'pwd' in confEntry:
+                pwd = confEntry['pwd']
+
+                if isinstance(pwd, bytes):
+                    pwd = pwd.decode() # can it fail? 
+                    
+                confEntry['pwd'] = pwd
             ds[n] = confEntry
             
 
         try: 
             f = open(self.fname, 'w')
             
-            dump(ds, f, default_flow_style=None, sort_keys=False)
+            dump(ds, f, default_flow_style=None, width=60, sort_keys=False)
             f.close()
         except Exception as e:
             log('layout dump issue:' + str(e))

@@ -2146,33 +2146,91 @@ class hslWindow(QMainWindow):
         '''redraw the kpis table, normally on signal'''
         self.kpisTable.refill(self.hostTable.currentRow())
         
-    def requestMP(self, mode=None):
-        '''Request and process master password'''
-        deb('[mp] enter')
-
-        if mode == 'init':
-            mpDiag = mpDialog.mpDialog(self, initial=True)
+    def menuMasterKey(self):
+        mode = ''
+        if not cfgManInst.salt:
+            mode = 'init'
         else:
-            mpDiag = mpDialog.mpDialog(self, initial=False)
+            mode = 'menu'
+
+        self.requestMP(mode='change password')
+
+    def requestMP(self, mode):
+        '''Request and process master password'''
+
+        def countPasswords():
+            i = 0
+            for cfg in cfgManInst.configs.values():
+                if 'pwd' in cfg:
+                    i += 1
+
+            deb(f'number of pwds detected: {i}')
+            return i
+        
+        deb(f'request mp: mode: {mode}')
+
+        if mode == 'init':      # first ever request of master key 
+            cp = countPasswords()
+            mpDiag = mpDialog.mpDialog(self, mode='initial', num=cp)
+        else:
+            if mode == 'normal': # regular request of master key on start 
+                mpDiag = mpDialog.mpDialog(self, mode='pwdrequest')
+            elif mode == 'change password': # File -> Master Key 
+                cp = countPasswords()
+                mpDiag = mpDialog.mpDialog(self, mode='changepwd', num=cp)
             
         rslt = mpDiag.exec_()
         if rslt == QDialog.Accepted:
             deb('[mp] --> ok', '_pwd')
             deb(f'[mp] pwd defined', '_pwd')
+            
+            if mode == 'change password':
+                oldFernet = cfgManInst.fernet
 
-            if cfgManInst.salt is None:
+            if cfgManInst.salt is None or cfgManInst.salt == '':
                 deb(f'no salt, lets generate...', '_pwd')
                 cfgManInst.generateSalt()
                 cfgManInst.dump() # save salt (?) 
             else:
                 log('Salt already exests...', 2, component='_pwd')
                 
-            cfgManInst.generateKey(mpDiag.pwdEdit.text()) # generate Key with salt and master pwd 
+
+            if mode == 'change password' and mpDiag.pwdEdit.text() == '':
+                cfgManInst.removeMasterKey()
+            else:
+                cfgManInst.generateKey(mpDiag.pwdEdit.text()) # generate Key with salt and master pwd 
+
             cfgManInst.createFernet()                     # instantinate encode/decode  
 
+            skipPwdCheck = False
+            if mode == 'change password':
+                log('[!] Call recode configurations due to password change', 2)
+                st = cfgManInst.recodeConfigs(oldFernet)
+                
+
+                if st == False:
+                    log('[!] some of configurations failed to recode, old hash kept', 2)
+                    log('[!] As there were some issues during recodind, connections.yaml was NOT saved.', 2)
+
+                    utils.msgDialog('Pwd encoding issues',
+                                    message='Some of the passwords were not decoded. You can review what is alive/not in connections dialog (Alt+C).\nconnections.yaml was not updated.',
+                                    parent=self)
+                    skipPwdCheck = True
+                if st == True:
+                    log('All configurations were recoded fine to new master key', 2)
+                    cfgManInst.dump()
+                    log('Those new hashes are stored now', 2)
+
+                    log('New master key will be now used to re-load congigurations back', 2)
+                    utils.msgDialog('Pwd recoding',
+                                    message='All the passwords were recoded fine with new Master Key.\nconnections.yaml updated.',
+                                    parent=self)
+
+                mode = 'normal'
+            
             incorrect = True
 
-            while incorrect and rslt == QDialog.Accepted:
+            while incorrect and rslt == QDialog.Accepted and skipPwdCheck == False:
                 (total, failed) = cfgManInst.testFernet()
                 
                 deb(f'Validity test total/failed: {total}/{failed}', '_pwd')
@@ -2184,10 +2242,14 @@ class hslWindow(QMainWindow):
                     break
 
                 mpDiag.info1.setText('Error: this password failed for one or more saved credentials. Try again?')
+                mpDiag.info2.hide()
+                mpDiag.cancelBtn.setText('Ignore')
                 rslt = mpDiag.exec_()
-                deb(f'[mp] pwd re-defined', '_pwd')
-                cfgManInst.generateKey(mpDiag.pwdEdit.text()) # generate Key with salt and master pwd 
-                cfgManInst.createFernet()                     # instantinate encode/decode  
+
+                if rslt == QDialog.Accepted:
+                    deb(f'[mp] pwd re-defined', '_pwd')
+                    cfgManInst.generateKey(mpDiag.pwdEdit.text()) # generate Key with salt and master pwd 
+                    cfgManInst.createFernet()                     # instantinate encode/decode  
 
             return True
         else:
@@ -2398,6 +2460,10 @@ class hslWindow(QMainWindow):
         configAct.setStatusTip('Configure connection')
         configAct.triggered.connect(self.menuConfig)
 
+        mkAct = QAction('&Master Key...', self)
+        mkAct.setStatusTip('Enter Master Key')
+        mkAct.triggered.connect(self.menuMasterKey)
+
         configSecAct = QAction('Secondary connection', self)
         configSecAct.setStatusTip('Open a secondary connection')
         configSecAct.triggered.connect(self.menuConfigSecondary)
@@ -2432,6 +2498,9 @@ class hslWindow(QMainWindow):
         
         if cfg('experimental'):
             fileMenu.addAction(configSecAct)
+
+        if cfg('disableMasterKey', True) == False:
+            fileMenu.addAction(mkAct)
 
         fileMenu.addAction(importAct)
         
@@ -2834,7 +2903,7 @@ class hslWindow(QMainWindow):
         salt = cfgManInst.salt
         deb(f'salt: {salt=}')
 
-        if cfg('disableMasterPassword', True) == False:
+        if cfg('disableMasterKey', True) == False:
             if salt is None:
                 # initialization of connections.yaml
                 self.requestMP(mode='init')    # request and process master password
@@ -2843,8 +2912,9 @@ class hslWindow(QMainWindow):
                 self.requestMP(mode='normal')    # request and process master password
             else:
                 deb('salt is empty, no mp', '_pwd')
+                cfgManInst.createFernet()
         else:
-            deb('disableMasterPassword = False in settings, ignore master password features', '_pwd')
+            deb('disableMasterKey = False in settings, ignore master password features', '_pwd')
             cfgManInst.createFernet()
 
         self.statusMessage('', False)
