@@ -2265,6 +2265,24 @@ class hslWindow(QMainWindow):
         dialog = pwdPlayDialog(self)
         dialog.exec_()
 
+    def manageMasterKey(self):
+        salt = cfgManInst.salt
+        deb(f'salt: {salt=}', '_pwd')
+
+        if cfg('disableMasterKey', True) == False:
+            if salt is None:
+                # initialization of connections.yaml
+                self.requestMP(mode='init')    # request and process master password
+            elif salt != '':
+                deb(f'we have salt: {salt.hex()}', '_pwd')
+                self.requestMP(mode='normal')    # request and process master password
+            else:
+                deb('salt is empty, no mp', '_pwd')
+                cfgManInst.createFernet()
+        else:
+            deb('disableMasterKey = False in settings, ignore master password features', '_pwd')
+            cfgManInst.createFernet()
+
     def initUI(self):
     
         global rybaSplash
@@ -2611,7 +2629,7 @@ class hslWindow(QMainWindow):
 
         actionsMenu.addAction(reloadCustomKPIsAct)
 
-        if cfg('dev') and False:
+        if cfg('dev-depr'):
             devMenu = menubar.addMenu('DEV')
             fromtoAct = QAction('set TZ test timestamps', self)
             fromtoAct.setShortcut('Ctrl+Shift+T')
@@ -2899,23 +2917,6 @@ class hslWindow(QMainWindow):
                             
             console.dummyResultTable()
         
-
-        salt = cfgManInst.salt
-        deb(f'salt: {salt=}')
-
-        if cfg('disableMasterKey', True) == False:
-            if salt is None:
-                # initialization of connections.yaml
-                self.requestMP(mode='init')    # request and process master password
-            elif salt != '':
-                deb(f'we have salt: {salt.hex()}', '_pwd')
-                self.requestMP(mode='normal')    # request and process master password
-            else:
-                deb('salt is empty, no mp', '_pwd')
-                cfgManInst.createFernet()
-        else:
-            deb('disableMasterKey = False in settings, ignore master password features', '_pwd')
-            cfgManInst.createFernet()
 
         self.statusMessage('', False)
         

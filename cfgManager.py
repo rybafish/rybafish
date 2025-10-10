@@ -203,11 +203,11 @@ class cfgManager():
         #     self.configs['__salt__'] = ''
         
     def createFernet(self):
-        deb(f'createFernet: cryptkey: {self.cryptkey}', '_pwd')
+        deb(f'instantiating fernet for cfgManInst, derived key used: {self.cryptkey}', '_pwd')
         if self.cryptkey:
             self.fernet = Fernet(self.cryptkey)
             self.masterPassword = True
-            deb(f'Manual fernet instance assigned, derivek key: {self.cryptkey}', '_pwd')
+            deb(f'Manual fernet instance assigned', '_pwd')
         else:
             # cfgManager.fernet = Fernet(b'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
             k = cfg('cryptKey', 'aRPhXqZj9KyaC6l8V7mtcW7TvpyQRmdCHPue6MjQHRE=')
