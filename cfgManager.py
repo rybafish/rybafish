@@ -235,6 +235,7 @@ class cfgManager():
         
     def updateConf(self, confEntry):
         name = confEntry.pop('name')
+        deb(f'conf update: {name}', '_pwd')
         self.configs[name] = confEntry
         self.dump()
     

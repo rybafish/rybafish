@@ -33,7 +33,6 @@ class Config(QDialog):
                 self.userEdit.setText(conf['user'])
                 # self.pwdEdit.setText(conf['password'])
                 
-
                 decodedPwd = cfgManInst.decode(conf['password'])
 
                 if decodedPwd:
