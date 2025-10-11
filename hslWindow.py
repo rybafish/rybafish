@@ -2269,7 +2269,7 @@ class hslWindow(QMainWindow):
         salt = cfgManInst.salt
         deb(f'salt: {salt=}', '_pwd')
 
-        if cfg('disableMasterKey', True) == False:
+        if cfg('disableMasterKey', False) == False:
             if salt is None:
                 # initialization of connections.yaml
                 self.requestMP(mode='init')    # request and process master password
@@ -2280,7 +2280,7 @@ class hslWindow(QMainWindow):
                 deb('salt is empty, no mp', '_pwd')
                 cfgManInst.createFernet()
         else:
-            deb('disableMasterKey = False in settings, ignore master password features', '_pwd')
+            deb('disableMasterKey = True in settings, ignore master password features', '_pwd')
             cfgManInst.createFernet()
 
     def initUI(self):
@@ -2517,7 +2517,7 @@ class hslWindow(QMainWindow):
         if cfg('experimental'):
             fileMenu.addAction(configSecAct)
 
-        if cfg('disableMasterKey', True) == False:
+        if cfg('disableMasterKey', False) == False:
             fileMenu.addAction(mkAct)
 
         fileMenu.addAction(importAct)
