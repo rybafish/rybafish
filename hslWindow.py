@@ -514,7 +514,7 @@ class hslWindow(QMainWindow):
            
         deb('layout.dump()', 'layout')
         self.layout.dump()
-        
+        # test 
         return True
         
         
