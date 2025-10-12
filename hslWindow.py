@@ -129,6 +129,7 @@ class hslWindow(QMainWindow):
         self.thread.started.connect(self.connWorker.openDP)
 
         self.layoutDumped = False
+        deb('layoutDumped --> False', 'layout')
     
         self.sqlTabCounter = 0 #static tab counter
 
@@ -336,12 +337,14 @@ class hslWindow(QMainWindow):
             in crashMode (called on uncought exception) it is questionable if calling clos() makes any sense
         '''
     
+        deb('dumpLayout', 'layout')
         if self.primaryConf:
             connection = self.primaryConf.get('name')
         else:
             connection = None
 
         if self.layoutDumped:
+            deb('layout was False, return', 'layout')
             log('self.layoutDumped', 5)
             return
             
@@ -352,6 +355,7 @@ class hslWindow(QMainWindow):
         log('--> dumpLayout', 5)
             
         self.layoutDumped = True
+        deb('layoutDumped --> True', 'layout')
     
         kpis = self.formatKPIs()
     
@@ -432,6 +436,7 @@ class hslWindow(QMainWindow):
             answer = utils.yesNoDialog('Warning', wMessage)
             if not answer:
                 self.layoutDumped = False
+                deb('layoutDumped --> False, return', 'layout')
                 return False
             else:
                 abandone = True
@@ -487,7 +492,7 @@ class hslWindow(QMainWindow):
         uptSec = (datetime.datetime.now() - aboutDialog.startTime).total_seconds()
         topUptime = self.layout['uptime']
         
-        deb(f'dumpting uptime, top uptime: {topUptime}, now: {uptSec}')
+        deb(f'dumpting uptime, top uptime: {topUptime}, now: {uptSec}', 'layout')
         if not topUptime:
             self.layout['uptime'] = uptSec
             self.layout['uptimeStr'] = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
@@ -496,6 +501,9 @@ class hslWindow(QMainWindow):
             if self.layout['uptime'] < uptSec:
                 self.layout['uptime'] = uptSec
                 self.layout['uptimeStr'] = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
+            else:
+                loUptime = self.layout.get('uptime')
+                deb(f'uptime not upscored: {uptSec=}, {loUptime=}', 'layout')
         
         if kpiDescriptions.customColors:
             colorsHTML = kpiDescriptions.colorsHTML(kpiDescriptions.customColors)
@@ -504,7 +512,7 @@ class hslWindow(QMainWindow):
             if 'customColors' in self.layout.lo:
                 del self.layout.lo['customColors']
            
-        deb('layout.dump()')
+        deb('layout.dump()', 'layout')
         self.layout.dump()
         
         return True
@@ -1272,6 +1280,7 @@ class hslWindow(QMainWindow):
                     log('dump done')
 
                     self.layoutDumped = False
+                    deb('layoutDumped --> False', 'layout')
 
                 if not secondary and not threadCB:
                     # need to disconnect open consoles first...
