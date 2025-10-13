@@ -496,14 +496,16 @@ class hslWindow(QMainWindow):
         if not topUptime:
             self.layout['uptime'] = uptSec
             self.layout['uptimeStr'] = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
+            deb(f'there is no uptime, creating what we have: {uptSec}', 'layout')
         else:
-            deb('upscoring uptime')
-            if self.layout['uptime'] < uptSec:
+            deb('upscoring uptime evaluation', 'layout')
+            topUptime
+            if topUptime < uptSec:
                 self.layout['uptime'] = uptSec
                 self.layout['uptimeStr'] = utils.formatTime(uptSec, skipSeconds=False, skipMs=True)
+                deb(f'uptime upscored: {uptSec=}, previous {topUptime=}', 'layout')
             else:
-                loUptime = self.layout.get('uptime')
-                deb(f'uptime not upscored: {uptSec=}, {loUptime=}', 'layout')
+                deb(f'uptime not upscored: {uptSec=}, {topUptime=}', 'layout')
         
         if kpiDescriptions.customColors:
             colorsHTML = kpiDescriptions.colorsHTML(kpiDescriptions.customColors)
@@ -535,6 +537,8 @@ class hslWindow(QMainWindow):
 
                 if not resp:
                     log('Exit request rejected')
+                    self.layoutDumped = False
+                    deb('layoutDumped --> False', 'layout')
                     event.ignore()
                 else:
                     log('Exit request accepted')
