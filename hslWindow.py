@@ -2271,6 +2271,7 @@ class hslWindow(QMainWindow):
 
             if mpDiag.never == True:
                 cfgManInst.generateSalt(noSalt=True)
+                cfgManInst.dump()
 
         cfgManInst.createFernet()                     # instantinate encode/decode  
     
