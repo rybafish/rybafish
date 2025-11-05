@@ -57,19 +57,29 @@ class cfgManager():
                 total += 1
                 pwddecoded = None
                 oldpwd = cfg['pwd']
-                try:
-                    pwddecoded = oldFernet.decrypt(oldpwd).decode()
-                    status = 'ok'
-                except InvalidToken:
-                    failed += 1
+
+                if oldpwd:
+                    try:
+                        pwddecoded = oldFernet.decrypt(oldpwd).decode()
+                        status = 'ok'
+                    except InvalidToken:
+                        failed += 1
+                        pwddecoded = None
+                        deb(f'cannot decode pwd for {cname}: {oldpwd}', '_pwd')
+                        status = 'failed'
+                else:
+                    # it sometimes could be null if an empty pwd
                     pwddecoded = None
-                    deb(f'cannot decode pwd for {cname}: {oldpwd}', '_pwd')
-                    status = 'failed'
+                    status = 'ok'
                     
                 log(f'config entry "{cname}" password decode: {status}')
 
                 if status == 'ok':
-                    pwdencnew = self.encode(pwddecoded)
+                    if pwddecoded is None:
+                        pwdencnew = None
+                    else:
+                        pwdencnew = self.encode(pwddecoded)
+
                     cfg['pwd'] = pwdencnew
 
         log(f'Recoding statistics', 2)
@@ -93,7 +103,8 @@ class cfgManager():
             if 'pwd' in cfg:
                 total += 1
 
-                if self.decode(cfg['pwd']):
+                pwd = cfg['pwd']
+                if self.decode(pwd) or pwd is None:
                     ok = 'ok'
                 else:
                     failed += 1
