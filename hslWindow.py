@@ -1317,6 +1317,8 @@ class hslWindow(QMainWindow):
                                 w.disconnectDB()
                                 w.indicator.status = 'disconnected'
                                 w.indicator.repaint()
+                                w.config = None # #1078 !!!
+                                deb(f'zero down the connection {tabname}')
                                 log('disconnected...')
 
                 # close damn chart console
