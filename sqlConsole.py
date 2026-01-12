@@ -1344,6 +1344,7 @@ class sqlConsole(QWidget):
     
     tabSwitchSignal = pyqtSignal(int)
     fontUpdateSignal = pyqtSignal(['QString'])
+    sumCalculatedSignal = pyqtSignal(['QString'])
     
     #gc.set_debug(gc.gc.DEBUG_LEAK)
 
@@ -2303,6 +2304,10 @@ class sqlConsole(QWidget):
             
             self.alertSignal.emit()
     
+    def sumCalculated(self, s):
+        deb(f'sqlconsole sum calc sig: {s}')
+        self.sumCalculatedSignal.emit(s)
+
     def newResult(self, conn, st):
         
         result = QResultSet(conn)
@@ -2326,6 +2331,8 @@ class sqlConsole(QWidget):
         result.triggerAutorefresh.connect(self.setupAutorefresh)
         result.fontUpdateSignal.connect(self.fontResultUpdated)
         result.changeResultTab.connect(self.resultChangeTab)
+
+        result.sumCalculated.connect(self.sumCalculated)
 
         if len(self.results) > 0:
             rName = 'Results ' + str(len(self.results)+1)
@@ -4079,6 +4086,10 @@ class sqlConsole(QWidget):
         for r in self.results:
             r.zoomFont(mode='=', toSize=fontSize)
 
+    def resulttabChanged(self, newIdx):
+        deb(f'resultTabChanged -> {newIdx}')
+        self.sumCalculatedSignal.emit('')
+
     def initUI(self):
         '''
             main sqlConsole UI 
@@ -4102,6 +4113,7 @@ class sqlConsole(QWidget):
         self.resultTabs = QTabWidget()
         
         self.resultTabs.keyPressEvent = self.resultTabsKey
+        self.resultTabs.currentChanged.connect(self.resulttabChanged)
                 
         self.spliter = QSplitter(Qt.Vertical)
         #self.logArea = QPlainTextEdit()

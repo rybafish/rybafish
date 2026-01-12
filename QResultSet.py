@@ -154,6 +154,7 @@ class QResultSet(QTableWidget):
     detachSignal = pyqtSignal()
     fontUpdateSignal = pyqtSignal()
     changeResultTab = pyqtSignal([int])
+    sumCalculated = pyqtSignal(['QString'])
 
     def __init__(self, conn):
     
@@ -246,6 +247,33 @@ class QResultSet(QTableWidget):
         self.abapCopyFlag = [False]
 
         self.cellClicked.connect(self.cellClickedSig)
+
+        if cfg('experimental'):
+            self.itemSelectionChanged.connect(self.selectionChangeProcess)
+
+    @profiler
+    def selectionChangeProcess(self):
+        # deb('selection changed')
+        sm = self.selectionModel()
+        
+        sum = 0
+        i = 0
+            
+        for c in sm.selectedIndexes():
+            c, r = c.column(), c.row()
+
+            colType = self.cols[c][1]
+            if not self.dbi.ifNumericType(colType):
+                sum = None
+                break
+            sum += self.rows[r][c]
+            i += 1
+
+        if sum is not None and i > 1:
+            sumTxt = utils.numberToStr(sum)
+            self.sumCalculated.emit(sumTxt)
+        else:
+            self.sumCalculated.emit('')
 
     def headerClicked(self, index):
         

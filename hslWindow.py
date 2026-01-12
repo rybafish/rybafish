@@ -2,8 +2,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFrame,
     QSplitter, QStyleFactory, QTableWidget,
     QTableWidgetItem, QPushButton, QAbstractItemView,
     QCheckBox, QMainWindow, QAction, QMenu, QFileDialog,
-    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog, 
-                             QApplication, QDialog
+    QMessageBox, QTabWidget, QPlainTextEdit, QInputDialog,
+    QLabel, QApplication, QDialog
     )
     
 from PyQt5.QtGui import QPainter, QIcon, QDesktopServices
@@ -143,6 +143,8 @@ class hslWindow(QMainWindow):
         
         self.threadID = threadID()
         log(f'[thread] main window thread: {self.threadID}', 5)
+
+        self.totalLabel = None
         
         self.initUI()
         highlight.loadHighlights()
@@ -151,7 +153,9 @@ class hslWindow(QMainWindow):
             if self.layout is not None:
                 checkUpdates(self, self.updatesCB, self.layout.lo.get('updateNextCheck'), self.layout.lo.get('updateVersionCheck'))
         
-    # def tabChanged(self, newidx):
+    def tabChanged(self, newidx):
+        deb(f'tab changed to {newidx}')
+        self.updateSum('')
     
     def updatesCB(self, status, buildDate=None):
     
@@ -1714,6 +1718,13 @@ class hslWindow(QMainWindow):
         w.saveFile()
     
     
+    def updateSum(self, s):
+        if s:
+            self.totalLabel.setText(s)
+        else:
+            if self.totalLabel is not None:
+                self.totalLabel.setText('')
+
     def newConsole(self, filename=None, generateName=False):
         conf = self.primaryConf
         
@@ -1745,6 +1756,7 @@ class hslWindow(QMainWindow):
         console.tabSwitchSignal.connect(self.switchTab)
         console.sqlBrowserSignal.connect(self.menuSQLBrowser)
         console.fontUpdateSignal.connect(self.syncConsoleFonts)
+        console.sumCalculatedSignal.connect(self.updateSum)
         
         ind = indicator()
         console.indicator = ind
@@ -1977,6 +1989,7 @@ class hslWindow(QMainWindow):
         console.tabSwitchSignal.connect(self.switchTab)
         console.sqlBrowserSignal.connect(self.menuSQLBrowser)
         console.fontUpdateSignal.connect(self.syncConsoleFonts)
+        console.sumCalculatedSignal.connect(self.updateSum)
 
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
@@ -2406,7 +2419,7 @@ class hslWindow(QMainWindow):
         
         self.tabs = QTabWidget()
         
-        # self.tabs.currentChanged.connect(self.tabChanged)
+        self.tabs.currentChanged.connect(self.tabChanged)
         
         # main window splitter
         self.mainSplitter = QSplitter(Qt.Vertical)
@@ -2470,6 +2483,8 @@ class hslWindow(QMainWindow):
         
         # service stuff
         self.statusbar = self.statusBar()
+        self.totalLabel = QLabel('')
+        self.statusbar.addPermanentWidget(self.totalLabel)
         self.statusbar.addPermanentWidget(ind)
 
         #menu
@@ -2794,6 +2809,7 @@ class hslWindow(QMainWindow):
                 console.tabSwitchSignal.connect(self.switchTab)
                 console.sqlBrowserSignal.connect(self.menuSQLBrowser)
                 console.fontUpdateSignal.connect(self.syncConsoleFonts)
+                console.sumCalculatedSignal.connect(self.updateSum)
                 
                 ind.iClicked.connect(console.reportRuntime)
                 
@@ -2917,6 +2933,7 @@ class hslWindow(QMainWindow):
             console.tabSwitchSignal.connect(self.switchTab)
             console.sqlBrowserSignal.connect(self.menuSQLBrowser)
             console.fontUpdateSignal.connect(self.syncConsoleFonts)
+            console.sumCalculatedSignal.connect(self.updateSum)
             
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
