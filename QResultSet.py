@@ -254,11 +254,19 @@ class QResultSet(QTableWidget):
     @profiler
     def selectionChangeProcess(self):
         # deb('selection changed')
+        modifiers = QApplication.keyboardModifiers()
+        
+        if modifiers == Qt.AltModifier:
+            log('selection with alt will not be accounted for sum, abort calculation', 5)
+            return
+        
         sm = self.selectionModel()
         
         sum = 0
         i = 0
-            
+
+        decType = False
+        
         for c in sm.selectedIndexes():
             c, r = c.column(), c.row()
 
@@ -266,12 +274,26 @@ class QResultSet(QTableWidget):
             if not self.dbi.ifNumericType(colType):
                 sum = None
                 break
-            sum += self.rows[r][c]
+            
+            # if not decType and self.dbi.ifDecimalType(colType):
+            #     decType = True
+                
+            v = self.rows[r][c]
+            
+            if v is None:
+                continue
+
+            sum += v
             i += 1
 
         if sum is not None and i > 1:
-            sumTxt = utils.numberToStr(sum)
-            self.sumCalculated.emit(sumTxt)
+            if True or decType:
+                sumTxt = utils.numberToStrCSV(sum)
+            else:
+                sumTxt = utils.numberToStr(sum)
+
+            sigma = '\u03A3'
+            self.sumCalculated.emit(f'{sigma}  {sumTxt}')
         else:
             self.sumCalculated.emit('')
 
@@ -280,8 +302,9 @@ class QResultSet(QTableWidget):
         modifiers = QApplication.keyboardModifiers()
         
         if modifiers == Qt.AltModifier:
-            log(f'result header alt+click, {index}: hiding')
+            log(f'result header alt+click, {index}: hiding', 4)
             self.setColumnWidth(index, 0)
+            self.sumCalculated.emit('') # selection will be reset anyway, confusing otherwise 
             
 
     @profiler

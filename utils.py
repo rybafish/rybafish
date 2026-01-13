@@ -940,7 +940,7 @@ def saneNumberToStr(x, grp=True, digits=None):
     return sign + intToStr(x, grp) + frs
 
 @profiler
-def numberToStrCSV(num, grp = True):
+def numberToStrCSV(num, grp=True):
     '''
         formats numbers according to locale
             - thouthand groupping
