@@ -259,7 +259,6 @@ class kpiTable(QTableWidget):
                     return
 
                 fname = os.path.join(path, sql)
-                # fname = r'C:\home\dug\projects\rybafish\sql\gantt\expst.yaml'
                 log(f'try to open {kpi} definition file: {fname}')
 
                 if not QDesktopServices.openUrl(QUrl.fromLocalFile(fname)):

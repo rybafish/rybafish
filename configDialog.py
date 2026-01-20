@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QDialog, QDialogButtonBox,
 from PyQt5.QtGui import QPixmap, QIcon
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QProcess
 
 from utils import resourcePath
 
@@ -375,6 +376,27 @@ class Config(QDialog):
             self.pwdShow.setText('show')
             self.pwdEdit.setEchoMode(QLineEdit.Password)
         
+    def processFinished(self):
+        log('Process finished')
+
+        
+    def keyPressEvent(self, event):
+        modifiers = event.modifiers()
+        
+        if modifiers == Qt.ControlModifier and event.key() == Qt.Key_F12:
+            import time
+
+            log('Secret combo Ctrl+F12, call hdbuserstore', 2)
+            log(r'    read more: https://www.pythonguis.com/tutorials/qprocess-external-programs/')
+
+            p = QProcess()
+            p.finished.connect(self.processFinished)
+            p.start('hdbuserstore', ['test'])
+            time.sleep(10)
+        else:
+            super().keyPressEvent(event)
+    
+
     def initUI(self):
     
         form = QGridLayout()
