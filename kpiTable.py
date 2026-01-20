@@ -188,6 +188,11 @@ class kpiTable(QTableWidget):
         if cfg('experimental'):
             i = self.currentRow()
             cellCheckBox = self.cellWidget(i, 0)
+
+            if cellCheckBox is None:
+                deb('cellCheckBox is nul, no menu possible')
+                return
+            
             kpi = cellCheckBox.name
 
             if kpiDescriptions.customKpi(kpi):
