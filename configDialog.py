@@ -378,7 +378,36 @@ class Config(QDialog):
         
     def processFinished(self):
         log('Process finished')
+        
+    def processStdErr(self):
+        log('Process err')
+        d = self.p.readAllStandardError()
+        s = bytes(d).decode('utf8')
+        log(s)
 
+    def processStdOut(self):
+        log('Process stdout')
+        d = self.p.readAllStandardOutput()
+        s = bytes(d).decode('utf8')
+        log(s)
+
+    def processReadReady(self):
+        log('Process ready to read...')
+
+        pwd = self.pwdEdit.text().strip()
+
+        deb(f'pwd: {pwd}', comp='_pwd')
+        
+        self.p.write('test\n'.encode())
+        
+    def processStateChange(self, state):
+        states = {
+            QProcess.NotRunning: 'Not running',
+            QProcess.Starting: 'Starting',
+            QProcess.Running: 'Running',
+        }
+        state_name = states.get(state)
+        log(f'Process state -> {state_name}')
         
     def keyPressEvent(self, event):
         modifiers = event.modifiers()
@@ -389,10 +418,22 @@ class Config(QDialog):
             log('Secret combo Ctrl+F12, call hdbuserstore', 2)
             log(r'    read more: https://www.pythonguis.com/tutorials/qprocess-external-programs/')
 
-            p = QProcess()
-            p.finished.connect(self.processFinished)
-            p.start('hdbuserstore', ['test'])
-            time.sleep(10)
+            self.p = QProcess()
+            self.p.finished.connect(self.processFinished)
+            self.p.readyReadStandardOutput.connect(self.processStdOut)
+            self.p.readyReadStandardError.connect(self.processStdErr)
+            self.p.stateChanged.connect(self.processStateChange)
+            self.p.readyRead.connect(self.processReadReady)
+            # hdbuserstore -i set <sid> <host>:<port> <username>
+            
+            confID = self.confCB.currentText()
+            hostport = self.hostportEdit.text().strip()
+            user = self.userEdit.text().strip()
+
+            if cfg('dev'):
+                self.p.start('hdbuserstore.bat', ['-i', 'set', 'test', hostport, user])
+            else:
+                self.p.start('hdbuserstore', ['-i', 'set', 'test', hostport, user])
         else:
             super().keyPressEvent(event)
     
