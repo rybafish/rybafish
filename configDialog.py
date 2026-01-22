@@ -80,6 +80,8 @@ class Config(QDialog):
 
         self.auth = None
         self.prcPwdRequest = None
+        self.prcReadReady = None
+        self.prcResult = None
         
         # self.cfgManager = cfgManager(cfg('connectionsFile', None))
         self.initUI()
@@ -378,16 +380,18 @@ class Config(QDialog):
             self.pwdEdit.setEchoMode(QLineEdit.Password)
         
     def processFinished(self):
-        log(f'Process finished {self.prcPwdRequest=}')
+        log(f'Process finished {self.prcPwdRequest=}, {self.prcReadReady=}')
+
+        log(f'Process result: {self.prcResult}')
         
     def processStdErr(self):
-        log(f'Process err {self.prcPwdRequest=}')
+        log(f'Process err {self.prcPwdRequest=}, {self.prcReadReady=}')
         d = self.p.readAllStandardError()
         s = bytes(d).decode('utf8')
         log(s)
 
     def processStdOut(self):
-        log(f'Process stdout, st={self.prcPwdRequest}')
+        log(f'Process stdout, st={self.prcPwdRequest}, {self.prcReadReady=}')
         d = self.p.readAllStandardOutput()
         s = bytes(d).decode('utf8')
         log(s.strip())
@@ -395,19 +399,26 @@ class Config(QDialog):
         if s == 'Password:':
             deb('yep, trigger pwdRequest')
             self.prcPwdRequest = 'requested'
+            self.processSendPwd()
         else:
             deb('not pwd prompt...')
 
-    def processReadReady(self):
-        log(f'Process ready to read... {self.prcPwdRequest=}')
+        if self.prcPwdRequest == 'sent':
+            self.prcResult = s
 
-        if self.prcPwdRequest == 'requested':
+    def processSendPwd(self):
+        log(f'Process SendPwd, st={self.prcPwdRequest}, {self.prcReadReady=}')
+        if self.prcPwdRequest == 'requested' and self.prcReadReady:
             pwd = self.pwdEdit.text().strip()
             deb(f'pwd: {pwd}', comp='_pwd')
             self.p.write('test\n'.encode())
             self.prcPwdRequest = 'sent'
         else:
             deb('pwd not requested yet...')
+        
+    def processReadReady(self):
+        log(f'Process ready to read... {self.prcPwdRequest=}, {self.prcReadReady=}')
+        self.prcReadReady = True
         
     def processStateChange(self, state):
         states = {
@@ -424,10 +435,11 @@ class Config(QDialog):
         if modifiers == Qt.ControlModifier and event.key() == Qt.Key_F12:
             import time
 
-            log('Secret combo Ctrl+F12, call hdbuserstore', 2)
-            log(r'    read more: https://www.pythonguis.com/tutorials/qprocess-external-programs/')
+            log('wow! Secret combo Ctrl+F12, call hdbuserstore!', 2)
 
             self.prcPwdRequest = False
+            self.prcReadReady = False
+            self.prcResult = None
             self.p = QProcess()
             self.p.finished.connect(self.processFinished)
             self.p.readyReadStandardOutput.connect(self.processStdOut)
