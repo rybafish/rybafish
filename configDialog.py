@@ -79,6 +79,7 @@ class Config(QDialog):
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint);
 
         self.auth = None
+        self.prcPwdRequest = None
         
         # self.cfgManager = cfgManager(cfg('connectionsFile', None))
         self.initUI()
@@ -377,28 +378,36 @@ class Config(QDialog):
             self.pwdEdit.setEchoMode(QLineEdit.Password)
         
     def processFinished(self):
-        log('Process finished')
+        log(f'Process finished {self.prcPwdRequest=}')
         
     def processStdErr(self):
-        log('Process err')
+        log(f'Process err {self.prcPwdRequest=}')
         d = self.p.readAllStandardError()
         s = bytes(d).decode('utf8')
         log(s)
 
     def processStdOut(self):
-        log('Process stdout')
+        log(f'Process stdout, st={self.prcPwdRequest}')
         d = self.p.readAllStandardOutput()
         s = bytes(d).decode('utf8')
-        log(s)
+        log(s.strip())
+
+        if s == 'Password:':
+            deb('yep, trigger pwdRequest')
+            self.prcPwdRequest = 'requested'
+        else:
+            deb('not pwd prompt...')
 
     def processReadReady(self):
-        log('Process ready to read...')
+        log(f'Process ready to read... {self.prcPwdRequest=}')
 
-        pwd = self.pwdEdit.text().strip()
-
-        deb(f'pwd: {pwd}', comp='_pwd')
-        
-        self.p.write('test\n'.encode())
+        if self.prcPwdRequest == 'requested':
+            pwd = self.pwdEdit.text().strip()
+            deb(f'pwd: {pwd}', comp='_pwd')
+            self.p.write('test\n'.encode())
+            self.prcPwdRequest = 'sent'
+        else:
+            deb('pwd not requested yet...')
         
     def processStateChange(self, state):
         states = {
@@ -418,6 +427,7 @@ class Config(QDialog):
             log('Secret combo Ctrl+F12, call hdbuserstore', 2)
             log(r'    read more: https://www.pythonguis.com/tutorials/qprocess-external-programs/')
 
+            self.prcPwdRequest = False
             self.p = QProcess()
             self.p.finished.connect(self.processFinished)
             self.p.readyReadStandardOutput.connect(self.processStdOut)
@@ -433,7 +443,9 @@ class Config(QDialog):
             if cfg('dev'):
                 self.p.start('hdbuserstore.bat', ['-i', 'set', 'test', hostport, user])
             else:
-                self.p.start('hdbuserstore', ['-i', 'set', 'test', hostport, user])
+                params = ['-i', 'set', confID, hostport, user]
+                log(f'hdbuserstore' + ' '.join(params), 2)
+                self.p.start('hdbuserstore', params)
         else:
             super().keyPressEvent(event)
     
