@@ -382,6 +382,7 @@ class Config(QDialog):
     def processFinished(self):
         log(f'Process finished {self.prcPwdRequest=}, {self.prcReadReady=}')
 
+        self.setStatus(f'hdbuserstore: {self.prcResult}')
         log(f'Process result: {self.prcResult}')
         
     def processStdErr(self):
@@ -394,7 +395,7 @@ class Config(QDialog):
         log(f'Process stdout, st={self.prcPwdRequest}, {self.prcReadReady=}')
         d = self.p.readAllStandardOutput()
         s = bytes(d).decode('utf8')
-        log(s.strip())
+        s = s.strip()
 
         if s == 'Password:':
             deb('yep, trigger pwdRequest')
@@ -410,8 +411,7 @@ class Config(QDialog):
         log(f'Process SendPwd, st={self.prcPwdRequest}, {self.prcReadReady=}')
         if self.prcPwdRequest == 'requested' and self.prcReadReady:
             pwd = self.pwdEdit.text().strip()
-            deb(f'pwd: {pwd}', comp='_pwd')
-            self.p.write('test\n'.encode())
+            self.p.write(f'{pwd}\n'.encode())
             self.prcPwdRequest = 'sent'
         else:
             deb('pwd not requested yet...')
