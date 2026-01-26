@@ -409,12 +409,11 @@ class Config(QDialog):
 
     def processSendPwd(self):
         log(f'Process SendPwd, st={self.prcPwdRequest}, {self.prcReadReady=}')
+
         if self.prcPwdRequest == 'requested' and self.prcReadReady:
             pwd = self.pwdEdit.text().strip()
             self.p.write(f'{pwd}\n'.encode())
             self.prcPwdRequest = 'sent'
-        else:
-            deb('pwd not requested yet...')
         
     def processReadReady(self):
         log(f'Process ready to read... {self.prcPwdRequest=}, {self.prcReadReady=}')
@@ -429,13 +428,18 @@ class Config(QDialog):
         state_name = states.get(state)
         log(f'Process state -> {state_name}')
         
+
+        if state_name == 'Not running':
+            if not self.prcPwdRequest and not self.prcResult:
+                self.setStatus(f'hdbuserstore: n/a')
+        
     def keyPressEvent(self, event):
         modifiers = event.modifiers()
         
         if modifiers == Qt.ControlModifier and event.key() == Qt.Key_F12:
             import time
 
-            log('wow! Secret combo Ctrl+F12, call hdbuserstore!', 2)
+            log('Secret combo Ctrl+F12, call hdbuserstore!', 2)
 
             self.prcPwdRequest = False
             self.prcReadReady = False
@@ -452,12 +456,11 @@ class Config(QDialog):
             hostport = self.hostportEdit.text().strip()
             user = self.userEdit.text().strip()
 
-            if cfg('dev'):
-                self.p.start('hdbuserstore.bat', ['-i', 'set', 'test', hostport, user])
-            else:
-                params = ['-i', 'set', confID, hostport, user]
-                log(f'hdbuserstore' + ' '.join(params), 2)
-                self.p.start('hdbuserstore', params)
+            params = ['-i', 'set', confID, hostport, user]
+            log(f'hdbuserstore ' + ' '.join(params), 2)
+
+            self.setStatus(f'hdbuserstore: call...')
+            self.p.start('hdbuserstore', params)
         else:
             super().keyPressEvent(event)
     
