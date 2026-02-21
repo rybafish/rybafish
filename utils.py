@@ -1949,6 +1949,17 @@ def undoPwd_depr(pwd):
 
 '''
     
+@profiler
+def hash(s):
+    import hashlib
+
+    hash_object = hashlib.sha256(s.encode())
+    hashnum = int(hash_object.hexdigest(), 16) % 1000
+
+    log(f'hashcalc: {hashnum}')
+
+    return hashnum
+    
 if __name__ == '__main__':
     # for v in ('2.00.079.02.1734604810', '2.00.045.00.157563931', '123'):
     #     print(f'{v} --> {hana_version(v)}')

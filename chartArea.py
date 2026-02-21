@@ -1746,7 +1746,13 @@ class myWidget(QWidget):
                                 for i in range(gbn):
                                     # need to rotate raduga anyways
                                     if kpiStylesNNN[kpi]['multicolor']:
-                                        pen = kpiDescriptions.getRadugaPen()
+                                        if 'hashColorIndex' in kpiStylesNNN[kpi]:
+                                            gb = self.ndata[h][kpi][i][0]
+                                            gbh = utils.hash(gb)
+                                        else:
+                                            gbh = None
+
+                                        pen = kpiDescriptions.getRadugaPen(gbh)
                                     else:
                                         # pen = self.kpiPen[h][kpi]
                                         pen = kpiDescriptions.customPen(kpiKey, self.kpiPen[h][kpi])
@@ -2677,7 +2683,15 @@ class myWidget(QWidget):
                     if subtype == 'multiline':
                         # rotate raduga despite the hiddennesss
                         if kpiStylesNNN[kpi]['multicolor']:
-                            kpiPen = kpiDescriptions.getRadugaPen()
+                            #print(kpiStylesNNN[kpi])
+
+                            if 'hashColorIndex' in kpiStylesNNN[kpi]:
+                                gb = self.ndata[h][kpi][rn][0]
+                                gbh = utils.hash(gb)
+                            else:
+                                gbh = None
+                                
+                            kpiPen = kpiDescriptions.getRadugaPen(gbh)
 
                         dataArray = self.ndata[h][kpi][rn][1]
                         if kpiKey in self.hiddenKPIs and kpiKey in self.hiddenGBs and self.hiddenGBs[kpiKey]:

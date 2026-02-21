@@ -597,7 +597,7 @@ def generateRaduga():
     resetRaduga()
     
 
-def getRadugaPen():
+def getRadugaPen(hashindex=None):
     global currentIndex
     
     n = len(radugaPens)
@@ -605,7 +605,10 @@ def getRadugaPen():
     if n == 0:
         return None
     
-    pen = radugaPens[currentIndex]
+    if hashindex is not None:
+        pen = radugaPens[hashindex % n]
+    else:
+        pen = radugaPens[currentIndex]
 
     currentIndex += 1
     
@@ -757,6 +760,7 @@ def createStyle(kpi, custom=False, sqlIdx=None, path=None):
             style['groupby'] = kpi['splitby']
             style['stacked'] = kpi.get('stacked', False)
             style['multicolor'] = kpi.get('multicolor', False)
+            style['hashColorIndex'] = kpi.get('hashColorIndex', False)
             style['descending'] = kpi.get('desc', False)
             style['legendCount'] = kpi.get('legendCount', 5)
             style['others'] = kpi.get('others', False)
