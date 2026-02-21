@@ -452,7 +452,10 @@ def resourcePath(folder, file):
     
 def fakeRaduga():
     global config
-    config['raduga'] = ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#7fff00', '#00fa9a', '#8a2be2']
+
+    if 'raduga' not in config or not config['raduga']:
+        log('[W] fake raduga as no config entry')
+        config['raduga'] = ['#20b2aa', '#32cd32', '#7f007f', '#ff0000', '#ff8c00', '#0000e0', '#00fa9a', '#8a2be2']
     
 def stripPath(comp=0):
     ''' format last N components of script path and return as a string
@@ -490,7 +493,6 @@ def loadConfig(silent=False):
         f.close()
         
         if 'raduga' not in config:
-            log('raduga list of colors is not defined in config, so using a pre-defined list...', 2)
             fakeRaduga()
             
     except:
