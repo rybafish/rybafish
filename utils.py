@@ -1401,6 +1401,8 @@ def parseCSV(txt, delimiter=',', trim=False):
         
         for c in range(len(types)):
             ml = 0
+            mld1 = 0
+            mld2 = 0
             
             for i in range(len(rows)):
                 if types[c] == 'int':
@@ -1410,6 +1412,18 @@ def parseCSV(txt, delimiter=',', trim=False):
                 elif types[c] == 'timestamp':
                     #rows[i][c] = datetime.fromisoformat(rows[i][c])
                     rows[i][c] = extended_fromisoformat(rows[i][c])
+                elif types[c] == 'decimal':
+                    v = rows[i][c]
+                    rows[i][c] = float(v)
+                    #intpart, floatpart = v.split('.')
+                    intpart, _, floatpart =  v.partition('.')
+                    deb(f'{intpart=} {floatpart=}, {v=}')
+
+                    if mld1 < len(intpart):
+                        mld1 = len(intpart)
+                    if mld2 < len(floatpart):
+                        mld2 = len(floatpart)
+
                 elif types[c] == 'varchar':
                     if ml < len(rows[i][c]):
                         ml = len(rows[i][c])
@@ -1418,6 +1432,8 @@ def parseCSV(txt, delimiter=',', trim=False):
                     
             if types[c] in ('varchar', 'int'):
                 maxlenlist.append(ml)
+            elif types[c] == 'decimal':
+                maxlenlist.append((mld1, mld2))
             else:
                 maxlenlist.append(None)
                 
@@ -1431,8 +1447,22 @@ def parseCSV(txt, delimiter=',', trim=False):
         
         for ii in range(len(rows)):
             if not reInt.match(rows[ii][j]):
-                log(f'not a number: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
-                log(f'not a number, row for the reference: {str(rows[ii])}', 5)
+                log(f'not an integer: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
+                log(f'not an integer, row for the reference: {str(rows[ii])}', 5)
+                return False
+                
+        return True
+        
+    @profiler
+    def check_decimal(j):
+        log(f'check column #{j} ({header[j]}) for decimal, {trim=}', 5)
+        
+        reInt = re.compile(r'^-?\d+(\.\d+)?$')
+        
+        for ii in range(len(rows)):
+            if not reInt.match(rows[ii][j]):
+                log(f'not a decimal: row: {ii}, col: {j}: "{rows[ii][j]}"', 5)
+                log(f'not a decimal, row for the reference: {str(rows[ii])}', 5)
                 return False
                 
         return True
@@ -1481,6 +1511,8 @@ def parseCSV(txt, delimiter=',', trim=False):
     for i in range(numCols):
         if check_integer(i):
             types[i] = 'int'
+        elif check_decimal(i):
+            types[i] = 'decimal'
         elif check_timestamp(i):
             types[i] = 'timestamp'
         else:

@@ -169,6 +169,10 @@ class csvImportDialog(QDialog):
                 # it's actually 2*1023**3, but just to be on the safe side,
                 colType = 'bigint'
             
+            if c[1] == 'decimal':
+                m1, m2 = c[2]
+                length = f'({m1+m2}, {m2})'
+                
             createCols += f'\n    {c[0]:{maxLen}}{colType}{length},'
             
         createCols = createCols[:-1]
