@@ -1950,13 +1950,13 @@ def undoPwd_depr(pwd):
 '''
     
 @profiler
-def hash(s):
+def hashIndex(s):
     import hashlib
 
     hash_object = hashlib.sha256(s.encode())
     hashnum = int(hash_object.hexdigest(), 16) % 1000
 
-    log(f'hashcalc: {hashnum}')
+    log(f'hashcalc: {s} --> {hashnum}', component='hashIndex')
 
     return hashnum
     

@@ -1746,13 +1746,18 @@ class myWidget(QWidget):
                                 for i in range(gbn):
                                     # need to rotate raduga anyways
                                     if kpiStylesNNN[kpi]['multicolor']:
-                                        if 'hashColorIndex' in kpiStylesNNN[kpi]:
-                                            gb = self.ndata[h][kpi][i][0]
-                                            gbh = utils.hash(gb)
+                                        if 'hashColorIndex' in kpiStylesNNN[kpi] and kpiStylesNNN[kpi]['hashColorIndex']:
+                                            if kpiStylesNNN[kpi]['hashColorIndex'] == True:
+                                                gb = self.ndata[h][kpi][i][0]
+                                            else:
+                                                gb = self.ndata[h][kpi][i][0] + str(kpiStylesNNN[kpi]['hashColorIndex'])
+                                                
+                                            gbh = utils.hashIndex(gb)
                                         else:
                                             gbh = None
 
                                         pen = kpiDescriptions.getRadugaPen(gbh)
+                                        log(f'pen color for {gbh} -> {pen.color().name()}', component='hashIndex')
                                     else:
                                         # pen = self.kpiPen[h][kpi]
                                         pen = kpiDescriptions.customPen(kpiKey, self.kpiPen[h][kpi])
@@ -2685,9 +2690,13 @@ class myWidget(QWidget):
                         if kpiStylesNNN[kpi]['multicolor']:
                             #print(kpiStylesNNN[kpi])
 
-                            if 'hashColorIndex' in kpiStylesNNN[kpi]:
-                                gb = self.ndata[h][kpi][rn][0]
-                                gbh = utils.hash(gb)
+                            if 'hashColorIndex' in kpiStylesNNN[kpi] and kpiStylesNNN[kpi]['hashColorIndex']:
+                                if kpiStylesNNN[kpi]['hashColorIndex'] == True:
+                                    gb = self.ndata[h][kpi][rn][0]
+                                else:
+                                    gb = self.ndata[h][kpi][rn][0] + str(kpiStylesNNN[kpi]['hashColorIndex']) 
+
+                                gbh = utils.hashIndex(gb)
                             else:
                                 gbh = None
                                 
