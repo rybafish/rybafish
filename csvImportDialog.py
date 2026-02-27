@@ -1,7 +1,7 @@
 import re
 import os.path
 
-from PyQt5.QtWidgets import (QPushButton, QDialog, QWidget, QLineEdit, QAction, QStyle, QCheckBox,
+from PyQt5.QtWidgets import (QPushButton, QDialog, QTextEdit, QWidget, QLineEdit, QAction, QStyle, QCheckBox,
                              QHBoxLayout, QVBoxLayout, QApplication, QLabel, QStatusBar, QPlainTextEdit, QTableWidget, QSplitter, QFileDialog, QComboBox)
 
 from QPlainTextEditLN import QPlainTextEditLN
@@ -229,6 +229,12 @@ class csvImportDialog(QDialog):
         if self.lastChange == 'createText':
             self.syncTargetObject()
         
+        batchSizeTxt = self.batchSize.text()
+        batchSize = utils.safeInt(batchSizeTxt)
+
+        if not batchSize:
+            log(f'[W] invalid batch size: {batchSizeTxt}, will be ignored')
+        
         idx = self.dpCB.currentIndex()
         
         if not self.cols or not self.rows:
@@ -286,35 +292,104 @@ class csvImportDialog(QDialog):
         self.log(f'statement for insert: {sql}')
         
         self.repaint()
-        
-        with profiler('csv import loop'):
-            i = 0
-            nolog = False
-            try:
-                for r in self.rows:
-                    i += 1
-                    dbi.execute_query_desc(conn, sql, params=r, resultSize=1, noLogging=nolog)
+
+        if batchSize:
+            with profiler('csv import batch'):
+                rowCount = len(self.rows)
+                batchCount = int((rowCount-1) / batchSize) + 1
+
+                log(f'import: number of rows: {rowCount}, batch size: {batchSize}, batch count: {batchCount}')
+
+                bb = 0
+                rr = 0
+
+                log('SQL logging will be suppressed for the sake of performance. You can forse logging by setting batchImportLog=True in config.yaml')
+                nolog = True
+
+                if cfg('batchImportLog', False):
+                    nolog = False
                     
-                    if i == 13:
-                        log('[SQL] switching sql logging off for the sake of performance', 4)
-                        nolog = True
+                for b in range(batchCount):
+                    rowFrom = batchSize*b
+                    rowTo = min(batchSize*(b+1), rowCount)
+                    log(f'Batch #{b}, rows range: {rowFrom} - {rowTo}')
+
+                    sql = 'do begin\n'
+
+                    for i in range(rowFrom, rowTo):
+                        values = []
+                        
+                        for j in range(len(self.cols)):
+                            v = self.rows[i][j]
+                            cType = self.cols[j][1]
+                            # deb(f'{b:03}: {v}, {type(v)} / {cType}')
+
+                            if cType == 'varchar':
+                                v = v.replace("'", "''")
+                                v = f"'{v}'"
+                                # values.append(f"'{v}'")
+                            elif cType == 'timestamp':
+                                v = f"'{v}'"
+                            else:
+                                pass # v = v
+                                
+                            # log(f'{values} adding value: {v}')
+                            values.append(str(v))
+
+                        rr += 1
+                        values = ','.join(values)
+                        sql += f'insert into {targetObject} values ({values});\n'
+
+                    sql += 'end'
                     
+                    try:
+                        dbi.execute_query_desc(conn, sql, params=[], resultSize=0, noLogging=nolog)
+                    except utils.dbException as e:
+                        self.log(f'[SQL] error executing {sql}')
+                        self.log(f'Failed to perform batch: {e}, aborting.', True)
+                        break
+                    
+                    bb += 1
+
+                    # log(f'batch insert this: \n{sql}')
+                        
+                # not needed as whole batch mode is HDB only
+                # if hasattr(dbi, 'name'):
+                #    if dbi.name == 'HDB':
                 dbi.execute_query_desc(conn, 'commit', params=[], resultSize=0)
-                dbi.close_connection(conn)
-                    
-            except utils.dbException as e:
-                self.log(f'[SQL] error executing {sql}')
-                self.log(f'[SQL] params {r}')
-                self.log(f'Failed to perform inserts on line {i}: {e}, aborting.', True)
-                
+
+                self.log(f'Finished okay, {bb} batches executed, total {rr} rows commited. You can close the window now.')
+        else:
+            # line by line no batch
+            with profiler('csv import loop'):
+                i = 0
+                nolog = False
                 try:
+                    for r in self.rows:
+                        i += 1
+                        dbi.execute_query_desc(conn, sql, params=r, resultSize=1, noLogging=nolog)
+
+                        if i == 13:
+                            log('[SQL] switching sql logging off for the sake of performance', 4)
+                            nolog = True
+
+                    dbi.execute_query_desc(conn, 'commit', params=[], resultSize=0)
                     dbi.close_connection(conn)
+
                 except utils.dbException as e:
-                    self.log(f'Failed to close connection: {e}')
-                    
-                return False
+                    self.log(f'[SQL] error executing {sql}')
+                    self.log(f'[SQL] params {r}')
+                    self.log(f'Failed to perform inserts on line {i}: {e}, aborting.', True)
+
+                    try:
+                        dbi.close_connection(conn)
+                    except utils.dbException as e:
+                        self.log(f'Failed to close connection: {e}')
+
+                    return False
             
-        self.log(f'Finished okay, {i} rows inserted and commited. You can close the window now.')
+                # dbi.execute_query_desc(conn, 'commit', params=[], resultSize=0)
+                self.log(f'Finished okay, {i} rows inserted and commited. You can close the window now.')
             
         return True
 
@@ -452,6 +527,34 @@ class csvImportDialog(QDialog):
         self.targetObject.setText(file)
 
 
+    def dpChanged(self, i):
+
+        if i is None:
+            i = self.dpCB.currentIndex()
+
+        deb(f'DP changed: -> {i}')
+        deb(f'DP changed: ndp: {self.ndp}')
+        deb(f'DP changed: actualDP: {self.actualDPs}')
+
+        # if hasattr(dp, 'dbi'):
+        #     dbName = f'[{dp.dbi.name}]'
+
+        if i >= len(self.actualDPs):
+            log(f'[W] dpChange: invalid index: {i}')
+            return
+        
+        dp = self.actualDPs[i]
+
+        dbName = None
+        if hasattr(dp, 'dbi'):
+            dbName = dp.dbi.name
+
+        deb(f'{dbName=}')
+        if dbName == 'HDB':
+            self.batchSize.setEnabled(True)
+        else:
+            self.batchSize.setEnabled(False)
+            
     def initUI(self):
 
         iconPath = utils.resourcePath('ico', 'favicon.png')
@@ -489,6 +592,8 @@ class csvImportDialog(QDialog):
         self.previewTable = QResultSet(None)
         
         self.dpCB = QComboBox()
+        self.dpCB.currentIndexChanged.connect(self.dpChanged)
+        
         self.trimCB = QCheckBox('Trim spaces around values')
 
         self.trimCB.setChecked(cfg('importTrim', True))
@@ -576,8 +681,23 @@ class csvImportDialog(QDialog):
         
         wrapperLog.setLayout(loLog)
         
+        # batch size line
+        # batchLO = QHBoxLayout()
+        # batchLabel = QLabel('Batch size:')
+        self.batchSize = QLineEdit('512')
+        self.batchSize.setMaximumWidth(50)
+        self.batchSize.setToolTip('Batch size for inserts, HDB only.')
+        
+        # batchLO.addWidget(batchLabel)
+        # batchLO.addWidget(batchSize)
+        # batchLO.addStretch(10)
+
+        wrapperBatch = QWidget()
+        # wrapperBatch.setLayout(batchLO)
 
         #buttons line
+        buttonsHL.addStretch(1)
+        buttonsHL.addWidget(self.batchSize)
         buttonsHL.addStretch(10)
         buttonsHL.addWidget(QLabel('Target DB:'))
         buttonsHL.addWidget(self.dpCB)
@@ -591,6 +711,7 @@ class csvImportDialog(QDialog):
         sp1.addWidget(wrapperCSV)
         sp1.addWidget(wrapperCreate)
         sp1.addWidget(wrapperPreview)
+        # sp1.addWidget(wrapperBatch)
         sp1.addWidget(wrapperLog)
         
         mainVL.addWidget(sp1)
@@ -615,6 +736,10 @@ class csvImportDialog(QDialog):
         
         h = sp1.size().height()
         vsizes = [int(h*x) for x in [0.3, 0.3, 0.3, 0.01]]
+        
+
+        # explicit update of batch size (based on dbi type)
+        self.dpChanged(i=None)
         
         sp1.setSizes(vsizes)
         
