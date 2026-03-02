@@ -248,7 +248,7 @@ class cfgManager():
             dump(ds, f, default_flow_style=None, sort_keys=False)
             f.close()
         except Exception as e:
-            log('layout dump issue:' + str(e))
+            log('layout dump issue:' + str(e)) #dummy change
 '''
 
 class Preset():
