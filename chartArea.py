@@ -1757,7 +1757,7 @@ class myWidget(QWidget):
                                             gbh = None
 
                                         pen = kpiDescriptions.getRadugaPen(gbh)
-                                        log(f'pen color for {gbh} -> {pen.color().name()}', component='hashIndex')
+                                        log(f'legend pen color for {gbh} -> {pen.color().name()}', component='hashIndex')
                                     else:
                                         # pen = self.kpiPen[h][kpi]
                                         pen = kpiDescriptions.customPen(kpiKey, self.kpiPen[h][kpi])

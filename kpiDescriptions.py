@@ -606,6 +606,7 @@ def getRadugaPen(hashindex=None):
         return None
     
     if hashindex is not None:
+        log(f'radugaPen: {hashindex} -> {hashindex % n}', component='hashIndex')
         pen = radugaPens[hashindex % n]
     else:
         pen = radugaPens[currentIndex]
