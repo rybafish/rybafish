@@ -610,8 +610,7 @@ def getRadugaPen(hashindex=None):
         pen = radugaPens[hashindex % n]
     else:
         pen = radugaPens[currentIndex]
-
-    currentIndex += 1
+        currentIndex += 1       # only for non hashed things 
     
     if currentIndex >= n:
         currentIndex = 0
