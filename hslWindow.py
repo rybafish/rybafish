@@ -1005,6 +1005,12 @@ class hslWindow(QMainWindow):
         if result == 'open' or (file and not isinstance(w, sqlConsole.sqlConsole)):
             # chart tab is actually PyQt5.QtWidgets.QSplitter, it does not have proper class on top
             console = self.newConsole(generateName=True)
+
+            if console is None:
+                log('[W] Cannot create console? None returned, aborting', 2)
+                self.statusMessage('Console creation error, no connection?', True)
+                return
+
             txt = extractFile(file)
             console.cons.insertTextS(txt)
             
