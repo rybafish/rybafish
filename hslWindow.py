@@ -1798,6 +1798,10 @@ class hslWindow(QMainWindow):
             utils.msgDialog('Too complex', 'Seems you are using several connections at the moment, password change only supported for a single connection, sorry.', self)
             return
 
+        if len(self.chartArea.ndp) < 1:
+            utils.msgDialog('No connection', 'Connection not yet fully established, try once connected to the DB', self)
+            return
+        
         dp = self.chartArea.ndp[0]
 
         user = conf.get('user')
