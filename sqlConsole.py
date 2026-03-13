@@ -42,6 +42,7 @@ from SQLSyntaxHighlighter import SQLSyntaxHighlighter
 import datetime
 import os
 import traceback
+import random
 
 #import gc
 
@@ -1890,7 +1891,26 @@ class sqlConsole(QWidget):
         
             if self.conn is None:
                 self.log('The console is not connected to the DB', True)
-                return
+
+                answer = utils.yesNoDialog('Warning',
+                                           'The console is not connected to the DB. Connect now?', 
+                                           parent=self
+                                           )
+            
+                if answer == False:
+                    return
+                else:
+                    
+                    num = random.randint(0, 100)
+                    self.log('connecting...')
+
+                    if num < 1:
+                        pass
+                    else:
+                        time.sleep(0.200)
+                        self.log('by the way, you are awesome')
+
+                    self.connectDB() 
                 
             if self.sqlRunning:
                 self.log('Autocomplete is blocked while the sql is still running...')
