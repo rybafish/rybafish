@@ -2660,7 +2660,7 @@ class myWidget(QWidget):
                     kpiPen.setWidth(1)
                     qp.setPen(kpiPen)
 
-                t0 = time.time()
+                # t0 = time.time()
 
                 points = [0]*array_size
                 
@@ -2727,13 +2727,18 @@ class myWidget(QWidget):
 
                     points_to_draw = calculateOne(asyncMultiline)
 
+                    t0 = time.time()
                     with profiler('myWidget.drawPolyline'):
                         qp.drawPolyline(QPolygon(points[:points_to_draw]))
                 
+                    t1 = time.time()
+
+                    if cfg('experimental') and t1 - t0 > 1:
+                        timeTook = str(round((t1 - t0), 3))
+                        deb(f'points: {points_to_draw}, time: {timeTook}, kpi: {kpi}', comp='drawPolyline')
+                    
                 points.clear()
 
-                t3 = time.time()
-                
                 #log('%s: skip/calc/draw: %s/%s/%s, (skip: %i)' % (kpi, str(round(t1-t0, 3)), str(round(t2-t1, 3)), str(round(t3-t2, 3)), points_to_skip))
         
         qp.setPen(QColor('#888'))
