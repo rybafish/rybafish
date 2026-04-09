@@ -10,7 +10,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
                 'outer', 'join', 'as', 'on', 'with', 'distinct', 'create', 'drop', 'procedure', 'table', 'truncate', 'function',
                 'where', 'asc', 'desc', 'case', 'when', 'else', 'and', 'or', 'like', 'round', 'count', 'sum', 'min', 'max', 'avg',
                 'update', 'delete', 'insert', 'into', 'call', 'commit', 'rollback', 'alter', 'view', 
-                'do', 'begin', 'end', 'then', 'if', 'elseif', 'in', 'not', 'between', 'having',  'union\s+all', 'union', 'except']
+                'do', 'begin', 'end', 'then', 'if', 'elseif', 'in', 'not', 'between', 'having',  'union\s+all', 'union', 'except', 'length']
                 
     def __init__(self, prnt):
         super().__init__(prnt)

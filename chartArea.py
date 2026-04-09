@@ -3179,6 +3179,27 @@ class chartArea(QFrame):
             self.widget.kpiPen[row] = self.widget.kpiPen[row-1]
             self.widget.kpiPen[row-1] = v
 
+        # down 
+            # if i>=0 and i<len(self.hosts)-1:
+            #     v = self.hosts.pop(i)
+            #     deb(f'doing pop... {self.hosts=} --> {v}')
+            #     self.hosts.insert(i+1, v)
+        if row>=0 and row<len(hosts)-1:
+            v = hosts.pop(row)
+            deb(f'doing host pop... {hosts=} --> {v}')
+            hosts.insert(row+1, v)
+
+            swap(self.hostKPIsList, row+1)
+            swap(self.hostKPIsStyles, row+1)
+            swap(self.widget.nkpis, row+1)
+            swap(self.widget.nscales, row+1)
+            swap(self.widget.nscalesml, row+1)
+            swap(self.widget.ndata, row+1)
+
+            # dict
+            v = self.widget.kpiPen[row]
+            self.widget.kpiPen[row] = self.widget.kpiPen[row+1]
+            self.widget.kpiPen[row+1] = v
 
         self.hostsUpdated.emit()
 
