@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, 
-    QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView)
+                             QTableWidget, QTableWidgetItem, QCheckBox, QMenu, QAbstractItemView, QApplication)
     
 from PyQt5.QtGui import QFont, QBrush, QColor
     
@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt
 
 from PyQt5.QtCore import pyqtSignal
 
-from utils import log
+from utils import log, deb
 
 class hostsTable(QTableWidget):
 
@@ -20,6 +20,48 @@ class hostsTable(QTableWidget):
     def __init__(self):
         super().__init__()
         self.initTable()
+
+    def moveHost(self, i, direction):
+        deb(f'ok, host move: {direction=}')
+
+        deb(f'row: {i}, host: {self.hosts[i]}')
+
+        deb(f'before: {self.hosts=}')
+
+        if direction == 'up':
+            if i>0 and i<len(self.hosts):
+                v = self.hosts.pop(i)
+                deb(f'doing pop... {self.hosts=} --> {v}')
+                self.hosts.insert(i-1, v)
+        elif direction == 'down':
+            if i>=0 and i<len(self.hosts)-1:
+                v = self.hosts.pop(i)
+                deb(f'doing pop... {self.hosts=} --> {v}')
+                self.hosts.insert(i+1, v)
+
+        deb(f'after: {self.hosts=}')
+        # self.refill(self.host)
+        # self.refreshRequest.emit()
+        self.hostsUpdated()
+
+    def keyPressEvent (self, event):
+        #log keypress
+        modifiers = QApplication.keyboardModifiers()
+
+        kcode = event.key()
+
+        if modifiers & Qt.AltModifier and cfg('experimental'):
+            if kcode == Qt.Key_Up:
+                i = self.currentRow()
+                self.moveHost(i, 'up')
+                return
+
+            if kcode == Qt.Key_Down:
+                i = self.currentRow()
+                self.moveHost(i, 'down')
+                return
+
+        super().keyPressEvent(event)
 
     def contextMenuEvent(self, event):
 
