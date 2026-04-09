@@ -1990,7 +1990,7 @@ class myWidget(QWidget):
             timeTxt = 'Time scale: ' + self.timeScale
 
             utcOffset = None
-            if cfg('legendTimezone', False):
+            if cfg('legendTimezone', False) or cfg('experimental'):
 
                 for dp in self._parent.ndp:
                     prop = dp.dbProperties
