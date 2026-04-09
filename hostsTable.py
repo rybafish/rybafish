@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt
 
 from PyQt5.QtCore import pyqtSignal
 
-from utils import log, deb
+from utils import log, deb, cfg
 
 class hostsTable(QTableWidget):
 
