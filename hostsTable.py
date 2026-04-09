@@ -16,6 +16,7 @@ class hostsTable(QTableWidget):
     hostChanged = pyqtSignal([int])
     adjustTimeZones = pyqtSignal([int])
     openSecondaryConsole = pyqtSignal([int])
+    hostsReorder = pyqtSignal([int, int])
 
     def __init__(self):
         super().__init__()
@@ -24,25 +25,27 @@ class hostsTable(QTableWidget):
     def moveHost(self, i, direction):
         deb(f'ok, host move: {direction=}')
 
-        deb(f'row: {i}, host: {self.hosts[i]}')
+        # deb(f'row: {i}, host: {self.hosts[i]}')
 
-        deb(f'before: {self.hosts=}')
+        # deb(f'before: {self.hosts=}')
 
         if direction == 'up':
-            if i>0 and i<len(self.hosts):
-                v = self.hosts.pop(i)
-                deb(f'doing pop... {self.hosts=} --> {v}')
-                self.hosts.insert(i-1, v)
+            self.hostsReorder.emit(i, -1)
+            # if i>0 and i<len(self.hosts):
+                # v = self.hosts.pop(i)
+                # deb(f'doing pop... {self.hosts=} --> {v}')
+                # self.hosts.insert(i-1, v)
         elif direction == 'down':
-            if i>=0 and i<len(self.hosts)-1:
-                v = self.hosts.pop(i)
-                deb(f'doing pop... {self.hosts=} --> {v}')
-                self.hosts.insert(i+1, v)
+            self.hostsReorder.emit(i, 1)
+            # if i>=0 and i<len(self.hosts)-1:
+            #     v = self.hosts.pop(i)
+            #     deb(f'doing pop... {self.hosts=} --> {v}')
+            #     self.hosts.insert(i+1, v)
 
-        deb(f'after: {self.hosts=}')
+        # deb(f'after: {self.hosts=}')
         # self.refill(self.host)
         # self.refreshRequest.emit()
-        self.hostsUpdated()
+        # self.hostsUpdated()
 
     def keyPressEvent (self, event):
         #log keypress

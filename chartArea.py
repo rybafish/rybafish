@@ -3140,6 +3140,48 @@ class chartArea(QFrame):
         self.selfRaise.emit(self.parentWidget())
 
     
+    def hostsReorder(self, row, direction):
+        deb(f'hostsReorder call: {row=}, {direction=}')
+
+        def swap(lst, pos):
+            '''swap values, no checks'''
+            v = lst.pop(pos)
+            lst.insert(pos-1, v)
+
+        hosts = self.widget.hosts
+        deb(f'host: {hosts[row]}')
+
+        # up 
+        if row>0 and row<len(hosts):
+            v = hosts.pop(row)
+            deb(f'doing host pop... {hosts=} --> {v}')
+            hosts.insert(row-1, v)
+
+            # reorder self.hostKPIsList and styles
+            # v = self.hostKPIsList.pop(row)
+            # self.hostKPIsList.insert(row-1, v)
+
+            # v = self.hostKPIsStyles.pop(row)
+            # self.hostKPIsStyles.insert(row-1, v)
+
+            # v = self.widget.nkpis.pop(row)
+            # self.widget.nkpis.insert(row-1, v)
+
+            swap(self.hostKPIsList, row)
+            swap(self.hostKPIsStyles, row)
+            swap(self.widget.nkpis, row)
+            swap(self.widget.nscales, row)
+            swap(self.widget.nscalesml, row)
+            swap(self.widget.ndata, row)
+
+            # dict
+            v = self.widget.kpiPen[row]
+            self.widget.kpiPen[row] = self.widget.kpiPen[row-1]
+            self.widget.kpiPen[row-1] = v
+
+
+        self.hostsUpdated.emit()
+
     def disableDeadKPIs(self):
         
         chart = self.widget

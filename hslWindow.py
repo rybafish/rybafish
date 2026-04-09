@@ -2891,6 +2891,7 @@ class hslWindow(QMainWindow):
 
         self.hostTable.adjustTimeZones.connect(self.chartArea.adjustTimeZones)
         self.hostTable.openSecondaryConsole.connect(self.openSecondaryConsole)
+        self.hostTable.hostsReorder.connect(self.chartArea.hostsReorder)
 
         # to fill hosts
         self.chartArea.hostsUpdated.connect(self.hostTable.hostsUpdated)
