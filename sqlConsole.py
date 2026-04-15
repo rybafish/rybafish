@@ -2325,7 +2325,7 @@ class sqlConsole(QWidget):
             self.alertSignal.emit()
     
     def sumCalculated(self, s):
-        deb(f'sqlconsole sum calc sig: {s}')
+        # deb(f'sqlconsole sum calc sig: {s}')
         self.sumCalculatedSignal.emit(s)
 
     def newResult(self, conn, st):

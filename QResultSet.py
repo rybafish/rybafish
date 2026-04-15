@@ -1,6 +1,7 @@
 '''
     QTableWidget extention for result set table + csv preview table
 '''
+import builtins
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView, QApplication, QMenu, QInputDialog, QStyledItemDelegate
 from PyQt5.QtCore import pyqtSignal, Qt, QSize, QTimer
 from PyQt5.QtGui import QFont, QFontMetricsF, QColor, QPixmap, QBrush
@@ -267,24 +268,28 @@ class QResultSet(QTableWidget):
 
         decType = False
         
-        for c in sm.selectedIndexes():
-            c, r = c.column(), c.row()
+        try:
+            for c in sm.selectedIndexes():
+                c, r = c.column(), c.row()
 
-            colType = self.cols[c][1]
-            if not self.dbi.ifNumericType(colType):
-                sum = None
-                break
-            
-            # if not decType and self.dbi.ifDecimalType(colType):
-            #     decType = True
-                
-            v = self.rows[r][c]
-            
-            if v is None:
-                continue
+                colType = self.cols[c][1]
+                if not self.dbi.ifNumericType(colType):
+                    sum = None
+                    break
 
-            sum += v
-            i += 1
+                # if not decType and self.dbi.ifDecimalType(colType):
+                #     decType = True
+
+                v = self.rows[r][c]
+
+                if v is None:
+                    continue
+
+                sum += v
+                i += 1
+        except builtins.TypeError:
+            log(f'[W] Sum calculation error: probably because of mixing decimal and double columns.', 2)
+            sum = None
 
         if sum is not None and i > 1:
             if True or decType:
