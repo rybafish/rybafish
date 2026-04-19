@@ -3157,16 +3157,6 @@ class chartArea(QFrame):
             deb(f'doing host pop... {hosts=} --> {v}')
             hosts.insert(row-1, v)
 
-            # reorder self.hostKPIsList and styles
-            # v = self.hostKPIsList.pop(row)
-            # self.hostKPIsList.insert(row-1, v)
-
-            # v = self.hostKPIsStyles.pop(row)
-            # self.hostKPIsStyles.insert(row-1, v)
-
-            # v = self.widget.nkpis.pop(row)
-            # self.widget.nkpis.insert(row-1, v)
-
             swap(self.hostKPIsList, row)
             swap(self.hostKPIsStyles, row)
             swap(self.widget.nkpis, row)
@@ -3179,11 +3169,6 @@ class chartArea(QFrame):
             self.widget.kpiPen[row] = self.widget.kpiPen[row-1]
             self.widget.kpiPen[row-1] = v
 
-        # down 
-            # if i>=0 and i<len(self.hosts)-1:
-            #     v = self.hosts.pop(i)
-            #     deb(f'doing pop... {self.hosts=} --> {v}')
-            #     self.hosts.insert(i+1, v)
         if row>=0 and row<len(hosts)-1:
             v = hosts.pop(row)
             deb(f'doing host pop... {hosts=} --> {v}')
@@ -3202,6 +3187,7 @@ class chartArea(QFrame):
             self.widget.kpiPen[row+1] = v
 
         self.hostsUpdated.emit()
+        self.repaint()
 
     def disableDeadKPIs(self):
         
