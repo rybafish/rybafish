@@ -3187,7 +3187,7 @@ class chartArea(QFrame):
             self.widget.kpiPen[row+1] = v
 
         self.hostsUpdated.emit()
-        self.repaint()
+        self.repaintRequest()
 
     def disableDeadKPIs(self):
         
