@@ -1,7 +1,10 @@
 #from contextlib import contextmanager # what was that?
 import sys
 
-from PyQt5.QtWidgets import QTreeView, QWidget, QFrame, QScrollArea, QVBoxLayout, QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, QComboBox, QLabel, QMenu
+from PyQt5.QtWidgets import QTreeView, QWidget, QFrame, QScrollArea, QVBoxLayout, \
+               QHBoxLayout, QPushButton, QFormLayout, QGroupBox, QLineEdit, \
+               QComboBox, QLabel, QMenu, QStyle
+
 from PyQt5.QtWidgets import QApplication, QMessageBox, QToolTip, QAction, QInputDialog
 
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QIcon, QFont, QFontMetrics, QClipboard, QPixmap, QRegion, QLinearGradient
@@ -5406,9 +5409,14 @@ class chartArea(QFrame):
         # set from/to editboxes width
         self.adjustScale()
 
-        reloadBtn = QPushButton("rld")
+        reloadBtn = QPushButton('rld')
         reloadBtn.setFixedWidth(32);
         reloadBtn.clicked.connect(self.reloadChart)
+
+        if cfg('bug1098', True):
+            icon = reloadBtn.style().standardIcon(QStyle.SP_BrowserReload)
+            reloadBtn.setIcon(icon)
+            reloadBtn.setText('')
         
         self.fromEdit.returnPressed.connect(self.reloadChart)
         self.fromEdit.keyPressEvent = self.fromEditKeyPress
