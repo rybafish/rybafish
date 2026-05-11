@@ -594,6 +594,29 @@ class myWidget(QWidget):
             clipboard.setText(self.highlightedEntity)
 
             self.statusMessage('Gantt entity copied')
+        elif mode == 'gantt details':
+            entity = self.highlightedEntity
+            kpi = self.highlightedKpi
+            host = self.highlightedKpiHost
+            range_i = self.highlightedRange
+
+            if kpi not in self.ndata[host]:
+                log(f'[w] kpi is not there? ({kpi})', 2)
+                return
+
+            if entity in self.ndata[host][kpi]:
+            
+                #can disappear after zoom as we dont remove highlights
+            
+                desc = self.ndata[host][kpi][entity][range_i][2]
+                
+                desc = desc.replace('\\n', '\n')
+                
+                clipboard = QApplication.clipboard()
+                clipboard.setText(desc)
+                
+                self.statusMessage('Gantt details copied')
+                
         elif mode == 'multiline':
             kpi = self.highlightedKpi
             host = self.highlightedKpiHost
@@ -852,28 +875,8 @@ class myWidget(QWidget):
             self.copyHighlightedEntity('multiline')
             
         if self.highlightedEntity is not None and action == copyGanttDetails:
+            self.copyHighlightedEntity('gantt details')
         
-            entity = self.highlightedEntity
-            kpi = self.highlightedKpi
-            host = self.highlightedKpiHost
-            range_i = self.highlightedRange
-
-            if kpi not in self.ndata[host]:
-                log(f'[w] kpi is not there? ({kpi})', 2)
-                return
-
-            if entity in self.ndata[host][kpi]:
-            
-                #can disappear after zoom as we dont remove highlights
-            
-                desc = self.ndata[host][kpi][entity][range_i][2]
-                
-                desc = desc.replace('\\n', '\n')
-                
-                clipboard = QApplication.clipboard()
-                clipboard.setText(desc)
-                
-                self.statusMessage('Copied.')
             
         if self.highlightedEntity and action == copyGanttEntity:
             self.copyHighlightedEntity('gantt')
@@ -3793,7 +3796,8 @@ class chartArea(QFrame):
                 self.widget.copyHighlightedEntity('multiline')
 
         elif event.key() == Qt.Key_C and modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier:
-            deb('Ctrl+Shift+C')
+            if self.widget.highlightedEntity is not None:
+                self.widget.copyHighlightedEntity('gantt details')
         else:
             super().keyPressEvent(event)
 
