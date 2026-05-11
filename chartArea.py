@@ -587,11 +587,35 @@ class myWidget(QWidget):
         
         return pos
         
-    def copyHGanttEntity(self):
+    def copyHighlightedEntity(self, mode):
         clipboard = QApplication.clipboard()
-        clipboard.setText(self.highlightedEntity)
 
-        self.statusMessage('Gantt entity copied')
+        if mode == 'gantt':
+            clipboard.setText(self.highlightedEntity)
+
+            self.statusMessage('Gantt entity copied')
+        elif mode == 'multiline':
+            kpi = self.highlightedKpi
+            host = self.highlightedKpiHost
+            gb = self.highlightedGBI
+            
+            kpiStylesNNN = self.hostKPIsStyles[host]
+            subtype =  kpiStylesNNN[kpi].get('subtype')
+
+            if subtype != 'multiline':
+                log('[W] unexpected multiline call while not multiline?', 1)
+                return
+
+            if kpi not in self.ndata[host]:
+                log(f'[w] kpi is not there? ({kpi})', 2)
+                return
+
+            gbv = self.ndata[host][kpi][gb][0]
+            
+            clipboard = QApplication.clipboard()
+            clipboard.setText(gbv)
+
+            self.statusMessage('Multiline name copied')
 
     def contextMenuEvent(self, event):
         def inputFileName():
@@ -825,26 +849,7 @@ class myWidget(QWidget):
             clipboard.setText(predicate)
             
         if self.highlightedGBI is not None and action == copyMultilineGB:
-            kpi = self.highlightedKpi
-            host = self.highlightedKpiHost
-            gb = self.highlightedGBI
-            
-            kpiStylesNNN = self.hostKPIsStyles[host]
-            subtype =  kpiStylesNNN[kpi].get('subtype')
-
-            if subtype != 'multiline':
-                log('[W] unexpected multiline call while not multiline?', 1)
-                return
-
-            if kpi not in self.ndata[host]:
-                log(f'[w] kpi is not there? ({kpi})', 2)
-                return
-
-            gbv = self.ndata[host][kpi][gb][0]
-            
-            clipboard = QApplication.clipboard()
-            clipboard.setText(gbv)
-            
+            self.copyHighlightedEntity('multiline')
             
         if self.highlightedEntity is not None and action == copyGanttDetails:
         
@@ -871,7 +876,7 @@ class myWidget(QWidget):
                 self.statusMessage('Copied.')
             
         if self.highlightedEntity and action == copyGanttEntity:
-            self.copyHGanttEntity()
+            self.copyHighlightedEntity('gantt')
 
         if self.gotGantt and action == toggleGanttLabels:
             if self.hideGanttLabels:
@@ -3783,9 +3788,12 @@ class chartArea(QFrame):
             self.widget.toggleGanttLabels()
         elif event.key() == Qt.Key_C and modifiers == Qt.ControlModifier:
             if self.widget.highlightedEntity is not None:
-                self.widget.copyHGanttEntity()
+                self.widget.copyHighlightedEntity('gantt')
+            elif self.widget.highlightedGBI is not None:
+                self.widget.copyHighlightedEntity('multiline')
+
         elif event.key() == Qt.Key_C and modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier:
-            print('Ctrl+shift+C here')
+            deb('Ctrl+Shift+C')
         else:
             super().keyPressEvent(event)
 
