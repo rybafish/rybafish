@@ -587,6 +587,12 @@ class myWidget(QWidget):
         
         return pos
         
+    def copyHGanttEntity(self):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.highlightedEntity)
+
+        self.statusMessage('Gantt entity copied')
+
     def contextMenuEvent(self, event):
         def inputFileName():
             '''input a filename for screenshot if experimental'''
@@ -865,11 +871,7 @@ class myWidget(QWidget):
                 self.statusMessage('Copied.')
             
         if self.highlightedEntity and action == copyGanttEntity:
-            
-            clipboard = QApplication.clipboard()
-            clipboard.setText(self.highlightedEntity)
-            
-            self.statusMessage('Copied.')
+            self.copyHGanttEntity()
 
         if self.gotGantt and action == toggleGanttLabels:
             if self.hideGanttLabels:
@@ -3779,6 +3781,11 @@ class chartArea(QFrame):
             self.widget.toggleLegend()
         elif event.key() == Qt.Key_L and modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier:
             self.widget.toggleGanttLabels()
+        elif event.key() == Qt.Key_C and modifiers == Qt.ControlModifier:
+            if self.widget.highlightedEntity is not None:
+                self.widget.copyHGanttEntity()
+        elif event.key() == Qt.Key_C and modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier:
+            print('Ctrl+shift+C here')
         else:
             super().keyPressEvent(event)
 
