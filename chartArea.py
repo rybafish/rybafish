@@ -718,12 +718,12 @@ class myWidget(QWidget):
                 toggleGanttLabels = cmenu.addAction('Hide Gantt Labels\tCtrl+Shift+L')
         
         if self.highlightedEntity is not None:
-            copyGanttEntity = cmenu.addAction('Copy highlighted gantt entity')
-            copyGanttDetails = cmenu.addAction('Copy highlighted gantt details')
+            copyGanttEntity = cmenu.addAction('Copy highlighted gantt entity\tCtrl+C')
+            copyGanttDetails = cmenu.addAction('Copy highlighted gantt details\tCtrl+Shift+C')
             
         if self.highlightedGBI is not None:
             cmenu.addSeparator()
-            copyMultilineGB = cmenu.addAction('Copy highlighted multiline KPI name')            
+            copyMultilineGB = cmenu.addAction('Copy highlighted multiline KPI name\tCtrl+C')            
 
         if cfg('developmentMode'):
             cmenu.addSeparator()
