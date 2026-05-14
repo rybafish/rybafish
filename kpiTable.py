@@ -798,6 +798,8 @@ class kpiTable(QTableWidget):
                 if kpiScale.get('manual'):
                     scaleItem.setForeground(QBrush(QColor(0, 0, 255)))
                     
+                scaleItem.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter) # 1099 
+
                 self.setItem(i, 3, scaleItem) # Y-Scale
                 
                 self.setItem(i, 4, QTableWidgetItem(str(kpiScale['unit'])))
