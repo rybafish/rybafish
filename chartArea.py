@@ -977,6 +977,8 @@ class myWidget(QWidget):
         
         found = None
         
+        self.setToolTip('')
+
         for host in range(0, len(self.hosts)):
         
             if len(self.nkpis) == 0:
@@ -1009,7 +1011,6 @@ class myWidget(QWidget):
                 self.highlightedEntity = None
                 self.highlightedRange = None
 
-                self.setToolTip('')
                 
                 # self.update()
                 
