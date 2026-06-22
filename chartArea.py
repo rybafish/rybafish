@@ -640,6 +640,81 @@ class myWidget(QWidget):
 
             self.statusMessage('Multiline name copied')
 
+    def doRegression(self):
+        log('do regression call')
+        kpi = self.highlightedKpi
+        h = self.highlightedKpiHost
+        kpiStylesNNN = self.hostKPIsStyles[h]
+        log(f'kpi: {kpi}, host:{h}')
+
+        timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
+
+        frames = len(self.ndata[h][timeKey]) 
+        log(f'time length: {frames}')
+
+        if frames !=len(self.ndata[h][kpi]):
+            log(f'[W] data length: {len(self.ndata[h][kpi])} != time frames', 2)
+
+
+        x = self.ndata[h][timeKey]
+        y = self.ndata[h][kpi]
+
+        xAvg = sum(x) / frames
+        yAvg = sum(y) / frames
+
+        log(f'averages: {xAvg=}, {yAvg=}')
+
+        kSumTop = 0
+        kSumLow = 0
+
+        for i in range(frames):
+            kSumTop += (x[i] - xAvg)*(y[i] - yAvg)
+            kSumLow += (x[i] - xAvg)**2
+
+        k = kSumTop / kSumLow
+        b = yAvg - k * xAvg
+
+        log(f'k = {k}, b = {b}')
+
+
+        xDelta = 0
+
+        for i in range(frames-1):
+            xDelta += x[i+1] - x[i] # yes timeline is orderes, I know
+
+        xDelta /= frames - 1
+
+        log(f'average delta X is: {xDelta}')
+        
+        # now render forward N samples
+
+        id = QInputDialog
+
+        value, ok = id.getInt(self, 'Number of samples for regression', 'Please input number of samples per regression', 200, 0, 100000, 100)
+
+        if ok:
+            n = value
+        else:
+            return
+
+        xTrend = [0]*n
+        yTrend = [0]*n
+
+        t = x[frames - 1]           # last time point
+
+        for i in range(n):
+            xTrend[i] = t + i * xDelta
+            yTrend[i] = k*xTrend[i] + b
+        
+
+        log(f'time length before: {frames}, plus {n}')
+        x += xTrend
+        y += yTrend
+
+        log(f'time length after: {len(x)}')
+        
+        self.repaint()
+        
     def contextMenuEvent(self, event):
         def inputFileName():
             '''input a filename for screenshot if experimental'''
@@ -691,6 +766,7 @@ class myWidget(QWidget):
         hideKpi = None
         hideKpiNegative = None
         unhideKpi = None
+        linearRegression = None
 
         copyLegend = None
         
@@ -731,6 +807,9 @@ class myWidget(QWidget):
         
         if self.highlightedKpi is not None:
             hideKpi = cmenu.addAction('Hide highlighted KPI')
+            
+        if self.highlightedKpi is not None:
+            linearRegression = cmenu.addAction('Build a linear trend')
             
         if self.highlightedKpi is not None and self.highlightedGBI is not None:
             hideKpiNegative = cmenu.addAction('Hide all multilines except highlighted one')
@@ -903,6 +982,9 @@ class myWidget(QWidget):
             self.repaint()
             log(f'unhide all hidden KPIs', 4)
 
+        if self.highlightedKpi and action == linearRegression:
+            self.doRegression()
+            
         if action == devDisco:
             deb('fake disconnection - on next reload call')
             self.tmpDisco = True
