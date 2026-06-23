@@ -489,6 +489,18 @@ class dataProvider(QObject):
                 log(f'[w] lenght to be deleted: {len(data[kpi])}', 2)
                 kpisToDel.append(kpi)
 
+        kpisVirtual = []
+        for kpi in kpiIn:
+            if kpiStylesNNN[kpi].get('virtual') == True:
+                log(f'adding kpi {kpi} to delete list, because fully virtual')
+                kpisToDel.append(kpi)
+
+                log(f'but also deleting from to be requested list, because fully virtual')
+                kpisVirtual.append(kpi)
+
+        for kpi in kpisVirtual:
+            kpiIn.remove(kpi)
+        
         for kpi in kpisToDel:
             log(f'deleting {kpi}...', 2)
             del data[kpi]

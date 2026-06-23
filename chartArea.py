@@ -112,6 +112,7 @@ class myWidget(QWidget):
     scrollSignal = pyqtSignal(int, float)
 
     kpiRefreshSignal = pyqtSignal()
+    renewMaxValuesSignal = pyqtSignal()
     
     statusMessage_ = pyqtSignal(['QString', bool])
 
@@ -645,16 +646,48 @@ class myWidget(QWidget):
         kpi = self.highlightedKpi
         h = self.highlightedKpiHost
         kpiStylesNNN = self.hostKPIsStyles[h]
-        log(f'kpi: {kpi}, host:{h}')
+        kpiKey = f"{self.hosts[h]['host']}:{self.hosts[h]['port']}/{kpi}"
+        log(f'kpi: {kpi}, host:{h}, kpiKey: {kpiKey}')
 
         timeKey = kpiDescriptions.getTimeKey(kpiStylesNNN, kpi)
+        timeKeyTrend = f'time:#{kpi}#trend'
 
         frames = len(self.ndata[h][timeKey]) 
-        log(f'time length: {frames}')
+        log(f'time length: {frames}, key = {timeKey}')
+
+        style = kpiStylesNNN[kpi].copy()
+
+        kpiTrend = 'cs-'+style['name']+'#trend'
+        style['name'] = kpiTrend
+        style['label'] = style['label']+' -> trend'
+        style['sql'] = f'#{kpi}#trend'
+
+        kpiPos = self.hostKPIsList[h].index(kpi)
+        self.hostKPIsList[h].insert(kpiPos + 1, kpiTrend)
+        kpiStylesNNN[kpiTrend] = style
+
+        if kpiKey in kpiDescriptions.customColors:
+            c = kpiDescriptions.customColors[kpiKey]
+            tcolor = QColor(c[0], c[1], c[2])
+            tPen = QPen(tcolor, 1, Qt.DotLine)
+            style['pen'] = tPen
+            self.kpiPen[h][kpiTrend] = tPen
+        else:
+            tcolor = style['pen'].color()
+            tPen = QPen(tcolor, 1, Qt.DotLine)
+            style['pen'] = tPen
+            self.kpiPen[h][kpiTrend] = tPen
+            self.kpiPen[h][kpiTrend] = style['pen']
+
+        style['virtual'] = True
+
+        log(style)
+
+        if frames < 5:
+            return
 
         if frames !=len(self.ndata[h][kpi]):
             log(f'[W] data length: {len(self.ndata[h][kpi])} != time frames', 2)
-
 
         x = self.ndata[h][timeKey]
         y = self.ndata[h][kpi]
@@ -708,11 +741,20 @@ class myWidget(QWidget):
         
 
         log(f'time length before: {frames}, plus {n}')
-        x += xTrend
-        y += yTrend
+        # x += xTrend
+        # y += yTrend
+        # x = self.ndata[h][timeKey]
+        # y = self.ndata[h][kpi]
+        self.ndata[h][timeKeyTrend] = xTrend
+        self.ndata[h][kpiTrend] = yTrend
 
-        log(f'time length after: {len(x)}')
+        self.nkpis[h].append(kpiTrend)
+        self.nscales[h][kpiTrend] = self.nscales[h][kpi].copy()
+
+        log(f'time length for trend: {len(xTrend)}')
         
+        self.renewMaxValuesSignal.emit()
+        self.alignScales()
         self.repaint()
         
     def contextMenuEvent(self, event):
@@ -1921,7 +1963,7 @@ class myWidget(QWidget):
                         if cfg('legentGanttDetails', True):
                             label += f': '
                             label += str(self.nscales[h][kpi]['label']) + ' / '
-                            label += str(self.nscales[h][kpi]['max_label'])
+                            label += str(self.nxscales[h][kpi]['max_label'])
                         
                         lkpis.append(kpi)
                         lkpisl.append(label)
@@ -5568,6 +5610,7 @@ class chartArea(QFrame):
         
         self.widget._parent = self
         self.widget.hostKPIsStyles = self.hostKPIsStyles        # need to link as used widely in drawChart called from paint event
+        self.widget.hostKPIsList = self.hostKPIsList            # somehow 1st time needed for linear regression?
 
         try:
             if cfg('color-bg'):
@@ -5598,6 +5641,7 @@ class chartArea(QFrame):
         self.widget.zoomSignal.connect(self.zoomSignal)
         
         self.widget.scrollSignal.connect(self.scrollSignal)
+        self.widget.renewMaxValuesSignal.connect(self.renewMaxValues)
 
         # trigger upddate of scales in table?
         
