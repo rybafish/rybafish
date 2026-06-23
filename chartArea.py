@@ -850,7 +850,7 @@ class myWidget(QWidget):
         if self.highlightedKpi is not None:
             hideKpi = cmenu.addAction('Hide highlighted KPI')
             
-        if self.highlightedKpi is not None:
+        if self.highlightedKpi is not None and cfg('experimental'):
             linearRegression = cmenu.addAction('Add linear regression line')
             
         if self.highlightedKpi is not None and self.highlightedGBI is not None:
