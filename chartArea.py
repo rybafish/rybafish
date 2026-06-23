@@ -737,7 +737,7 @@ class myWidget(QWidget):
 
         for i in range(n):
             xTrend[i] = t + i * xDelta
-            yTrend[i] = k*xTrend[i] + b
+            yTrend[i] = int(round(k*xTrend[i] + b))
         
 
         log(f'time length before: {frames}, plus {n}')
@@ -851,7 +851,7 @@ class myWidget(QWidget):
             hideKpi = cmenu.addAction('Hide highlighted KPI')
             
         if self.highlightedKpi is not None:
-            linearRegression = cmenu.addAction('Build a linear trend')
+            linearRegression = cmenu.addAction('Add linear regression line')
             
         if self.highlightedKpi is not None and self.highlightedGBI is not None:
             hideKpiNegative = cmenu.addAction('Hide all multilines except highlighted one')
