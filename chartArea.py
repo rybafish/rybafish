@@ -653,7 +653,8 @@ class myWidget(QWidget):
         timeKeyTrend = f'time:#{kpi}#trend'
 
         frames = len(self.ndata[h][timeKey]) 
-        log(f'time length: {frames}, key = {timeKey}')
+        
+        log(f'time length: {frames}, key = {timeKey}, highlightedPint: {self.highlightedPoint}')
 
         style = kpiStylesNNN[kpi].copy()
 
@@ -683,14 +684,14 @@ class myWidget(QWidget):
 
         log(style)
 
-        if frames < 5:
-            return
-
         if frames !=len(self.ndata[h][kpi]):
             log(f'[W] data length: {len(self.ndata[h][kpi])} != time frames', 2)
 
-        x = self.ndata[h][timeKey]
-        y = self.ndata[h][kpi]
+        strtFrame = self.highlightedPoint
+        
+        frames -= strtFrame
+        x = self.ndata[h][timeKey][strtFrame:]
+        y = self.ndata[h][kpi][strtFrame:]
 
         xAvg = sum(x) / frames
         yAvg = sum(y) / frames
@@ -723,10 +724,11 @@ class myWidget(QWidget):
 
         id = QInputDialog
 
-        value, ok = id.getInt(self, 'Number of samples for regression', 'Please input number of samples per regression', 200, 0, 100000, 100)
+        value, ok = id.getInt(self, 'Hours forward for regression', 'Please input number of hours forward for trend calculation', 200, 0, 100000, 100)
 
         if ok:
-            n = value
+            n = int(round(3600 * value / xDelta))
+            log(f'Hours got: {value}, number of samples for forcast: {n}', 4)
         else:
             return
 
