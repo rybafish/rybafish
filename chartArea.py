@@ -1963,7 +1963,7 @@ class myWidget(QWidget):
                         if cfg('legentGanttDetails', True):
                             label += f': '
                             label += str(self.nscales[h][kpi]['label']) + ' / '
-                            label += str(self.nxscales[h][kpi]['max_label'])
+                            label += str(self.nscales[h][kpi]['max_label'])
                         
                         lkpis.append(kpi)
                         lkpisl.append(label)
