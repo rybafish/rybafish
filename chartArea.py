@@ -113,6 +113,8 @@ class myWidget(QWidget):
 
     kpiRefreshSignal = pyqtSignal()
     renewMaxValuesSignal = pyqtSignal()
+
+    renewToTimeSignal = pyqtSignal(int)
     
     statusMessage_ = pyqtSignal(['QString', bool])
 
@@ -642,7 +644,7 @@ class myWidget(QWidget):
             self.statusMessage('Multiline name copied')
 
     def doRegression(self):
-        log('do regression call')
+        log('do regression call', component='regression')
         kpi = self.highlightedKpi
         h = self.highlightedKpiHost
         kpiStylesNNN = self.hostKPIsStyles[h]
@@ -654,7 +656,7 @@ class myWidget(QWidget):
 
         frames = len(self.ndata[h][timeKey]) 
         
-        log(f'time length: {frames}, key = {timeKey}, highlightedPint: {self.highlightedPoint}')
+        log(f'initial time length: {frames}, key={timeKey}, highlightedPint: {self.highlightedPoint}', component='regression')
 
         style = kpiStylesNNN[kpi].copy()
 
@@ -682,21 +684,29 @@ class myWidget(QWidget):
 
         style['virtual'] = True
 
-        log(style)
+        log(f'style: {style}', component='regression')
 
         if frames !=len(self.ndata[h][kpi]):
-            log(f'[W] data length: {len(self.ndata[h][kpi])} != time frames', 2)
+            log(f'[W] data length: {len(self.ndata[h][kpi])} != time frames', 2, component='regression')
 
         strtFrame = self.highlightedPoint
+
+        if strtFrame >= frames -2: # last or one before last, because come one? 
+            log(f'correcting strFrame as it is very last point right now: {strtFrame=}, {frames=}', component='regression')
+            strtFrame = frames - 2
         
+        log(f'{strtFrame=}, {frames=}', component='regression')
         frames -= strtFrame
+
+        log(f'{strtFrame=}, {frames=}', component='regression')
+
         x = self.ndata[h][timeKey][strtFrame:]
         y = self.ndata[h][kpi][strtFrame:]
 
         xAvg = sum(x) / frames
         yAvg = sum(y) / frames
 
-        log(f'averages: {xAvg=}, {yAvg=}')
+        log(f'averages: {xAvg=}, {yAvg=}', component='regression')
 
         kSumTop = 0
         kSumLow = 0
@@ -705,11 +715,15 @@ class myWidget(QWidget):
             kSumTop += (x[i] - xAvg)*(y[i] - yAvg)
             kSumLow += (x[i] - xAvg)**2
 
+        if kSumLow == 0:
+            self.statusMessage('[!] Calculation errot, stop')
+            log(f'[regression] kSumLow = 0, devision by zero exception, aborting', 2)
+            return
+            
         k = kSumTop / kSumLow
         b = yAvg - k * xAvg
 
-        log(f'k = {k}, b = {b}')
-
+        log(f'k = {k}, b = {b}', component='regression')
 
         xDelta = 0
 
@@ -718,17 +732,17 @@ class myWidget(QWidget):
 
         xDelta /= frames - 1
 
-        log(f'average delta X is: {xDelta}')
+        log(f'average delta X is: {xDelta}', component='regression')
         
         # now render forward N samples
 
         id = QInputDialog
 
-        value, ok = id.getInt(self, 'Hours forward for regression', 'Please input number of hours forward for trend calculation', 200, 0, 100000, 100)
+        value, ok = id.getInt(self, 'Hours forward for regression', 'Please input number of hours forward for trend calculation', 2, 0, 100000, 100)
 
         if ok:
             n = int(round(3600 * value / xDelta))
-            log(f'Hours got: {value}, number of samples for forcast: {n}', 4)
+            log(f'Hours got: {value}, number of samples for forcast: {n}', 4, component='regression')
         else:
             return
 
@@ -742,7 +756,7 @@ class myWidget(QWidget):
             yTrend[i] = int(round(k*xTrend[i] + b))
         
 
-        log(f'time length before: {frames}, plus {n}')
+        log(f'time length before: {frames}, plus {n}', component='regression')
         # x += xTrend
         # y += yTrend
         # x = self.ndata[h][timeKey]
@@ -753,9 +767,10 @@ class myWidget(QWidget):
         self.nkpis[h].append(kpiTrend)
         self.nscales[h][kpiTrend] = self.nscales[h][kpi].copy()
 
-        log(f'time length for trend: {len(xTrend)}')
+        log(f'time length for trend: {len(xTrend)}', component='regression')
         
         self.renewMaxValuesSignal.emit()
+        # self.renewToTimeSignal.emit(value)
         self.alignScales()
         self.repaint()
         
@@ -2134,14 +2149,11 @@ class myWidget(QWidget):
 
                 for dp in self._parent.ndp:
                     prop = dp.dbProperties
-                    deb(f'{prop=}')
                 
                 if len(self._parent.ndp) == 1:
                     prop = self._parent.ndp[0].dbProperties
                     utcOffset = prop.get('utcOffset')
-                    deb(f'tz utc offset: {utcOffset}')
-
-                    print(prop)
+                    # deb(f'tz utc offset: {utcOffset}')
 
                     if utcOffset is not None:
 
@@ -5447,6 +5459,14 @@ class chartArea(QFrame):
             else:
                 self.checkboxToggle(host=self.asyncTmpHost, kpi=self.asyncTmpKPI, asyncConn=True, asyncOkay=False)
     
+    def renewToTime(self, addHours):
+        deb(f'add: {addHours}')
+
+        targetts = '2026-06-30 05:00:00'
+
+        self.toEdit.setText(targetts)
+
+    
     def __init__(self):
         
         '''
@@ -5644,6 +5664,7 @@ class chartArea(QFrame):
         
         self.widget.scrollSignal.connect(self.scrollSignal)
         self.widget.renewMaxValuesSignal.connect(self.renewMaxValues)
+        self.widget.renewToTimeSignal.connect(self.renewToTime)
 
         # trigger upddate of scales in table?
         
