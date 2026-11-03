@@ -3354,6 +3354,7 @@ class sqlConsole(QWidget):
         '''
         #print('2 --> sql finished')
 
+        typeWarning = False      # tuckle the issue #933  
         log(f'[thread] finished, parent: {int(QThread.currentThreadId())}', 5)
         self.thread.quit()
         self.sqlRunning = False
@@ -3378,6 +3379,13 @@ class sqlConsole(QWidget):
             deb(f'wrkException: {self.wrkException}')
             #self.thread.quit()
             #self.sqlRunning = False
+
+            if self.wrkException[:44] == 'DB Exception: general warning: Type mismatch':
+                typeWarning = True
+                deb(f'Ok, we can ignore this one, {typeWarning=}')
+
+                self.logArea.appendHtml('Note: <font color = "blue">You still can rerun the same procedure to make it run ignoring types mismatch</font>.');
+                #self.log('You still can rerun the same procedure to make it run ignoring types mismatch', False)
 
             if self.finishNotification:
                 log('okay, play the fail.wav sound...', 3)
@@ -3414,7 +3422,7 @@ class sqlConsole(QWidget):
                         linePos = self.wrkException.find(': line ')
                         posPos = self.wrkException.find(' pos ')
                         
-                        print(linePos, posPos)
+                        deb(f'{linePos=}, {posPos=}')
                         
                         if linePos > 0 or posPos > 0:
 
